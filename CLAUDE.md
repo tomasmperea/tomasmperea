@@ -1,7 +1,7 @@
 # Valija — contexto del proyecto
 
-App de planificación de viajes. Consolida en un solo lugar la información que hoy queda repartida entre
-Booking, Hertz y las aerolíneas.
+App de planificación de viajes. Consolida en un solo lugar toda la información de un viaje, que hoy queda
+repartida entre las distintas plataformas de servicios donde se contrató cada cosa.
 
 **App publicada:** https://claude.ai/code/artifact/136a6d7e-9952-4edb-b6d3-11f6e69c8cb4
 **Rama de trabajo:** `claude/travel-planning-app-mvp-jag9be`

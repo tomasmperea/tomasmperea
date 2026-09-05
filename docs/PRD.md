@@ -72,7 +72,7 @@ Decisiones tomadas para que el MVP saliera rápido, con la razón de cada una:
 | Fuera del MVP | Por qué | Cuándo |
 |---|---|---|
 | Avisos por correo | Necesita un servidor que corra sin la app abierta | Iteración 2 |
-| Integraciones con Booking, Hertz, aerolíneas | Requieren acuerdos comerciales o scraping frágil | Iteración 3 |
+| Integraciones con las plataformas de servicios de viaje | Requieren acuerdos comerciales o scraping frágil | Iteración 3 |
 | Cuentas de usuario propias | El MVP se apoya en la identidad de la plataforma | Iteración 2 |
 | Mapas embebidos | No resuelve el problema central | Iteración 3 |
 | Gastos y división de cuentas | Es otro producto | Sin fecha |
