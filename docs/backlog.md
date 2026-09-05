@@ -71,6 +71,29 @@ Como viajero quiero un PDF con todo el viaje para tenerlo sin conexión y mandar
 
 ---
 
+## Iteración 1.5 — Preparar
+
+Épica **VAL-30 · Valija inteligente**. Los criterios de aceptación completos están en
+`docs/briefs/valija-inteligente.md`, que es el contrato de la iteración. Acá queda el índice y la prioridad.
+
+| ID | Historia | Prioridad |
+|---|---|---|
+| VAL-30 | Generar la lista sugerida según tipo, destino, fechas y duración | P0 |
+| VAL-31 | Marcar lo que ya está en la valija, descartar y agregar propios | P0 |
+| VAL-32 | Aprender del historial de viajes anteriores | P0 |
+| VAL-33 | Ajustar la lista por destino y época del año | P1 |
+| VAL-34 | Compartir la lista con quien viaja conmigo | P1 |
+| VAL-35 | Incluir la lista en el PDF del viaje | P2 |
+
+**Por qué se adelanta a la iteración 2:** no necesita backend. Usa la base de datos y la capa de
+inteligencia que ya tiene el MVP.
+
+**Decisiones de producto tomadas y cerradas:** el motor es híbrido y la lista base funciona sin IA; la
+sugerencia se puede rechazar y rechazar es información que alimenta el aprendizaje; las cantidades explican
+de dónde salen; no hay links de compra ni recomendación de producto.
+
+---
+
 ## Iteración 2 — Avisar
 
 ### VAL-10 · Recibir avisos por correo — P0

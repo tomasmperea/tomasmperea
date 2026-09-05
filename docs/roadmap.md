@@ -16,6 +16,25 @@ imagen, itinerario por día, motor de pendientes con seis reglas, compartir para
 
 ---
 
+## Iteración 1.5 — Preparar
+
+**Objetivo:** que la app sirva también la noche anterior al viaje, cuando se arma el bolso.
+
+Se adelanta a la iteración 2 por una razón concreta: **no necesita backend.** Usa la base de datos y la capa
+de inteligencia que el MVP ya tiene. Entregar valor sin esperar infraestructura es preferible a respetar el
+orden del plan.
+
+**Alcance:** épica VAL-30, especificada en `docs/briefs/valija-inteligente.md`.
+
+- Lista de equipaje sugerida según tipo de viaje, destino, fechas y duración.
+- Motor híbrido: reglas locales que funcionan siempre, más ajuste por destino con inteligencia encima.
+- Checklist de empacado con progreso.
+- Aprendizaje del historial: lo que la persona agrega y descarta cambia las sugerencias siguientes.
+
+**Pregunta que responde:** ¿la app se abre también el día antes de viajar, y no solo mientras se planifica?
+
+---
+
 ## Iteración 2 — Avisar
 
 **Objetivo:** que el producto te busque en lugar de esperar a que lo abras. Es la iteración de retención.
@@ -86,5 +105,6 @@ Al cierre de cada iteración se mira una sola cosa antes de arrancar la siguient
 | Después de | Seguimos si |
 |---|---|
 | Iteración 1 | Hay viajes con más de tres reservas cargadas |
+| Iteración 1.5 | Las listas llegan al día del viaje con más de la mitad marcada |
 | Iteración 2 | Los correos se abren y traen gente de vuelta a la app |
 | Iteración 3 | La carga manual baja frente a la automática |
