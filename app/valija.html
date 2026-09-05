@@ -1,0 +1,1666 @@
+<title>Valija</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+/* ============================================================
+   VALIJA — tokens
+   Light es la base. Dark redefine SOLO tokens, dos veces:
+   preferencia del sistema y elección explícita.
+   ============================================================ */
+:root{
+  --ink:#0F1B2E;
+  --ink-2:#54637C;
+  --ink-3:#8695AB;
+  --ground:#EDF0F5;
+  --surface:#FFFFFF;
+  --surface-2:#F5F7FB;
+  --line:#D7DEE9;
+  --line-2:#E7ECF3;
+  --accent:#0B45C4;
+  --accent-soft:#E4EBFC;
+  --accent-ink:#FFFFFF;
+  --flap:#E8A317;
+  --flap-soft:#FBF0D8;
+  --ok:#0B7A5C;
+  --ok-soft:#DDF1EA;
+  --warn:#A96400;
+  --warn-soft:#FBEEDA;
+  --crit:#BE3227;
+  --crit-soft:#FBE4E1;
+  --shadow:0 1px 2px rgba(15,27,46,.06), 0 8px 24px -12px rgba(15,27,46,.18);
+  --shadow-lift:0 2px 4px rgba(15,27,46,.08), 0 18px 40px -18px rgba(15,27,46,.30);
+
+  --f-display:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+
+  --r-s:8px; --r-m:14px; --r-l:20px;
+  --shell:460px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E9EEF7;
+    --ink-2:#9FAFC6;
+    --ink-3:#6F7F97;
+    --ground:#080D17;
+    --surface:#121B2B;
+    --surface-2:#182234;
+    --line:#26334A;
+    --line-2:#1E2A3E;
+    --accent:#6E9BFF;
+    --accent-soft:#1A2748;
+    --accent-ink:#08122A;
+    --flap:#FFC24D;
+    --flap-soft:#2E2413;
+    --ok:#4FCFA5;
+    --ok-soft:#102E26;
+    --warn:#E9A93C;
+    --warn-soft:#2E2413;
+    --crit:#FF8A7A;
+    --crit-soft:#331A18;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E9EEF7; --ink-2:#9FAFC6; --ink-3:#6F7F97;
+  --ground:#080D17; --surface:#121B2B; --surface-2:#182234;
+  --line:#26334A; --line-2:#1E2A3E;
+  --accent:#6E9BFF; --accent-soft:#1A2748; --accent-ink:#08122A;
+  --flap:#FFC24D; --flap-soft:#2E2413;
+  --ok:#4FCFA5; --ok-soft:#102E26;
+  --warn:#E9A93C; --warn-soft:#2E2413;
+  --crit:#FF8A7A; --crit-soft:#331A18;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--f-body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+/* ---------- shell ---------- */
+.shell{
+  max-width:var(--shell); margin:0 auto; min-height:100vh;
+  background:var(--ground); position:relative;
+  display:flex; flex-direction:column;
+}
+@media (min-width:520px){
+  .shell{border-left:1px solid var(--line);border-right:1px solid var(--line)}
+}
+
+/* ---------- header ---------- */
+.hdr{
+  position:sticky; top:0; z-index:40;
+  background:var(--surface); border-bottom:1px solid var(--line);
+  padding:14px 16px 12px;
+}
+.hdr-row{display:flex;align-items:center;gap:10px;min-height:34px}
+.brand{display:flex;align-items:baseline;gap:8px;flex:1;min-width:0}
+.brand h1{
+  font-family:var(--f-display); font-weight:800; font-size:26px;
+  letter-spacing:-.02em; margin:0; line-height:1;
+}
+.brand .tag{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); white-space:nowrap;
+}
+.hdr-sub{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.06em;
+  color:var(--ink-2); margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;
+  align-items:center;
+}
+.iconbtn{
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  cursor:pointer; flex:none; transition:background .15s,border-color .15s;
+}
+.iconbtn:hover{background:var(--surface-2);border-color:var(--ink-3)}
+.iconbtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- main ---------- */
+main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:14px}
+.eyebrow{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+
+/* ---------- baggage tag (trip card) ---------- */
+.tag-card{
+  display:flex; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r-m); overflow:hidden; box-shadow:var(--shadow);
+  cursor:pointer; text-align:left; width:100%; padding:0;
+  transition:transform .16s ease, box-shadow .16s ease;
+}
+.tag-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.tag-band{
+  width:36px; flex:none; position:relative;
+  background:var(--band); display:grid; place-items:center;
+}
+.tag-band::after{
+  content:""; position:absolute; inset:6px auto 6px 6px; width:0;
+  border-left:2px dotted rgba(255,255,255,.55);
+}
+.tag-band span{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.2em;
+  color:#fff; writing-mode:vertical-rl; text-orientation:mixed;
+  transform:rotate(180deg); text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+.tag-body{padding:13px 14px;flex:1;min-width:0;display:flex;flex-direction:column;gap:9px}
+.route{display:flex;align-items:center;gap:9px;font-family:var(--f-mono);font-weight:500}
+.route .code{font-size:19px;letter-spacing:.05em;color:var(--ink)}
+.route .dash{flex:1;height:1px;background:repeating-linear-gradient(to right,var(--line) 0 4px,transparent 4px 8px);min-width:16px}
+.route svg{width:15px;height:15px;color:var(--ink-3);flex:none;fill:currentColor;stroke:none}
+.trip-name{
+  display:block; font-family:var(--f-display); font-weight:700; font-size:17px;
+  letter-spacing:-.01em; line-height:1.2; margin:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.tag-meta{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.dates{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+
+/* completeness ring */
+.ring{width:34px;height:34px;flex:none;position:relative}
+.ring svg{width:34px;height:34px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:3.5}
+.ring .bg{stroke:var(--line-2)}
+.ring .fg{stroke:var(--ok);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.ring.warn .fg{stroke:var(--flap)}
+.ring.low .fg{stroke:var(--crit)}
+.ring b{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--f-mono);font-size:9.5px;font-weight:500;color:var(--ink-2);
+}
+
+/* ---------- chips & badges ---------- */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.05em;
+  padding:3px 7px; border-radius:6px; background:var(--surface-2);
+  color:var(--ink-2); border:1px solid var(--line-2); white-space:nowrap;
+}
+.chip.alert{background:var(--crit-soft);color:var(--crit);border-color:transparent;font-weight:500}
+.chip.soon{background:var(--flap-soft);color:var(--warn);border-color:transparent;font-weight:500}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.accent{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.chip.live{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:500}
+
+/* ---------- boarding pass (item card) ---------- */
+.pass{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r-m); box-shadow:var(--shadow); overflow:hidden;
+}
+.pass-main{display:flex;gap:12px;padding:13px 14px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;cursor:pointer}
+.pass-icon{
+  width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;
+  background:var(--accent-soft);color:var(--accent);
+}
+.pass-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pass-icon.stay{background:var(--ok-soft);color:var(--ok)}
+.pass-icon.car{background:var(--flap-soft);color:var(--warn)}
+.pass-icon.act{background:var(--crit-soft);color:var(--crit)}
+.pass-icon.note{background:var(--surface-2);color:var(--ink-2)}
+.pass-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.pass-title{
+  font-family:var(--f-display);font-weight:700;font-size:15.5px;line-height:1.25;
+  letter-spacing:-.005em;margin:0;
+}
+.pass-when{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+.pass-time{
+  font-family:var(--f-mono);font-size:14px;font-weight:500;color:var(--ink);
+  flex:none;text-align:right;line-height:1.3;font-variant-numeric:tabular-nums;
+}
+.pass-time small{display:block;font-size:10px;color:var(--ink-3);font-weight:400}
+
+/* perforated stub */
+.pass-stub{
+  border-top:1.5px dashed var(--line); background:var(--surface-2);
+  padding:10px 14px; display:grid; grid-template-columns:repeat(auto-fit,minmax(88px,1fr));
+  gap:9px 12px; position:relative;
+}
+.pass-stub::before,.pass-stub::after{
+  content:"";position:absolute;top:-7px;width:13px;height:13px;border-radius:50%;
+  background:var(--ground);border:1px solid var(--line);
+}
+.pass-stub::before{left:-7px;clip-path:inset(0 0 0 50%)}
+.pass-stub::after{right:-7px;clip-path:inset(0 50% 0 0)}
+.field{display:flex;flex-direction:column;gap:2px;min-width:0}
+.field .k{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.field .v{
+  font-family:var(--f-mono);font-size:12.5px;color:var(--ink);
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow-wrap:anywhere;line-height:1.35;
+}
+.field .v.miss{color:var(--crit);font-style:italic}
+
+/* ---------- day group ---------- */
+.day{display:flex;flex-direction:column;gap:9px}
+.day-head{display:flex;align-items:center;gap:10px;padding-top:4px}
+.day-n{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;
+  background:var(--ink);color:var(--ground);padding:3px 7px;border-radius:5px;
+  text-transform:uppercase;flex:none;
+}
+.day-date{font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:-.01em}
+.day-rule{flex:1;height:1px;background:var(--line)}
+.day-nights{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3)}
+
+/* ---------- alerts ---------- */
+.alert-row{
+  display:flex;gap:11px;align-items:flex-start;padding:11px 13px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);
+  border-left:3px solid var(--sev);
+}
+.alert-row .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.alert-row .t{font-weight:600;font-size:14px;line-height:1.3}
+.alert-row .d{font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.alert-dot{width:8px;height:8px;border-radius:50%;background:var(--sev);flex:none;margin-top:6px}
+.alert-row .go{
+  border:0;background:var(--surface-2);color:var(--ink-2);border-radius:7px;
+  font-family:var(--f-mono);font-size:10.5px;padding:5px 8px;cursor:pointer;flex:none;
+  letter-spacing:.06em;
+}
+.alert-row .go:hover{background:var(--accent-soft);color:var(--accent)}
+
+/* ---------- buttons ---------- */
+.btn{
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  padding:11px 14px; border-radius:11px; font-weight:600; font-size:14px;
+  cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+  gap:8px; transition:background .15s,border-color .15s,transform .1s;
+}
+.btn:hover{background:var(--surface-2);border-color:var(--ink-3)}
+.btn:active{transform:scale(.985)}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
+.btn.danger{color:var(--crit);border-color:var(--crit-soft);background:var(--crit-soft)}
+.btn.block{width:100%}
+.btn.sm{padding:8px 11px;font-size:13px;border-radius:9px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-row{display:flex;gap:9px;flex-wrap:wrap}
+.btn-row>.btn{flex:1;min-width:130px}
+
+/* FAB */
+.fab{
+  position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  left:50%;transform:translateX(-50%);
+  z-index:45;display:flex;gap:9px;
+  max-width:var(--shell);width:calc(100% - 32px);
+}
+.fab .btn{box-shadow:var(--shadow-lift)}
+
+/* ---------- segmented ---------- */
+.seg{
+  display:flex;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:11px;padding:3px;gap:3px;
+}
+.seg button{
+  flex:1;border:0;background:transparent;color:var(--ink-2);padding:8px 6px;
+  border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:background .15s,color .15s;
+}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg .count{
+  font-family:var(--f-mono);font-size:10px;background:var(--crit);color:#fff;
+  border-radius:20px;padding:1px 5px;line-height:1.5;
+}
+.seg .count.zero{background:var(--ok)}
+
+/* ---------- empty ---------- */
+.empty{
+  text-align:center;padding:34px 20px;background:var(--surface);
+  border:1px dashed var(--line);border-radius:var(--r-l);
+  display:flex;flex-direction:column;gap:9px;align-items:center;
+}
+.empty .ico{font-size:30px;line-height:1}
+.empty h3{font-family:var(--f-display);font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em}
+.empty p{margin:0;color:var(--ink-2);font-size:13.5px;max-width:34ch;line-height:1.5}
+
+/* ---------- sheet (modal) ---------- */
+.scrim{
+  position:fixed;inset:0;background:rgba(15,27,46,.55);z-index:80;
+  display:flex;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(3px);animation:fade .18s ease;
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{
+  background:var(--surface);width:100%;max-width:var(--shell);
+  border-radius:var(--r-l) var(--r-l) 0 0; max-height:92vh;
+  display:flex;flex-direction:column;animation:rise .24s cubic-bezier(.2,.8,.3,1);
+  box-shadow:0 -10px 50px rgba(0,0,0,.28);
+}
+@keyframes rise{from{transform:translateY(26px);opacity:.4}to{transform:none;opacity:1}}
+.sheet-hd{
+  padding:14px 16px 11px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;flex:none;
+}
+.sheet-hd h2{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0;flex:1;letter-spacing:-.01em}
+.sheet-bd{padding:15px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:13px}
+.sheet-ft{padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);display:flex;gap:9px;flex:none}
+.sheet-ft .btn{flex:1}
+
+/* ---------- form ---------- */
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.f input,.f select,.f textarea{
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  padding:10px 11px;border-radius:9px;font-size:15px;width:100%;
+  transition:border-color .15s,background .15s;
+}
+.f input:focus,.f select:focus,.f textarea:focus{background:var(--surface);border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.f textarea{min-height:78px;resize:vertical;font-family:var(--f-body);line-height:1.5}
+.f .hint{font-size:11.5px;color:var(--ink-3);line-height:1.4}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.f input.mono,.f textarea.mono{font-family:var(--f-mono);font-size:14px}
+.req label::after{content:" ·";color:var(--crit)}
+
+/* type picker */
+.tp{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:7px}
+.tp button{
+  border:1px solid var(--line);background:var(--surface-2);border-radius:10px;
+  padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;
+  cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);
+  transition:all .14s;
+}
+.tp button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tp button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));left:50%;
+  transform:translateX(-50%);z-index:120;
+  background:var(--ink);color:var(--ground);padding:11px 16px;border-radius:11px;
+  font-size:13.5px;font-weight:500;box-shadow:var(--shadow-lift);
+  max-width:calc(var(--shell) - 40px);text-align:center;
+  animation:rise .2s ease;
+}
+.toast.err{background:var(--crit);color:#fff}
+
+/* ---------- misc ---------- */
+.notice{
+  display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:10px;
+  background:var(--accent-soft);color:var(--accent);font-size:12.5px;line-height:1.45;
+}
+.notice.warn{background:var(--flap-soft);color:var(--warn)}
+.notice svg{width:15px;height:15px;flex:none;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.spin{
+  width:15px;height:15px;border:2px solid currentColor;border-top-color:transparent;
+  border-radius:50%;animation:sp .7s linear infinite;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.sk{background:linear-gradient(90deg,var(--surface-2) 25%,var(--line-2) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:shim 1.3s infinite;border-radius:var(--r-m);height:88px}
+@keyframes shim{to{background-position:-200% 0}}
+.hr{height:1px;background:var(--line);border:0;margin:2px 0}
+.stack{display:flex;flex-direction:column;gap:10px}
+.mono{font-family:var(--f-mono)}
+.muted{color:var(--ink-2)}
+.tiny{font-size:11.5px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media print{
+  .hdr,.fab,.seg,.iconbtn,.btn{display:none !important}
+  body,.shell{background:#fff}
+  main{padding:0}
+}
+</style>
+
+<div class="shell">
+  <header class="hdr" id="hdr"></header>
+  <main id="main">
+    <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+  </main>
+</div>
+<div id="fab"></div>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   VALIJA — todas tus reservas de viaje en un solo lugar.
+   MVP: carga manual + importador con IA + PDF + compartir.
+   ============================================================ */
+
+/* ---------- iconos ---------- */
+const I = {
+  flight:'<path d="M17.8 19.8 16 14l4-4a2 2 0 0 0-2.8-2.8l-4 4-5.8-1.8a1 1 0 0 0-1 .3L5 11.2a.6.6 0 0 0 .2 1l4.3 2 2 4.3a.6.6 0 0 0 1 .2l1.5-1.5a1 1 0 0 0 .3-1z"/>',
+  stay:'<path d="M3 20V9l9-5 9 5v11"/><path d="M3 14h18"/><path d="M9 20v-5h6v5"/>',
+  car:'<path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><rect x="3" y="10" width="18" height="7" rx="2"/><path d="M5.5 10 7 5.5A2 2 0 0 1 8.9 4h6.2A2 2 0 0 1 17 5.5L18.5 10"/><path d="M6.5 13.5h2"/><path d="M15.5 13.5h2"/>',
+  act:'<path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>',
+  transfer:'<path d="M4 7h12l-3-3"/><path d="M20 17H8l3 3"/>',
+  note:'<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h6"/>',
+  plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+  back:'<path d="M15 19l-7-7 7-7"/>',
+  spark:'<path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4"/><path d="M15.4 6.5l-6.8 4"/>',
+  pdf:'<path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/>',
+  x:'<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  bell:'<path d="M18 8A6 6 0 1 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  cam:'<path d="M3 8h3l2-2h8l2 2h3v11H3z"/><circle cx="12" cy="12.5" r="3.2"/>',
+  trash:'<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>',
+  // silueta sólida: se lee mejor que un trazo a 15px, como la señalética de aeropuerto
+  planeSmall:'<path d="M21.9 12c0 .55-.5.98-1.1.98h-4.86l-3.5 6.12a1 1 0 0 1-.87.5h-1.2c-.38 0-.62-.3-.52-.66l1.66-5.96H7.72l-1.46 2.13a.85.85 0 0 1-.68.36H4.5c-.3 0-.5-.27-.4-.57l.97-2.9-.97-2.9c-.1-.3.1-.57.4-.57h1.08c.27 0 .52.13.68.36L7.72 11h3.79L9.85 5.04c-.1-.36.14-.66.52-.66h1.2c.36 0 .69.19.87.5l3.5 6.12h4.86c.6 0 1.1.43 1.1.98z"/>'
+};
+const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p}</svg>`;
+
+const TYPES = {
+  flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
+  stay:    {label:"Alojamiento",icon:I.stay,    cls:"stay",  band:"stay"},
+  car:     {label:"Auto",      icon:I.car,      cls:"car",   band:"car"},
+  transfer:{label:"Traslado",  icon:I.transfer, cls:"",      band:"transfer"},
+  act:     {label:"Actividad", icon:I.act,      cls:"act",   band:"act"},
+  note:    {label:"Nota",      icon:I.note,     cls:"note",  band:"note"}
+};
+
+/* ---------- utilidades de fecha ---------- */
+const pad = n => String(n).padStart(2,"0");
+const MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MESL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIAS = ["dom","lun","mar","mié","jue","vie","sáb"];
+
+function parseDT(s){ if(!s) return null; const d = new Date(s); return isNaN(d) ? null : d; }
+function dayKey(s){ return s ? String(s).slice(0,10) : ""; }
+function fmtDate(s){ const d=parseDT(s); if(!d) return "—"; return `${pad(d.getDate())} ${MES[d.getMonth()]}`; }
+function fmtDateLong(s){ const d=parseDT(s); if(!d) return "—"; return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESL[d.getMonth()]}`; }
+function fmtTime(s){ if(!s||String(s).length<=10) return null; const d=parseDT(s); if(!d) return null; return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function fmtRange(a,b){
+  const x=parseDT(a), y=parseDT(b);
+  if(!x&&!y) return "Sin fechas";
+  if(x&&!y) return `desde ${fmtDate(a)}`;
+  if(!x&&y) return `hasta ${fmtDate(b)}`;
+  const sameY = x.getFullYear()===y.getFullYear();
+  return `${fmtDate(a)} – ${fmtDate(b)}${sameY?` ${String(y.getFullYear()).slice(2)}`:""}`;
+}
+function daysUntil(s){
+  const d=parseDT(s); if(!d) return null;
+  const t=new Date(); t.setHours(0,0,0,0);
+  const x=new Date(d); x.setHours(0,0,0,0);
+  return Math.round((x-t)/86400000);
+}
+function nightsBetween(a,b){
+  const x=parseDT(a), y=parseDT(b); if(!x||!y) return 0;
+  const d = Math.round((new Date(dayKey(b))-new Date(dayKey(a)))/86400000);
+  return Math.max(0,d);
+}
+function addDays(iso,n){ const d=new Date(dayKey(iso)+"T12:00"); d.setDate(d.getDate()+n); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+/* ============================================================
+   STORE — db compartida si está; localStorage si no.
+   ============================================================ */
+const Store = {
+  db:null, ready:false, canWrite:true, mode:"local",
+  trips:new Map(), items:new Map(),  // items: tripId -> Map(itemId, item)
+  subs:new Set(), itemUnsub:null, watching:null,
+
+  emit(){ this.subs.forEach(f=>{ try{f()}catch(e){console.error(e)} }); },
+  on(f){ this.subs.add(f); return ()=>this.subs.delete(f); },
+
+  async init(){
+    try{ this.db = await claude.use("db"); }catch(e){ this.db=null; }
+    if(this.db){
+      this.mode = "cloud";
+      // Sondeo de escritura: define si este visitante edita o sólo mira.
+      try{
+        await this.db.doc("meta/probe").set({at:new Date().toISOString()});
+        this.canWrite = true;
+      }catch(e){
+        this.canWrite = (e && e.code === "invalid_argument") ? false : true;
+      }
+      this.db.collection("trips").onSnapshot(
+        snap => {
+          this.trips = new Map();
+          snap.docs.forEach(d => this.trips.set(d.id, {id:d.id, ...d.data}));
+          this.ready = true; this.emit();
+        },
+        err => { console.warn("trips",err); this.ready=true; this.emit(); }
+      );
+    } else {
+      this.loadLocal(); this.ready = true; this.emit();
+    }
+  },
+
+  /* --- items de un viaje --- */
+  watch(tripId){
+    if(this.watching === tripId) return;
+    if(this.itemUnsub){ this.itemUnsub(); this.itemUnsub=null; }
+    this.watching = tripId;
+    if(!tripId || !this.db) { this.emit(); return; }
+    this.itemUnsub = this.db.collection(`trips/${tripId}/items`).onSnapshot(
+      snap => {
+        const m = new Map();
+        snap.docs.forEach(d => m.set(d.id, {id:d.id, ...d.data}));
+        this.items.set(tripId, m); this.emit();
+      },
+      err => console.warn("items",err)
+    );
+  },
+  itemsOf(tripId){
+    const m = this.items.get(tripId);
+    return m ? [...m.values()] : [];
+  },
+  tripList(){
+    return [...this.trips.values()].sort((a,b)=>{
+      const A = a.startDate||"9999", B = b.startDate||"9999";
+      return A.localeCompare(B);
+    });
+  },
+
+  /* --- escrituras --- */
+  async saveTrip(t){
+    const now = new Date().toISOString();
+    const doc = {...t, updatedAt:now, createdAt:t.createdAt||now};
+    delete doc.id;
+    if(this.db){
+      await this.db.doc(`trips/${t.id}`).set(doc);
+    } else {
+      this.trips.set(t.id, {...doc, id:t.id}); this.saveLocal(); this.emit();
+    }
+  },
+  async delTrip(id){
+    if(this.db){
+      const snap = await this.db.collection(`trips/${id}/items`).get();
+      await Promise.all(snap.docs.map(d => this.db.doc(`trips/${id}/items/${d.id}`).delete()));
+      await this.db.doc(`trips/${id}`).delete();
+    } else {
+      this.trips.delete(id); this.items.delete(id); this.saveLocal(); this.emit();
+    }
+  },
+  async saveItem(tripId, it){
+    const now = new Date().toISOString();
+    const doc = {...it, updatedAt:now, createdAt:it.createdAt||now};
+    delete doc.id;
+    if(this.db){
+      await this.db.doc(`trips/${tripId}/items/${it.id}`).set(doc);
+    } else {
+      if(!this.items.has(tripId)) this.items.set(tripId, new Map());
+      this.items.get(tripId).set(it.id, {...doc, id:it.id});
+      this.saveLocal(); this.emit();
+    }
+  },
+  async delItem(tripId, id){
+    if(this.db){ await this.db.doc(`trips/${tripId}/items/${id}`).delete(); }
+    else { this.items.get(tripId)?.delete(id); this.saveLocal(); this.emit(); }
+  },
+
+  /* --- respaldo local --- */
+  KEY:"valija.v1",
+  saveLocal(){
+    try{
+      const items = {};
+      this.items.forEach((m,k)=> items[k] = [...m.values()]);
+      localStorage.setItem(this.KEY, JSON.stringify({trips:[...this.trips.values()], items}));
+    }catch(e){}
+  },
+  loadLocal(){
+    try{
+      const raw = localStorage.getItem(this.KEY); if(!raw) return;
+      const d = JSON.parse(raw);
+      (d.trips||[]).forEach(t => this.trips.set(t.id,t));
+      Object.entries(d.items||{}).forEach(([k,arr])=>{
+        this.items.set(k, new Map(arr.map(i=>[i.id,i])));
+      });
+    }catch(e){}
+  }
+};
+
+/* ============================================================
+   MOTOR DE PENDIENTES — qué falta y qué se viene.
+   Cada tipo de reserva tiene sus campos críticos.
+   ============================================================ */
+const REQUIRED = {
+  flight:  [["start","fecha y hora de salida"],["from","origen"],["to","destino"],["confirmation","código de reserva"],["provider","aerolínea"]],
+  stay:    [["start","check-in"],["end","check-out"],["provider","alojamiento"],["address","dirección"],["confirmation","código de reserva"]],
+  car:     [["start","retiro"],["end","devolución"],["provider","rentadora"],["address","lugar de retiro"],["confirmation","código de reserva"]],
+  transfer:[["start","fecha y hora"],["from","origen"],["to","destino"]],
+  act:     [["start","fecha"],["title","nombre"]],
+  note:    [["title","título"]]
+};
+const OPTIONAL_NICE = {
+  flight:[["seat","asiento"],["terminal","terminal"]],
+  stay:[["phone","teléfono"]],
+  car:[["notes","política de combustible"]]
+};
+
+function missingFields(it){
+  return (REQUIRED[it.type]||[]).filter(([k])=> !String(it[k]||"").trim());
+}
+
+function tripAlerts(trip, items){
+  const out = [];
+  const push = (sev,t,d,itemId)=> out.push({sev,t,d,itemId});
+
+  // 1) datos faltantes por reserva
+  items.forEach(it=>{
+    const miss = missingFields(it);
+    if(miss.length){
+      push("crit",
+        `${TYPES[it.type]?.label||"Reserva"}: ${it.title||"sin nombre"}`,
+        `Falta ${miss.map(m=>m[1]).join(", ")}.`, it.id);
+    }
+  });
+
+  // 2) el viaje sin fechas no puede planificarse
+  if(!trip.startDate || !trip.endDate){
+    push("crit","El viaje no tiene fechas","Sin fechas no puedo avisarte de vencimientos ni armar la agenda por día.");
+  }
+
+  // 3) noches sin alojamiento — la alerta más útil de todas
+  if(trip.startDate && trip.endDate){
+    const covered = new Set();
+    items.filter(i=>i.type==="stay" && i.start).forEach(i=>{
+      const n = nightsBetween(i.start, i.end || i.start);
+      for(let k=0;k<Math.max(1,n);k++) covered.add(addDays(i.start,k));
+    });
+    const gaps = [];
+    const total = nightsBetween(trip.startDate, trip.endDate);
+    for(let k=0;k<total;k++){
+      const d = addDays(trip.startDate,k);
+      if(!covered.has(d)) gaps.push(d);
+    }
+    if(gaps.length){
+      push("warn", `${gaps.length} ${gaps.length===1?"noche":"noches"} sin alojamiento`,
+        `Sin reserva: ${gaps.slice(0,3).map(fmtDate).join(", ")}${gaps.length>3?` y ${gaps.length-3} más`:""}.`);
+    }
+  }
+
+  // 4) ida sin vuelta
+  const flights = items.filter(i=>i.type==="flight");
+  if(flights.length===1 && trip.endDate){
+    push("warn","Falta el vuelo de vuelta","Cargaste sólo un tramo y el viaje tiene fecha de regreso.");
+  }
+  if(flights.length===0 && trip.startDate){
+    push("warn","Todavía no hay vuelos","Cargá los tramos para ver el itinerario completo.");
+  }
+
+  // 5) check-in online: se abre 48 h antes
+  flights.forEach(f=>{
+    const dd = daysUntil(f.start);
+    if(dd!==null && dd>=0 && dd<=2 && !String(f.seat||"").trim()){
+      push("soon", `Check-in abierto: ${f.title||"vuelo"}`,
+        dd===0?"El vuelo sale hoy y no tenés asiento cargado.":`Sale en ${dd} ${dd===1?"día":"días"}. Hacé el check-in y cargá el asiento.`, f.id);
+    }
+  });
+
+  // 6) hitos cercanos
+  const dd = daysUntil(trip.startDate);
+  if(dd!==null && dd>=0 && dd<=14){
+    push("soon", dd===0?"El viaje empieza hoy":`Faltan ${dd} ${dd===1?"día":"días"}`,
+      "Revisá documentación, equipaje y traslados al aeropuerto.");
+  }
+
+  const rank = {crit:0, soon:1, warn:2};
+  return out.sort((a,b)=> rank[a.sev]-rank[b.sev]);
+}
+
+function completeness(trip, items){
+  let total = 0, done = 0;
+  items.forEach(it=>{
+    const req = REQUIRED[it.type]||[];
+    total += req.length; done += req.length - missingFields(it).length;
+  });
+  total += 2; done += (trip.startDate?1:0) + (trip.endDate?1:0);
+  if(items.length===0) return items.length ? 0 : Math.round(done/total*100);
+  return Math.max(0, Math.min(100, Math.round(done/total*100)));
+}
+
+/* ---------- color de banda por viaje ---------- */
+function bandColor(trip){
+  const h = Number.isFinite(trip.hue) ? trip.hue : 214;
+  return `hsl(${h} 62% 42%)`;
+}
+function routeCodes(trip, items){
+  const fl = items.filter(i=>i.type==="flight" && i.from && i.to)
+                  .sort((a,b)=> String(a.start||"").localeCompare(String(b.start||"")));
+  if(fl.length){
+    return [String(fl[0].from).toUpperCase().slice(0,3), String(fl[0].to).toUpperCase().slice(0,3)];
+  }
+  const dest = (trip.destination||trip.name||"").trim();
+  return [null, dest ? dest.toUpperCase().slice(0,3) : "···"];
+}
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+const App = { view:"home", tripId:null, tab:"plan" };
+
+function readHash(){
+  const h = location.hash.replace(/^#\/?/,"");
+  const [a,b] = h.split("/");
+  if(a==="trip" && b){ App.view="trip"; App.tripId=b; }
+  else { App.view="home"; App.tripId=null; }
+}
+function go(hash){ location.hash = hash; }
+window.addEventListener("hashchange", ()=>{ readHash(); Store.watch(App.tripId); render(); });
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const $hdr = document.getElementById("hdr");
+const $main = document.getElementById("main");
+const $fab = document.getElementById("fab");
+
+function render(){
+  if(App.view==="trip"){
+    const trip = Store.trips.get(App.tripId);
+    if(!trip && Store.ready){ go(""); return; }
+    if(!trip) return;
+    renderTrip(trip);
+  } else {
+    renderHome();
+  }
+}
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  const trips = Store.tripList();
+  const badge = Store.mode==="cloud"
+    ? (Store.canWrite ? `<span class="chip ok">sincronizada</span>` : `<span class="chip soon">sólo lectura</span>`)
+    : `<span class="chip">en este dispositivo</span>`;
+
+  $hdr.innerHTML = `
+    <div class="hdr-row">
+      <div class="brand">
+        <h1>Valija</h1>
+        <span class="tag">todo el viaje, un lugar</span>
+      </div>
+      <button class="iconbtn" id="about" title="Acerca de" aria-label="Acerca de">${svg(I.info)}</button>
+    </div>
+    <div class="hdr-sub">${badge}
+      <span>${trips.length} ${trips.length===1?"viaje":"viajes"}</span>
+    </div>`;
+  document.getElementById("about").onclick = sheetAbout;
+
+  if(!Store.ready){ $main.innerHTML = `<div class="sk"></div><div class="sk"></div>`; $fab.innerHTML=""; return; }
+
+  if(!trips.length){
+    $main.innerHTML = `
+      <div class="empty">
+        <div class="ico">🧳</div>
+        <h3>Tu valija está vacía</h3>
+        <p>Abrí un viaje y empezá a guardar vuelos, alojamientos y autos. Podés tener todos los viajes que quieras en paralelo.</p>
+      </div>`;
+  } else {
+    const now = new Date().toISOString().slice(0,10);
+    const upcoming = trips.filter(t=> !t.endDate || t.endDate >= now);
+    const past = trips.filter(t=> t.endDate && t.endDate < now);
+
+    const section = (title, list) => !list.length ? "" : `
+      <div class="stack">
+        <div class="sec-head"><span class="eyebrow">${title}</span>
+          <span class="eyebrow">${list.length}</span></div>
+        <div class="stack">${list.map(cardTrip).join("")}</div>
+      </div>`;
+
+    $main.innerHTML = section("Próximos viajes", upcoming) + section("Ya viajados", past);
+    $main.querySelectorAll("[data-trip]").forEach(el=>{
+      el.onclick = ()=> go(`#/trip/${el.dataset.trip}`);
+    });
+  }
+
+  $fab.innerHTML = `<div class="fab">
+    <button class="btn primary block" id="newtrip">${svg(I.plus)} Nuevo viaje</button>
+  </div>`;
+  const nt = document.getElementById("newtrip");
+  if(!Store.canWrite){ nt.disabled = true; nt.title = "Tenés acceso de sólo lectura"; }
+  else nt.onclick = ()=> sheetTrip(null);
+}
+
+function cardTrip(t){
+  const items = Store.itemsOf(t.id);
+  const [from,to] = routeCodes(t, items);
+  const pct = completeness(t, items);
+  const alerts = tripAlerts(t, items);
+  const crit = alerts.filter(a=>a.sev==="crit").length;
+  const soon = alerts.filter(a=>a.sev==="soon").length;
+  const dd = daysUntil(t.startDate);
+  const ringCls = pct>=85?"":(pct>=50?"warn":"low");
+  const C = 2*Math.PI*14.5;
+
+  const chips = [];
+  if(dd!==null && dd>=0 && dd<=30) chips.push(`<span class="chip live">${dd===0?"hoy":`en ${dd} d`}</span>`);
+  if(crit) chips.push(`<span class="chip alert">${crit} sin completar</span>`);
+  if(!crit && soon) chips.push(`<span class="chip soon">${soon} por hacer</span>`);
+  if(!crit && !soon && items.length) chips.push(`<span class="chip ok">listo</span>`);
+  if(items.length) chips.push(`<span class="chip">${items.length} ${items.length===1?"reserva":"reservas"}</span>`);
+  if(t.sample) chips.push(`<span class="chip accent">ejemplo</span>`);
+
+  return `
+  <button class="tag-card" data-trip="${esc(t.id)}" style="--band:${bandColor(t)}">
+    <div class="tag-band"><span>${esc((t.destination||t.name||"VIAJE").toUpperCase().slice(0,14))}</span></div>
+    <div class="tag-body">
+      <div>
+        <div class="route">
+          ${from?`<span class="code">${esc(from)}</span><span class="dash"></span>`:""}
+          ${svg(I.planeSmall)}
+          <span class="dash"></span><span class="code">${esc(to)}</span>
+        </div>
+      </div>
+      <span class="trip-name">${esc(t.name||"Viaje sin nombre")}</span>
+      <div class="tag-meta">
+        <div style="min-width:0;display:flex;flex-direction:column;gap:6px">
+          <span class="dates">${esc(fmtRange(t.startDate,t.endDate))}</span>
+          <div class="chips">${chips.join("")}</div>
+        </div>
+        <div class="ring ${ringCls}" title="${pct}% completo">
+          <svg viewBox="0 0 34 34">
+            <circle class="bg" cx="17" cy="17" r="14.5"></circle>
+            <circle class="fg" cx="17" cy="17" r="14.5"
+              stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-pct/100)).toFixed(1)}"></circle>
+          </svg>
+          <b>${pct}</b>
+        </div>
+      </div>
+    </div>
+  </button>`;
+}
+
+/* ---------- TRIP ---------- */
+function renderTrip(trip){
+  const items = Store.itemsOf(trip.id);
+  const alerts = tripAlerts(trip, items);
+  const dd = daysUntil(trip.startDate);
+
+  $hdr.innerHTML = `
+    <div class="hdr-row">
+      <button class="iconbtn" id="back" aria-label="Volver">${svg(I.back)}</button>
+      <div class="brand" style="flex-direction:column;align-items:flex-start;gap:1px">
+        <h1 style="font-size:19px">${esc(trip.name||"Viaje")}</h1>
+      </div>
+      <button class="iconbtn" id="edittrip" aria-label="Editar viaje">${svg(I.edit)}</button>
+      <button class="iconbtn" id="sharetrip" aria-label="Compartir">${svg(I.share)}</button>
+    </div>
+    <div class="hdr-sub">
+      <span>${esc(fmtRange(trip.startDate,trip.endDate))}</span>
+      ${trip.destination?`<span>· ${esc(trip.destination)}</span>`:""}
+      ${dd!==null&&dd>=0?`<span class="chip live">${dd===0?"empieza hoy":`faltan ${dd} d`}</span>`:""}
+      ${!Store.canWrite?`<span class="chip soon">sólo lectura</span>`:""}
+    </div>`;
+  document.getElementById("back").onclick = ()=> go("");
+  document.getElementById("edittrip").onclick = ()=> sheetTrip(trip);
+  document.getElementById("sharetrip").onclick = ()=> sheetShare(trip);
+
+  const critN = alerts.filter(a=>a.sev==="crit").length;
+  const seg = `
+    <div class="seg" role="tablist">
+      <button role="tab" aria-selected="${App.tab==="plan"}" data-tab="plan">Itinerario</button>
+      <button role="tab" aria-selected="${App.tab==="todo"}" data-tab="todo">
+        Pendientes <span class="count ${alerts.length?"":"zero"}">${alerts.length}</span>
+      </button>
+    </div>`;
+
+  $main.innerHTML = seg + (App.tab==="plan" ? viewPlan(trip,items) : viewTodo(trip,alerts));
+
+  $main.querySelectorAll("[data-tab]").forEach(b=>{
+    b.onclick = ()=>{ App.tab = b.dataset.tab; render(); };
+  });
+  $main.querySelectorAll("[data-item]").forEach(b=>{
+    b.onclick = ()=>{
+      const it = Store.itemsOf(trip.id).find(x=>x.id===b.dataset.item);
+      if(it) sheetItem(trip, it);
+    };
+  });
+  $main.querySelectorAll("[data-goto]").forEach(b=>{
+    b.onclick = ()=>{
+      const it = Store.itemsOf(trip.id).find(x=>x.id===b.dataset.goto);
+      if(it) sheetItem(trip, it);
+    };
+  });
+
+  $fab.innerHTML = `<div class="fab">
+    <button class="btn primary" id="additem" style="flex:2">${svg(I.plus)} Agregar</button>
+    <button class="btn" id="imp" style="flex:1.2">${svg(I.spark)} Importar</button>
+    <button class="btn" id="pdf" aria-label="Exportar PDF" style="flex:0 0 46px;padding:11px 0">${svg(I.pdf)}</button>
+  </div>`;
+  const ai = document.getElementById("additem"), im = document.getElementById("imp");
+  if(!Store.canWrite){ ai.disabled=true; im.disabled=true; }
+  else { ai.onclick = ()=> sheetItem(trip,null); im.onclick = ()=> sheetImport(trip); }
+  document.getElementById("pdf").onclick = ()=> exportPDF(trip);
+}
+
+function viewPlan(trip, items){
+  if(!items.length){
+    return `<div class="empty">
+      <div class="ico">✈️</div>
+      <h3>Todavía no hay nada cargado</h3>
+      <p>Agregá el primer vuelo, o pegá el mail de confirmación en <b>Importar</b> y lo interpreto por vos.</p>
+    </div>`;
+  }
+  // agrupar por día
+  const groups = new Map();
+  const undated = [];
+  items.forEach(it=>{
+    const k = dayKey(it.start);
+    if(!k){ undated.push(it); return; }
+    if(!groups.has(k)) groups.set(k,[]);
+    groups.get(k).push(it);
+  });
+  const keys = [...groups.keys()].sort();
+  const base = trip.startDate ? dayKey(trip.startDate) : keys[0];
+
+  let html = "";
+  keys.forEach(k=>{
+    const list = groups.get(k).sort((a,b)=> String(a.start||"").localeCompare(String(b.start||"")));
+    const n = base ? Math.round((new Date(k)-new Date(base))/86400000)+1 : null;
+    html += `<div class="day">
+      <div class="day-head">
+        ${n&&n>0?`<span class="day-n">Día ${n}</span>`:""}
+        <span class="day-date">${esc(fmtDateLong(k))}</span>
+        <span class="day-rule"></span>
+      </div>
+      ${list.map(it=>cardItem(it)).join("")}
+    </div>`;
+  });
+  if(undated.length){
+    html += `<div class="day">
+      <div class="day-head"><span class="day-n" style="background:var(--ink-3)">Sin fecha</span><span class="day-rule"></span></div>
+      ${undated.map(it=>cardItem(it)).join("")}
+    </div>`;
+  }
+  return html;
+}
+
+function cardItem(it){
+  const T = TYPES[it.type] || TYPES.note;
+  const miss = missingFields(it);
+  const t1 = fmtTime(it.start), t2 = fmtTime(it.end);
+
+  // El talón muestra los datos propios del tipo de reserva.
+  // Tercer valor: true = campo obligatorio, se muestra aunque esté vacío.
+  let stub = [];
+  if(it.type==="flight"){
+    stub = [
+      ["Vuelo", it.flightNumber || it.provider, true],
+      ["Ruta", (it.from||it.to) ? (it.from||"—")+" → "+(it.to||"—") : "", true],
+      ["Reserva", it.confirmation, true],
+      ["Asiento", it.seat, false],
+      ["Terminal", it.terminal, false],
+      ["Puerta", it.gate, false]
+    ];
+  } else if(it.type==="stay"){
+    stub = [
+      ["Alojamiento", it.provider, true],
+      ["Check-in", t1 || (it.start?fmtDate(it.start):""), true],
+      ["Check-out", t2 || (it.end?fmtDate(it.end):""), true],
+      ["Noches", nightsBetween(it.start,it.end) || "", false],
+      ["Reserva", it.confirmation, true],
+      ["Dirección", it.address, true]
+    ];
+  } else if(it.type==="car"){
+    stub = [
+      ["Rentadora", it.provider, true],
+      ["Retiro", it.start?fmtDate(it.start):"", true],
+      ["Devolución", it.end?fmtDate(it.end):"", true],
+      ["Reserva", it.confirmation, true],
+      ["Lugar", it.address, true]
+    ];
+  } else {
+    stub = [
+      ["Dónde", it.address || it.to, false],
+      ["Reserva", it.confirmation, false],
+      ["Proveedor", it.provider, false]
+    ];
+  }
+  stub = stub.filter(([,v,req]) => v || req);
+
+  const cost = it.cost ? `<span class="chip">${esc(it.currency||"")} ${esc(it.cost)}</span>` : "";
+  const missChip = miss.length ? `<span class="chip alert">falta ${miss.length}</span>` : "";
+
+  const stubHtml = stub.length ? `<div class="pass-stub">${stub.map(([k,v])=>`
+    <div class="field"><span class="k">${esc(k)}</span>
+    <span class="v ${v?"":"miss"}">${v?esc(v):"pendiente"}</span></div>`).join("")}</div>` : "";
+
+
+  return `<div class="pass">
+    <button class="pass-main" data-item="${esc(it.id)}">
+      <span class="pass-icon ${T.cls}">${svg(T.icon)}</span>
+      <span class="pass-txt">
+        <span class="pass-title">${esc(it.title || T.label)}</span>
+        <span class="pass-when">${esc(T.label)}${it.provider?` · ${esc(it.provider)}`:""}</span>
+        <span class="chips">${missChip}${cost}</span>
+      </span>
+      ${t1?`<span class="pass-time">${t1}${t2?`<small>a ${t2}</small>`:""}</span>`:""}
+    </button>
+    ${stubHtml}
+  </div>`;
+}
+
+function viewTodo(trip, alerts){
+  if(!alerts.length){
+    return `<div class="empty">
+      <div class="ico">🎉</div>
+      <h3>No falta nada</h3>
+      <p>Todas las reservas están completas y no hay vencimientos cerca. Buen viaje.</p>
+    </div>`;
+  }
+  const color = {crit:"var(--crit)", soon:"var(--flap)", warn:"var(--warn)"};
+  const label = {crit:"Falta cargar", soon:"Para hacer ya", warn:"Revisar"};
+  const groups = ["crit","soon","warn"].map(sev=>{
+    const list = alerts.filter(a=>a.sev===sev);
+    if(!list.length) return "";
+    return `<div class="stack">
+      <div class="sec-head"><span class="eyebrow">${label[sev]}</span><span class="eyebrow">${list.length}</span></div>
+      ${list.map(a=>`
+        <div class="alert-row" style="--sev:${color[sev]}">
+          <span class="alert-dot"></span>
+          <div class="body"><div class="t">${esc(a.t)}</div><div class="d">${esc(a.d)}</div></div>
+          ${a.itemId?`<button class="go" data-goto="${esc(a.itemId)}">abrir</button>`:""}
+        </div>`).join("")}
+    </div>`;
+  }).join("");
+
+  return groups + `
+    <div class="notice" style="margin-top:4px">${svg(I.bell)}
+      <div>Los avisos por correo llegan en la próxima iteración. Por ahora este panel es tu checklist y viaja con el link compartido.</div>
+    </div>`;
+}
+
+/* ============================================================
+   SHEETS
+   ============================================================ */
+const $modal = document.getElementById("modal");
+function closeSheet(){ $modal.innerHTML = ""; }
+function openSheet(title, bodyHtml, footHtml){
+  $modal.innerHTML = `
+    <div class="scrim" id="scrim">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <div class="sheet-hd">
+          <h2>${esc(title)}</h2>
+          <button class="iconbtn" id="closeSheet" aria-label="Cerrar">${svg(I.x)}</button>
+        </div>
+        <div class="sheet-bd">${bodyHtml}</div>
+        ${footHtml?`<div class="sheet-ft">${footHtml}</div>`:""}
+      </div>
+    </div>`;
+  document.getElementById("closeSheet").onclick = closeSheet;
+  document.getElementById("scrim").addEventListener("click", e=>{ if(e.target.id==="scrim") closeSheet(); });
+}
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeSheet(); });
+
+function toast(msg, err){
+  const t = document.getElementById("toast");
+  t.innerHTML = `<div class="toast ${err?"err":""}">${esc(msg)}</div>`;
+  setTimeout(()=>{ t.innerHTML=""; }, err?4200:2600);
+}
+const val = id => (document.getElementById(id)?.value || "").trim();
+
+/* ---------- viaje ---------- */
+function sheetTrip(trip){
+  const t = trip || {id:uid(), hue: Math.floor(Math.random()*360)};
+  openSheet(trip?"Editar viaje":"Nuevo viaje", `
+    <div class="f req"><label for="t_name">Nombre del viaje</label>
+      <input id="t_name" value="${esc(t.name||"")}" placeholder="Vacaciones en el sur" autocomplete="off"></div>
+    <div class="f"><label for="t_dest">Destino principal</label>
+      <input id="t_dest" value="${esc(t.destination||"")}" placeholder="Bariloche" autocomplete="off">
+      <span class="hint">Se usa en la etiqueta de la valija y en el PDF.</span></div>
+    <div class="f2">
+      <div class="f"><label for="t_from">Salida</label><input id="t_from" type="date" value="${esc(dayKey(t.startDate))}"></div>
+      <div class="f"><label for="t_to">Regreso</label><input id="t_to" type="date" value="${esc(dayKey(t.endDate))}"></div>
+    </div>
+    <div class="f"><label for="t_people">Quiénes viajan</label>
+      <input id="t_people" value="${esc(t.travelers||"")}" placeholder="Tomás, Ana y Juli" autocomplete="off"></div>
+    <div class="f"><label for="t_notes">Notas</label>
+      <textarea id="t_notes" placeholder="Presupuesto, ideas, links sueltos...">${esc(t.notes||"")}</textarea></div>
+    ${trip?`<hr class="hr"><button class="btn danger block" id="deltrip">${svg(I.trash)} Eliminar este viaje</button>`:""}
+  `, `
+    <button class="btn ghost" id="cancel">Cancelar</button>
+    <button class="btn primary" id="save">Guardar</button>
+  `);
+
+  document.getElementById("cancel").onclick = closeSheet;
+  document.getElementById("save").onclick = async ()=>{
+    const name = val("t_name");
+    if(!name){ toast("Poné un nombre al viaje", true); return; }
+    const from = val("t_from"), to = val("t_to");
+    if(from && to && to < from){ toast("El regreso no puede ser antes de la salida", true); return; }
+    try{
+      await Store.saveTrip({...t, name, destination:val("t_dest"),
+        startDate:from, endDate:to, travelers:val("t_people"), notes:val("t_notes"), sample:t.sample||false});
+      closeSheet();
+      if(!trip) go(`#/trip/${t.id}`);
+      toast(trip?"Viaje actualizado":"Viaje creado");
+    }catch(e){ toast(writeErr(e), true); }
+  };
+  const dl = document.getElementById("deltrip");
+  if(dl) dl.onclick = async ()=>{
+    if(dl.dataset.sure!=="1"){ dl.dataset.sure="1"; dl.innerHTML = "Tocá otra vez para confirmar"; return; }
+    try{ await Store.delTrip(t.id); closeSheet(); go(""); toast("Viaje eliminado"); }
+    catch(e){ toast(writeErr(e), true); }
+  };
+}
+
+function writeErr(e){
+  if(e && e.code === "invalid_argument") return "Tenés acceso de sólo lectura a esta valija";
+  if(e && e.code === "quota_exceeded") return "La valija llegó a su límite de reservas";
+  return "No se pudo guardar. Probá de nuevo";
+}
+
+/* ---------- reserva ---------- */
+function sheetItem(trip, item, prefill){
+  const it = item || Object.assign({id:uid(), type:"flight"}, prefill||{});
+  const T = k => TYPES[k];
+
+  const fieldsFor = type => {
+    const common = `
+      <div class="f req"><label for="i_title">Título</label>
+        <input id="i_title" value="${esc(it.title||"")}" placeholder="${
+          type==="flight"?"Buenos Aires → Madrid":
+          type==="stay"?"Hotel Atocha":
+          type==="car"?"Auto en Madrid":
+          type==="act"?"Visita al Prado":"Anotación"}" autocomplete="off"></div>`;
+
+    const money = `
+      <div class="f2">
+        <div class="f"><label for="i_cost">Costo</label><input id="i_cost" class="mono" value="${esc(it.cost||"")}" placeholder="185.000" inputmode="decimal"></div>
+        <div class="f"><label for="i_cur">Moneda</label><input id="i_cur" class="mono" value="${esc(it.currency||"")}" placeholder="ARS" autocomplete="off"></div>
+      </div>`;
+
+    const notes = `<div class="f"><label for="i_notes">Notas</label><textarea id="i_notes" placeholder="Lo que no quieras olvidarte">${esc(it.notes||"")}</textarea></div>`;
+
+    if(type==="flight") return common + `
+      <div class="f2">
+        <div class="f req"><label for="i_from">Origen (IATA)</label><input id="i_from" class="mono" value="${esc(it.from||"")}" placeholder="EZE" maxlength="4" autocomplete="off" style="text-transform:uppercase"></div>
+        <div class="f req"><label for="i_to">Destino (IATA)</label><input id="i_to" class="mono" value="${esc(it.to||"")}" placeholder="MAD" maxlength="4" autocomplete="off" style="text-transform:uppercase"></div>
+      </div>
+      <div class="f2">
+        <div class="f req"><label for="i_start">Sale</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+        <div class="f"><label for="i_end">Llega</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      </div>
+      <div class="f2">
+        <div class="f req"><label for="i_provider">Aerolínea</label><input id="i_provider" value="${esc(it.provider||"")}" placeholder="JetSmart" autocomplete="off"></div>
+        <div class="f"><label for="i_flight">Nº de vuelo</label><input id="i_flight" class="mono" value="${esc(it.flightNumber||"")}" placeholder="JA 3040" autocomplete="off"></div>
+      </div>
+      <div class="f req"><label for="i_conf">Código de reserva</label><input id="i_conf" class="mono" value="${esc(it.confirmation||"")}" placeholder="XKD9P2" autocomplete="off" style="text-transform:uppercase"></div>
+      <div class="f2">
+        <div class="f"><label for="i_seat">Asiento</label><input id="i_seat" class="mono" value="${esc(it.seat||"")}" placeholder="14A" autocomplete="off"></div>
+        <div class="f"><label for="i_terminal">Terminal</label><input id="i_terminal" class="mono" value="${esc(it.terminal||"")}" placeholder="T4" autocomplete="off"></div>
+      </div>
+      <div class="f"><label for="i_gate">Puerta</label><input id="i_gate" class="mono" value="${esc(it.gate||"")}" placeholder="B12" autocomplete="off"></div>
+      ${money}${notes}`;
+
+    if(type==="stay") return common + `
+      <div class="f2">
+        <div class="f req"><label for="i_start">Check-in</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+        <div class="f req"><label for="i_end">Check-out</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      </div>
+      <div class="f req"><label for="i_provider">Alojamiento / plataforma</label><input id="i_provider" value="${esc(it.provider||"")}" placeholder="Booking · Hotel Atocha" autocomplete="off"></div>
+      <div class="f req"><label for="i_address">Dirección</label><input id="i_address" value="${esc(it.address||"")}" placeholder="Calle Atocha 123, Madrid" autocomplete="off"></div>
+      <div class="f req"><label for="i_conf">Código de reserva</label><input id="i_conf" class="mono" value="${esc(it.confirmation||"")}" autocomplete="off"></div>
+      <div class="f"><label for="i_phone">Teléfono</label><input id="i_phone" class="mono" value="${esc(it.phone||"")}" autocomplete="off"></div>
+      ${money}${notes}`;
+
+    if(type==="car") return common + `
+      <div class="f2">
+        <div class="f req"><label for="i_start">Retiro</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+        <div class="f req"><label for="i_end">Devolución</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      </div>
+      <div class="f req"><label for="i_provider">Rentadora</label><input id="i_provider" value="${esc(it.provider||"")}" placeholder="Hertz" autocomplete="off"></div>
+      <div class="f req"><label for="i_address">Lugar de retiro</label><input id="i_address" value="${esc(it.address||"")}" placeholder="Aeropuerto de Madrid T4" autocomplete="off"></div>
+      <div class="f req"><label for="i_conf">Código de reserva</label><input id="i_conf" class="mono" value="${esc(it.confirmation||"")}" autocomplete="off"></div>
+      ${money}${notes}`;
+
+    if(type==="transfer") return common + `
+      <div class="f2">
+        <div class="f req"><label for="i_from">Desde</label><input id="i_from" value="${esc(it.from||"")}" autocomplete="off"></div>
+        <div class="f req"><label for="i_to">Hasta</label><input id="i_to" value="${esc(it.to||"")}" autocomplete="off"></div>
+      </div>
+      <div class="f req"><label for="i_start">Fecha y hora</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+      <div class="f"><label for="i_provider">Proveedor</label><input id="i_provider" value="${esc(it.provider||"")}" autocomplete="off"></div>
+      <div class="f"><label for="i_conf">Código de reserva</label><input id="i_conf" class="mono" value="${esc(it.confirmation||"")}" autocomplete="off"></div>
+      ${money}${notes}`;
+
+    if(type==="act") return common + `
+      <div class="f2">
+        <div class="f req"><label for="i_start">Cuándo</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+        <div class="f"><label for="i_end">Termina</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      </div>
+      <div class="f"><label for="i_address">Dónde</label><input id="i_address" value="${esc(it.address||"")}" autocomplete="off"></div>
+      <div class="f"><label for="i_conf">Entrada / reserva</label><input id="i_conf" class="mono" value="${esc(it.confirmation||"")}" autocomplete="off"></div>
+      ${money}${notes}`;
+
+    return common + `
+      <div class="f"><label for="i_start">Fecha (opcional)</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+      ${notes}`;
+  };
+
+  const picker = `<div class="f"><label>Tipo de reserva</label><div class="tp" id="tp">
+    ${Object.entries(TYPES).map(([k,v])=>`
+      <button type="button" data-t="${k}" aria-pressed="${it.type===k}">${svg(v.icon)} ${v.label}</button>`).join("")}
+  </div></div>`;
+
+  openSheet(item?"Editar reserva":"Nueva reserva",
+    picker + `<div id="fields">${fieldsFor(it.type)}</div>` +
+    (item?`<hr class="hr"><button class="btn danger block" id="delitem">${svg(I.trash)} Eliminar</button>`:""),
+    `<button class="btn ghost" id="cancel">Cancelar</button>
+     <button class="btn primary" id="save">Guardar</button>`);
+
+  const bind = ()=>{
+    document.querySelectorAll("#tp button").forEach(b=>{
+      b.onclick = ()=>{
+        it.type = b.dataset.t;
+        collect();
+        document.querySelectorAll("#tp button").forEach(x=> x.setAttribute("aria-pressed", x.dataset.t===it.type));
+        document.getElementById("fields").innerHTML = fieldsFor(it.type);
+      };
+    });
+  };
+  const collect = ()=>{
+    const g = id => document.getElementById(id)?.value?.trim();
+    const up = id => (g(id)||"").toUpperCase();
+    if(document.getElementById("i_title")!==null){
+      it.title = g("i_title"); it.start = g("i_start"); it.end = g("i_end");
+      it.provider = g("i_provider"); it.confirmation = up("i_conf");
+      it.address = g("i_address"); it.notes = g("i_notes");
+      it.cost = g("i_cost"); it.currency = up("i_cur");
+      it.seat = up("i_seat"); it.terminal = up("i_terminal"); it.gate = up("i_gate");
+      it.flightNumber = up("i_flight"); it.phone = g("i_phone");
+      if(it.type==="flight"){ it.from = up("i_from"); it.to = up("i_to"); }
+      else { it.from = g("i_from"); it.to = g("i_to"); }
+    }
+  };
+  bind();
+
+  document.getElementById("cancel").onclick = closeSheet;
+  document.getElementById("save").onclick = async ()=>{
+    collect();
+    if(!it.title){ toast("Poné un título", true); return; }
+    if(it.start && it.end && it.end < it.start){ toast("La fecha de fin es anterior a la de inicio", true); return; }
+    try{
+      await Store.saveItem(trip.id, it);
+      closeSheet(); toast(item?"Reserva actualizada":"Reserva guardada");
+    }catch(e){ toast(writeErr(e), true); }
+  };
+  const di = document.getElementById("delitem");
+  if(di) di.onclick = async ()=>{
+    if(di.dataset.sure!=="1"){ di.dataset.sure="1"; di.innerHTML="Tocá otra vez para confirmar"; return; }
+    try{ await Store.delItem(trip.id, it.id); closeSheet(); toast("Reserva eliminada"); }
+    catch(e){ toast(writeErr(e), true); }
+  };
+}
+
+/* ---------- importador con IA ---------- */
+async function sheetImport(trip){
+  let sample = null, limits = null;
+  try{ sample = await claude.use("sample"); }catch(e){}
+  if(sample){ try{ limits = await sample.limits(); }catch(e){} }
+
+  const canImg = !!(limits && limits.images);
+  openSheet("Importar reserva", `
+    <div class="notice">${svg(I.spark)}
+      <div>Pegá el mail de confirmación de Booking, Hertz, JetSmart o quien sea. Lo leo y completo los campos por vos.</div>
+    </div>
+    ${!sample?`<div class="notice warn">${svg(I.info)}<div>La lectura automática no está disponible en esta vista. Cargá la reserva a mano desde <b>Agregar</b>.</div></div>`:`
+      <div class="f"><label for="im_text">Texto de la confirmación</label>
+        <textarea id="im_text" class="mono" style="min-height:150px" placeholder="Tu reserva está confirmada&#10;Vuelo JA 3040 · EZE → MAD&#10;12 de octubre, 22:40&#10;Código: XKD9P2"></textarea>
+        <span class="hint">Podés pegar varias reservas juntas. Las separo yo.</span>
+      </div>
+      ${canImg?`
+        <div class="f"><label for="im_img">O subí una foto</label>
+          <input id="im_img" type="file" accept="${limits.images.mediaTypes.join(",")}" ${limits.images.maxCount>1?"multiple":""}>
+          <span class="hint">Tarjeta de embarque, voucher del hotel, el contrato del auto. Hasta ${limits.images.maxCount} ${limits.images.maxCount===1?"imagen":"imágenes"}.</span>
+        </div>`:""}
+      <div id="im_out"></div>
+    `}
+  `, sample?`
+    <button class="btn ghost" id="cancel">Cancelar</button>
+    <button class="btn primary" id="run">${svg(I.spark)} Interpretar</button>`:`
+    <button class="btn block" id="cancel">Cerrar</button>`);
+
+  document.getElementById("cancel").onclick = closeSheet;
+  if(!sample) return;
+
+  document.getElementById("run").onclick = async ()=>{
+    const text = val("im_text");
+    const files = document.getElementById("im_img")?.files;
+    const hasImg = files && files.length;
+    if(!text && !hasImg){ toast("Pegá el texto o subí una foto", true); return; }
+
+    const btn = document.getElementById("run");
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spin"></span> Leyendo…`;
+    const out = document.getElementById("im_out");
+    out.innerHTML = `<div class="notice">${svg(I.spark)}<div>Interpretando la reserva…</div></div>`;
+
+    const hoy = new Date().toISOString().slice(0,10);
+    const prompt = `Extraés datos de reservas de viaje y devolvés SOLO JSON.
+
+${hasImg ? "Las imágenes adjuntas son comprobantes de viaje (tarjeta de embarque, voucher de hotel, contrato de alquiler de auto). Leelas." : ""}
+${text ? `Texto de la confirmación:\n"""\n${text.slice(0,12000)}\n"""` : ""}
+
+Contexto: el viaje se llama "${trip.name||""}"${trip.destination?`, destino ${trip.destination}`:""}${trip.startDate?`, entre ${trip.startDate} y ${trip.endDate||"?"}`:""}. Hoy es ${hoy}.
+
+Devolvé este JSON exacto:
+{"items":[{
+"type":"flight|stay|car|transfer|act|note",
+"title":"texto corto y humano, ej: Buenos Aires → Madrid",
+"start":"YYYY-MM-DDTHH:mm o vacío",
+"end":"YYYY-MM-DDTHH:mm o vacío",
+"from":"IATA de 3 letras si es vuelo, si no ciudad o lugar",
+"to":"idem",
+"provider":"aerolínea, hotel, plataforma o rentadora",
+"flightNumber":"","confirmation":"","seat":"","terminal":"","gate":"",
+"address":"","phone":"","cost":"","currency":"","notes":""
+}]}
+
+Reglas: un objeto por reserva; ida y vuelta son DOS vuelos separados. Usá 24 horas. Si un dato no aparece, dejá "" (nunca inventes códigos ni horarios). Para alojamiento, start es el check-in y end el check-out. Si el año no figura, deducilo del contexto del viaje.`;
+
+    try{
+      const data = await sample.json(hasImg ? prompt : prompt, {
+        images: hasImg ? files : undefined,
+        modelTier: "complex"
+      });
+      const found = (data && Array.isArray(data.items)) ? data.items.filter(x=>x && (x.title||x.provider)) : [];
+      if(!found.length){
+        out.innerHTML = `<div class="notice warn">${svg(I.info)}<div>No pude reconocer ninguna reserva ahí. Probá pegando el mail completo, o cargala a mano.</div></div>`;
+        btn.disabled=false; btn.innerHTML = `${svg(I.spark)} Interpretar`;
+        return;
+      }
+      out.innerHTML = `<div class="notice">${svg(I.info)}<div>Encontré ${found.length} ${found.length===1?"reserva":"reservas"}. Revisá antes de guardar.</div></div>
+        <div class="stack" style="margin-top:10px">${found.map((f,i)=>`
+          <div class="pass"><div class="pass-main" style="cursor:default">
+            <span class="pass-icon ${TYPES[f.type]?.cls||"note"}">${svg(TYPES[f.type]?.icon||I.note)}</span>
+            <span class="pass-txt">
+              <span class="pass-title">${esc(f.title||"Reserva")}</span>
+              <span class="pass-when">${esc(TYPES[f.type]?.label||"Nota")}${f.provider?` · ${esc(f.provider)}`:""}${f.start?` · ${esc(fmtDate(f.start))}`:""}</span>
+            </span>
+          </div></div>`).join("")}</div>`;
+
+      btn.innerHTML = `Guardar ${found.length===1?"la reserva":`las ${found.length}`}`;
+      btn.disabled = false;
+      btn.onclick = async ()=>{
+        btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Guardando…`;
+        try{
+          for(const f of found){
+            const type = TYPES[f.type] ? f.type : "note";
+            await Store.saveItem(trip.id, {
+              id: uid(), type,
+              title:f.title||"", start:f.start||"", end:f.end||"",
+              from:(f.from||"").toUpperCase(), to:(f.to||"").toUpperCase(),
+              provider:f.provider||"", flightNumber:(f.flightNumber||"").toUpperCase(),
+              confirmation:(f.confirmation||"").toUpperCase(), seat:(f.seat||"").toUpperCase(),
+              terminal:(f.terminal||"").toUpperCase(), gate:(f.gate||"").toUpperCase(),
+              address:f.address||"", phone:f.phone||"", cost:f.cost||"",
+              currency:(f.currency||"").toUpperCase(), notes:f.notes||"", source:"import"
+            });
+          }
+          closeSheet();
+          toast(`${found.length} ${found.length===1?"reserva agregada":"reservas agregadas"}`);
+        }catch(e){ toast(writeErr(e), true); btn.disabled=false; btn.innerHTML="Guardar"; }
+      };
+    }catch(e){
+      const code = e && e.code;
+      const msg = code==="not_granted" ? "La lectura automática no está habilitada en esta vista."
+        : code==="rate_limited" ? "Demasiados pedidos seguidos. Esperá un momento."
+        : code==="images_unavailable" ? "Esta vista no acepta imágenes. Pegá el texto."
+        : code==="image_rejected" ? "No pude leer esa imagen. Probá con otra foto o pegá el texto."
+        : "No pude interpretar la reserva. Cargala a mano.";
+      out.innerHTML = `<div class="notice warn">${svg(I.info)}<div>${esc(msg)}</div></div>`;
+      btn.disabled=false; btn.innerHTML = `${svg(I.spark)} Interpretar`;
+    }
+  };
+}
+
+/* ---------- compartir ---------- */
+function sheetShare(trip){
+  const url = location.href.split("#")[0] + `#/trip/${trip.id}`;
+  const items = Store.itemsOf(trip.id);
+  const alerts = tripAlerts(trip, items);
+  const resumen = [
+    `${trip.name||"Viaje"} · ${fmtRange(trip.startDate,trip.endDate)}`,
+    "",
+    ...items.slice().sort((a,b)=>String(a.start||"").localeCompare(String(b.start||"")))
+      .map(i=> `• ${fmtDate(i.start)} ${fmtTime(i.start)||""} — ${i.title||TYPES[i.type]?.label}${i.confirmation?` (${i.confirmation})`:""}`),
+    "",
+    alerts.length ? `Pendientes (${alerts.length}):` : "Sin pendientes.",
+    ...alerts.slice(0,8).map(a=>`- ${a.t}: ${a.d}`)
+  ].join("\n");
+
+  openSheet("Compartir el viaje", `
+    <div class="notice">${svg(I.share)}
+      <div>Usá el botón <b>Compartir</b> de Claude, arriba a la derecha de la app. Elegí <b>Can view</b> para que sólo miren, o <b>Can edit</b> para que carguen reservas con vos.</div>
+    </div>
+    <div class="f"><label for="sh_url">Link directo a este viaje</label>
+      <input id="sh_url" class="mono" value="${esc(url)}" readonly onclick="this.select()">
+      <span class="hint">Quien lo abra entra derecho a <b>${esc(trip.name||"este viaje")}</b>.</span>
+    </div>
+    <button class="btn block" id="cpurl">${svg(I.copy)} Copiar link</button>
+    <hr class="hr">
+    <div class="f"><label for="sh_txt">Resumen para pegar en un chat</label>
+      <textarea id="sh_txt" class="mono" style="min-height:130px" readonly>${esc(resumen)}</textarea></div>
+    <button class="btn block" id="cptxt">${svg(I.copy)} Copiar resumen</button>
+  `, `<button class="btn block" id="cancel">Cerrar</button>`);
+
+  document.getElementById("cancel").onclick = closeSheet;
+  const cp = async (text, msg)=>{
+    try{ await navigator.clipboard.writeText(text); toast(msg); }
+    catch(e){ toast("Copialo a mano desde el campo", true); }
+  };
+  document.getElementById("cpurl").onclick = ()=> cp(url, "Link copiado");
+  document.getElementById("cptxt").onclick = ()=> cp(resumen, "Resumen copiado");
+}
+
+/* ---------- acerca de ---------- */
+function sheetAbout(){
+  openSheet("Valija", `
+    <p style="margin:0;line-height:1.55">Todas tus reservas de viaje en un solo lugar. Cargás vuelos, alojamientos y autos a mano o pegando el mail de confirmación, y la app te avisa qué falta.</p>
+    <hr class="hr">
+    <div class="stack">
+      <div class="sec-head"><span class="eyebrow">Funciona hoy</span></div>
+      <div class="chips">
+        <span class="chip ok">Viajes en paralelo</span>
+        <span class="chip ok">Carga manual</span>
+        <span class="chip ok">Lectura de confirmaciones</span>
+        <span class="chip ok">Foto de tarjeta de embarque</span>
+        <span class="chip ok">Pendientes y vencimientos</span>
+        <span class="chip ok">Compartir ver / editar</span>
+        <span class="chip ok">Resumen en PDF</span>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="sec-head"><span class="eyebrow">Próxima iteración</span></div>
+      <div class="chips">
+        <span class="chip accent">Avisos por correo</span>
+        <span class="chip accent">Booking, Hertz, aerolíneas</span>
+        <span class="chip accent">Mapas y sincronía con el calendario</span>
+        <span class="chip accent">Buzón de reenvío de mails</span>
+      </div>
+    </div>
+    <hr class="hr">
+    <p class="tiny muted" style="margin:0;line-height:1.5">Los datos se guardan en esta valija y viajan con el link que compartís. Quien tenga permiso de ver no puede modificar nada.</p>
+  `, `<button class="btn block" id="cancel">Cerrar</button>`);
+  document.getElementById("cancel").onclick = closeSheet;
+}
+
+/* ============================================================
+   PDF — resumen de una página, tipo hoja de ruta
+   ============================================================ */
+async function exportPDF(trip){
+  const items = Store.itemsOf(trip.id).slice()
+    .sort((a,b)=> String(a.start||"zzz").localeCompare(String(b.start||"zzz")));
+  const alerts = tripAlerts(trip, items);
+
+  if(!window.jspdf){ toast("No se pudo cargar el generador de PDF", true); return; }
+  toast("Armando el PDF…");
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"a4"});
+  const W = 595.28, M = 44;
+  let y = 0;
+
+  const INK=[15,27,46], MUT=[84,99,124], ACC=[11,69,196], LINE=[215,222,233], CRIT=[190,50,39];
+  const line = (yy)=>{ doc.setDrawColor(...LINE); doc.setLineWidth(.7); doc.line(M,yy,W-M,yy); };
+  const page = ()=>{ doc.addPage(); y = M + 10; };
+  const need = h => { if(y + h > 800){ page(); } };
+
+  // Cabecera
+  doc.setFillColor(...INK); doc.rect(0,0,W,104,"F");
+  doc.setTextColor(255,255,255);
+  doc.setFont("helvetica","bold"); doc.setFontSize(24);
+  doc.text(String(trip.name||"Viaje"), M, 50, {maxWidth:W-M*2-90});
+  doc.setFont("courier","normal"); doc.setFontSize(10);
+  const sub = [fmtRange(trip.startDate,trip.endDate), trip.destination, trip.travelers].filter(Boolean).join("  ·  ");
+  doc.text(sub, M, 72, {maxWidth:W-M*2-90});
+  doc.setFontSize(8); doc.setTextColor(160,175,200);
+  doc.text("VALIJA", W-M, 40, {align:"right"});
+  doc.text(`${items.length} reservas`, W-M, 54, {align:"right"});
+  y = 136;
+
+  // Pendientes primero: es lo accionable
+  if(alerts.length){
+    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...CRIT);
+    doc.text(`PENDIENTES (${alerts.length})`, M, y); y += 15;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(...MUT);
+    alerts.slice(0,8).forEach(a=>{
+      need(26);
+      const t = doc.splitTextToSize(`•  ${a.t} — ${a.d}`, W-M*2);
+      doc.text(t, M, y); y += t.length*12 + 2;
+    });
+    y += 10; line(y); y += 20;
+  }
+
+  // Itinerario
+  doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...INK);
+  doc.text("ITINERARIO", M, y); y += 16;
+
+  if(!items.length){
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...MUT);
+    doc.text("Todavía no hay reservas cargadas.", M, y);
+  }
+
+  let lastDay = null;
+  items.forEach(it=>{
+    need(88);
+    const k = dayKey(it.start);
+    if(k && k !== lastDay){
+      lastDay = k;
+      y += 6;
+      doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...ACC);
+      doc.text(fmtDateLong(k).toUpperCase(), M, y);
+      line(y+5); y += 20;
+    }
+
+    const T = TYPES[it.type] || TYPES.note;
+    const t1 = fmtTime(it.start), t2 = fmtTime(it.end);
+
+    doc.setFont("courier","normal"); doc.setFontSize(10); doc.setTextColor(...MUT);
+    doc.text(t1 || "—:—", M, y);
+
+    doc.setFont("helvetica","bold"); doc.setFontSize(11.5); doc.setTextColor(...INK);
+    doc.text(String(it.title || T.label), M+52, y, {maxWidth:W-M*2-60});
+
+    doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(...MUT);
+    let meta = T.label.toUpperCase();
+    if(it.provider) meta += `  ·  ${it.provider}`;
+    if(t2) meta += `  ·  hasta ${t2}`;
+    doc.text(meta, M+52, y+13, {maxWidth:W-M*2-60});
+    y += 27;
+
+    // talón de datos
+    const stub = [];
+    if(it.from || it.to) stub.push(["RUTA", `${it.from||"—"} → ${it.to||"—"}`]);
+    if(it.flightNumber) stub.push(["VUELO", it.flightNumber]);
+    if(it.confirmation) stub.push(["RESERVA", it.confirmation]);
+    if(it.seat) stub.push(["ASIENTO", it.seat]);
+    if(it.terminal) stub.push(["TERMINAL", it.terminal]);
+    if(it.gate) stub.push(["PUERTA", it.gate]);
+    if(it.address) stub.push(["DIRECCIÓN", it.address]);
+    if(it.phone) stub.push(["TEL", it.phone]);
+    if(it.cost) stub.push(["COSTO", `${it.currency||""} ${it.cost}`.trim()]);
+
+    if(stub.length){
+      let cx = M+52;
+      doc.setFontSize(7);
+      stub.forEach(([k2,v])=>{
+        const wv = Math.max(doc.getTextWidth(String(v))+6, doc.getTextWidth(k2)+6);
+        if(cx + wv > W-M){ cx = M+52; y += 24; need(30); }
+        doc.setFont("helvetica","normal"); doc.setTextColor(...MUT);
+        doc.text(k2, cx, y);
+        doc.setFont("courier","normal"); doc.setFontSize(9); doc.setTextColor(...INK);
+        doc.text(String(v).slice(0,42), cx, y+11);
+        doc.setFontSize(7);
+        cx += wv + 16;
+      });
+      y += 22;
+    }
+
+    const miss = missingFields(it);
+    if(miss.length){
+      doc.setFont("helvetica","italic"); doc.setFontSize(8); doc.setTextColor(...CRIT);
+      doc.text(`Falta: ${miss.map(m=>m[1]).join(", ")}`, M+52, y);
+      y += 13;
+    }
+    y += 10;
+  });
+
+  if(trip.notes){
+    need(60); y += 6; line(y); y += 20;
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...INK);
+    doc.text("NOTAS", M, y); y += 15;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(...MUT);
+    const t = doc.splitTextToSize(String(trip.notes), W-M*2);
+    doc.text(t, M, y);
+  }
+
+  // pie en todas las páginas
+  const total = doc.getNumberOfPages();
+  for(let p=1;p<=total;p++){
+    doc.setPage(p);
+    doc.setFont("courier","normal"); doc.setFontSize(7.5); doc.setTextColor(...MUT);
+    doc.text(`Valija  ·  ${new Date().toLocaleDateString("es-AR")}`, M, 815);
+    doc.text(`${p} / ${total}`, W-M, 815, {align:"right"});
+  }
+
+  const safe = String(trip.name||"viaje").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-zA-Z0-9]+/g,"-").replace(/^-|-$/g,"").toLowerCase() || "viaje";
+  const filename = `valija-${safe}.pdf`;
+  const blob = doc.output("blob");
+
+  let dl = null;
+  try{ dl = await claude.use("downloads"); }catch(e){}
+  if(dl){
+    try{
+      await dl.save({filename, data:blob});
+      toast("PDF guardado");
+    }catch(e){
+      const c = e && e.code;
+      if(c === "declined") return;
+      if(c === "rate_limited"){ toast("Esperá un momento y probá de nuevo", true); return; }
+      toast("No se pudo guardar el PDF", true);
+    }
+  } else {
+    // sin la capacidad de descarga, imprimir es la salida a PDF del sistema
+    toast("Usá Imprimir y elegí Guardar como PDF");
+    try{ window.print(); }catch(e){}
+  }
+}
+
+/* ============================================================
+   ARRANQUE
+   ============================================================ */
+readHash();
+Store.on(render);
+render();
+Store.init().then(()=>{ Store.watch(App.tripId); render(); });
+</script>
