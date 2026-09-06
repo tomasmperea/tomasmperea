@@ -399,7 +399,138 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
   background:var(--accent-soft);color:var(--accent);font-size:12.5px;line-height:1.45;
 }
 .notice.warn{background:var(--flap-soft);color:var(--warn)}
+.notice.ok{background:var(--ok-soft);color:var(--ok)}
+.notice .bd{flex:1;min-width:0}
+.notice .act{background:none;border:0;padding:0;margin-top:6px;color:inherit;font:inherit;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;display:block}
+.notice .x{background:none;border:0;color:inherit;opacity:.7;cursor:pointer;padding:0;flex:none;line-height:1}
+.notice .x svg{margin:0}
 .notice svg{width:15px;height:15px;flex:none;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ============================================================
+   VALIJA INTELIGENTE — componentes nuevos (VAL-30..33)
+   Copiados del muestrario aprobado app/parts/packing-ui.html,
+   Bloque C. Sin tokens nuevos: todo sale de los de :root de arriba.
+   ============================================================ */
+.vj-entry{
+  display:flex;align-items:stretch;width:100%;text-align:left;padding:0;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);
+  box-shadow:var(--shadow);overflow:hidden;cursor:pointer;
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.vj-entry:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.vj-entry .band{width:8px;flex:none;background:var(--ink-3)}
+.vj-entry.due .band{background:var(--flap)}
+.vj-entry.live .band{background:var(--accent)}
+.vj-entry.done .band{background:var(--ok)}
+.vj-entry .bd{flex:1;min-width:0;padding:12px 4px 12px 13px;display:flex;flex-direction:column;gap:6px}
+.vj-entry .t{display:flex;align-items:baseline;gap:8px;font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em;line-height:1.2}
+.vj-entry .s{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+.vj-entry .go{flex:none;display:grid;place-items:center;padding:0 12px;color:var(--ink-3)}
+.vj-entry .go svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Progreso de empacado: DOS tramos (empacado + descartado). Los dos son
+   trabajo resuelto, así que los dos avanzan la barra. */
+.pk-prog{display:flex;align-items:center;gap:9px;width:100%}
+.pk-bar{flex:1;min-width:56px;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden;display:flex}
+.pk-bar i{display:block;height:100%;transition:width .35s ease}
+.pk-bar i.p{background:var(--ok)}
+.pk-bar i.d{background:var(--ink-3);opacity:.5}
+.pk-prog .n{flex:none;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.pk-prog .n b{font-weight:500;color:var(--ink)}
+.pk-prog.full .n{color:var(--ok);font-weight:500}
+.pk-prog.full .n b{color:var(--ok)}
+
+.pk-cat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
+.pk-cat-hd{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:none;border:0;cursor:pointer;text-align:left}
+.pk-cat-hd:hover{background:var(--surface-2)}
+.pk-cat-ico{width:28px;height:28px;border-radius:8px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-2)}
+.pk-cat-ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-cat-hd .nm{flex:1;min-width:0;font-family:var(--f-display);font-weight:700;font-size:14.5px;letter-spacing:-.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pk-cat-hd .cnt{flex:none;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-cat-hd .chev{flex:none;width:16px;height:16px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
+.pk-cat[data-open="false"] .chev{transform:rotate(-90deg)}
+.pk-cat[data-open="false"] .pk-body-wrap{display:none}
+.pk-cat.full .pk-cat-ico{background:var(--ok-soft);color:var(--ok)}
+.pk-body-wrap{border-top:1px solid var(--line-2)}
+
+/* Fila de ítem: TRES estados, distintos por relleno/borde/glifo, no sólo color. */
+.pk-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line-2);position:relative;background:var(--surface)}
+.pk-row:last-child{border-bottom:0}
+.pk-row .pk-swipe{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
+  gap:7px;padding-right:16px;background:var(--surface-2);color:var(--ink-2);
+  font-size:12.5px;font-weight:600;
+}
+.pk-row .pk-swipe svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.pk-slide{display:flex;flex:1;min-width:0;position:relative;background:var(--surface);transition:transform .18s ease}
+
+.pk-mark{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;cursor:pointer;padding:0}
+.pk-state{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--ink-3);display:grid;place-items:center;color:transparent;background:transparent;transition:background .14s,border-color .14s,color .14s}
+.pk-state svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pk-mark:hover .pk-state{border-color:var(--ok)}
+
+.pk-txt{flex:1;min-width:0;background:none;border:0;text-align:left;cursor:pointer;padding:10px 4px 10px 0;display:flex;flex-direction:column;gap:3px}
+.pk-txt:hover .pk-nm .t{color:var(--accent)}
+.pk-nm{display:flex;align-items:baseline;gap:10px}
+.pk-nm .t{flex:1;min-width:0;font-size:14.5px;font-weight:600;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+.pk-nm .q{flex:none;font-family:var(--f-mono);font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-why{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.pk-why .r{font-size:11.5px;color:var(--ink-2);line-height:1.35}
+
+.pk-drop{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;padding:0}
+.pk-drop svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-drop:hover{background:var(--surface-2);color:var(--ink-2)}
+
+.pk-row[data-st="pack"] .pk-mark .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-row[data-st="pack"] .pk-nm .t{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1.5px}
+.pk-row[data-st="pack"] .pk-nm .q{color:var(--ink-3)}
+.pk-row[data-st="pack"] .pk-why{opacity:.5}
+
+.pk-row[data-st="drop"]{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-slide{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-state{border-style:dashed;color:var(--ink-3);background:transparent}
+.pk-row[data-st="drop"] .pk-txt{padding-top:7px;padding-bottom:7px}
+.pk-row[data-st="drop"] .pk-nm .t{font-weight:500;font-size:13.5px;color:var(--ink-3)}
+.pk-row[data-st="drop"] .pk-nm .q{display:none}
+.pk-row[data-st="drop"] .pk-why{display:none}
+.pk-back{flex:none;align-self:center;margin-right:8px;background:none;border:0;color:var(--ink-3);cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.05em;padding:7px 8px;border-radius:6px;white-space:nowrap}
+.pk-back:hover{background:var(--accent-soft);color:var(--accent)}
+
+@keyframes pkin{from{background:var(--flap-soft)}to{background:var(--surface)}}
+.pk-row.fresh .pk-slide{animation:pkin 2.6s ease 1}
+
+.pk-row.loading{padding:12px 12px 12px 44px;flex-direction:column;gap:7px;align-items:flex-start}
+.pk-row.loading span{display:block;height:11px;border-radius:5px}
+
+.pk-add{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px 11px;background:none;border:0;border-top:1px solid var(--line-2);color:var(--ink-3);cursor:pointer;font-size:13px;font-weight:600;text-align:left}
+.pk-add svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-add:hover{background:var(--surface-2);color:var(--accent)}
+.pk-addform{display:flex;gap:8px;padding:10px 12px 11px;border-top:1px solid var(--line-2);background:var(--surface-2)}
+.pk-addform input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 11px;border-radius:9px;font-size:15px}
+.pk-addform input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+
+.pk-inputs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+.tp.tp3{grid-template-columns:repeat(3,1fr)}
+.tp button .n{font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;color:var(--ink-3);font-weight:400}
+.tp button[aria-pressed="true"] .n{color:var(--accent)}
+.tp button.used{border-color:var(--ink-3)}
+
+.pk-states{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pk-states button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-2);transition:all .14s}
+.pk-states button .pk-state{pointer-events:none}
+.pk-states button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pk-states button[aria-pressed="true"] .pk-state{border-color:currentColor;color:currentColor}
+.pk-states button[data-s="empacado"][aria-pressed="true"] .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-states button[data-s="descartado"] .pk-state{border-style:dashed}
+
+.pk-qty{display:flex;align-items:center;gap:14px;justify-content:center;padding:4px 0}
+.pk-qty button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.pk-qty button:hover{background:var(--surface);border-color:var(--ink-3)}
+.pk-qty button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.pk-qty .v{font-family:var(--f-mono);font-size:30px;font-weight:500;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+
+.chip.own{border-style:dashed;border-color:var(--ink-3);color:var(--ink-3)}
 .spin{
   width:15px;height:15px;border:2px solid currentColor;border-top-color:transparent;
   border-radius:50%;animation:sp .7s linear infinite;
@@ -460,7 +591,28 @@ const I = {
   trash:'<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
   globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>',
   // silueta sólida: se lee mejor que un trazo a 15px, como la señalética de aeropuerto
-  planeSmall:'<path d="M21.9 12c0 .55-.5.98-1.1.98h-4.86l-3.5 6.12a1 1 0 0 1-.87.5h-1.2c-.38 0-.62-.3-.52-.66l1.66-5.96H7.72l-1.46 2.13a.85.85 0 0 1-.68.36H4.5c-.3 0-.5-.27-.4-.57l.97-2.9-.97-2.9c-.1-.3.1-.57.4-.57h1.08c.27 0 .52.13.68.36L7.72 11h3.79L9.85 5.04c-.1-.36.14-.66.52-.66h1.2c.36 0 .69.19.87.5l3.5 6.12h4.86c.6 0 1.1.43 1.1.98z"/>'
+  planeSmall:'<path d="M21.9 12c0 .55-.5.98-1.1.98h-4.86l-3.5 6.12a1 1 0 0 1-.87.5h-1.2c-.38 0-.62-.3-.52-.66l1.66-5.96H7.72l-1.46 2.13a.85.85 0 0 1-.68.36H4.5c-.3 0-.5-.27-.4-.57l.97-2.9-.97-2.9c-.1-.3.1-.57.4-.57h1.08c.27 0 .52.13.68.36L7.72 11h3.79L9.85 5.04c-.1-.36.14-.66.52-.66h1.2c.36 0 .69.19.87.5l3.5 6.12h4.86c.6 0 1.1.43 1.1.98z"/>',
+
+  /* ---------- valija inteligente (VAL-30..33) ---------- */
+  check:'<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
+  dash:'<path d="M6 12h12"/>',
+  ban:'<circle cx="12" cy="12" r="8.2"/><path d="M6.2 6.2l11.6 11.6"/>',
+  chev:'<path d="M9 5l7 7-7 7"/>',
+  chevd:'<path d="M6 9.5l6 6 6-6"/>',
+  check2:'<circle cx="12" cy="12" r="9"/><path d="M8 12.2l2.8 2.8L16 9.5"/>',
+  minus:'<path d="M5 12h14"/>',
+  doc:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/>',
+  shirt:'<path d="M8.5 3 12 5.6 15.5 3 20 5.6l-2 4.2-2-1.1V21H8V8.7l-2 1.1L4 5.6z"/>',
+  shoe:'<path d="M3 18v-7h3l2.4 2.6h4.2l4.4 1.9A3 3 0 0 1 21 18.2V19H3z"/><path d="M8.4 13.6 10.6 11"/>',
+  drop:'<path d="M12 3.2s6 6.2 6 10a6 6 0 0 1-12 0c0-3.8 6-10 6-10z"/>',
+  plug:'<path d="M9 3v5"/><path d="M15 3v5"/><path d="M6 8h12v2.6a6 6 0 0 1-12 0z"/><path d="M12 16.6V21"/>',
+  health:'<path d="M12 20.5S4 15.6 4 10.4A4.4 4.4 0 0 1 12 7.9a4.4 4.4 0 0 1 8 2.5c0 5.2-8 10.1-8 10.1z"/>',
+  beach:'<path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/>',
+  city:'<path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/>',
+  mountain:'<path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/>',
+  work:'<rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/>',
+  adv:'<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/>',
+  mix:'<path d="M3.5 7h4l9 10h4"/><path d="M3.5 17h4l3-3.4"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/>'
 };
 const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p}</svg>`;
 
@@ -605,13 +757,79 @@ const Store = {
     else { this.items.get(tripId)?.delete(id); this.saveLocal(); this.emit(); }
   },
 
+  /* --- valija inteligente: un documento por viaje, trips/{tripId}/packing/lista ---
+     Los ítems van indexados por clave (no en array) para que marcar uno solo
+     escriba esa rama y dos personas marcando cosas distintas no se pisen.
+     Ver docs/design/packing-engine.md, sección 3. */
+  packing:new Map(), packingUnsub:null, packingWatching:null,
+
+  watchPacking(tripId){
+    if(this.packingWatching === tripId) return;
+    if(this.packingUnsub){ this.packingUnsub(); this.packingUnsub=null; }
+    this.packingWatching = tripId;
+    if(!tripId || !this.db){ this.emit(); return; }
+    this.packingUnsub = this.db.doc(`trips/${tripId}/packing/lista`).onSnapshot(
+      doc => { this.packing.set(tripId, (doc && doc.exists) ? doc.data : null); this.emit(); },
+      err => { console.warn("packing",err); this.emit(); }
+    );
+  },
+  packingOf(tripId){ return this.packing.get(tripId) || null; },
+
+  /** Escritura completa: generar o regenerar la lista entera. */
+  async savePacking(tripId, list){
+    if(this.db){
+      await this.db.doc(`trips/${tripId}/packing/lista`).set(list);
+    } else {
+      this.packing.set(tripId, list); this.saveLocal(); this.emit();
+    }
+  },
+  /** Escritura parcial: marcar/editar UN ítem sin reescribir la lista entera.
+      `patch` viene armado por PackingEngine.stateUpdatePatch(...) o equivalente,
+      con la forma {items:{clave:{...campos}}, actualizadaEn}. */
+  async savePackingPatch(tripId, patch){
+    if(this.db){
+      await this.db.doc(`trips/${tripId}/packing/lista`).update(patch);
+    } else {
+      // La base fusiona objetos anidados en una escritura parcial; acá simulamos
+      // el mismo merge recursivo para que el modo local se comporte igual.
+      const cur = this.packing.get(tripId) || {};
+      const merged = {...cur, ...patch};
+      if(patch.items){
+        merged.items = {...(cur.items||{})};
+        Object.keys(patch.items).forEach(k=>{
+          merged.items[k] = {...(merged.items[k]||{}), ...patch.items[k]};
+        });
+      }
+      this.packing.set(tripId, merged); this.saveLocal(); this.emit();
+    }
+  },
+  /** Listas de packing de los OTROS viajes, para el aprendizaje (VAL-32) y el
+      conteo de viajes por tipo del selector. Es una lectura puntual, no una
+      suscripción en vivo: no hace falta que se actualice sola. */
+  async packingHistory(excludeTripId){
+    if(this.db){
+      const ids = this.tripList().map(t=>t.id).filter(id=>id!==excludeTripId);
+      const docs = await Promise.all(ids.map(id=>
+        this.db.doc(`trips/${id}/packing/lista`).get()
+          .then(d=> (d && d.exists) ? d.data : null)
+          .catch(()=>null)
+      ));
+      return docs.filter(Boolean);
+    }
+    return [...this.packing.entries()]
+      .filter(([id])=> id!==excludeTripId)
+      .map(([,v])=>v).filter(Boolean);
+  },
+
   /* --- respaldo local --- */
   KEY:"valija.v1",
   saveLocal(){
     try{
       const items = {};
       this.items.forEach((m,k)=> items[k] = [...m.values()]);
-      localStorage.setItem(this.KEY, JSON.stringify({trips:[...this.trips.values()], items}));
+      const packing = {};
+      this.packing.forEach((v,k)=> { if(v) packing[k] = v; });
+      localStorage.setItem(this.KEY, JSON.stringify({trips:[...this.trips.values()], items, packing}));
     }catch(e){}
   },
   loadLocal(){
@@ -622,6 +840,7 @@ const Store = {
       Object.entries(d.items||{}).forEach(([k,arr])=>{
         this.items.set(k, new Map(arr.map(i=>[i.id,i])));
       });
+      Object.entries(d.packing||{}).forEach(([k,v])=>{ this.packing.set(k, v); });
     }catch(e){}
   }
 };
@@ -742,18 +961,1296 @@ function routeCodes(trip, items){
 }
 
 /* ============================================================
+   VALIJA INTELIGENTE — MOTOR DE SUGERENCIA DE EQUIPAJE
+   Épica VAL-30..33. Embebido tal cual desde app/parts/packing-engine.js
+   (45 pruebas en verde, node app/parts/packing-engine.test.js), sin el
+   envoltorio UMD/module.exports que sólo servía para correrlo con node:
+   acá vive directo como PackingEngine dentro del script de la app.
+
+   Tres capas, siempre en este orden:
+     1. reglas locales determinísticas (BASE_RULES) — sin conexión, siempre.
+     2. ajuste por destino con IA (enrichWithDestination) — puede fallar,
+        la lista base sirve igual.
+     3. aprendizaje del historial (learnFromHistory) — sin red, sin IA.
+
+   El modelo de datos completo (un documento por viaje, ítems indexados
+   por clave, tres estados, precedencia de origen) está documentado en
+   docs/design/packing-engine.md y en los comentarios originales del
+   archivo fuente. No se repite acá.
+   ============================================================ */
+const PackingEngine = (function () {
+"use strict";
+
+/* ============================================================
+   CONSTANTES Y CATÁLOGOS
+   ============================================================ */
+
+var VERSION = 2;
+
+/** Días que se asumen cuando el viaje todavía no tiene fechas. */
+var DEFAULT_DAYS = 3;
+
+/** VAL-32: cuántas repeticiones hacen falta para aprender. */
+var HISTORY_PROMOTE_AT  = 2;   // agregado a mano en 2 viajes del mismo tipo -> se sugiere
+var HISTORY_SUPPRESS_AT = 2;   // descartado en 2 viajes del mismo tipo -> deja de sugerirse
+
+/** Tope de ítems que puede agregar la capa de IA. */
+var MAX_AI_ITEMS = 8;
+
+/** Los tres estados de un ítem. */
+var ESTADO = { PENDIENTE:"pendiente", EMPACADO:"empacado", DESCARTADO:"descartado" };
+var ESTADOS = [ESTADO.PENDIENTE, ESTADO.EMPACADO, ESTADO.DESCARTADO];
+
+/** De qué capa viene un ítem. */
+var ORIGEN = { REGLA:"regla", DESTINO:"destino", HISTORIAL:"historial", MANUAL:"manual" };
+
+/**
+ * Precedencia del origen: gana el número más chico, es decir la capa
+ * más básica. Si una regla ya ponía el ítem, se acredita a la regla.
+ */
+var ORIGEN_PRECEDENCIA = { regla:0, destino:1, historial:2, manual:3 };
+
+/** Categorías, en el orden en que se muestran. */
+var CATEGORIES = [
+  { key:"documentacion", label:"Documentación" },
+  { key:"ropa",          label:"Ropa" },
+  { key:"calzado",       label:"Calzado" },
+  { key:"higiene",       label:"Higiene" },
+  { key:"electronica",   label:"Electrónica" },
+  { key:"salud",         label:"Salud" },
+  { key:"destino",       label:"Específicos del destino" },
+  { key:"otros",         label:"Otros" }   // ítems propios sin categoría declarada
+];
+var CATEGORY_ORDER = CATEGORIES.reduce(function (m, c, i) { m[c.key] = i; return m; }, {});
+
+/** Tipos de viaje. */
+var TRIP_TYPES = [
+  { key:"playa",    label:"Playa" },
+  { key:"ciudad",   label:"Ciudad" },
+  { key:"montana",  label:"Montaña" },
+  { key:"trabajo",  label:"Trabajo" },
+  { key:"aventura", label:"Aventura" },
+  { key:"mixto",    label:"Mixto" }
+];
+var TRIP_TYPE_KEYS = TRIP_TYPES.map(function (t) { return t.key; });
+var TRIP_TYPE_LABEL = TRIP_TYPES.reduce(function (m, t) { m[t.key] = t.label; return m; }, {});
+
+/* ============================================================
+   UTILIDADES
+   ============================================================ */
+
+/** Saca acentos y baja a minúsculas. Base de todos los matcheos de texto. */
+function norm(s) {
+  return String(s == null ? "" : s)
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().trim();
+}
+
+/**
+ * Singular de una palabra, en castellano y por heurística.
+ * No busca ser gramaticalmente perfecto: busca ser determinístico y que
+ * la forma singular y la plural de la misma palabra caigan en la misma clave.
+ *   remeras -> remera | pantalones -> pantalon | auriculares -> auricular
+ */
+function singularizeWord(w) {
+  if (w.length <= 3) return w;
+  if (/[^aeiou]es$/.test(w)) return w.slice(0, -2);   // consonante + "es": pantalones, auriculares
+  if (/[aeiou]s$/.test(w))  return w.slice(0, -1);    // vocal + "s": remeras, líquidos
+  return w;
+}
+
+/**
+ * Clave normalizada y estable de un ítem: minúsculas, sin acentos,
+ * en singular, separada por guiones. Es lo que permite reconocer
+ * "Protector Solar" de un viaje anterior como el mismo ítem que
+ * "protector solar" de este.
+ * @param {string} label
+ * @returns {string}
+ */
+function slug(label) {
+  return norm(label)
+    .replace(/[^a-z0-9]+/g, " ").trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(singularizeWord)
+    .join("-");
+}
+
+function parseDay(s) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ""));
+  if (!m) return null;
+  var t = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  return isNaN(t) ? null : t;
+}
+
+/**
+ * Días de viaje, contando el de salida y el de regreso.
+ * @returns {number|null} null si no se puede calcular.
+ */
+function daysBetweenInclusive(startDate, endDate) {
+  var a = parseDay(startDate), b = parseDay(endDate);
+  if (a == null || b == null) return null;
+  var d = Math.round((b - a) / 86400000);
+  return d >= 0 ? d + 1 : 1;
+}
+
+function dias(n) { return n + (n === 1 ? " día" : " días"); }
+function clamp(n, lo, hi) {
+  if (lo != null && n < lo) n = lo;
+  if (hi != null && n > hi) n = hi;
+  return n;
+}
+function nowISO() { return new Date().toISOString(); }
+function uniq(arr) { return arr.filter(function (v, i) { return arr.indexOf(v) === i; }); }
+
+/** Gana el origen de menor precedencia: la capa más básica. */
+function lowestOrigin(a, b) {
+  var pa = ORIGEN_PRECEDENCIA[a], pb = ORIGEN_PRECEDENCIA[b];
+  if (pa === undefined) return b;
+  if (pb === undefined) return a;
+  return pa <= pb ? a : b;
+}
+
+/** Normaliza un tipo de viaje escrito de cualquier forma. */
+function normalizeTripType(t) {
+  var n = norm(t);
+  if (!n) return null;
+  if (n === "montana" || n === "montanas" || n === "sierra") return "montana";
+  if (n === "negocios" || n === "laboral" || n === "work") return "trabajo";
+  if (n === "city" || n === "urbano") return "ciudad";
+  if (n === "beach" || n === "costa") return "playa";
+  return TRIP_TYPE_KEYS.indexOf(n) >= 0 ? n : null;
+}
+
+/**
+ * Los ítems de una lista como array. Acepta el objeto indexado por clave
+ * (la forma que se guarda) y también un array, por si viene de una versión
+ * vieja del documento o de una prueba.
+ */
+function itemsArray(list) {
+  var items = list && list.items;
+  if (!items) return [];
+  if (Array.isArray(items)) return items.filter(Boolean);
+  return Object.keys(items).map(function (k) {
+    var it = items[k];
+    return it && !it.clave ? Object.assign({ clave:k }, it) : it;
+  }).filter(Boolean);
+}
+
+/** Índice por clave a partir de un array de ítems. */
+function indexItems(arr) {
+  var out = {};
+  arr.forEach(function (i) { if (i && i.clave) out[i.clave] = i; });
+  return out;
+}
+
+/* ============================================================
+   INTERNACIONAL O NACIONAL
+   Se deduce de los códigos IATA de los vuelos y del destino.
+   Tablas abiertas: agregar un código o una ciudad es agregar una
+   entrada, no tocar código.
+   ============================================================ */
+
+/** Aeropuertos argentinos. Un código de vuelo fuera de esta lista se lee como exterior. */
+var AR_IATA = ["EZE","AEP","COR","MDZ","BRC","IGR","USH","SLA","FTE","NQN","ROS","TUC","JUJ",
+  "MDQ","BHI","CRD","REL","RGL","RGA","PSS","SDE","CTC","LUQ","AFA","RCU","SFN","PRA","CNQ",
+  "RES","FMA","VDM","EQS","RSA","OYA","ELO","CPC","RHD","ING","LGS","CVI","GHU","OYO","UAQ",
+  "COC","PRQ","ORA","TDL","VLG","JSM","RYO","ARR","EHL","MQD","CSZ","OES","SST"];
+var AR_IATA_SET = AR_IATA.reduce(function (m, c) { m[c] = true; return m; }, {});
+
+/** Pistas de destino nacional, para viajes sin vuelos cargados. */
+var AR_HINTS = ["argentina","buenos aires","bariloche","mar del plata","cordoba","mendoza",
+  "salta","jujuy","ushuaia","calafate","chalten","iguazu","rosario","tucuman","neuquen",
+  "pinamar","carilo","villa gesell","necochea","miramar","san rafael","merlo","tandil",
+  "chapelco","san martin de los andes","villa la angostura","puerto madryn","esquel",
+  "cafayate","purmamarca","tilcara","gualeguaychu","colon","concordia","la plata",
+  "mar de ajo","monte hermoso","las grutas","el bolson","catamarca","la rioja","san juan",
+  "santa fe","corrientes","chaco","formosa","misiones","posadas","rio gallegos","comodoro"];
+
+/** Pistas de destino internacional. */
+var FOREIGN_HINTS = ["brasil","brazil","florianopolis","rio de janeiro","sao paulo","buzios",
+  "camboriu","chile","santiago de chile","pucon","valparaiso","atacama","uruguay","punta del este",
+  "montevideo","colonia del sacramento","jose ignacio","paraguay","asuncion","bolivia","la paz",
+  "peru","lima","cusco","machu picchu","colombia","cartagena","medellin","bogota","mexico",
+  "cancun","tulum","riviera maya","estados unidos","eeuu","usa","miami","nueva york","new york",
+  "orlando","los angeles","san francisco","las vegas","chicago","canada","toronto","espana",
+  "madrid","barcelona","sevilla","valencia","mallorca","ibiza","francia","paris","niza","italia",
+  "roma","milan","florencia","venecia","napoli","portugal","lisboa","oporto","inglaterra",
+  "londres","reino unido","escocia","irlanda","alemania","berlin","munich","holanda","amsterdam",
+  "belgica","suiza","austria","viena","praga","republica checa","hungria","budapest","polonia",
+  "grecia","atenas","santorini","croacia","turquia","estambul","marruecos","egipto","sudafrica",
+  "japon","tokio","kioto","china","tailandia","bangkok","vietnam","indonesia","bali","india",
+  "australia","sidney","nueva zelanda","dubai","emiratos","israel","cuba","varadero","punta cana",
+  "republica dominicana","caribe","aruba","curazao","panama","costa rica","ecuador","galapagos",
+  "venezuela","noruega","suecia","dinamarca","copenhague","finlandia","islandia"];
+
+/**
+ * @param {Object} trip
+ * @param {Array} items reservas del viaje
+ * @returns {{value:boolean, known:boolean, source:string, detail:string}}
+ */
+function deduceInternational(trip, items) {
+  trip = trip || {}; items = items || [];
+
+  if (typeof trip.international === "boolean") {
+    return { value:trip.international, known:true, source:"explicito",
+             detail:trip.international ? "Marcado como internacional en el viaje." : "Marcado como nacional en el viaje." };
+  }
+
+  // 1) códigos IATA de los vuelos
+  var codes = [];
+  items.forEach(function (it) {
+    if (!it || it.type !== "flight") return;
+    [it.from, it.to].forEach(function (c) {
+      var v = String(c || "").trim().toUpperCase();
+      if (/^[A-Z]{3}$/.test(v)) codes.push(v);
+    });
+  });
+  codes = uniq(codes);
+  var foreignCodes = codes.filter(function (c) { return !AR_IATA_SET[c]; });
+
+  // 2) texto del destino
+  var dest = norm([trip.destination, trip.name].filter(Boolean).join(" "));
+  var foreignHit = dest ? FOREIGN_HINTS.filter(function (w) { return dest.indexOf(w) >= 0; })[0] : null;
+  var localHit   = dest ? AR_HINTS.filter(function (w) { return dest.indexOf(w) >= 0; })[0] : null;
+
+  if (foreignCodes.length) {
+    return { value:true, known:true, source:"vuelos",
+             detail:"Vuelo con código " + foreignCodes.join(", ") + ", fuera del país." };
+  }
+  if (foreignHit) {
+    return { value:true, known:true, source:"destino", detail:"El destino dice \"" + foreignHit + "\"." };
+  }
+  if (codes.length) {
+    return { value:false, known:true, source:"vuelos",
+             detail:"Todos los vuelos son de cabotaje (" + codes.join(", ") + ")." };
+  }
+  if (localHit) {
+    return { value:false, known:true, source:"destino", detail:"El destino dice \"" + localHit + "\"." };
+  }
+  return { value:false, known:false, source:"desconocido",
+           detail:"No hay vuelos cargados ni un destino reconocible." };
+}
+
+/* ============================================================
+   HECHOS DEL VIAJE
+   Lo que ya está cargado y cambia la lista. Cada hecho es una
+   entrada con su nombre humano y su prueba.
+   ============================================================ */
+
+var TREK_RE  = /\b(trek|trekking|senderismo|hiking|caminata|cerro|cumbre|glaciar|refugio|monta[nñ]a|ascenso|mochilero)\b/;
+var WATER_RE = /\b(playa|snorkel|buceo|kayak|surf|rafting|catamaran|isla|piscina|pileta|balneario)\b/;
+var WORK_RE  = /\b(congreso|conferencia|reunion|reuniones|cliente|clientes|capacitacion|workshop|feria|summit|oficina|entrevista)\b/;
+var SNOW_RE  = /\b(ski|esqui|snowboard|nieve|cerro catedral|chapelco|las le[nñ]as|caviahue)\b/;
+
+var FACTS = {
+  hasFlight:        { label:"hay vuelos cargados",        test:function (c) { return c.items.some(function (i) { return i.type === "flight"; }); } },
+  hasRentalCar:     { label:"hay un auto alquilado",      test:function (c) { return c.items.some(function (i) { return i.type === "car"; }); } },
+  hasStay:          { label:"hay alojamiento cargado",    test:function (c) { return c.items.some(function (i) { return i.type === "stay"; }); } },
+  hasInternationalFlight: { label:"hay un vuelo internacional", test:function (c) { return c.international && c.items.some(function (i) { return i.type === "flight"; }); } },
+  hasTrekking:      { label:"hay trekking o montaña",     test:function (c) { return TREK_RE.test(c.textBlob); } },
+  hasWaterActivity: { label:"hay actividades de agua",    test:function (c) { return WATER_RE.test(c.textBlob); } },
+  hasWorkActivity:  { label:"hay actividades de trabajo", test:function (c) { return WORK_RE.test(c.textBlob); } },
+  hasSnow:          { label:"hay nieve o esquí",          test:function (c) { return SNOW_RE.test(c.textBlob); } }
+};
+
+/* ============================================================
+   REGLAS BASE — CAPA 1
+   Cada regla es una entrada de datos:
+     id       identificador de la regla (trazabilidad)
+     clave    clave normalizada del ítem; si falta, se calcula del nombre
+     nombre   cómo se llama para el viajero
+     categoria una de CATEGORIES
+     when     condición declarativa, opcional (sin when = siempre)
+     cantidad número, o {fixed} o {perDay|everyDays, extra, min, max}
+     motivo   texto, o función (cantidad, ctx, calc) => texto
+
+   Agregar una regla es agregar una entrada acá abajo.
+   ============================================================ */
+
+var BASE_RULES = [
+
+  /* ---------- DOCUMENTACIÓN ---------- */
+  { id:"doc.dni", nombre:"DNI", categoria:"documentacion",
+    motivo:"Siempre, aunque el viaje sea en auto y a cien kilómetros." },
+
+  { id:"doc.pasaporte", nombre:"Pasaporte", categoria:"documentacion",
+    when:{ international:true },
+    motivo:"Viaje internacional. Revisá que la vigencia cubra seis meses después de la vuelta." },
+
+  { id:"doc.visa", nombre:"Visa o autorización electrónica", categoria:"documentacion",
+    when:{ international:true },
+    motivo:"Fijate si tu pasaporte necesita visa o permiso electrónico para este destino." },
+
+  { id:"doc.seguro", nombre:"Seguro de viaje", categoria:"documentacion",
+    when:{ international:true },
+    motivo:"Varios países lo piden en migraciones y la atención médica afuera se paga en dólares." },
+
+  { id:"doc.tarjetas", nombre:"Tarjetas de débito y crédito", categoria:"documentacion",
+    motivo:"Guardadas en dos lugares distintos, no las dos en la misma billetera." },
+
+  { id:"doc.efectivo", nombre:"Efectivo en moneda local", categoria:"documentacion",
+    when:{ international:true },
+    motivo:"Para el primer traslado y las propinas, antes de encontrar un cajero." },
+
+  { id:"doc.reservas", nombre:"Copias de las reservas", categoria:"documentacion",
+    motivo:"Descargadas o impresas: siguen sirviendo con el celular sin batería." },
+
+  { id:"doc.licencia", nombre:"Licencia de conducir", categoria:"documentacion",
+    when:{ facts:["hasRentalCar"] },
+    motivo:"Tenés un auto alquilado en el viaje." },
+
+  { id:"doc.licencia-internacional", nombre:"Licencia de conducir internacional", categoria:"documentacion",
+    when:{ facts:["hasRentalCar"], international:true },
+    motivo:"Auto alquilado en el exterior: muchos países la piden junto con la nacional." },
+
+  /* ---------- ROPA ---------- */
+  { id:"ropa.remeras", nombre:"Remeras", categoria:"ropa",
+    cantidad:{ perDay:1, extra:1, min:2, max:8 },
+    motivo:function (n, ctx, calc) {
+      return calc.capped
+        ? "Con " + dias(ctx.days) + " no tiene sentido una por día: " + n + " y lavás en el viaje."
+        : dias(ctx.days) + " más una de repuesto.";
+    } },
+
+  { id:"ropa.ropa-interior", nombre:"Ropa interior", categoria:"ropa",
+    cantidad:{ perDay:1, extra:1, min:2, max:10 },
+    motivo:function (n, ctx, calc) {
+      return calc.capped
+        ? n + " juegos: con " + dias(ctx.days) + " vas a lavar igual."
+        : "Un juego por día más uno de repuesto.";
+    } },
+
+  { id:"ropa.medias", nombre:"Medias", categoria:"ropa",
+    cantidad:{ perDay:1, extra:1, min:2, max:10 },
+    motivo:function (n, ctx, calc) {
+      return calc.capped
+        ? n + " pares: con " + dias(ctx.days) + " vas a lavar igual."
+        : "Un par por día más uno de repuesto.";
+    } },
+
+  { id:"ropa.pantalones", nombre:"Pantalones", categoria:"ropa",
+    cantidad:{ everyDays:3, min:1, max:4 },
+    motivo:function (n, ctx) { return "Uno cada tres días de viaje, sobre " + dias(ctx.days) + "."; } },
+
+  { id:"ropa.buzo", nombre:"Buzo o abrigo liviano", categoria:"ropa",
+    cantidad:{ everyDays:10, min:1, max:2 },
+    motivo:"Las noches bajan de temperatura en casi cualquier destino." },
+
+  { id:"ropa.pijama", nombre:"Pijama", categoria:"ropa",
+    cantidad:{ everyDays:7, min:1, max:2 },
+    motivo:function (n) { return n === 1 ? "Uno alcanza." : "Uno por semana de viaje."; } },
+
+  { id:"ropa.bolsa-sucia", nombre:"Bolsa para la ropa sucia", categoria:"ropa",
+    motivo:"Separa lo usado de lo limpio y te ahorra clasificar al volver." },
+
+  { id:"ropa.malla", nombre:"Malla", categoria:"ropa",
+    when:{ any:[{ tripTypes:["playa"] }, { facts:["hasWaterActivity"] }] },
+    cantidad:{ fixed:2 },
+    motivo:"Dos, para no ponerte una mojada al día siguiente." },
+
+  { id:"ropa.toallon", nombre:"Toallón de playa", categoria:"ropa",
+    when:{ tripTypes:["playa"] },
+    motivo:"El del alojamiento casi nunca se puede sacar a la playa." },
+
+  { id:"ropa.termica", nombre:"Primera capa térmica", categoria:"ropa",
+    when:{ any:[{ tripTypes:["montana"] }, { facts:["hasSnow"] }] },
+    cantidad:{ everyDays:4, min:1, max:3 },
+    motivo:"En montaña se abriga por capas, no con una prenda gruesa." },
+
+  { id:"ropa.impermeable", nombre:"Campera impermeable", categoria:"ropa",
+    when:{ any:[{ tripTypes:["montana","aventura"] }, { facts:["hasTrekking"] }] },
+    motivo:"En montaña el clima cambia en una hora." },
+
+  { id:"ropa.gorro-abrigo", nombre:"Gorro y guantes de abrigo", categoria:"ropa",
+    when:{ any:[{ tripTypes:["montana"] }, { facts:["hasSnow"] }] },
+    motivo:"La cabeza y las manos son por donde más calor se pierde." },
+
+  { id:"ropa.gorra", nombre:"Gorra o sombrero", categoria:"ropa",
+    when:{ tripTypes:["playa","aventura","montana"] },
+    motivo:"Sol directo muchas horas seguidas." },
+
+  { id:"ropa.formal", nombre:"Muda formal", categoria:"ropa",
+    when:{ any:[{ tripTypes:["trabajo"] }, { facts:["hasWorkActivity"] }] },
+    cantidad:{ everyDays:2, min:1, max:4 },
+    motivo:function (n, ctx) { return "Una cada dos días de trabajo, sobre " + dias(ctx.days) + "."; } },
+
+  { id:"ropa.salida", nombre:"Una muda para salir de noche", categoria:"ropa",
+    when:{ tripTypes:["ciudad","playa","mixto"] },
+    motivo:"Para la cena o la salida que no estaba planeada." },
+
+  /* ---------- CALZADO ---------- */
+  { id:"calzado.diario", nombre:"Zapatillas cómodas", categoria:"calzado",
+    motivo:"El par que ya tenés usado. Un viaje no es para estrenar calzado." },
+
+  { id:"calzado.trekking", nombre:"Botas o zapatillas de trekking", categoria:"calzado",
+    when:{ any:[{ tripTypes:["montana","aventura"] }, { facts:["hasTrekking"] }] },
+    motivo:"Hay caminatas en el viaje: suela con agarre y tobillo sostenido." },
+
+  { id:"calzado.ojotas", nombre:"Ojotas", categoria:"calzado",
+    when:{ any:[{ tripTypes:["playa"] }, { facts:["hasWaterActivity"] }] },
+    motivo:"Para la arena, la pileta y el baño compartido." },
+
+  { id:"calzado.formal", nombre:"Zapatos de vestir", categoria:"calzado",
+    when:{ any:[{ tripTypes:["trabajo"] }, { facts:["hasWorkActivity"] }] },
+    motivo:"Van con la muda formal." },
+
+  { id:"calzado.salida", nombre:"Un par para salir", categoria:"calzado",
+    when:{ tripTypes:["ciudad","mixto"] },
+    motivo:"Algo que no sean las zapatillas de caminar todo el día." },
+
+  /* ---------- HIGIENE ---------- */
+  { id:"higiene.neceser", nombre:"Neceser armado", categoria:"higiene",
+    motivo:"Todo junto en un solo lugar: es lo primero que se busca al llegar." },
+
+  { id:"higiene.cepillo", nombre:"Cepillo y pasta de dientes", categoria:"higiene",
+    motivo:"Lo más olvidado de la lista." },
+
+  { id:"higiene.desodorante", nombre:"Desodorante", categoria:"higiene",
+    motivo:"Uno por viaje, del tamaño chico." },
+
+  { id:"higiene.shampoo", nombre:"Shampoo y jabón", categoria:"higiene",
+    motivo:"En envases chicos: casi todos los alojamientos tienen los suyos." },
+
+  { id:"higiene.protector-solar", nombre:"Protector solar", categoria:"higiene",
+    when:{ any:[{ tripTypes:["playa","montana","aventura"] }, { facts:["hasWaterActivity","hasSnow"] }] },
+    motivo:function (n, ctx) {
+      if (ctx.tripType === "montana" || ctx.facts.hasSnow) return "En altura y con nieve el sol pega mucho más fuerte.";
+      return "Muchas horas de sol directo, todos los días del viaje.";
+    } },
+
+  { id:"higiene.repelente", nombre:"Repelente de mosquitos", categoria:"higiene",
+    when:{ any:[{ tripTypes:["playa","aventura"] }, { facts:["hasWaterActivity"] }] },
+    motivo:"Zonas cálidas y con agua cerca." },
+
+  { id:"higiene.liquidos", nombre:"Líquidos de hasta 100 ml", categoria:"higiene",
+    when:{ facts:["hasFlight"] },
+    motivo:"Hay vuelo: si llevás equipaje de mano, ese es el límite por envase." },
+
+  /* ---------- ELECTRÓNICA ---------- */
+  { id:"elec.celular", nombre:"Celular y cargador", categoria:"electronica",
+    motivo:"Es el pasaje, el mapa y la cámara." },
+
+  { id:"elec.powerbank", nombre:"Batería portátil", categoria:"electronica",
+    motivo:"En el equipaje de mano: no se puede despachar." },
+
+  { id:"elec.adaptador", nombre:"Adaptador de enchufe", categoria:"electronica",
+    when:{ international:true },
+    motivo:"Viaje internacional: el enchufe del destino puede no ser el de acá." },
+
+  { id:"elec.auriculares", nombre:"Auriculares", categoria:"electronica",
+    motivo:"Para el vuelo, el colectivo y la espera." },
+
+  { id:"elec.notebook", nombre:"Notebook y cargador", categoria:"electronica",
+    when:{ any:[{ tripTypes:["trabajo"] }, { facts:["hasWorkActivity"] }] },
+    motivo:"Viaje de trabajo." },
+
+  { id:"elec.camara", nombre:"Cámara y cargador", categoria:"electronica",
+    when:{ tripTypes:["montana","aventura"] },
+    motivo:"Paisaje que el celular no rinde." },
+
+  { id:"elec.linterna", nombre:"Linterna frontal", categoria:"electronica",
+    when:{ any:[{ tripTypes:["montana","aventura"] }, { facts:["hasTrekking"] }] },
+    motivo:"Salidas temprano, refugios y cortes de luz." },
+
+  /* ---------- SALUD ---------- */
+  { id:"salud.medicacion", nombre:"Medicación personal", categoria:"salud",
+    motivo:"Con la receta y en el equipaje de mano, por si la valija se pierde." },
+
+  { id:"salud.botiquin", nombre:"Botiquín básico", categoria:"salud",
+    motivo:"Analgésico, curitas, antiséptico y algo para el estómago. Ocupa poco y siempre se usa." },
+
+  { id:"salud.mareo", nombre:"Pastillas para el mareo", categoria:"salud",
+    when:{ tripTypes:["montana","aventura"] },
+    motivo:"Rutas de montaña y caminos de ripio." },
+
+  { id:"salud.botella", nombre:"Botella reutilizable", categoria:"salud",
+    motivo:"Se llena después del control de seguridad y en el alojamiento." }
+];
+
+/* Completa la clave que falte y fija el orden de presentación. */
+BASE_RULES = BASE_RULES.map(function (r, i) {
+  return Object.assign({}, r, { clave:r.clave || slug(r.nombre), orden:orderOf(r.categoria, i) });
+});
+
+/** Orden de presentación: primero la categoría, después la posición dentro de ella. */
+function orderOf(categoria, sub) {
+  var c = CATEGORY_ORDER[categoria];
+  return (c === undefined ? 90 : c) * 1000 + sub;
+}
+
+/**
+ * Chequeo de integridad del catálogo de reglas. Lo corre la prueba.
+ * @returns {string[]} lista de problemas. Vacía = catálogo sano.
+ */
+function validateRules(rules) {
+  rules = rules || BASE_RULES;
+  var problems = [], ids = {}, claves = {};
+  rules.forEach(function (r) {
+    if (!r.id) problems.push("regla sin id: " + JSON.stringify(r));
+    if (ids[r.id]) problems.push("id repetido: " + r.id);
+    ids[r.id] = true;
+    if (claves[r.clave]) problems.push("clave repetida: " + r.clave + " (" + r.id + ")");
+    claves[r.clave] = true;
+    if (!r.nombre) problems.push("regla sin nombre: " + r.id);
+    if (CATEGORY_ORDER[r.categoria] === undefined) problems.push("categoría desconocida en " + r.id + ": " + r.categoria);
+    if (!r.motivo) problems.push("regla sin motivo: " + r.id);
+  });
+  return problems;
+}
+
+/* ============================================================
+   EVALUADOR DE CONDICIONES Y CANTIDADES
+   ============================================================ */
+
+/**
+ * Evalúa una condición declarativa contra el contexto del viaje.
+ * Operadores: international, tripTypes, notTripTypes, minDays, maxDays,
+ * facts (todos), anyFacts (alguno), notFacts (ninguno), all, any, not, test.
+ * @param {Object|Function|null} cond
+ * @param {Object} ctx
+ * @returns {boolean}
+ */
+function matchesCondition(cond, ctx) {
+  if (cond == null) return true;
+  if (typeof cond === "function") return !!cond(ctx);
+  if (Array.isArray(cond)) return cond.every(function (c) { return matchesCondition(c, ctx); });
+
+  if (cond.international !== undefined && ctx.international !== cond.international) return false;
+  if (cond.tripTypes && cond.tripTypes.indexOf(ctx.tripType) < 0) return false;
+  if (cond.notTripTypes && cond.notTripTypes.indexOf(ctx.tripType) >= 0) return false;
+  if (cond.minDays !== undefined && !(ctx.days >= cond.minDays)) return false;
+  if (cond.maxDays !== undefined && !(ctx.days <= cond.maxDays)) return false;
+  if (cond.facts && !cond.facts.every(function (f) { return !!ctx.facts[f]; })) return false;
+  if (cond.anyFacts && !cond.anyFacts.some(function (f) { return !!ctx.facts[f]; })) return false;
+  if (cond.notFacts && !cond.notFacts.every(function (f) { return !ctx.facts[f]; })) return false;
+  if (cond.all && !cond.all.every(function (c) { return matchesCondition(c, ctx); })) return false;
+  if (cond.any && !cond.any.some(function (c) { return matchesCondition(c, ctx); })) return false;
+  if (cond.not && matchesCondition(cond.not, ctx)) return false;
+  if (cond.test && !cond.test(ctx)) return false;
+  return true;
+}
+
+/**
+ * Resuelve la cantidad de un ítem a partir de la duración del viaje.
+ * @param {number|Object|undefined} spec {fixed} | {perDay|everyDays, extra, min, max}
+ * @param {Object} ctx
+ * @returns {{qty:number|null, raw:number|null, capped:boolean}}
+ */
+function computeQty(spec, ctx) {
+  if (spec == null) return { qty:null, raw:null, capped:false };
+  if (typeof spec === "number") return { qty:spec, raw:spec, capped:false };
+  if (spec.fixed != null) return { qty:spec.fixed, raw:spec.fixed, capped:false };
+
+  var base = 0;
+  if (spec.perDay != null) base = ctx.days * spec.perDay;
+  else if (spec.everyDays) base = ctx.days / spec.everyDays;
+  var raw = Math.ceil(base) + (spec.extra || 0);
+  var qty = clamp(raw, spec.min, spec.max);
+  return { qty:qty, raw:raw, capped:qty !== raw };
+}
+
+function resolveReason(motivo, qty, ctx, calc) {
+  if (typeof motivo === "function") return String(motivo(qty, ctx, calc) || "");
+  return String(motivo || "");
+}
+
+/* ============================================================
+   CONTEXTO DEL VIAJE
+   ============================================================ */
+
+/**
+ * Arma el contexto sobre el que se evalúan todas las reglas.
+ * @param {Object} trip   viaje {id,name,destination,startDate,endDate,notes,international?}
+ * @param {Array}  items  reservas del viaje
+ * @param {Object} [opts] {tipoViaje} para forzar el tipo elegido por la persona
+ * @returns {Object} contexto
+ */
+function tripContext(trip, items, opts) {
+  trip = trip || {}; items = (items || []).filter(Boolean); opts = opts || {};
+
+  var textBlob = norm([
+    trip.name, trip.destination, trip.notes,
+    items.map(function (i) { return [i.title, i.notes, i.provider].filter(Boolean).join(" "); }).join(" ")
+  ].filter(Boolean).join(" "));
+
+  var intl = deduceInternational(trip, items);
+  var realDays = daysBetweenInclusive(trip.startDate, trip.endDate);
+  var daysKnown = realDays != null;
+  var days = daysKnown ? realDays : DEFAULT_DAYS;
+
+  var ctx = {
+    trip:trip, items:items, textBlob:textBlob,
+    destination:String(trip.destination || "").trim(),
+    startDate:trip.startDate || "", endDate:trip.endDate || "",
+    days:days, nights:Math.max(0, days - 1), daysKnown:daysKnown,
+    international:intl.value, internationalKnown:intl.known,
+    internationalSource:intl.source, internationalDetail:intl.detail,
+    facts:{}, tripType:null, tripTypeSource:"sugerido", tripTypeReason:""
+  };
+
+  Object.keys(FACTS).forEach(function (name) {
+    try { ctx.facts[name] = !!FACTS[name].test(ctx); } catch (e) { ctx.facts[name] = false; }
+  });
+
+  var chosen = normalizeTripType(opts.tipoViaje || opts.tripType);
+  if (chosen) {
+    ctx.tripType = chosen; ctx.tripTypeSource = "elegido"; ctx.tripTypeReason = "Lo elegiste al generar la lista.";
+  } else {
+    var s = suggestTripType(trip, items, ctx);
+    ctx.tripType = s.type; ctx.tripTypeSource = "sugerido"; ctx.tripTypeReason = s.reason; ctx.tripTypeConfidence = s.confidence;
+  }
+  return ctx;
+}
+
+/* ============================================================
+   TIPO DE VIAJE SUGERIDO
+   VAL-30: el tipo se propone según palabras clave del destino, las
+   notas del viaje y la duración. NO compara este viaje contra otros
+   viajes guardados: eso es lo que hace learnFromHistory (capa 3),
+   sobre los ÍTEMS, no sobre el tipo.
+   ============================================================ */
+
+var TYPE_HINTS = [
+  { type:"playa",    words:["playa","caribe","cancun","punta del este","copacabana","florianopolis","buzios","riviera","maldivas","bali","ibiza","mar del plata","pinamar","carilo","varadero","punta cana","camboriu","costa","isla","snorkel","balneario","aruba","curazao"] },
+  { type:"montana",  words:["bariloche","ushuaia","cerro","aspen","andes","alpes","chapelco","angostura","chalten","calafate","nepal","cusco","montana","valle nevado","portillo","las lenas","ski","esqui","nieve","refugio","glaciar","el bolson","pucon"] },
+  { type:"ciudad",   words:["madrid","paris","nueva york","new york","londres","roma","tokio","berlin","barcelona","santiago","montevideo","lisboa","amsterdam","milan","praga","budapest","ciudad","museo","teatro","capital"] },
+  { type:"trabajo",  words:["congreso","conferencia","reunion","cliente","capacitacion","workshop","feria","summit","oficina","trabajo","laboral","entrevista"] },
+  { type:"aventura", words:["trekking","senderismo","kayak","escalada","safari","camping","mochilero","rafting","selva","desierto","aventura","expedicion"] }
+];
+
+/**
+ * Propone un tipo de viaje mirando el destino, las reservas y la duración.
+ * Mira SÓLO este viaje (palabras clave y días); no compara con otros viajes.
+ * @param {Object} trip
+ * @param {Array} items
+ * @param {Object} [ctx] contexto ya armado, para no recalcularlo
+ * @returns {{type:string, confidence:"alta"|"media"|"baja", reason:string}}
+ */
+function suggestTripType(trip, items, ctx) {
+  trip = trip || {}; items = items || [];
+  var blob = ctx ? ctx.textBlob : norm([
+    trip.name, trip.destination, trip.notes,
+    items.map(function (i) { return [i.title, i.notes].filter(Boolean).join(" "); }).join(" ")
+  ].filter(Boolean).join(" "));
+
+  var days = ctx ? ctx.days : (daysBetweenInclusive(trip.startDate, trip.endDate) || DEFAULT_DAYS);
+  var daysKnown = ctx ? ctx.daysKnown : daysBetweenInclusive(trip.startDate, trip.endDate) != null;
+
+  var scores = {}, hits = {};
+  TYPE_HINTS.forEach(function (h) {
+    var found = h.words.filter(function (w) { return blob.indexOf(w) >= 0; });
+    if (found.length) { scores[h.type] = found.length; hits[h.type] = found; }
+  });
+
+  var ranked = Object.keys(scores).sort(function (a, b) { return scores[b] - scores[a]; });
+
+  if (ranked.length) {
+    var top = ranked[0];
+    // dos familias fuertes a la vez: es un viaje mixto
+    if (ranked.length > 1 && scores[ranked[1]] === scores[top]) {
+      return { type:"mixto", confidence:"media",
+               reason:"El viaje mezcla " + TRIP_TYPE_LABEL[top].toLowerCase() + " y " + TRIP_TYPE_LABEL[ranked[1]].toLowerCase() + "." };
+    }
+    return { type:top, confidence:scores[top] >= 2 ? "alta" : "media",
+             reason:"Por \"" + hits[top][0] + "\" en el viaje." };
+  }
+  if (!daysKnown) return { type:"mixto", confidence:"baja", reason:"Sin fechas ni pistas del destino, armo una lista mixta." };
+  if (days <= 4) return { type:"ciudad", confidence:"baja", reason:"Viaje corto de " + dias(days) + ", sin otras pistas." };
+  return { type:"mixto", confidence:"baja", reason:"Viaje de " + dias(days) + " sin pistas del destino." };
+}
+
+/* ============================================================
+   CAPA 3 · APRENDIZAJE DEL HISTORIAL  (VAL-32)
+   ============================================================ */
+
+function bump(map, clave, item) {
+  var e = map.get(clave);
+  if (!e) { e = { clave:clave, nombre:item.nombre || clave, categoria:item.categoria || "otros", veces:0 }; map.set(clave, e); }
+  e.veces++;
+  if (item.nombre) e.nombre = item.nombre;              // el rótulo más reciente gana
+  if (item.categoria) e.categoria = item.categoria;
+  return e;
+}
+
+/**
+ * Mira las listas de viajes anteriores del mismo tipo y decide qué promover
+ * y qué suprimir. Un ítem cuenta una sola vez por viaje.
+ *
+ * Precedencia: si un ítem fue agregado a mano dos veces Y descartado dos veces,
+ * gana la promoción. Agregarlo a mano es una acción más costosa que descartarlo,
+ * así que es la señal más fuerte.
+ *
+ * @param {Array<Object>} history listas guardadas de viajes anteriores
+ * @param {string} tipoViaje tipo del viaje que se está armando
+ * @returns {{tipoViaje:string, muestra:number, promover:Array, suprimir:Array}}
+ */
+function learnFromHistory(history, tipoViaje) {
+  var added = new Map(), dismissed = new Map(), muestra = 0;
+  var tipo = normalizeTripType(tipoViaje);
+
+  (history || []).forEach(function (list) {
+    if (!list) return;
+    var arr = itemsArray(list);
+    if (!arr.length) return;
+    if (normalizeTripType(list.tipoViaje || list.tripType) !== tipo) return;
+    muestra++;
+    var seenAdd = {}, seenDis = {};
+    arr.forEach(function (it) {
+      if (!it) return;
+      var clave = it.clave || slug(it.nombre || it.label);
+      if (!clave) return;
+      if (it.origen === ORIGEN.MANUAL && !seenAdd[clave]) { seenAdd[clave] = true; bump(added, clave, it); }
+      if (it.estado === ESTADO.DESCARTADO && !seenDis[clave]) { seenDis[clave] = true; bump(dismissed, clave, it); }
+    });
+  });
+
+  var promover = [];
+  added.forEach(function (e) { if (e.veces >= HISTORY_PROMOTE_AT) promover.push(e); });
+  var promoverClaves = promover.reduce(function (m, e) { m[e.clave] = true; return m; }, {});
+
+  var suprimir = [];
+  dismissed.forEach(function (e) {
+    if (e.veces >= HISTORY_SUPPRESS_AT && !promoverClaves[e.clave]) suprimir.push(e);
+  });
+
+  var porVeces = function (a, b) { return b.veces - a.veces || a.clave.localeCompare(b.clave); };
+  return { tipoViaje:tipo, muestra:muestra, promover:promover.sort(porVeces), suprimir:suprimir.sort(porVeces) };
+}
+
+/* ============================================================
+   ARMADO DE LA LISTA  (CAPA 1 + CAPA 3)
+   ============================================================ */
+
+function makeItem(fields, at) {
+  return {
+    clave:fields.clave,
+    nombre:fields.nombre,
+    categoria:fields.categoria || "otros",
+    cantidad:fields.cantidad == null ? null : fields.cantidad,
+    motivo:fields.motivo || "",
+    origen:fields.origen || ORIGEN.REGLA,
+    estado:ESTADO.PENDIENTE,
+    empacadoEn:null,
+    regla:fields.regla || "",
+    cantidadEditada:false,
+    nota:"",
+    orden:fields.orden == null ? orderOf(fields.categoria, 500) : fields.orden,
+    agregadoEn:at,
+    actualizadoEn:at
+  };
+}
+
+/**
+ * Los ítems de la lista, ordenados y listos para mostrar.
+ * @param {Object} list
+ * @param {Object} [opts] {includeDismissed:true} para incluir los descartados
+ * @returns {Array}
+ */
+function itemList(list, opts) {
+  opts = opts || {};
+  return itemsArray(list)
+    .filter(function (i) { return opts.includeDismissed ? true : i.estado !== ESTADO.DESCARTADO; })
+    .sort(function (a, b) {
+      if (a.orden !== b.orden) return (a.orden || 0) - (b.orden || 0);
+      return String(a.nombre).localeCompare(String(b.nombre), "es");
+    });
+}
+
+/**
+ * Contador de la lista. El porcentaje mide cuánto de la lista la persona ya
+ * RESOLVIÓ, no cuánto entra en el bolso: descartar es una decisión tomada,
+ * tan resuelta como empacar. Por eso entra en `resueltos` y en el `pct`,
+ * y por eso `total` incluye los descartados en vez de restarlos.
+ *
+ *     resueltos = empacados + descartados
+ *     total     = todos los ítems, descartados incluidos
+ *     pct       = resueltos / total
+ *
+ * @param {Object} list
+ * @returns {{total:number, empacados:number, descartados:number, pendientes:number, resueltos:number, pct:number}}
+ */
+function packingProgress(list) {
+  var arr = itemsArray(list);
+  var empacados = arr.filter(function (i) { return i.estado === ESTADO.EMPACADO; }).length;
+  var descartados = arr.filter(function (i) { return i.estado === ESTADO.DESCARTADO; }).length;
+  var total = arr.length;
+  var resueltos = empacados + descartados;
+  return {
+    total:total,
+    empacados:empacados,
+    descartados:descartados,
+    pendientes:total - resueltos,
+    resueltos:resueltos,
+    pct:total ? Math.round(resueltos / total * 100) : 0
+  };
+}
+
+/**
+ * CAPA 1 + CAPA 3. Genera la lista base, sin IA y sin red.
+ *
+ * @param {Object}  input
+ * @param {Object}  input.trip       viaje
+ * @param {Array}   [input.items]    reservas del viaje
+ * @param {string}  [input.tipoViaje] tipo elegido por la persona; si falta se sugiere
+ * @param {Array}   [input.history]  listas guardadas de viajes anteriores
+ * @param {Object}  [input.previous] lista ya guardada de este viaje, para regenerar sin perder nada
+ * @param {string}  [input.now]      timestamp ISO, para pruebas determinísticas
+ * @returns {Object} documento de lista, listo para guardar
+ */
+function buildPackingList(input) {
+  input = input || {};
+  var at = input.now || nowISO();
+  var trip = input.trip || {};
+  var items = input.items || [];
+  var ctx = tripContext(trip, items, { tipoViaje:input.tipoViaje || input.tripType });
+  var aprendido = learnFromHistory(input.history, ctx.tripType);
+
+  var suprimidos = aprendido.suprimir.reduce(function (m, e) { m[e.clave] = e; return m; }, {});
+  var out = {}, orden = 0;
+
+  BASE_RULES.forEach(function (rule) {
+    if (!matchesCondition(rule.when, ctx)) return;
+    if (suprimidos[rule.clave]) return;                     // VAL-32: descartado dos veces
+    var calc = computeQty(rule.cantidad, ctx);
+    out[rule.clave] = makeItem({
+      clave:rule.clave, nombre:rule.nombre, categoria:rule.categoria,
+      cantidad:calc.qty, motivo:resolveReason(rule.motivo, calc.qty, ctx, calc),
+      origen:ORIGEN.REGLA, regla:rule.id, orden:rule.orden
+    }, at);
+  });
+
+  aprendido.promover.forEach(function (e, i) {
+    // PRECEDENCIA: si una regla base ya lo puso, el origen sigue siendo "regla".
+    if (out[e.clave]) return;
+    out[e.clave] = makeItem({
+      clave:e.clave, nombre:e.nombre, categoria:e.categoria || "otros", cantidad:null,
+      motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (TRIP_TYPE_LABEL[ctx.tripType] || ctx.tripType).toLowerCase() + ".",
+      origen:ORIGEN.HISTORIAL, regla:"historial", orden:orderOf(e.categoria || "otros", 900 + i)
+    }, at);
+  });
+
+  var avisos = [];
+  if (!ctx.daysKnown) avisos.push({ codigo:"sin-fechas",
+    texto:"El viaje no tiene fechas: calculé las cantidades sobre " + dias(DEFAULT_DAYS) + ". Cargá salida y regreso para ajustarlas." });
+  if (!ctx.internationalKnown) avisos.push({ codigo:"destino-desconocido",
+    texto:"No pude deducir si el viaje es internacional. Cargá los vuelos o el destino para que aparezca la documentación que corresponde." });
+
+  var fresh = {
+    version:VERSION,
+    tripId:trip.id || "",
+    tipoViaje:ctx.tripType,
+    creadaEn:at, generadaEn:at, actualizadaEn:at,
+    base:{
+      destino:ctx.destination, desde:ctx.startDate, hasta:ctx.endDate,
+      dias:ctx.days, noches:ctx.nights, diasConocidos:ctx.daysKnown,
+      internacional:ctx.international, internacionalConocido:ctx.internationalKnown,
+      internacionalFuente:ctx.internationalSource, internacionalDetalle:ctx.internationalDetail,
+      tipoViajeFuente:ctx.tripTypeSource, tipoViajeMotivo:ctx.tripTypeReason,
+      hechos:ctx.facts
+    },
+    capaInteligente:{ estado:"sin-ajuste", en:null, nota:"Lista base, sin ajuste por destino.", clima:"" },
+    aprendizaje:{ muestra:aprendido.muestra, promovidos:aprendido.promover, suprimidos:aprendido.suprimir },
+    avisos:avisos,
+    items:out,
+    conteo:null
+  };
+  fresh.conteo = packingProgress(fresh);
+
+  return input.previous ? mergeLists(input.previous, fresh) : fresh;
+}
+
+/**
+ * VAL-30: generar dos veces no duplica ni pierde nada.
+ *
+ * Garantiza que regenerar NO:
+ *   - resucita un ítem descartado (el estado de la lista anterior manda),
+ *   - pisa el origen de un ítem ya presente con uno de mayor precedencia,
+ *   - pierde lo empacado, su `empacadoEn`, las notas, las cantidades
+ *     corregidas a mano ni los ítems propios.
+ *
+ * @param {Object} previous lista guardada
+ * @param {Object} fresh    lista recién generada
+ * @returns {Object} lista fusionada
+ */
+function mergeLists(previous, fresh) {
+  if (!previous) return fresh;
+  var prev = indexItems(itemsArray(previous));
+  if (!Object.keys(prev).length) return fresh;
+
+  var merged = {};
+
+  itemsArray(fresh).forEach(function (f) {
+    var p = prev[f.clave];
+    if (!p) { merged[f.clave] = f; return; }
+    merged[f.clave] = Object.assign({}, f, {
+      // el estado de la persona manda: lo descartado no revive, lo empacado sigue empacado
+      estado:ESTADOS.indexOf(p.estado) >= 0 ? p.estado : ESTADO.PENDIENTE,
+      empacadoEn:p.empacadoEn || null,
+      // PRECEDENCIA: nunca se pisa el origen con una capa de mayor precedencia
+      origen:lowestOrigin(p.origen, f.origen),
+      nota:p.nota || "",
+      cantidad:p.cantidadEditada ? p.cantidad : f.cantidad,
+      cantidadEditada:!!p.cantidadEditada,
+      motivo:p.cantidadEditada ? (p.motivo || f.motivo) : f.motivo,
+      agregadoEn:p.agregadoEn || f.agregadoEn,
+      actualizadoEn:fresh.generadaEn
+    });
+  });
+
+  // Lo que la persona tocó o agregó sobrevive aunque la regla ya no aplique.
+  // Incluye los descartados: si desaparecieran, la próxima generación los resucitaría.
+  itemsArray(previous).forEach(function (p) {
+    if (merged[p.clave]) return;
+    if (p.origen === ORIGEN.MANUAL || p.estado !== ESTADO.PENDIENTE) {
+      merged[p.clave] = Object.assign({}, p, { retenido:true });
+    }
+  });
+
+  var out = Object.assign({}, fresh, {
+    creadaEn:previous.creadaEn || fresh.creadaEn,
+    items:merged
+  });
+  out.conteo = packingProgress(out);
+  return out;
+}
+
+/* ============================================================
+   CAPA 2 · AJUSTE POR DESTINO CON IA  (VAL-33)
+   El módulo no llama a claude.use. Recibe una función asíncrona
+   `ask(prompt) -> objeto` y la app le pasa la implementación
+   (en la app: sample.json). Así se prueba con node.
+   ============================================================ */
+
+/**
+ * Arma el prompt de la capa de destino.
+ * Lleva instrucción explícita de no inventar: antes una lista corta que un dato falso.
+ * @param {Object} list lista base ya generada
+ * @returns {string}
+ */
+function destinationPrompt(list) {
+  var b = (list && list.base) || {};
+  var yaHay = itemsArray(list).map(function (i) { return i.nombre; }).join(", ");
+  var tipo = TRIP_TYPE_LABEL[list.tipoViaje] || list.tipoViaje || "mixto";
+
+  return [
+    "Sos parte de una app de viajes y ajustás una lista de equipaje al destino. Devolvés SOLO JSON.",
+    "",
+    "Viaje:",
+    "- Destino: " + (b.destino || "sin especificar"),
+    "- Fechas: " + (b.desde ? b.desde + " a " + (b.hasta || "sin regreso") : "sin fechas cargadas"),
+    "- Duración: " + b.dias + " días" + (b.diasConocidos ? "" : " (estimados, el viaje no tiene fechas)"),
+    "- Tipo de viaje: " + tipo,
+    "- " + (b.internacional ? "Es un viaje internacional." : "Es un viaje dentro del país."),
+    "",
+    "La lista base ya incluye: " + (yaHay || "nada"),
+    "",
+    "Agregá hasta " + MAX_AI_ITEMS + " ítems que sean específicos de ESE destino en ESA época del año y que",
+    "no estén ya en la lista base. Por ejemplo el tipo de enchufe del país, la amplitud térmica de la zona",
+    "en ese mes, la temporada de lluvias, la altura, o un requisito de ingreso conocido.",
+    "",
+    "Devolvé este JSON exacto:",
+    '{"items":[{"nombre":"nombre corto del ítem","categoria":"documentacion|ropa|calzado|higiene|electronica|salud|destino","cantidad":numero o null,"motivo":"por qué, en una frase, mencionando el dato del destino"}],"clima":"una frase sobre el clima esperado, o vacío"}',
+    "",
+    "Reglas que no se rompen:",
+    "1. Si no estás seguro de un dato del destino, NO lo incluyas. Es preferible una lista más corta que un dato inventado.",
+    "2. Nunca inventes tipos de enchufe, temperaturas, requisitos de visa, nombres de lugares ni precios. Si no lo sabés con certeza, omitilo.",
+    '3. Si no tenés nada seguro para agregar, devolvé {"items":[],"clima":""}.',
+    "4. Cada ítem lleva su motivo. Un ítem sin motivo no sirve: no lo incluyas.",
+    "5. Nada de marcas, links ni recomendaciones de compra.",
+    "6. Escribí en español rioplatense, de vos, en frases cortas."
+  ].join("\n");
+}
+
+/**
+ * Valida y normaliza lo que devolvió la IA. Descarta todo lo que no cumple.
+ * @param {Object|string} raw respuesta cruda
+ * @param {Object} list lista base, para no duplicar ni resucitar lo suprimido
+ * @returns {{items:Array, clima:string}}
+ */
+function parseDestinationItems(raw, list) {
+  var data = raw;
+  if (typeof data === "string") { try { data = JSON.parse(data); } catch (e) { data = null; } }
+  if (!data || !Array.isArray(data.items)) return { items:[], clima:"" };
+
+  var have = indexItems(itemsArray(list));
+  var suprimidos = {};
+  ((list && list.aprendizaje && list.aprendizaje.suprimidos) || []).forEach(function (e) { suprimidos[e.clave] = true; });
+
+  var out = [];
+  data.items.forEach(function (x) {
+    if (out.length >= MAX_AI_ITEMS) return;
+    if (!x || typeof x !== "object") return;
+    var nombre = String(x.nombre || x.label || "").trim();
+    var motivo = String(x.motivo || x.reason || "").trim();
+    if (!nombre || !motivo) return;                 // sin motivo no entra: VAL-33 lo exige
+    var clave = slug(nombre);
+    if (!clave || have[clave] || suprimidos[clave]) return;
+    var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
+    var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0) ? Math.round(x.cantidad) : null;
+    have[clave] = true;
+    out.push({ clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad, motivo:motivo });
+  });
+
+  return { items:out, clima:typeof data.clima === "string" ? data.clima.trim() : "" };
+}
+
+/**
+ * CAPA 2. Nunca lanza: si la IA falla, devuelve la lista base con el aviso puesto.
+ * @param {Object} list lista base
+ * @param {Function} ask función asíncrona (prompt) => objeto o string JSON
+ * @param {Object} [opts] {now}
+ * @returns {Promise<Object>} lista, ajustada o no
+ */
+function enrichWithDestination(list, ask, opts) {
+  opts = opts || {};
+  var at = opts.now || nowISO();
+
+  function conCapa(estado, nota, extra) {
+    var avisos = (list.avisos || []).filter(function (w) { return w.codigo !== "ia-no-disponible" && w.codigo !== "ia-fallo"; });
+    if (estado === "no-disponible") avisos = avisos.concat([{ codigo:"ia-no-disponible",
+      texto:"Falta el ajuste por destino: la lista es la base de reglas. Igual sirve." }]);
+    if (estado === "error") avisos = avisos.concat([{ codigo:"ia-fallo",
+      texto:"No pude ajustar la lista al destino. Te muestro la lista base, que ya cubre lo esencial." }]);
+    var previaClima = (list.capaInteligente && list.capaInteligente.clima) || "";
+    return Object.assign({}, list, extra || {}, {
+      capaInteligente:{ estado:estado, en:at, nota:nota || "",
+                        clima:(extra && extra.clima != null) ? extra.clima : previaClima },
+      avisos:avisos
+    });
+  }
+
+  if (typeof ask !== "function") {
+    return Promise.resolve(conCapa("no-disponible", "La app no pasó una función para consultar al modelo."));
+  }
+
+  return Promise.resolve()
+    .then(function () { return ask(destinationPrompt(list), { list:list, base:list.base }); })
+    .then(function (raw) {
+      var parsed = parseDestinationItems(raw, list);
+      if (!parsed.items.length) {
+        return conCapa("vacio", "El modelo no agregó nada específico del destino.",
+                       parsed.clima ? { clima:parsed.clima } : null);
+      }
+      var items = Object.assign({}, list.items);
+      parsed.items.forEach(function (x, i) {
+        items[x.clave] = makeItem({
+          clave:x.clave, nombre:x.nombre, categoria:x.categoria, cantidad:x.cantidad,
+          motivo:x.motivo, origen:ORIGEN.DESTINO, regla:"destino",
+          orden:orderOf(x.categoria, 800 + i)
+        }, at);
+      });
+      var out = conCapa("ok",
+        "Ajustada al destino: " + parsed.items.length + (parsed.items.length === 1 ? " ítem agregado." : " ítems agregados."),
+        { items:items, clima:parsed.clima || "" });
+      out.conteo = packingProgress(out);
+      return out;
+    })
+    .catch(function (e) {
+      return conCapa("error", (e && e.message) ? String(e.message) : "Error desconocido.");
+    });
+}
+
+/* ============================================================
+   ENTRADA PRINCIPAL — las tres capas
+   ============================================================ */
+
+/**
+ * Genera la lista completa. Nunca lanza por culpa de la IA.
+ * @param {Object}   input
+ * @returns {Promise<Object>} documento de lista listo para guardar
+ */
+function generatePackingList(input) {
+  input = input || {};
+  var base = buildPackingList(Object.assign({}, input, { previous: null }));
+  if (typeof input.ask !== "function") {
+    return Promise.resolve(input.previous ? mergeLists(input.previous, base) : base);
+  }
+  return enrichWithDestination(base, input.ask, { now:input.now }).then(function (enriched) {
+    return input.previous ? mergeLists(input.previous, enriched) : enriched;
+  });
+}
+
+/* ============================================================
+   ESTADO DE LOS ÍTEMS — VAL-31
+   Puras: devuelven una lista nueva, no tocan la que reciben.
+   ============================================================ */
+
+function replaceItem(list, clave, fn) {
+  var actual = (list.items || {})[clave];
+  if (!actual) return list;
+  var items = Object.assign({}, list.items);
+  items[clave] = fn(actual);
+  var out = Object.assign({}, list, { items:items, actualizadaEn:nowISO() });
+  out.conteo = packingProgress(out);
+  return out;
+}
+
+/**
+ * Cambia el estado de un ítem. Tres estados: pendiente, empacado, descartado.
+ * @param {Object} list
+ * @param {string} clave clave normalizada del ítem
+ * @param {string} estado uno de ESTADO
+ * @param {Object} [opts] {now}
+ * @returns {Object} lista nueva
+ */
+function setItemState(list, clave, estado, opts) {
+  opts = opts || {};
+  if (ESTADOS.indexOf(estado) < 0) return list;
+  var at = opts.now || nowISO();
+  return replaceItem(list, clave, function (i) {
+    return Object.assign({}, i, {
+      estado:estado,
+      empacadoEn:estado === ESTADO.EMPACADO ? (i.empacadoEn || at) : null,
+      actualizadoEn:at
+    });
+  });
+}
+
+/** Azúcar sobre setItemState. */
+function packItem(list, clave, opts)    { return setItemState(list, clave, ESTADO.EMPACADO, opts); }
+function dismissItem(list, clave, opts) { return setItemState(list, clave, ESTADO.DESCARTADO, opts); }
+function resetItem(list, clave, opts)   { return setItemState(list, clave, ESTADO.PENDIENTE, opts); }
+
+/**
+ * El parche parcial para marcar UN ítem en la base sin reescribir la lista.
+ *   db.doc(`trips/${tripId}/packing/lista`).update(stateUpdatePatch(clave, "empacado"))
+ * @param {string} clave
+ * @param {string} estado uno de ESTADO
+ * @param {Object} [opts] {now}
+ * @returns {Object|null} objeto para pasarle a update(), o null si el estado no existe
+ */
+function stateUpdatePatch(clave, estado, opts) {
+  opts = opts || {};
+  if (!clave || ESTADOS.indexOf(estado) < 0) return null;
+  var at = opts.now || nowISO();
+  var parche = { estado:estado, empacadoEn:estado === ESTADO.EMPACADO ? at : null, actualizadoEn:at };
+  var items = {}; items[clave] = parche;
+  return { items:items, actualizadaEn:at };
+}
+
+/** Corrige la cantidad a mano. Queda marcada para que regenerar no la pise. */
+function setQty(list, clave, cantidad, opts) {
+  opts = opts || {};
+  var at = opts.now || nowISO();
+  return replaceItem(list, clave, function (i) {
+    return Object.assign({}, i, { cantidad:cantidad, cantidadEditada:true,
+                                  motivo:"Lo ajustaste vos.", actualizadoEn:at });
+  });
+}
+
+/**
+ * Agrega un ítem propio. Es lo que después aprende el historial.
+ * @returns {Object} lista nueva
+ */
+function addManualItem(list, fields, opts) {
+  fields = fields || {}; opts = opts || {};
+  var at = opts.now || nowISO();
+  var nombre = String(fields.nombre || fields.label || "").trim();
+  if (!nombre) return list;
+  var clave = slug(nombre);
+  if (!clave) return list;
+  if ((list.items || {})[clave]) return setItemState(list, clave, ESTADO.PENDIENTE, { now:at });
+
+  var categoria = CATEGORY_ORDER[fields.categoria] !== undefined ? fields.categoria : "otros";
+  var it = makeItem({
+    clave:clave, nombre:nombre, categoria:categoria,
+    cantidad:typeof fields.cantidad === "number" ? fields.cantidad : null,
+    motivo:fields.motivo || "Lo agregaste vos.",
+    origen:ORIGEN.MANUAL, regla:"", orden:orderOf(categoria, 950)
+  }, at);
+
+  var items = Object.assign({}, list.items);
+  items[clave] = it;
+  var out = Object.assign({}, list, { items:items, actualizadaEn:at });
+  out.conteo = packingProgress(out);
+  return out;
+}
+
+/** Borra un ítem. Sólo los propios: los sugeridos se descartan, no se borran. */
+function removeManualItem(list, clave) {
+  var actual = (list.items || {})[clave];
+  if (!actual || actual.origen !== ORIGEN.MANUAL) return list;
+  var items = Object.assign({}, list.items);
+  delete items[clave];
+  var out = Object.assign({}, list, { items:items, actualizadaEn:nowISO() });
+  out.conteo = packingProgress(out);
+  return out;
+}
+
+/**
+ * Agrupa para mostrar. Devuelve sólo las categorías con ítems.
+ * @returns {Array<{key:string,label:string,items:Array}>}
+ */
+function groupByCategory(list, opts) {
+  var todos = itemList(list, opts);
+  return CATEGORIES.map(function (c) {
+    return { key:c.key, label:c.label,
+             items:todos.filter(function (i) { return i.categoria === c.key; }) };
+  }).filter(function (g) { return g.items.length; });
+}
+
+/* ============================================================
+   EXPORTA
+   ============================================================ */
+return {
+  VERSION:VERSION, DEFAULT_DAYS:DEFAULT_DAYS,
+  ESTADO:ESTADO, ESTADOS:ESTADOS, ORIGEN:ORIGEN, ORIGEN_PRECEDENCIA:ORIGEN_PRECEDENCIA,
+  HISTORY_PROMOTE_AT:HISTORY_PROMOTE_AT, HISTORY_SUPPRESS_AT:HISTORY_SUPPRESS_AT,
+  MAX_AI_ITEMS:MAX_AI_ITEMS,
+  CATEGORIES:CATEGORIES, TRIP_TYPES:TRIP_TYPES, BASE_RULES:BASE_RULES, FACTS:FACTS,
+  AR_IATA:AR_IATA, AR_HINTS:AR_HINTS, FOREIGN_HINTS:FOREIGN_HINTS, TYPE_HINTS:TYPE_HINTS,
+
+  generatePackingList:generatePackingList,
+  buildPackingList:buildPackingList,
+  enrichWithDestination:enrichWithDestination,
+  mergeLists:mergeLists,
+  learnFromHistory:learnFromHistory,
+  suggestTripType:suggestTripType,
+  tripContext:tripContext,
+  deduceInternational:deduceInternational,
+
+  destinationPrompt:destinationPrompt,
+  parseDestinationItems:parseDestinationItems,
+
+  setItemState:setItemState, packItem:packItem, dismissItem:dismissItem, resetItem:resetItem,
+  stateUpdatePatch:stateUpdatePatch, setQty:setQty,
+  addManualItem:addManualItem, removeManualItem:removeManualItem,
+  packingProgress:packingProgress, itemList:itemList, groupByCategory:groupByCategory,
+
+  slug:slug, normalizeTripType:normalizeTripType, daysBetweenInclusive:daysBetweenInclusive,
+  matchesCondition:matchesCondition, computeQty:computeQty, validateRules:validateRules,
+  lowestOrigin:lowestOrigin, itemsArray:itemsArray
+};
+})();
+
+/* ---------- catálogos derivados del motor, para la interfaz ---------- */
+const TYPE_LABEL = PackingEngine.TRIP_TYPES.reduce((m,t)=>{ m[t.key]=t.label; return m; },{});
+const TYPE_ICON = { playa:"beach", ciudad:"city", montana:"mountain", trabajo:"work", aventura:"adv", mixto:"mix" };
+const CAT_ICON = { documentacion:"doc", ropa:"shirt", calzado:"shoe", higiene:"drop", electronica:"plug", salud:"health", destino:"globe", otros:"doc" };
+
+/** Chip de origen de un ítem, con el destino real del viaje (no "Madrid" fijo). */
+function srcChip(it, trip){
+  if(it.origen === "historial") return {cls:"chip accent", tx:"tus viajes"};
+  if(it.origen === "destino")   return {cls:"chip soon",   tx:`por ${trip.destination || "el destino"}`};
+  if(it.origen === "manual")    return {cls:"chip own",    tx:"lo pusiste vos"};
+  return {cls:"chip", tx:"lista base"};
+}
+
+/* ============================================================
    ROUTER
    ============================================================ */
 const App = { view:"home", tripId:null, tab:"plan" };
 
 function readHash(){
   const h = location.hash.replace(/^#\/?/,"");
-  const [a,b] = h.split("/");
-  if(a==="trip" && b){ App.view="trip"; App.tripId=b; }
+  const [a,b,c] = h.split("/");
+  if(a==="trip" && b && c==="valija"){ App.view="packing"; App.tripId=b; }
+  else if(a==="trip" && b){ App.view="trip"; App.tripId=b; }
   else { App.view="home"; App.tripId=null; }
 }
 function go(hash){ location.hash = hash; }
-window.addEventListener("hashchange", ()=>{ readHash(); Store.watch(App.tripId); render(); });
+window.addEventListener("hashchange", ()=>{ readHash(); Store.watch(App.tripId); Store.watchPacking(App.tripId); render(); });
 
 /* ============================================================
    RENDER
@@ -768,6 +2265,11 @@ function render(){
     if(!trip && Store.ready){ go(""); return; }
     if(!trip) return;
     renderTrip(trip);
+  } else if(App.view==="packing"){
+    const trip = Store.trips.get(App.tripId);
+    if(!trip && Store.ready){ go(""); return; }
+    if(!trip) return;
+    renderPacking(trip);
   } else {
     renderHome();
   }
@@ -877,6 +2379,58 @@ function cardTrip(t){
   </button>`;
 }
 
+/* ---------- tira de entrada a la valija, arriba del segmentado ---------- */
+function renderPackingEntry(trip, list){
+  const dd = daysUntil(trip.startDate);
+  if(list && list.conteo){
+    const c = list.conteo;
+    const pctPack = c.total ? c.empacados/c.total*100 : 0;
+    const pctDrop = c.total ? c.descartados/c.total*100 : 0;
+    if(c.pendientes > 0){
+      return `<button class="vj-entry live" id="vjentry">
+        <span class="band"></span>
+        <span class="bd">
+          <span class="t">Valija</span>
+          <span class="pk-prog">
+            <span class="pk-bar"><i class="p" style="width:${pctPack}%"></i><i class="d" style="width:${pctDrop}%"></i></span>
+            <span class="n"><b>${c.empacados}</b> de ${c.total} · faltan ${c.pendientes}</span>
+          </span>
+        </span>
+        <span class="go">${svg(I.chev)}</span>
+      </button>`;
+    }
+    return `<button class="vj-entry done" id="vjentry">
+      <span class="band"></span>
+      <span class="bd">
+        <span class="t">Valija lista</span>
+        <span class="pk-prog full">
+          <span class="pk-bar"><i class="p" style="width:${pctPack}%"></i><i class="d" style="width:${pctDrop}%"></i></span>
+          <span class="n"><b>${c.empacados}</b> de ${c.total}${c.descartados?` · ${c.descartados} descartados`:""}</span>
+        </span>
+      </span>
+      <span class="go">${svg(I.chev)}</span>
+    </button>`;
+  }
+  if(dd!==null && dd>=0 && dd<3){
+    return `<button class="vj-entry due" id="vjentry">
+      <span class="band"></span>
+      <span class="bd">
+        <span class="t">Valija <span class="chip soon">${dd===0?"salís hoy":`salís en ${dd} ${dd===1?"día":"días"}`}</span></span>
+        <span class="s">Todavía no armaste la lista</span>
+      </span>
+      <span class="go">${svg(I.chev)}</span>
+    </button>`;
+  }
+  return `<button class="vj-entry" id="vjentry">
+    <span class="band"></span>
+    <span class="bd">
+      <span class="t">Valija</span>
+      <span class="s">Armá la lista de lo que llevás</span>
+    </span>
+    <span class="go">${svg(I.chev)}</span>
+  </button>`;
+}
+
 /* ---------- TRIP ---------- */
 function renderTrip(trip){
   const items = Store.itemsOf(trip.id);
@@ -911,7 +2465,11 @@ function renderTrip(trip){
       </button>
     </div>`;
 
-  $main.innerHTML = seg + (App.tab==="plan" ? viewPlan(trip,items) : viewTodo(trip,alerts));
+  $main.innerHTML = renderPackingEntry(trip, Store.packingOf(trip.id)) + seg
+    + (App.tab==="plan" ? viewPlan(trip,items) : viewTodo(trip,alerts));
+
+  const vjentry = document.getElementById("vjentry");
+  if(vjentry) vjentry.onclick = ()=> go(`#/trip/${trip.id}/valija`);
 
   $main.querySelectorAll("[data-tab]").forEach(b=>{
     b.onclick = ()=>{ App.tab = b.dataset.tab; render(); };
@@ -1075,6 +2633,427 @@ function viewTodo(trip, alerts){
     <div class="notice" style="margin-top:4px">${svg(I.bell)}
       <div>Los avisos por correo llegan en la próxima iteración. Por ahora este panel es tu checklist y viaja con el link compartido.</div>
     </div>`;
+}
+
+/* ============================================================
+   VALIJA INTELIGENTE — pantalla propia (VAL-30..33)
+   No es una pestaña del segmentado: `App.view==="packing"` es una
+   tercera vista del router, hermana de "trip", que reusa `App.tripId`.
+   Ver docs/design/valija-inteligente.md, sección 5.3.
+
+   Estado efímero de esta pantalla, en memoria, NO en el documento
+   guardado: qué categorías se abrieron/cerraron a mano, si se está
+   generando, si el aviso de "recién ajustado por destino" ya se
+   mostró, y el tipo de viaje elegido a mano en el selector.
+   ============================================================ */
+let PK = { tripId:null, generating:false, justEnriched:false, openCats:{}, adding:null, pickingType:false, selectedType:null, typeCounts:null };
+function resetPKIfNeeded(tripId){
+  if(PK.tripId !== tripId){
+    PK = { tripId, generating:false, justEnriched:false, openCats:{}, adding:null, pickingType:false, selectedType:null, typeCounts:null };
+  }
+}
+
+function packingHeader(trip, list, opts){
+  opts = opts || {};
+  const tagParts = [trip.destination, (list && !opts.noType) ? TYPE_LABEL[list.tipoViaje] : null].filter(Boolean);
+  const tagTxt = tagParts.length ? tagParts.join(" · ") : "Valija";
+  return `<div class="hdr-row">
+    <button class="iconbtn" id="pk-back" aria-label="Volver">${svg(I.back)}</button>
+    <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">${esc(tagTxt)}</span></div>
+    ${opts.info===false ? "" : `<button class="iconbtn" id="pk-info" aria-label="De dónde sale esta lista">${svg(I.info)}</button>`}
+  </div>`;
+}
+function bindPackingHeader(trip, onInfo){
+  document.getElementById("pk-back").onclick = ()=> go(`#/trip/${trip.id}`);
+  const infoBtn = document.getElementById("pk-info");
+  if(infoBtn) infoBtn.onclick = onInfo || (()=>{});
+}
+
+function pkProgHtml(list){
+  const c = list.conteo || PackingEngine.packingProgress(list);
+  const pctPack = c.total ? c.empacados/c.total*100 : 0;
+  const pctDrop = c.total ? c.descartados/c.total*100 : 0;
+  const full = c.total>0 && c.pendientes===0;
+  const text = full
+    ? `<b>${c.empacados}</b> de ${c.total}${c.descartados?` · ${c.descartados} descartados`:""}`
+    : `<b>${c.empacados}</b> de ${c.total} · faltan ${c.pendientes}`;
+  return `<span class="pk-prog ${full?"full":""}" role="progressbar" aria-valuemin="0" aria-valuemax="${c.total}"
+      aria-valuenow="${c.resueltos}" aria-valuetext="${c.empacados} empacados y ${c.descartados} descartados de ${c.total}">
+    <span class="pk-bar"><i class="p" style="width:${pctPack}%"></i><i class="d" style="width:${pctDrop}%"></i></span>
+    <span class="n">${text}</span>
+  </span>`;
+}
+
+function pkRowHtml(it, trip, canWrite){
+  const ST_MAP = {pendiente:"pend", empacado:"pack", descartado:"drop"};
+  const st = ST_MAP[it.estado] || "pend";
+  const drop = st === "drop";
+  const src = srcChip(it, trip);
+  const stateIcon = st==="drop" ? svg(I.dash) : (st==="pack" || canWrite) ? svg(I.check) : "";
+  const why = drop ? "" : `<span class="pk-why"><span class="${src.cls}">${esc(src.tx)}</span>${it.motivo?`<span class="r">${esc(it.motivo)}</span>`:""}</span>`;
+  const nm = `<span class="pk-nm"><span class="t">${esc(it.nombre)}</span>${it.cantidad?`<span class="q">×${esc(it.cantidad)}</span>`:""}</span>`;
+
+  if(!canWrite){
+    return `<div class="pk-row" data-st="${st}">
+      <span class="pk-slide">
+        <span class="pk-mark" style="cursor:default"><span class="pk-state">${stateIcon}</span></span>
+        <span class="pk-txt" style="cursor:default;padding-right:14px">${nm}${why}</span>
+      </span>
+    </div>`;
+  }
+  return `<div class="pk-row" data-st="${st}" data-row="${esc(it.clave)}">
+    <span class="pk-swipe">${svg(I.ban)} Descartar</span>
+    <span class="pk-slide">
+      <button class="pk-mark" data-mark="${esc(it.clave)}"
+              aria-label="${esc(it.nombre)}: ${esc(it.estado)}. ${drop?"Volver a la lista":"Marcar como empacado"}">
+        <span class="pk-state">${stateIcon}</span>
+      </button>
+      <button class="pk-txt" data-detail="${esc(it.clave)}">${nm}${why}</button>
+      ${drop
+        ? `<button class="pk-back" data-mark="${esc(it.clave)}">volver</button>`
+        : `<button class="pk-drop" data-dropbtn="${esc(it.clave)}" aria-label="Descartar ${esc(it.nombre)}">${svg(I.ban)}</button>`}
+    </span>
+  </div>`;
+}
+
+function pkCategoryHtml(cat, trip, canWrite){
+  const pend = cat.items.filter(i=>i.estado==="pendiente").length;
+  const packed = cat.items.filter(i=>i.estado==="empacado").length;
+  const full = cat.items.length>0 && pend===0;
+  const open = PK.openCats[cat.key] !== undefined ? PK.openCats[cat.key] : !full;
+  const icon = CAT_ICON[cat.key] || "doc";
+  return `<div class="pk-cat ${full?"full":""}" data-open="${open}">
+    <button class="pk-cat-hd" aria-expanded="${open}" data-cat="${esc(cat.key)}">
+      <span class="pk-cat-ico">${svg(I[icon])}</span>
+      <span class="nm">${esc(cat.label)}</span>
+      <span class="cnt">${full?`<span class="chip ok">listo</span>`:`${packed} de ${cat.items.length}`}</span>
+      ${svg(I.chevd,"chev")}
+    </button>
+    <div class="pk-body-wrap">
+      ${cat.items.map(it=>pkRowHtml(it,trip,canWrite)).join("")}
+      ${canWrite ? (PK.adding===cat.key
+        ? `<div class="pk-addform">
+             <input id="pk-add-${esc(cat.key)}" placeholder="Qué te falta" autocomplete="off">
+             <button class="btn primary sm" data-pksave="${esc(cat.key)}">Agregar</button>
+           </div>`
+        : `<button class="pk-add" data-pkadd="${esc(cat.key)}">${svg(I.plus)} Agregar a ${esc(cat.label.toLowerCase())}</button>`) : ""}
+    </div>
+  </div>`;
+}
+
+/* ---------- generar / regenerar ---------- */
+async function runGenerate(trip, tipoViaje, previous){
+  const items = Store.itemsOf(trip.id);
+  let history = [];
+  try{ history = await Store.packingHistory(trip.id); }catch(e){ history = []; }
+  const base = PackingEngine.buildPackingList({ trip, items, tipoViaje, history });
+  const interim = previous ? PackingEngine.mergeLists(previous, base) : base;
+
+  if(PK.tripId === trip.id) PK.generating = true;
+  try{ await Store.savePacking(trip.id, interim); }
+  catch(e){
+    toast(writeErr(e), true);
+    if(PK.tripId === trip.id){ PK.generating = false; render(); }
+    return;
+  }
+  if(PK.tripId === trip.id) render();
+
+  let sample = null;
+  try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
+  const ask = sample ? (prompt) => sample.json(prompt, { modelTier:"complex" }) : null;
+
+  let enriched;
+  try{ enriched = await PackingEngine.enrichWithDestination(base, ask); }
+  catch(e){ enriched = base; }
+
+  // Mezclamos contra lo que haya guardado AHORA (no contra `interim` de más
+  // arriba): si mientras la IA respondía la persona ya marcó o descartó algo,
+  // esa acción no se pierde al guardar el resultado final.
+  const latest = Store.packingOf(trip.id) || interim;
+  const final = PackingEngine.mergeLists(latest, enriched);
+
+  if(PK.tripId === trip.id){
+    PK.generating = false;
+    PK.justEnriched = !!(final.capaInteligente && final.capaInteligente.estado === "ok");
+  }
+  try{ await Store.savePacking(trip.id, final); }
+  catch(e){ toast(writeErr(e), true); }
+  if(PK.tripId === trip.id) render();
+}
+
+async function applyItemState(trip, list, clave, estado){
+  PK.justEnriched = false;   // tocar un ítem también da por leído el aviso de ajuste por destino
+  try{
+    const patch = PackingEngine.stateUpdatePatch(clave, estado);
+    await Store.savePackingPatch(trip.id, patch);
+  }catch(e){ toast(writeErr(e), true); }
+}
+
+function bindPackingRows(main, trip, list, canWrite){
+  main.querySelectorAll("[data-cat]").forEach(b=>{
+    b.onclick = ()=>{
+      const catEl = b.parentElement;
+      PK.openCats[b.dataset.cat] = catEl.dataset.open !== "true";
+      render();
+    };
+  });
+
+  if(!canWrite) return;
+
+  main.querySelectorAll("[data-mark]").forEach(b=> b.onclick = ()=>{
+    const clave = b.dataset.mark, it = list.items[clave]; if(!it) return;
+    delete PK.openCats[it.categoria];
+    const next = it.estado === "pendiente" ? "empacado" : "pendiente";
+    applyItemState(trip, list, clave, next);
+  });
+  main.querySelectorAll("[data-dropbtn]").forEach(b=> b.onclick = ()=>{
+    const clave = b.dataset.dropbtn, it = list.items[clave]; if(!it) return;
+    delete PK.openCats[it.categoria];
+    applyItemState(trip, list, clave, "descartado");
+  });
+  main.querySelectorAll("[data-detail]").forEach(b=> b.onclick = ()=>{
+    sheetPackingItem(trip, list, b.dataset.detail);
+  });
+  main.querySelectorAll("[data-pkadd]").forEach(b=> b.onclick = ()=>{
+    PK.adding = b.dataset.pkadd; render();
+    setTimeout(()=> document.getElementById("pk-add-"+PK.adding)?.focus(), 0);
+  });
+  main.querySelectorAll("[data-pksave]").forEach(b=> b.onclick = async ()=>{
+    const cat = b.dataset.pksave;
+    const inp = document.getElementById("pk-add-"+cat);
+    const nombre = (inp.value||"").trim();
+    PK.adding = null;
+    if(!nombre){ render(); return; }
+    const updated = PackingEngine.addManualItem(list, {nombre, categoria:cat});
+    try{ await Store.savePacking(trip.id, updated); }
+    catch(e){ toast(writeErr(e), true); render(); }
+  });
+  main.querySelectorAll(".pk-addform input").forEach(inp=>{
+    inp.onkeydown = e=>{
+      if(e.key==="Enter") main.querySelector("[data-pksave]")?.click();
+      if(e.key==="Escape"){ PK.adding=null; render(); }
+    };
+  });
+
+  /* deslizar: izquierda descarta, derecha marca/desmarca. Sin puntería. */
+  main.querySelectorAll(".pk-row[data-row]").forEach(row=>{
+    const slide = row.querySelector(".pk-slide");
+    let x0=null, dx=0;
+    row.addEventListener("pointerdown", e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
+      x0 = e.clientX; dx = 0; slide.style.transition = "none";
+    });
+    row.addEventListener("pointermove", e=>{
+      if(x0===null) return;
+      dx = e.clientX - x0;
+      if(Math.abs(dx) > 6) slide.style.transform = `translateX(${Math.max(-120, Math.min(120, dx))}px)`;
+    });
+    const end = ()=>{
+      if(x0===null) return;
+      slide.style.transition = ""; slide.style.transform = "";
+      const clave = row.dataset.row, it = list.items[clave];
+      const localDx = dx; x0 = null; dx = 0;
+      if(!it) return;
+      if(localDx < -70){ delete PK.openCats[it.categoria]; applyItemState(trip, list, clave, "descartado"); }
+      else if(localDx > 70){ delete PK.openCats[it.categoria]; applyItemState(trip, list, clave, it.estado==="empacado" ? "pendiente" : "empacado"); }
+    };
+    row.addEventListener("pointerup", end);
+    row.addEventListener("pointercancel", end);
+    row.addEventListener("pointerleave", end);
+    row.addEventListener("click", e=>{ if(Math.abs(dx) > 10){ e.preventDefault(); e.stopPropagation(); } }, true);
+  });
+}
+
+/* ---------- 03: sin fechas ---------- */
+function renderPackingBlocked(trip){
+  $hdr.innerHTML = packingHeader(trip, null, {info:false});
+  bindPackingHeader(trip);
+  $main.innerHTML = `<div class="empty" style="padding:26px 20px">
+    <h3>Necesito las fechas del viaje</h3>
+    <p>Las cantidades salen de los días que te quedás. Cargá la salida y el regreso y armo la lista.</p>
+  </div>`;
+  if(Store.canWrite){
+    $fab.innerHTML = `<div class="fab"><button class="btn primary block" id="pk-dates">${svg(I.edit)} Cargar las fechas</button></div>`;
+    document.getElementById("pk-dates").onclick = ()=> sheetTrip(trip);
+  } else {
+    $fab.innerHTML = "";
+  }
+}
+
+/* ---------- 01/02: selector de tipo de viaje (también "cambiar el tipo") ---------- */
+function typeSelectorFab(trip, list){
+  if(!list){
+    return `<div class="fab"><button class="btn primary block" id="pk-build" ${Store.canWrite?"":"disabled"}>${svg(I.spark)} Armar la lista</button></div>`;
+  }
+  return `<div class="fab"><button class="btn block" id="pk-canceltype">Cancelar</button><button class="btn primary block" id="pk-confirmtype" ${Store.canWrite?"":"disabled"}>${svg(I.spark)} Usar este tipo</button></div>`;
+}
+
+function renderTypeSelector(trip, list){
+  $hdr.innerHTML = packingHeader(trip, null, {info:false});
+  bindPackingHeader(trip);
+
+  const items = Store.itemsOf(trip.id);
+  const ctx = PackingEngine.tripContext(trip, items, {});
+  const suggested = ctx.tripType;
+  const chosen = PK.selectedType || (list ? list.tipoViaje : suggested);
+
+  const [, toCode] = routeCodes(trip, items);
+  const chips = [
+    toCode ? `<span class="chip accent">${esc(toCode)}</span>` : "",
+    `<span class="chip">${esc(fmtRange(trip.startDate, trip.endDate))}</span>`,
+    `<span class="chip">${ctx.days} ${ctx.days===1?"día":"días"}</span>`,
+    trip.travelers ? `<span class="chip">${esc(trip.travelers)}</span>` : ""
+  ].filter(Boolean).join("");
+
+  const counts = PK.typeCounts || {};
+  const rows = PackingEngine.TRIP_TYPES.map(t=>{
+    const n = counts[t.key];
+    const pressed = chosen === t.key;
+    return `<button type="button" aria-pressed="${pressed}" class="${n?"used":""}" data-t="${t.key}">
+      ${svg(I[TYPE_ICON[t.key]])} ${esc(t.label)} <span class="n">${n?`${n} ${n===1?"viaje":"viajes"}`:"—"}</span></button>`;
+  }).join("");
+
+  const suggestedLabel = TYPE_LABEL[suggested] || suggested;
+  const hint = chosen === suggested
+    ? `Te propongo <b>${esc(suggestedLabel)}</b>: ${esc(ctx.tripTypeReason || "por el destino y las fechas del viaje.")}${counts[suggested] ? ` Ya usaste ese tipo en ${counts[suggested]} ${counts[suggested]===1?"viaje":"viajes"} anteriores.` : ""}`
+    : "";
+  const warnBlock = (chosen !== suggested) ? `<div class="notice warn">
+      ${svg(I.info)}
+      <span class="bd">Con <b>${esc(TYPE_LABEL[chosen])}</b> ${counts[chosen] ? `tengo ${counts[chosen]} ${counts[chosen]===1?"viaje":"viajes"} tuyos de ese tipo` : "arranco casi de cero"}. En <b>${esc(suggestedLabel)}</b> ${counts[suggested] ? `ya tengo ${counts[suggested]}` : "no tengo ninguno"}: ${esc(ctx.tripTypeReason)}
+        <button class="act" id="pk-usesugg">Usar ${esc(suggestedLabel)}</button></span>
+    </div>` : "";
+
+  $main.innerHTML = `
+    <div class="pk-inputs">${chips}</div>
+    ${!list ? `<div class="empty" style="padding:24px 20px">
+      <h3>Todavía no armaste la valija</h3>
+      <p>Te propongo qué llevar según el destino, las fechas, los días que te quedás y lo que agregaste a mano en viajes del mismo tipo. Todo lo que sugiera lo podés sacar.</p>
+    </div>` : ""}
+    <div class="f">
+      <label>Tipo de viaje</label>
+      <div class="tp tp3" id="pk-tp">${rows}</div>
+      ${hint ? `<span class="hint">${hint}</span>` : ""}
+    </div>
+    ${warnBlock}
+  `;
+
+  $fab.innerHTML = typeSelectorFab(trip, list);
+
+  document.querySelectorAll("#pk-tp [data-t]").forEach(b=>{
+    b.onclick = ()=>{ PK.selectedType = b.dataset.t; render(); };
+  });
+  const useSugg = document.getElementById("pk-usesugg");
+  if(useSugg) useSugg.onclick = ()=>{ PK.selectedType = suggested; render(); };
+
+  if(!list){
+    const build = document.getElementById("pk-build");
+    if(build && Store.canWrite){
+      build.onclick = ()=>{ const t = chosen; PK.selectedType = null; runGenerate(trip, t, null); };
+    }
+  } else {
+    const cancel = document.getElementById("pk-canceltype");
+    const confirm = document.getElementById("pk-confirmtype");
+    if(cancel) cancel.onclick = ()=>{ PK.pickingType = false; PK.selectedType = null; render(); };
+    if(confirm && Store.canWrite){
+      confirm.onclick = ()=>{ const t = chosen; PK.pickingType = false; PK.selectedType = null; runGenerate(trip, t, list); };
+    }
+  }
+
+  if(!PK.typeCounts){
+    Store.packingHistory(trip.id).then(hist=>{
+      const c = {};
+      hist.forEach(l=>{ if(l && l.tipoViaje) c[l.tipoViaje] = (c[l.tipoViaje]||0)+1; });
+      PK.typeCounts = c;
+      if(PK.tripId===trip.id) render();
+    });
+  }
+}
+
+/* ---------- 04/06/07/08/09/10: la lista, en todos sus estados ---------- */
+function renderPackingBoard(trip, list){
+  const canWrite = Store.canWrite;
+  const generating = PK.generating;
+  const c = list.conteo || PackingEngine.packingProgress(list);
+  const complete = c.total>0 && c.pendientes===0;
+  const cap = list.capaInteligente || {};
+
+  const degradedChip = (!generating && (cap.estado==="no-disponible" || cap.estado==="error"))
+    ? `<span class="chip">sin ajuste por destino</span>` : "";
+  const readonlyChip = !canWrite ? `<span class="chip soon">sólo lectura</span>` : "";
+
+  $hdr.innerHTML = packingHeader(trip, list) + `<div class="hdr-sub">${pkProgHtml(list)}${degradedChip}${readonlyChip}</div>`;
+  bindPackingHeader(trip, ()=> sheetPackingInfo(trip, list));
+
+  const destino = trip.destination || "tu destino";
+  let notices = "";
+  if(generating){
+    notices += `<div class="notice"><span class="spin"></span><span class="bd">Buscando lo específico de ${esc(destino)}…</span></div>`;
+  } else {
+    // Se muestra hasta que se cierra a mano o hasta la próxima acción sobre
+    // un ítem (marcar/descartar): no se apaga sola en el primer re-render,
+    // porque guardar dispara más de un render seguido (local y en la nube).
+    if(PK.justEnriched && cap.estado==="ok"){
+      notices += `<div class="notice ok">${svg(I.spark)}<span class="bd">${esc(cap.nota||"Ajusté la lista al destino.")}</span>
+        <button class="x" aria-label="Cerrar" id="pk-closefresh">${svg(I.x)}</button></div>`;
+    }
+    if(cap.estado==="no-disponible" || cap.estado==="error"){
+      notices += `<div class="notice warn">${svg(I.info)}<span class="bd">Armé la lista con las reglas de siempre. No pude ajustarla a ${esc(destino)}, así que puede faltarte algo del lugar.
+        ${canWrite?`<button class="act" id="pk-retry">Probar de nuevo</button>`:""}</span></div>`;
+    }
+    if(complete){
+      const typeLbl = (TYPE_LABEL[list.tipoViaje]||"").toLowerCase();
+      notices += `<div class="notice ok">${svg(I.check2)}<span class="bd">Valija lista.${c.descartados?` Los ${c.descartados} que descartaste ya quedaron anotados para tu próximo viaje${typeLbl?` de ${typeLbl}`:""}.`:""}</span></div>`;
+    }
+    if(!canWrite){
+      notices += `<div class="notice">${svg(I.info)}<span class="bd">Estás viendo la valija de este viaje. Para marcar lo tuyo necesitás permiso de edición.</span></div>`;
+    }
+  }
+
+  const grouped = PackingEngine.groupByCategory(list);
+  const groups = grouped.map(g=> pkCategoryHtml(g, trip, canWrite));
+  const destGroupExists = grouped.some(g=>g.key==="destino");
+
+  const skeletonCat = (generating && !destGroupExists) ? `
+    <div class="pk-cat" data-open="true">
+      <div class="pk-cat-hd">
+        <span class="pk-cat-ico">${svg(I.globe)}</span>
+        <span class="nm">Específicos de ${esc(destino)}</span>
+        <span class="cnt sk" style="width:38px;height:12px;border-radius:5px;display:inline-block"></span>
+        ${svg(I.chevd,"chev")}
+      </div>
+      <div class="pk-body-wrap">
+        <div class="pk-row loading"><span class="sk" style="width:52%"></span><span class="sk" style="width:74%"></span></div>
+        <div class="pk-row loading"><span class="sk" style="width:41%"></span><span class="sk" style="width:66%"></span></div>
+        <div class="pk-row loading"><span class="sk" style="width:58%"></span><span class="sk" style="width:47%"></span></div>
+      </div>
+    </div>` : "";
+
+  $main.innerHTML = notices + groups.join("") + skeletonCat;
+
+  if(canWrite && !generating){
+    $fab.innerHTML = `<div class="fab"><button class="btn primary block" id="pk-additem">${svg(I.plus)} Agregar ítem</button></div>`;
+    document.getElementById("pk-additem").onclick = ()=> sheetAddPackingItem(trip, list);
+  } else {
+    $fab.innerHTML = "";
+  }
+
+  bindPackingRows($main, trip, list, canWrite);
+
+  const closeFresh = document.getElementById("pk-closefresh");
+  if(closeFresh) closeFresh.onclick = ()=> render();
+  const retry = document.getElementById("pk-retry");
+  if(retry) retry.onclick = ()=> runGenerate(trip, list.tipoViaje, list);
+}
+
+/* ---------- despachador de estados ---------- */
+function renderPacking(trip){
+  resetPKIfNeeded(trip.id);
+  const list = Store.packingOf(trip.id);
+  const hasDates = !!(trip.startDate && trip.endDate);
+
+  if(!list && !hasDates && !PK.pickingType){ renderPackingBlocked(trip); return; }
+  if((!list && hasDates) || PK.pickingType){ renderTypeSelector(trip, list); return; }
+  renderPackingBoard(trip, list);
 }
 
 /* ============================================================
@@ -1493,6 +3472,157 @@ function sheetAbout(){
   document.getElementById("cancel").onclick = closeSheet;
 }
 
+/* ---------- valija: agregar un ítem propio (FAB de la lista) ---------- */
+function sheetAddPackingItem(trip, list){
+  openSheet("Agregar ítem", `
+    <div class="f req"><label for="pk_new_nombre">Qué te falta</label>
+      <input id="pk_new_nombre" placeholder="Ej: Cargador del reloj" autocomplete="off"></div>
+    <div class="f"><label for="pk_new_cat">Categoría</label>
+      <select id="pk_new_cat">
+        ${PackingEngine.CATEGORIES.map(c=>`<option value="${esc(c.key)}">${esc(c.label)}</option>`).join("")}
+      </select></div>
+  `, `<button class="btn ghost" id="cancel">Cancelar</button>
+      <button class="btn primary" id="save">Agregar</button>`);
+  document.getElementById("cancel").onclick = closeSheet;
+  document.getElementById("save").onclick = async ()=>{
+    const nombre = val("pk_new_nombre");
+    if(!nombre){ toast("Poné qué te falta", true); return; }
+    const categoria = document.getElementById("pk_new_cat").value;
+    const updated = PackingEngine.addManualItem(list, {nombre, categoria});
+    try{ await Store.savePacking(trip.id, updated); closeSheet(); toast("Ítem agregado"); }
+    catch(e){ toast(writeErr(e), true); }
+  };
+}
+
+/* ---------- valija: detalle de un ítem (estado 11) ---------- */
+function sheetPackingItem(trip, list, clave){
+  const it = list.items[clave]; if(!it) return;
+  const canWrite = Store.canWrite;
+  const src = srcChip(it, trip);
+
+  const stateHtml = `
+    <div class="f">
+      <label>Estado</label>
+      <div class="pk-states">
+        <button type="button" data-s="pendiente" aria-pressed="${it.estado==="pendiente"}"><span class="pk-state"></span> Pendiente</button>
+        <button type="button" data-s="empacado" aria-pressed="${it.estado==="empacado"}"><span class="pk-state">${svg(I.check)}</span> Empacado</button>
+        <button type="button" data-s="descartado" aria-pressed="${it.estado==="descartado"}"><span class="pk-state">${svg(I.dash)}</span> Descartado</button>
+      </div>
+      <span class="hint">Descartar no es lo mismo que dejarlo pendiente: me dice que este ítem no va. Si lo descartás en dos viajes del mismo tipo, dejo de sugerírtelo.</span>
+    </div>`;
+
+  const qtyHtml = (it.cantidad!=null) ? `
+    <hr class="hr">
+    <div class="f">
+      <label>Cuántos llevás</label>
+      <div class="pk-qty">
+        <button type="button" id="pk-qty-minus" aria-label="Uno menos">${svg(I.minus)}</button>
+        <span class="v" id="pk-qty-val">${esc(it.cantidad)}</span>
+        <button type="button" id="pk-qty-plus" aria-label="Uno más">${svg(I.plus)}</button>
+      </div>
+    </div>` : "";
+
+  const originHtml = `
+    <hr class="hr">
+    <div class="f">
+      <label>De dónde sale</label>
+      <div class="chips" style="margin:2px 0 4px"><span class="${src.cls}">${esc(src.tx)}</span></div>
+      <p style="margin:0;font-size:13.5px;line-height:1.5">${esc(it.motivo || "Sin motivo declarado.")}</p>
+    </div>`;
+
+  let qty = it.cantidad;
+  let estado = it.estado;
+
+  openSheet(it.nombre, stateHtml + qtyHtml + originHtml,
+    canWrite ? `<button class="btn ghost" id="cancel">Cancelar</button><button class="btn primary" id="save">Guardar</button>`
+             : `<button class="btn block" id="cancel">Cerrar</button>`);
+
+  document.getElementById("cancel").onclick = closeSheet;
+  if(!canWrite) return;
+
+  document.querySelectorAll(".pk-states [data-s]").forEach(b=>{
+    b.onclick = ()=>{
+      estado = b.dataset.s;
+      document.querySelectorAll(".pk-states [data-s]").forEach(x=> x.setAttribute("aria-pressed", String(x.dataset.s===estado)));
+    };
+  });
+  const qmin = document.getElementById("pk-qty-minus"), qpl = document.getElementById("pk-qty-plus"), qval = document.getElementById("pk-qty-val");
+  if(qmin){
+    qmin.onclick = ()=>{ qty = Math.max(0, (qty||0)-1); qval.textContent = qty; };
+    qpl.onclick = ()=>{ qty = (qty||0)+1; qval.textContent = qty; };
+  }
+
+  document.getElementById("save").onclick = async ()=>{
+    const fields = {};
+    if(estado !== it.estado){
+      fields.estado = estado;
+      fields.empacadoEn = estado === "empacado" ? (it.empacadoEn || new Date().toISOString()) : null;
+    }
+    if(qty !== it.cantidad){
+      fields.cantidad = qty; fields.cantidadEditada = true; fields.motivo = "Lo ajustaste vos.";
+    }
+    if(!Object.keys(fields).length){ closeSheet(); return; }
+    const now = new Date().toISOString();
+    fields.actualizadoEn = now;
+    try{
+      await Store.savePackingPatch(trip.id, { items:{ [clave]:fields }, actualizadaEn:now });
+      closeSheet();
+    }catch(e){ toast(writeErr(e), true); }
+  };
+}
+
+/* ---------- valija: de dónde sale la lista (estado 12) ---------- */
+function sheetPackingInfo(trip, list){
+  const b = list.base || {};
+  const muestra = (list.aprendizaje && list.aprendizaje.muestra) || 0;
+  const typeLbl = TYPE_LABEL[list.tipoViaje] || list.tipoViaje || "";
+  const d = parseDT(b.desde);
+  const destMes = [b.destino, d?MESL[d.getMonth()]:null].filter(Boolean).join(" · ") || "sin destino";
+
+  openSheet("De dónde sale esta lista", `
+    <p style="margin:0;font-size:13.5px;line-height:1.55">Miro cuatro cosas de este viaje:</p>
+    <div class="pk-inputs">
+      <span class="chip accent">${esc(typeLbl)}</span>
+      <span class="chip">${esc(destMes)}</span>
+      <span class="chip">${b.dias||"—"} ${b.dias===1?"día":"días"}</span>
+      <span class="chip">${muestra} ${muestra===1?"viaje":"viajes"} de ${esc(typeLbl.toLowerCase())} anteriores</span>
+    </div>
+    <hr class="hr">
+    <div class="stack" style="gap:12px">
+      <div class="sec-head"><span class="eyebrow">Qué dice cada marca</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span class="chip" style="margin-top:2px">lista base</span>
+        <span class="tiny muted" style="flex:1;line-height:1.5">Las reglas de siempre: documentación, electrónica y ropa por cantidad de días. Salen sin conexión.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span class="chip accent" style="margin-top:2px">tus viajes</span>
+        <span class="tiny muted" style="flex:1;line-height:1.5">Lo que aprendí de vos. Si agregaste algo a mano en dos viajes del mismo tipo, la próxima ya te lo propongo.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span class="chip soon" style="margin-top:2px">por ${esc(b.destino||"el destino")}</span>
+        <span class="tiny muted" style="flex:1;line-height:1.5">El ajuste por destino y época: clima, enchufes, costumbres del lugar. Es lo único que necesita conexión.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span class="chip own" style="margin-top:2px">lo pusiste vos</span>
+        <span class="tiny muted" style="flex:1;line-height:1.5">Lo que agregaste a mano en este viaje.</span>
+      </div>
+    </div>
+    <hr class="hr">
+    <p class="tiny muted" style="margin:0;line-height:1.55">Lo que descartás también cuenta: si sacás lo mismo dos veces en viajes del mismo tipo, dejo de sugerírtelo.</p>
+    <p class="tiny muted" style="margin:0;line-height:1.55">Ningún ítem de esta lista tiene un negocio atrás. No hay links de compra ni marcas recomendadas, y no los va a haber.</p>
+  `, Store.canWrite ? `
+    <button class="btn" id="pk-changetype">Cambiar el tipo</button>
+    <button class="btn" id="pk-redo">Rehacer la lista</button>
+  ` : `<button class="btn block" id="cancel">Cerrar</button>`);
+
+  if(Store.canWrite){
+    document.getElementById("pk-changetype").onclick = ()=>{ closeSheet(); PK.pickingType = true; render(); };
+    document.getElementById("pk-redo").onclick = ()=>{ closeSheet(); runGenerate(trip, list.tipoViaje, list); };
+  } else {
+    document.getElementById("cancel").onclick = closeSheet;
+  }
+}
+
 /* ============================================================
    PDF — resumen de una página, tipo hoja de ruta
    ============================================================ */
@@ -1662,5 +3792,5 @@ async function exportPDF(trip){
 readHash();
 Store.on(render);
 render();
-Store.init().then(()=>{ Store.watch(App.tripId); render(); });
+Store.init().then(()=>{ Store.watch(App.tripId); Store.watchPacking(App.tripId); render(); });
 </script>
