@@ -67,7 +67,9 @@
                                             // ok|sin-ajuste|no-disponible|vacio|error
      aprendizaje:{ muestra:3, promovidos:[{clave,nombre,veces}], suprimidos:[...] },
      avisos:[{ codigo:"sin-fechas", texto:"..." }],
-     conteo:{ total:34, empacados:0, pendientes:34, descartados:0, pct:0 },
+     conteo:{ total:34, empacados:0, descartados:0, pendientes:34, resueltos:0, pct:0 },
+                                            // pct = (empacados+descartados)/total: descartar
+                                            // también es progreso. Ver packingProgress().
 
      items:{
        "remera": {
@@ -912,20 +914,39 @@ function itemList(list, opts) {
 }
 
 /**
- * Contador de empacado. Los descartados no cuentan para el total.
+ * Contador de la lista. El porcentaje mide cuánto de la lista la persona ya
+ * RESOLVIÓ, no cuánto entra en el bolso: descartar es una decisión tomada,
+ * tan resuelta como empacar. Por eso entra en `resueltos` y en el `pct`,
+ * y por eso `total` incluye los descartados en vez de restarlos.
+ *
+ * Decisión de producto (no es un detalle de implementación): si descartar
+ * no mueve el progreso, la persona deja de descartar y en cambio marca como
+ * empacado lo que no va a llevar, sólo para sacarse el pendiente de encima.
+ * Ahí se pierden dos cosas a la vez: el dato de descarte, que es el único
+ * insumo del aprendizaje de VAL-32, y la confiabilidad de lo que dice estar
+ * empacado. La fórmula tiene que premiar la conducta que se quiere: descartar
+ * lo que no corresponde es tan válido como empacar lo que sí.
+ *
+ *     resueltos = empacados + descartados
+ *     total     = todos los ítems, descartados incluidos
+ *     pct       = resueltos / total
+ *
  * @param {Object} list
- * @returns {{total:number, empacados:number, pendientes:number, descartados:number, pct:number}}
+ * @returns {{total:number, empacados:number, descartados:number, pendientes:number, resueltos:number, pct:number}}
  */
 function packingProgress(list) {
   var arr = itemsArray(list);
-  var vivos = arr.filter(function (i) { return i.estado !== ESTADO.DESCARTADO; });
-  var empacados = vivos.filter(function (i) { return i.estado === ESTADO.EMPACADO; }).length;
+  var empacados = arr.filter(function (i) { return i.estado === ESTADO.EMPACADO; }).length;
+  var descartados = arr.filter(function (i) { return i.estado === ESTADO.DESCARTADO; }).length;
+  var total = arr.length;
+  var resueltos = empacados + descartados;
   return {
-    total:vivos.length,
+    total:total,
     empacados:empacados,
-    pendientes:vivos.length - empacados,
-    descartados:arr.length - vivos.length,
-    pct:vivos.length ? Math.round(empacados / vivos.length * 100) : 0
+    descartados:descartados,
+    pendientes:total - resueltos,
+    resueltos:resueltos,
+    pct:total ? Math.round(resueltos / total * 100) : 0
   };
 }
 

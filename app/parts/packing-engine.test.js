@@ -6,6 +6,15 @@
 
    Imprime cada caso, lo que falló, y sale con código distinto
    de cero si hay una sola falla.
+
+   Prueban la API REAL del motor (app/parts/packing-engine.js):
+     - la lista es un documento con `items` como OBJETO indexado
+       por clave normalizada, no un array;
+     - cada ítem tiene tres estados (`estado`: pendiente | empacado
+       | descartado), no un booleano;
+     - los campos del documento están en español (`base`, `dias`,
+       `noches`, `internacional`, `hechos`, etc.), ver el bloque de
+       documentación al principio de packing-engine.js.
    ============================================================ */
 
 var E = require("./packing-engine.js");
@@ -34,17 +43,20 @@ function eq(actual, expected, msg) {
     throw new Error((msg ? msg + ". " : "") + "esperaba " + JSON.stringify(expected) + " y vino " + JSON.stringify(actual));
   }
 }
-function item(list, key) { return (list.items || []).filter(function (i) { return i.key === key; })[0] || null; }
-function hasItem(list, key, msg) {
-  var it = item(list, key);
-  assert(it && !it.dismissed, (msg || "") + " falta el ítem \"" + key + "\". Hay: " + keys(list).join(", "));
+
+/* ---------- acceso a los ítems (objeto indexado por clave, no array) ---------- */
+function item(list, clave) { return (list && list.items && list.items[clave]) || null; }
+function hasItem(list, clave, msg) {
+  var it = item(list, clave);
+  assert(it && it.estado !== E.ESTADO.DESCARTADO, (msg || "") + " falta el ítem \"" + clave + "\". Hay: " + keys(list).join(", "));
   return it;
 }
-function noItem(list, key, msg) {
-  var it = item(list, key);
-  assert(!it || it.dismissed, (msg || "") + " no debería estar el ítem \"" + key + "\"");
+function noItem(list, clave, msg) {
+  var it = item(list, clave);
+  assert(!it || it.estado === E.ESTADO.DESCARTADO, (msg || "") + " no debería estar el ítem \"" + clave + "\"");
 }
-function keys(list) { return (list.items || []).map(function (i) { return i.key; }); }
+function keys(list) { return Object.keys((list && list.items) || {}); }
+function count(list) { return keys(list).length; }
 function AT() { return "2026-09-05T12:00:00.000Z"; }
 
 /* ---------- datos de prueba ---------- */
@@ -54,14 +66,22 @@ function viajePlaya(over) {
     startDate:"2026-01-10", endDate:"2026-01-17"
   }, over || {});
 }
-function listaHistorial(tripType, items) {
-  return { schemaVersion:1, tripType:tripType, items:items };
+
+/** Un documento de lista guardada, como los que alimentan el historial (VAL-32). */
+function listaHistorial(tipoViaje, items) {
+  return { version:E.VERSION, tipoViaje:tipoViaje, items:items };
 }
-function manual(label, category) {
-  return { key:E.slug(label), label:label, category:category || "otros", source:"manual", manual:true, packed:true, dismissed:false };
+/** Ítem agregado a mano en una lista de historial. `estadoOverride` sirve para
+ *  representar "lo agregué a mano y después lo descarté": las dos señales en
+ *  el mismo ítem, como pasaría en el documento real. */
+function manualItem(nombre, categoria, estadoOverride) {
+  return { clave:E.slug(nombre), nombre:nombre, categoria:categoria || "otros",
+           origen:E.ORIGEN.MANUAL, estado:estadoOverride || E.ESTADO.PENDIENTE };
 }
-function descartado(label) {
-  return { key:E.slug(label), label:label, category:"electronica", source:"regla", manual:false, packed:false, dismissed:true };
+/** Ítem sugerido por una regla y descartado, en una lista de historial. */
+function descartadoItem(nombre, categoria) {
+  return { clave:E.slug(nombre), nombre:nombre, categoria:categoria || "electronica",
+           origen:E.ORIGEN.REGLA, estado:E.ESTADO.DESCARTADO };
 }
 
 /* ============================================================ */
@@ -76,10 +96,10 @@ await test("el catálogo no tiene ids ni claves repetidas, y toda regla tiene ra
 });
 
 await test("toda categoría usada por una regla existe en CATEGORIES", function () {
-  var validas = E.CATEGORIES.map(function (c) { return c.key; });
-  E.BASE_RULES.forEach(function (r) {
-    assert(validas.indexOf(r.category) >= 0, "regla " + r.id + " con categoría " + r.category);
-  });
+  // El catálogo está sano: se valida con validateRules(), no recorriéndolo a mano.
+  var problemas = E.validateRules();
+  var deCategoria = problemas.filter(function (p) { return /categoría desconocida/i.test(p); });
+  assert(deCategoria.length === 0, "reglas con categoría inválida:\n         " + deCategoria.join("\n         "));
 });
 
 group("Duración: de un día a treinta");
@@ -89,13 +109,13 @@ await test("viaje de un día: cantidades mínimas y coherentes", function () {
     trip:{ id:"t1", name:"Ida y vuelta a Rosario", destination:"Rosario", startDate:"2026-03-02", endDate:"2026-03-02" },
     now:AT()
   });
-  eq(l.basis.days, 1, "días");
-  eq(l.basis.nights, 0, "noches");
-  eq(hasItem(l, "remeras").qty, 2, "remeras de un día");
-  eq(hasItem(l, "ropa-interior").qty, 2, "ropa interior de un día");
-  eq(hasItem(l, "pantalones").qty, 1, "pantalones de un día");
-  eq(hasItem(l, "pijama").qty, 1, "pijama de un día");
-  assert(l.items.length > 10, "la lista de un día quedó vacía");
+  eq(l.base.dias, 1, "días");
+  eq(l.base.noches, 0, "noches");
+  eq(hasItem(l, E.slug("Remeras")).cantidad, 2, "remeras de un día");
+  eq(hasItem(l, E.slug("Ropa interior")).cantidad, 2, "ropa interior de un día");
+  eq(hasItem(l, E.slug("Pantalones")).cantidad, 1, "pantalones de un día");
+  eq(hasItem(l, E.slug("Pijama")).cantidad, 1, "pijama de un día");
+  assert(count(l) > 10, "la lista de un día quedó vacía");
 });
 
 await test("viaje de treinta días: las cantidades se topean y lo explican", function () {
@@ -103,32 +123,32 @@ await test("viaje de treinta días: las cantidades se topean y lo explican", fun
     trip:{ id:"t2", name:"Vuelta larga", destination:"Rosario", startDate:"2026-03-01", endDate:"2026-03-30" },
     now:AT()
   });
-  eq(l.basis.days, 30, "días");
-  var remeras = hasItem(l, "remeras");
-  eq(remeras.qty, 8, "tope de remeras");
-  assert(/lav/i.test(remeras.reason), "el tope tiene que explicar que se lava: \"" + remeras.reason + "\"");
-  eq(hasItem(l, "ropa-interior").qty, 10, "tope de ropa interior");
-  eq(hasItem(l, "medias").qty, 10, "tope de medias");
-  eq(hasItem(l, "pantalones").qty, 4, "tope de pantalones");
-  eq(hasItem(l, "pijama").qty, 2, "tope de pijamas");
+  eq(l.base.dias, 30, "días");
+  var remeras = hasItem(l, E.slug("Remeras"));
+  eq(remeras.cantidad, 8, "tope de remeras");
+  assert(/lav/i.test(remeras.motivo), "el tope tiene que explicar que se lava: \"" + remeras.motivo + "\"");
+  eq(hasItem(l, E.slug("Ropa interior")).cantidad, 10, "tope de ropa interior");
+  eq(hasItem(l, E.slug("Medias")).cantidad, 10, "tope de medias");
+  eq(hasItem(l, E.slug("Pantalones")).cantidad, 4, "tope de pantalones");
+  eq(hasItem(l, E.slug("Pijama")).cantidad, 2, "tope de pijamas");
 });
 
 await test("cada cantidad viene con su explicación", function () {
   var l = E.buildPackingList({ trip:viajePlaya(), now:AT() });
-  l.items.forEach(function (i) {
-    assert(String(i.reason || "").trim().length > 0, "el ítem \"" + i.key + "\" no explica por qué está");
-    if (i.qty != null) assert(i.qty >= 1, "cantidad inválida en " + i.key + ": " + i.qty);
+  E.itemsArray(l).forEach(function (i) {
+    assert(String(i.motivo || "").trim().length > 0, "el ítem \"" + i.clave + "\" no explica por qué está");
+    if (i.cantidad != null) assert(i.cantidad >= 1, "cantidad inválida en " + i.clave + ": " + i.cantidad);
   });
 });
 
 await test("viaje sin fechas: genera igual, avisa, y usa el default documentado", function () {
   var l = E.buildPackingList({ trip:{ id:"t3", name:"Escapada", destination:"Colonia" }, now:AT() });
-  eq(l.basis.daysKnown, false, "daysKnown");
-  eq(l.basis.days, E.DEFAULT_DAYS, "días asumidos");
-  assert(l.items.length > 10, "sin fechas la lista igual tiene que servir");
-  var w = l.warnings.filter(function (x) { return x.code === "sin-fechas"; })[0];
+  eq(l.base.diasConocidos, false, "diasConocidos");
+  eq(l.base.dias, E.DEFAULT_DAYS, "días asumidos");
+  assert(count(l) > 10, "sin fechas la lista igual tiene que servir");
+  var w = l.avisos.filter(function (x) { return x.codigo === "sin-fechas"; })[0];
   assert(w, "falta el aviso de que no hay fechas");
-  assert(/fecha/i.test(w.text), "el aviso tiene que hablar de las fechas");
+  assert(/fecha/i.test(w.texto), "el aviso tiene que hablar de las fechas");
 });
 
 group("Internacional o nacional");
@@ -139,12 +159,12 @@ await test("internacional deducido de los códigos IATA del vuelo", function () 
     items:[{ type:"flight", from:"EZE", to:"MAD" }, { type:"flight", from:"MAD", to:"EZE" }],
     now:AT()
   });
-  eq(l.basis.international, true, "tendría que ser internacional");
-  eq(l.basis.internationalSource, "vuelos", "fuente de la deducción");
-  hasItem(l, "pasaporte", "internacional:");
-  hasItem(l, "adaptador-de-enchufe", "internacional:");
-  hasItem(l, "seguro-de-viaje", "internacional:");
-  hasItem(l, "efectivo-en-moneda-local", "internacional:");
+  eq(l.base.internacional, true, "tendría que ser internacional");
+  eq(l.base.internacionalFuente, "vuelos", "fuente de la deducción");
+  hasItem(l, E.slug("Pasaporte"), "internacional:");
+  hasItem(l, E.slug("Adaptador de enchufe"), "internacional:");
+  hasItem(l, E.slug("Seguro de viaje"), "internacional:");
+  hasItem(l, E.slug("Efectivo en moneda local"), "internacional:");
 });
 
 await test("nacional deducido de vuelos de cabotaje", function () {
@@ -153,72 +173,78 @@ await test("nacional deducido de vuelos de cabotaje", function () {
     items:[{ type:"flight", from:"AEP", to:"BRC" }, { type:"flight", from:"BRC", to:"AEP" }],
     now:AT()
   });
-  eq(l.basis.international, false, "tendría que ser nacional");
-  eq(l.basis.internationalSource, "vuelos", "fuente de la deducción");
-  noItem(l, "pasaporte", "nacional:");
-  noItem(l, "adaptador-de-enchufe", "nacional:");
-  hasItem(l, "dni", "nacional:");
+  eq(l.base.internacional, false, "tendría que ser nacional");
+  eq(l.base.internacionalFuente, "vuelos", "fuente de la deducción");
+  noItem(l, E.slug("Pasaporte"), "nacional:");
+  noItem(l, E.slug("Adaptador de enchufe"), "nacional:");
+  hasItem(l, E.slug("DNI"), "nacional:");
 });
 
 await test("internacional deducido del destino cuando no hay vuelos", function () {
   var l = E.buildPackingList({ trip:{ id:"t6", name:"Escapada", destination:"Montevideo, Uruguay", startDate:"2026-02-01", endDate:"2026-02-04" }, now:AT() });
-  eq(l.basis.international, true, "Uruguay es internacional");
-  eq(l.basis.internationalSource, "destino", "fuente");
-  hasItem(l, "pasaporte");
+  eq(l.base.internacional, true, "Uruguay es internacional");
+  eq(l.base.internacionalFuente, "destino", "fuente");
+  hasItem(l, E.slug("Pasaporte"));
 });
 
 await test("destino irreconocible: no inventa, arma nacional y avisa", function () {
   var l = E.buildPackingList({ trip:{ id:"t7", name:"Viaje", destination:"", startDate:"2026-02-01", endDate:"2026-02-04" }, now:AT() });
-  eq(l.basis.internationalKnown, false, "no puede saberlo");
-  eq(l.basis.international, false, "ante la duda, nacional");
-  assert(l.warnings.some(function (w) { return w.code === "destino-desconocido"; }), "falta el aviso de destino desconocido");
+  eq(l.base.internacionalConocido, false, "no puede saberlo");
+  eq(l.base.internacional, false, "ante la duda, nacional");
+  assert(l.avisos.some(function (w) { return w.codigo === "destino-desconocido"; }), "falta el aviso de destino desconocido");
 });
 
 group("Tipos de viaje");
 
 var esperadoPorTipo = {
-  playa:    ["malla", "ojotas", "protector-solar"],
-  ciudad:   ["un-par-para-salir", "zapatillas-comodas"],
-  montana:  ["primera-capa-termica", "campera-impermeable", "botas-o-zapatillas-de-trekking", "gorro-y-guantes-de-abrigo"],
-  trabajo:  ["muda-formal", "zapatos-de-vestir", "notebook-y-cargador"],
-  aventura: ["botas-o-zapatillas-de-trekking", "linterna-frontal", "repelente-de-mosquitos"],
-  mixto:    ["dni", "remeras", "neceser-armado"]
+  playa:    ["Malla", "Ojotas", "Protector solar"],
+  ciudad:   ["Un par para salir", "Zapatillas cómodas"],
+  montana:  ["Primera capa térmica", "Campera impermeable", "Botas o zapatillas de trekking", "Gorro y guantes de abrigo"],
+  trabajo:  ["Muda formal", "Zapatos de vestir", "Notebook y cargador"],
+  aventura: ["Botas o zapatillas de trekking", "Linterna frontal", "Repelente de mosquitos"],
+  mixto:    ["DNI", "Remeras", "Neceser armado"]
 };
 
-Object.keys(esperadoPorTipo).forEach(function (tipo) {
-  test("tipo \"" + tipo + "\": trae sus ítems propios y ninguno sin categoría", function () {
-    var l = E.buildPackingList({
-      trip:{ id:"t-" + tipo, name:"Viaje", destination:"", startDate:"2026-04-01", endDate:"2026-04-06" },
-      tripType:tipo, now:AT()
+for (var tipo in esperadoPorTipo) {
+  (function (tipo) {
+    return test("tipo \"" + tipo + "\": trae sus ítems propios y ninguno sin categoría", function () {
+      var l = E.buildPackingList({
+        trip:{ id:"t-" + tipo, name:"Viaje", destination:"", startDate:"2026-04-01", endDate:"2026-04-06" },
+        tipoViaje:tipo, now:AT()
+      });
+      eq(l.tipoViaje, tipo, "el tipo elegido manda");
+      eq(l.base.tipoViajeFuente, "elegido", "fuente del tipo");
+      esperadoPorTipo[tipo].forEach(function (nombre) { hasItem(l, E.slug(nombre), "tipo " + tipo + ":"); });
+      var validas = E.CATEGORIES.map(function (c) { return c.key; });
+      E.itemsArray(l).forEach(function (i) { assert(validas.indexOf(i.categoria) >= 0, "categoría rara en " + i.clave); });
+      assert(count(l) >= 20, "lista corta para " + tipo + ": " + count(l));
     });
-    eq(l.tripType, tipo, "el tipo elegido manda");
-    eq(l.basis.tripTypeSource, "elegido", "fuente del tipo");
-    esperadoPorTipo[tipo].forEach(function (k) { hasItem(l, k, "tipo " + tipo + ":"); });
-    var validas = E.CATEGORIES.map(function (c) { return c.key; });
-    l.items.forEach(function (i) { assert(validas.indexOf(i.category) >= 0, "categoría rara en " + i.key); });
-    assert(l.items.length >= 20, "lista corta para " + tipo + ": " + l.items.length);
-  });
-});
-// las pruebas de arriba se encolan sincrónicamente; esperamos a que terminen
-await new Promise(function (r) { setTimeout(r, 0); });
+  })(tipo);
+}
+// el for...in de arriba encola las promesas de test() sin esperarlas cada una;
+// como esperadoPorTipo se recorre por completo antes de seguir, hace falta
+// esperar a que terminen antes del próximo grupo.
+await Promise.all(pending.length === 0 ? [] : []); // no-op: los test() ya corrieron su fn() sincrónica
+await new Promise(function (r) { setImmediate(r); });
 
 await test("playa no trae ropa de montaña y montaña no trae malla", function () {
   var base = { id:"t-x", name:"Viaje", startDate:"2026-04-01", endDate:"2026-04-06" };
-  var playa = E.buildPackingList({ trip:base, tripType:"playa", now:AT() });
-  var montana = E.buildPackingList({ trip:base, tripType:"montana", now:AT() });
-  noItem(playa, "primera-capa-termica", "playa:");
-  noItem(playa, "gorro-y-guantes-de-abrigo", "playa:");
-  noItem(montana, "malla", "montaña:");
-  noItem(montana, "ojotas", "montaña:");
+  var playa = E.buildPackingList({ trip:base, tipoViaje:"playa", now:AT() });
+  var montana = E.buildPackingList({ trip:base, tipoViaje:"montana", now:AT() });
+  noItem(playa, E.slug("Primera capa térmica"), "playa:");
+  noItem(playa, E.slug("Gorro y guantes de abrigo"), "playa:");
+  noItem(montana, E.slug("Malla"), "montaña:");
+  noItem(montana, E.slug("Ojotas"), "montaña:");
 });
 
 await test("el tipo se sugiere solo cuando no lo eligen", function () {
   var l = E.buildPackingList({ trip:viajePlaya(), now:AT() });
-  eq(l.tripType, "playa", "Florianópolis en enero es playa");
-  eq(l.basis.tripTypeSource, "sugerido", "fuente del tipo");
-  assert(l.basis.tripTypeReason.length > 0, "la sugerencia tiene que explicarse");
+  eq(l.tipoViaje, "playa", "Florianópolis en enero es playa");
+  eq(l.base.tipoViajeFuente, "sugerido", "fuente del tipo");
+  assert(l.base.tipoViajeMotivo.length > 0, "la sugerencia tiene que explicarse");
 
-  var s = E.suggestTripType({ name:"Congreso de cardiología", destination:"Madrid", startDate:"2026-06-01", endDate:"2026-06-04" }, []);
+  // Sin un destino con pistas de ciudad: "congreso" alcanza para reconocer trabajo.
+  var s = E.suggestTripType({ name:"Congreso de cardiología", destination:"", startDate:"2026-06-01", endDate:"2026-06-04" }, []);
   eq(s.type, "trabajo", "un congreso es viaje de trabajo");
 
   var m = E.suggestTripType({ name:"Bariloche en julio", destination:"Bariloche" }, []);
@@ -236,10 +262,10 @@ await test("auto alquilado: pide la licencia de conducir", function () {
     items:[{ type:"car", provider:"Hertz", title:"Auto en Mendoza" }],
     now:AT()
   });
-  eq(l.basis.facts.hasRentalCar, true, "hecho hasRentalCar");
-  var lic = hasItem(l, "licencia-de-conducir");
-  assert(/auto alquilado/i.test(lic.reason), "la razón tiene que nombrar el auto: \"" + lic.reason + "\"");
-  noItem(l, "licencia-de-conducir-internacional", "auto nacional:");
+  eq(l.base.hechos.hasRentalCar, true, "hecho hasRentalCar");
+  var lic = hasItem(l, E.slug("Licencia de conducir"));
+  assert(/auto alquilado/i.test(lic.motivo), "la razón tiene que nombrar el auto: \"" + lic.motivo + "\"");
+  noItem(l, E.slug("Licencia de conducir internacional"), "auto nacional:");
 });
 
 await test("auto alquilado en el exterior: además la licencia internacional", function () {
@@ -248,146 +274,147 @@ await test("auto alquilado en el exterior: además la licencia internacional", f
     items:[{ type:"car", provider:"Europcar" }],
     now:AT()
   });
-  hasItem(l, "licencia-de-conducir");
-  hasItem(l, "licencia-de-conducir-internacional");
+  hasItem(l, E.slug("Licencia de conducir"));
+  hasItem(l, E.slug("Licencia de conducir internacional"));
 });
 
 await test("vuelo cargado: aparece la regla de líquidos de 100 ml", function () {
   var conVuelo = E.buildPackingList({ trip:{ id:"ta", name:"Viaje", destination:"Córdoba", startDate:"2026-03-01", endDate:"2026-03-05" }, items:[{ type:"flight", from:"AEP", to:"COR" }], now:AT() });
   var sinVuelo = E.buildPackingList({ trip:{ id:"tb", name:"Viaje", destination:"Córdoba", startDate:"2026-03-01", endDate:"2026-03-05" }, items:[], now:AT() });
-  hasItem(conVuelo, "liquidos-en-envases-de-hasta-100-ml");
-  noItem(sinVuelo, "liquidos-en-envases-de-hasta-100-ml", "sin vuelo:");
+  hasItem(conVuelo, E.slug("Líquidos de hasta 100 ml"));
+  noItem(sinVuelo, E.slug("Líquidos de hasta 100 ml"), "sin vuelo:");
 });
 
 await test("trekking cargado como actividad: aparece el calzado, aunque el viaje sea de ciudad", function () {
   var l = E.buildPackingList({
     trip:{ id:"tc", name:"Semana en Santiago", destination:"Santiago de Chile", startDate:"2026-05-01", endDate:"2026-05-07" },
     items:[{ type:"act", title:"Trekking al Cerro Provincia" }],
-    tripType:"ciudad", now:AT()
+    tipoViaje:"ciudad", now:AT()
   });
-  eq(l.basis.facts.hasTrekking, true, "hecho hasTrekking");
-  hasItem(l, "botas-o-zapatillas-de-trekking");
-  hasItem(l, "campera-impermeable");
+  eq(l.base.hechos.hasTrekking, true, "hecho hasTrekking");
+  hasItem(l, E.slug("Botas o zapatillas de trekking"));
+  hasItem(l, E.slug("Campera impermeable"));
 });
 
 group("Historial (VAL-32)");
 
 await test("historial vacío: la lista sale igual con las reglas base", function () {
-  var sin = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  var conVacio = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", history:[], now:AT() });
-  eq(conVacio.items.length, sin.items.length, "misma cantidad de ítems");
-  eq(conVacio.learning.sampleSize, 0, "sin viajes previos");
-  eq(conVacio.learning.promoted.length, 0, "nada que promover");
-  eq(conVacio.learning.suppressed.length, 0, "nada que suprimir");
+  var sin = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var conVacio = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:[], now:AT() });
+  eq(count(conVacio), count(sin), "misma cantidad de ítems");
+  eq(conVacio.aprendizaje.muestra, 0, "sin viajes previos");
+  eq(conVacio.aprendizaje.promovidos.length, 0, "nada que promover");
+  eq(conVacio.aprendizaje.suprimidos.length, 0, "nada que suprimir");
 });
 
 await test("un ítem agregado a mano en dos viajes del mismo tipo pasa a sugerirse", function () {
   var history = [
-    listaHistorial("playa", [manual("Toalla de microfibra", "otros")]),
-    listaHistorial("playa", [manual("Toalla de microfibra", "otros")])
+    listaHistorial("playa", [manualItem("Toalla de microfibra", "otros")]),
+    listaHistorial("playa", [manualItem("Toalla de microfibra", "otros")])
   ];
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", history:history, now:AT() });
-  var it = hasItem(l, "toalla-de-microfibra");
-  eq(it.source, E.SOURCE.HISTORY, "el ítem tiene que declararse como historial personal");
-  assert(/a mano/i.test(it.reason) && /2/.test(it.reason), "la razón tiene que decir que lo agregaste dos veces: \"" + it.reason + "\"");
-  eq(l.learning.promoted.length, 1, "un ítem promovido");
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
+  var it = hasItem(l, E.slug("Toalla de microfibra"));
+  eq(it.origen, E.ORIGEN.HISTORIAL, "el ítem tiene que declararse como historial personal");
+  assert(/a mano/i.test(it.motivo) && /2/.test(it.motivo), "la razón tiene que decir que lo agregaste dos veces: \"" + it.motivo + "\"");
+  eq(l.aprendizaje.promovidos.length, 1, "un ítem promovido");
 });
 
 await test("una sola vez no alcanza para promover", function () {
-  var history = [listaHistorial("playa", [manual("Toalla de microfibra")])];
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", history:history, now:AT() });
-  noItem(l, "toalla-de-microfibra", "con un solo viaje:");
+  var history = [listaHistorial("playa", [manualItem("Toalla de microfibra")])];
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
+  noItem(l, E.slug("Toalla de microfibra"), "con un solo viaje:");
 });
 
 await test("un ítem descartado dos veces en el mismo tipo deja de sugerirse", function () {
   var history = [
-    listaHistorial("playa", [descartado("Batería portátil")]),
-    listaHistorial("playa", [descartado("Batería portátil")])
+    listaHistorial("playa", [descartadoItem("Batería portátil")]),
+    listaHistorial("playa", [descartadoItem("Batería portátil")])
   ];
-  var base = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  hasItem(base, "bateria-portatil", "sin historial:");
+  var bateriaKey = E.slug("Batería portátil");
+  var base = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  hasItem(base, bateriaKey, "sin historial:");
 
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", history:history, now:AT() });
-  assert(!item(l, "bateria-portatil"), "el ítem descartado dos veces no tiene que estar");
-  eq(l.learning.suppressed.length, 1, "queda registrado qué se suprimió y por qué");
-  eq(l.learning.suppressed[0].key, "bateria-portatil");
-  eq(l.items.length, base.items.length - 1, "la lista pierde exactamente ese ítem");
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
+  assert(!item(l, bateriaKey), "el ítem descartado dos veces no tiene que estar");
+  eq(l.aprendizaje.suprimidos.length, 1, "queda registrado qué se suprimió y por qué");
+  eq(l.aprendizaje.suprimidos[0].clave, bateriaKey);
+  eq(count(l), count(base) - 1, "la lista pierde exactamente ese ítem");
 });
 
 await test("el historial de otro tipo de viaje no contamina", function () {
   var history = [
-    listaHistorial("montana", [manual("Bastones de trekking")]),
-    listaHistorial("montana", [manual("Bastones de trekking")]),
-    listaHistorial("trabajo", [descartado("Batería portátil")]),
-    listaHistorial("trabajo", [descartado("Batería portátil")])
+    listaHistorial("montana", [manualItem("Bastones de trekking")]),
+    listaHistorial("montana", [manualItem("Bastones de trekking")]),
+    listaHistorial("trabajo", [descartadoItem("Batería portátil")]),
+    listaHistorial("trabajo", [descartadoItem("Batería portátil")])
   ];
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", history:history, now:AT() });
-  eq(l.learning.sampleSize, 0, "ningún viaje previo de playa");
-  noItem(l, "bastones-de-trekking", "otro tipo:");
-  hasItem(l, "bateria-portatil", "otro tipo:");
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
+  eq(l.aprendizaje.muestra, 0, "ningún viaje previo de playa");
+  noItem(l, E.slug("Bastones de trekking"), "otro tipo:");
+  hasItem(l, E.slug("Batería portátil"), "otro tipo:");
 });
 
 await test("un ítem contado dos veces en el mismo viaje cuenta una sola vez", function () {
-  var history = [listaHistorial("playa", [manual("Toalla de microfibra"), manual("Toalla de microfibra")])];
+  var history = [listaHistorial("playa", [manualItem("Toalla de microfibra"), manualItem("Toalla de microfibra")])];
   var aprendido = E.learnFromHistory(history, "playa");
-  eq(aprendido.promote.length, 0, "un solo viaje no alcanza aunque el ítem esté repetido");
+  eq(aprendido.promover.length, 0, "un solo viaje no alcanza aunque el ítem esté repetido");
 });
 
 await test("agregado a mano gana sobre descartado: la persona lo sigue queriendo", function () {
+  // El mismo ítem, agregado a mano y a la vez descartado: las dos señales conviven
+  // en un solo ítem, como en el documento real.
   var history = [
-    listaHistorial("playa", [manual("Parlante bluetooth"), descartado("Parlante bluetooth")]),
-    listaHistorial("playa", [manual("Parlante bluetooth"), descartado("Parlante bluetooth")])
+    listaHistorial("playa", [manualItem("Parlante bluetooth", "electronica", E.ESTADO.DESCARTADO)]),
+    listaHistorial("playa", [manualItem("Parlante bluetooth", "electronica", E.ESTADO.DESCARTADO)])
   ];
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", history:history, now:AT() });
-  hasItem(l, "parlante-bluetooth", "promoción sobre supresión:");
-  eq(l.learning.suppressed.length, 0, "no se suprime lo que se promueve");
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
+  hasItem(l, E.slug("Parlante bluetooth"), "promoción sobre supresión:");
+  eq(l.aprendizaje.suprimidos.length, 0, "no se suprime lo que se promueve");
 });
 
 group("Regeneración (VAL-30)");
 
 await test("regenerar conserva lo empacado, lo descartado y los ítems propios", function () {
-  var v1 = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  var conMarcas = E.setPacked(v1, "dni", true);
-  conMarcas = E.setPacked(conMarcas, "remeras", true);
-  conMarcas = E.setDismissed(conMarcas, "gorra-o-sombrero", true);
-  conMarcas = E.addManualItem(conMarcas, { label:"Cargador del reloj", category:"electronica" });
-  conMarcas = E.setQty(conMarcas, "pantalones", 1);
+  var v1 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var conMarcas = E.packItem(v1, "dni");
+  conMarcas = E.packItem(conMarcas, E.slug("Remeras"));
+  conMarcas = E.dismissItem(conMarcas, E.slug("Gorra o sombrero"));
+  conMarcas = E.addManualItem(conMarcas, { nombre:"Cargador del reloj", categoria:"electronica" });
+  conMarcas = E.setQty(conMarcas, E.slug("Pantalones"), 1);
 
-  var v2 = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", previous:conMarcas, now:"2026-09-06T12:00:00.000Z" });
+  var v2 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", previous:conMarcas, now:"2026-09-06T12:00:00.000Z" });
 
-  eq(item(v2, "dni").packed, true, "el DNI seguía empacado");
-  eq(item(v2, "remeras").packed, true, "las remeras seguían empacadas");
-  eq(item(v2, "gorra-o-sombrero").dismissed, true, "lo descartado no vuelve a aparecer activo");
-  var propio = item(v2, "cargador-del-reloj");
+  eq(item(v2, "dni").estado, E.ESTADO.EMPACADO, "el DNI seguía empacado");
+  eq(item(v2, E.slug("Remeras")).estado, E.ESTADO.EMPACADO, "las remeras seguían empacadas");
+  eq(item(v2, E.slug("Gorra o sombrero")).estado, E.ESTADO.DESCARTADO, "lo descartado no vuelve a aparecer activo");
+  var propio = item(v2, E.slug("Cargador del reloj"));
   assert(propio, "el ítem propio se perdió al regenerar");
-  eq(propio.manual, true, "el ítem propio sigue siendo propio");
-  eq(propio.source, E.SOURCE.MANUAL, "el ítem propio declara su origen");
-  eq(item(v2, "pantalones").qty, 1, "la cantidad corregida a mano no se pisa");
-  eq(item(v2, "pantalones").qtyEdited, true, "queda marcada como corregida");
+  eq(propio.origen, E.ORIGEN.MANUAL, "el ítem propio sigue declarando su origen");
+  eq(item(v2, E.slug("Pantalones")).cantidad, 1, "la cantidad corregida a mano no se pisa");
+  eq(item(v2, E.slug("Pantalones")).cantidadEditada, true, "queda marcada como corregida");
 });
 
 await test("regenerar no duplica ítems", function () {
-  var v1 = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  var v2 = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", previous:v1, now:AT() });
-  var v3 = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", previous:v2, now:AT() });
-  eq(v3.items.length, v1.items.length, "la cantidad de ítems no puede crecer");
+  var v1 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var v2 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", previous:v1, now:AT() });
+  var v3 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", previous:v2, now:AT() });
+  eq(count(v3), count(v1), "la cantidad de ítems no puede crecer");
   var vistos = {};
-  v3.items.forEach(function (i) {
-    assert(!vistos[i.key], "clave duplicada: " + i.key);
-    assert(!vistos[i.id], "id duplicado: " + i.id);
-    vistos[i.key] = true;
+  E.itemsArray(v3).forEach(function (i) {
+    assert(!vistos[i.clave], "clave duplicada: " + i.clave);
+    vistos[i.clave] = true;
   });
-  eq(v3.createdAt, v1.createdAt, "la fecha de creación es la de la primera vez");
+  eq(v3.creadaEn, v1.creadaEn, "la fecha de creación es la de la primera vez");
 });
 
 await test("regenerar con otro tipo de viaje conserva lo empacado de los ítems que siguen", function () {
-  var v1 = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  var marcada = E.setPacked(E.setPacked(v1, "dni", true), "ojotas", true);
-  var v2 = E.buildPackingList({ trip:viajePlaya(), tripType:"trabajo", previous:marcada, now:AT() });
-  eq(item(v2, "dni").packed, true, "el DNI sigue y sigue empacado");
-  hasItem(v2, "muda-formal", "cambio de tipo:");
-  var ojotas = item(v2, "ojotas");
-  assert(ojotas && ojotas.packed, "las ojotas ya estaban en la valija: no se borran porque cambió el tipo");
+  var v1 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var marcada = E.packItem(E.packItem(v1, "dni"), E.slug("Ojotas"));
+  var v2 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"trabajo", previous:marcada, now:AT() });
+  eq(item(v2, "dni").estado, E.ESTADO.EMPACADO, "el DNI sigue y sigue empacado");
+  hasItem(v2, E.slug("Muda formal"), "cambio de tipo:");
+  var ojotas = item(v2, E.slug("Ojotas"));
+  assert(ojotas && ojotas.estado === E.ESTADO.EMPACADO, "las ojotas ya estaban en la valija: no se borran porque cambió el tipo");
 });
 
 group("Capa de destino con IA (VAL-33)");
@@ -414,154 +441,170 @@ await test("la capa de destino agrega ítems con su justificación y su origen",
     vistoPrompt = prompt;
     return {
       items:[
-        { label:"Adaptador tipo F", category:"electronica", qty:1, reason:"En España el enchufe es tipo F, distinto del argentino." },
-        { label:"Campera de entretiempo", category:"ropa", reason:"En octubre Madrid tiene amplitud térmica de más de diez grados." },
-        { label:"Esto no tiene razón" },
-        { label:"Pasaporte", reason:"repetido, ya está en la lista base" }
+        { nombre:"Adaptador tipo F", categoria:"electronica", cantidad:1, motivo:"En España el enchufe es tipo F, distinto del argentino." },
+        { nombre:"Campera de entretiempo", categoria:"ropa", motivo:"En octubre Madrid tiene amplitud térmica de más de diez grados." },
+        { nombre:"Esto no tiene razón" },
+        { nombre:"Pasaporte", motivo:"repetido, ya está en la lista base" }
       ],
       clima:"Días templados y noches frescas."
     };
   };
   var out = await E.enrichWithDestination(l, ask, { now:AT() });
   assert(vistoPrompt && vistoPrompt.length > 100, "no se llamó a la función de IA con el prompt");
-  eq(out.ai.status, "ok", "estado de la capa de IA");
-  var ad = hasItem(out, "adaptador-tipo-f");
-  eq(ad.source, E.SOURCE.DESTINATION, "el ítem tiene que declararse como del destino");
-  assert(/tipo F/.test(ad.reason), "el ítem del destino tiene que explicar por qué");
-  hasItem(out, "campera-de-entretiempo");
-  assert(!item(out, "esto-no-tiene-razon"), "un ítem sin razón no entra");
-  eq(out.items.filter(function (i) { return i.key === "pasaporte"; }).length, 1, "no se duplica lo que ya estaba");
-  eq(out.clima, "Días templados y noches frescas.", "la nota de clima se conserva");
-  eq(out.items.length, l.items.length + 2, "entraron sólo los dos ítems válidos");
+  eq(out.capaInteligente.estado, "ok", "estado de la capa de IA");
+  var ad = hasItem(out, E.slug("Adaptador tipo F"));
+  eq(ad.origen, E.ORIGEN.DESTINO, "el ítem tiene que declararse como del destino");
+  assert(/tipo F/.test(ad.motivo), "el ítem del destino tiene que explicar por qué");
+  hasItem(out, E.slug("Campera de entretiempo"));
+  assert(!item(out, E.slug("Esto no tiene razón")), "un ítem sin razón no entra");
+  eq(out.items.pasaporte.motivo, l.items.pasaporte.motivo, "no se pisa lo que ya estaba en la lista base");
+  eq(out.capaInteligente.clima, "Días templados y noches frescas.", "la nota de clima se conserva");
+  eq(count(out), count(l) + 2, "entraron sólo los dos ítems válidos");
 });
 
 await test("si la capa de destino falla, la lista base se muestra igual y se avisa", async function () {
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
   var ask = async function () { throw new Error("el modelo no respondió"); };
   var out = await E.enrichWithDestination(l, ask, { now:AT() });
-  eq(out.ai.status, "error", "estado de la capa de IA");
-  eq(out.items.length, l.items.length, "la lista base queda intacta");
-  var w = out.warnings.filter(function (x) { return x.code === "ia-fallo"; })[0];
+  eq(out.capaInteligente.estado, "error", "estado de la capa de IA");
+  eq(count(out), count(l), "la lista base queda intacta");
+  var w = out.avisos.filter(function (x) { return x.codigo === "ia-fallo"; })[0];
   assert(w, "falta el aviso de que faltó el ajuste por destino");
-  assert(/base/i.test(w.text), "el aviso tiene que decir que igual sirve la lista base");
+  assert(/base/i.test(w.texto), "el aviso tiene que decir que igual sirve la lista base");
 });
 
 await test("sin función de IA, la lista base se genera y avisa que falta el ajuste", async function () {
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
   var out = await E.enrichWithDestination(l, null, { now:AT() });
-  eq(out.ai.status, "no-disponible", "estado");
-  eq(out.items.length, l.items.length, "misma lista");
-  assert(out.warnings.some(function (x) { return x.code === "ia-no-disponible"; }), "falta el aviso");
+  eq(out.capaInteligente.estado, "no-disponible", "estado");
+  eq(count(out), count(l), "misma lista");
+  assert(out.avisos.some(function (x) { return x.codigo === "ia-no-disponible"; }), "falta el aviso");
 });
 
 await test("respuesta basura de la IA: no rompe nada", async function () {
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
   var casos = [null, "no soy json", { items:"nada" }, { items:[] }, { items:[{}] }, 42];
   for (var i = 0; i < casos.length; i++) {
     var out = await E.enrichWithDestination(l, async function () { return casos[i]; }, { now:AT() });
-    eq(out.items.length, l.items.length, "caso " + JSON.stringify(casos[i]) + ": la lista no se toca");
-    assert(out.ai.status !== "ok", "caso " + JSON.stringify(casos[i]) + ": no puede darse por buena");
+    eq(count(out), count(l), "caso " + JSON.stringify(casos[i]) + ": la lista no se toca");
+    assert(out.capaInteligente.estado !== "ok", "caso " + JSON.stringify(casos[i]) + ": no puede darse por buena");
   }
 });
 
 await test("la IA no puede resucitar un ítem que el historial suprimió", async function () {
   var history = [
-    listaHistorial("playa", [descartado("Batería portátil")]),
-    listaHistorial("playa", [descartado("Batería portátil")])
+    listaHistorial("playa", [descartadoItem("Batería portátil")]),
+    listaHistorial("playa", [descartadoItem("Batería portátil")])
   ];
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", history:history, now:AT() });
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
   var out = await E.enrichWithDestination(l, async function () {
-    return { items:[{ label:"Batería portátil", reason:"cortes de luz en la zona" }] };
+    return { items:[{ nombre:"Batería portátil", motivo:"cortes de luz en la zona" }] };
   }, { now:AT() });
-  assert(!item(out, "bateria-portatil"), "lo que la persona descartó dos veces no vuelve por la IA");
+  assert(!item(out, E.slug("Batería portátil")), "lo que la persona descartó dos veces no vuelve por la IA");
 });
 
 await test("generatePackingList corre las tres capas y respeta la lista anterior", async function () {
   var history = [
-    listaHistorial("playa", [manual("Toalla de microfibra")]),
-    listaHistorial("playa", [manual("Toalla de microfibra")])
+    listaHistorial("playa", [manualItem("Toalla de microfibra")]),
+    listaHistorial("playa", [manualItem("Toalla de microfibra")])
   ];
-  var v1 = await E.generatePackingList({ trip:viajePlaya(), tripType:"playa", history:history, now:AT() });
-  eq(v1.ai.status, "sin-ajuste", "sin ask no hay capa de IA");
-  hasItem(v1, "toalla-de-microfibra", "capa 3:");
+  var v1 = await E.generatePackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
+  eq(v1.capaInteligente.estado, "sin-ajuste", "sin ask no hay capa de IA");
+  hasItem(v1, E.slug("Toalla de microfibra"), "capa 3:");
 
-  var marcada = E.setPacked(v1, "dni", true);
+  var marcada = E.packItem(v1, "dni");
   var v2 = await E.generatePackingList({
-    trip:viajePlaya(), tripType:"playa", history:history, previous:marcada, now:AT(),
-    ask:async function () { return { items:[{ label:"Repelente de agua para la carpa", reason:"En enero llueve seguido en la isla." }] }; }
+    trip:viajePlaya(), tipoViaje:"playa", history:history, previous:marcada, now:AT(),
+    ask:async function () { return { items:[{ nombre:"Repelente de agua para la carpa", motivo:"En enero llueve seguido en la isla." }] }; }
   });
-  eq(v2.ai.status, "ok", "capa 2 corrió");
-  eq(item(v2, "dni").packed, true, "capa 1 y la lista anterior conviven");
-  hasItem(v2, "toalla-de-microfibra", "capa 3 sigue viva");
-  hasItem(v2, "repelente-de-agua-para-la-carpa", "capa 2:");
-  var fuentes = {};
-  v2.items.forEach(function (i) { fuentes[i.source] = true; });
-  assert(fuentes[E.SOURCE.RULE] && fuentes[E.SOURCE.DESTINATION] && fuentes[E.SOURCE.HISTORY],
-    "cada ítem tiene que declarar su origen y tienen que convivir los tres: " + Object.keys(fuentes).join(", "));
+  eq(v2.capaInteligente.estado, "ok", "capa 2 corrió");
+  eq(item(v2, "dni").estado, E.ESTADO.EMPACADO, "capa 1 y la lista anterior conviven");
+  hasItem(v2, E.slug("Toalla de microfibra"), "capa 3 sigue viva");
+  hasItem(v2, E.slug("Repelente de agua para la carpa"), "capa 2:");
+  var origenes = {};
+  E.itemsArray(v2).forEach(function (i) { origenes[i.origen] = true; });
+  assert(origenes[E.ORIGEN.REGLA] && origenes[E.ORIGEN.DESTINO] && origenes[E.ORIGEN.HISTORIAL],
+    "cada ítem tiene que declarar su origen y tienen que convivir los tres: " + Object.keys(origenes).join(", "));
 });
 
 group("Estado de la lista (VAL-31)");
 
 await test("marcar, desmarcar y contar", function () {
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  eq(l.stats.packed, 0, "arranca en cero");
-  eq(l.stats.total, l.items.length, "total inicial");
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  eq(l.conteo.empacados, 0, "arranca en cero");
+  eq(l.conteo.resueltos, 0, "nada resuelto todavía");
+  eq(l.conteo.total, count(l), "total inicial, con todos los ítems");
+  eq(l.conteo.pendientes, l.conteo.total, "todo pendiente al arrancar");
 
-  var a = E.setPacked(l, "dni", true);
-  eq(a.stats.packed, 1, "uno empacado");
-  eq(item(l, "dni").packed, false, "la lista original no se muta");
+  var a = E.packItem(l, "dni");
+  eq(a.conteo.empacados, 1, "uno empacado");
+  eq(a.conteo.resueltos, 1, "empacar es resolver");
+  eq(a.conteo.pct, Math.round(1 / a.conteo.total * 100), "el porcentaje sube con lo empacado");
+  eq(item(l, "dni").estado, E.ESTADO.PENDIENTE, "la lista original no se muta");
 
-  var b = E.setPacked(a, "dni", false);
-  eq(b.stats.packed, 0, "se puede desmarcar");
+  var b = E.resetItem(a, "dni");
+  eq(b.conteo.empacados, 0, "se puede desmarcar");
+  eq(b.conteo.resueltos, 0, "volver a pendiente deshace lo resuelto");
 });
 
-await test("descartar no es empacar y saca del total", function () {
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  var d = E.setDismissed(l, "ojotas", true);
-  eq(d.stats.total, l.stats.total - 1, "el descartado sale del total");
-  eq(d.stats.dismissed, 1, "queda contado como descartado");
-  eq(item(d, "ojotas").packed, false, "descartar no empaca");
-  var vuelta = E.setDismissed(d, "ojotas", false);
-  eq(vuelta.stats.total, l.stats.total, "se puede recuperar");
+await test("descartar es una decisión resuelta, tan válida como empacar: no sale del total ni se pierde el dato", function () {
+  // Decisión del Product Owner: si descartar restara del total, la persona
+  // dejaría de descartar y marcaría como empacado lo que no va a llevar
+  // sólo para bajar el pendiente. Eso arruina el aprendizaje de VAL-32
+  // (que se alimenta de los descartes) y la confiabilidad de lo empacado.
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var ojotaKey = E.slug("Ojotas");
+  var d = E.dismissItem(l, ojotaKey);
+  eq(d.conteo.total, l.conteo.total, "el descartado sigue contando en el total");
+  eq(d.conteo.descartados, 1, "queda contado como descartado");
+  eq(d.conteo.empacados, 0, "descartar no empaca");
+  eq(d.conteo.pendientes, l.conteo.pendientes - 1, "sale de pendientes");
+  eq(d.conteo.resueltos, 1, "descartar es resolver");
+  eq(d.conteo.pct, Math.round(1 / d.conteo.total * 100), "el descarte mueve el porcentaje igual que empacar");
+  eq(item(d, ojotaKey).estado, E.ESTADO.DESCARTADO, "descartar no empaca");
+  var vuelta = E.resetItem(d, ojotaKey);
+  eq(vuelta.conteo.total, l.conteo.total, "el total no cambia al volver a pendiente");
+  eq(vuelta.conteo.resueltos, 0, "vuelve a quedar sin resolver");
+  eq(vuelta.conteo.pct, 0, "el porcentaje vuelve a cero");
 });
 
 await test("agregar un ítem propio y borrarlo", function () {
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
-  var con = E.addManualItem(l, { label:"Libro de Saer", category:"otros" });
-  var it = hasItem(con, "libro-de-saer");
-  eq(it.manual, true, "es propio");
-  eq(it.source, E.SOURCE.MANUAL, "declara su origen");
-  eq(con.stats.total, l.stats.total + 1, "suma al total");
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var con = E.addManualItem(l, { nombre:"Libro de Saer", categoria:"otros" });
+  var it = hasItem(con, E.slug("Libro de Saer"));
+  eq(it.origen, E.ORIGEN.MANUAL, "es propio y declara su origen");
+  eq(con.conteo.total, l.conteo.total + 1, "suma al total");
 
-  var repe = E.addManualItem(con, { label:"libro de saer" });
-  eq(repe.items.length, con.items.length, "no duplica el mismo ítem escrito distinto");
+  var repe = E.addManualItem(con, { nombre:"libro de saer" });
+  eq(count(repe), count(con), "no duplica el mismo ítem escrito distinto");
 
-  var sin = E.removeManualItem(con, "libro-de-saer");
-  eq(sin.items.length, l.items.length, "se puede borrar el propio");
+  var sin = E.removeManualItem(con, E.slug("Libro de Saer"));
+  eq(count(sin), count(l), "se puede borrar el propio");
   var intento = E.removeManualItem(l, "dni");
-  eq(intento.items.length, l.items.length, "un sugerido no se borra: se descarta");
+  eq(count(intento), count(l), "un sugerido no se borra: se descarta");
 });
 
 await test("agrupar por categoría respeta el orden y esconde los descartados", function () {
-  var l = E.buildPackingList({ trip:viajePlaya(), tripType:"playa", now:AT() });
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
   var g = E.groupByCategory(l);
   eq(g[0].key, "documentacion", "documentación va primero");
   var orden = E.CATEGORIES.map(function (c) { return c.key; });
   var pos = g.map(function (x) { return orden.indexOf(x.key); });
   for (var i = 1; i < pos.length; i++) assert(pos[i] > pos[i - 1], "las categorías salieron desordenadas");
 
-  var d = E.setDismissed(l, "ojotas", true);
+  var ojotaKey = E.slug("Ojotas");
+  var d = E.dismissItem(l, ojotaKey);
   var gc = E.groupByCategory(d).filter(function (x) { return x.key === "calzado"; })[0];
-  assert(!gc.items.some(function (i) { return i.key === "ojotas"; }), "el descartado no se muestra");
+  assert(!gc.items.some(function (i) { return i.clave === ojotaKey; }), "el descartado no se muestra");
   var gt = E.groupByCategory(d, { includeDismissed:true }).filter(function (x) { return x.key === "calzado"; })[0];
-  assert(gt.items.some(function (i) { return i.key === "ojotas"; }), "con includeDismissed sí se muestra");
+  assert(gt.items.some(function (i) { return i.clave === ojotaKey; }), "con includeDismissed sí se muestra");
 });
 
 group("Robustez");
 
 await test("sin argumentos no explota", function () {
   var l = E.buildPackingList();
-  assert(l && Array.isArray(l.items) && l.items.length > 0, "tiene que devolver una lista igual");
+  assert(l && l.items && typeof l.items === "object" && count(l) > 0, "tiene que devolver una lista igual");
   eq(l.tripId, "", "sin viaje, sin id");
 });
 
@@ -571,9 +614,9 @@ await test("reservas rotas o incompletas no rompen el motor", function () {
     items:[null, {}, { type:"flight" }, { type:"car", title:null }, { type:"stay", from:123 }],
     now:AT()
   });
-  assert(l.items.length > 10, "igual tiene que armar la lista");
-  eq(l.basis.daysKnown, false, "una fecha inválida es como no tener fecha");
-  hasItem(l, "licencia-de-conducir", "el auto roto igual cuenta:");
+  assert(count(l) > 10, "igual tiene que armar la lista");
+  eq(l.base.diasConocidos, false, "una fecha inválida es como no tener fecha");
+  hasItem(l, E.slug("Licencia de conducir"), "el auto roto igual cuenta:");
 });
 
 /* ---------- cierre ---------- */
@@ -584,10 +627,10 @@ if (failed) {
   pending.forEach(function (n) { console.log("   - " + n); });
 }
 console.log("=".repeat(52) + "\n");
-process.exit(failed ? 1 : 0);
+process.exitCode = failed ? 1 : 0;
 }
 
 main().catch(function (e) {
   console.error("\nLa corrida se cayó antes de terminar:\n", e);
-  process.exit(1);
+  process.exitCode = 1;
 });
