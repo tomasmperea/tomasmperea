@@ -16,7 +16,7 @@ imagen, itinerario por día, motor de pendientes con seis reglas, compartir para
 
 ---
 
-## Iteración 1.5 — Preparar
+## Iteración 1.5 — Preparar (entregada)
 
 **Objetivo:** que la app sirva también la noche anterior al viaje, cuando se arma el bolso.
 
@@ -30,6 +30,12 @@ orden del plan.
 - Motor híbrido: reglas locales que funcionan siempre, más ajuste por destino con inteligencia encima.
 - Checklist de empacado con progreso.
 - Aprendizaje del historial: lo que la persona agrega y descarta cambia las sugerencias siguientes.
+
+Entregado: lista sugerida por tipo, destino, fechas y duración; motor híbrido con reglas locales que
+funcionan siempre más ajuste por destino con inteligencia encima; tres estados por ítem con progreso que
+cuenta el descarte como resuelto; aprendizaje del historial con umbral de dos apariciones.
+
+Fuera: VAL-34 por falta de identidad por visitante y VAL-35 por no estar diseñada.
 
 **Pregunta que responde:** ¿la app se abre también el día antes de viajar, y no solo mientras se planifica?
 

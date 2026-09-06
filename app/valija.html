@@ -2382,8 +2382,8 @@ function cardTrip(t){
 /* ---------- tira de entrada a la valija, arriba del segmentado ---------- */
 function renderPackingEntry(trip, list){
   const dd = daysUntil(trip.startDate);
-  if(list && list.conteo){
-    const c = list.conteo;
+  if(list){
+    const c = PackingEngine.packingProgress(list);
     const pctPack = c.total ? c.empacados/c.total*100 : 0;
     const pctDrop = c.total ? c.descartados/c.total*100 : 0;
     if(c.pendientes > 0){
@@ -2670,7 +2670,7 @@ function bindPackingHeader(trip, onInfo){
 }
 
 function pkProgHtml(list){
-  const c = list.conteo || PackingEngine.packingProgress(list);
+  const c = PackingEngine.packingProgress(list);
   const pctPack = c.total ? c.empacados/c.total*100 : 0;
   const pctDrop = c.total ? c.descartados/c.total*100 : 0;
   const full = c.total>0 && c.pendientes===0;
@@ -2719,8 +2719,11 @@ function pkRowHtml(it, trip, canWrite){
 function pkCategoryHtml(cat, trip, canWrite){
   const pend = cat.items.filter(i=>i.estado==="pendiente").length;
   const packed = cat.items.filter(i=>i.estado==="empacado").length;
+  const dropped = cat.items.filter(i=>i.estado==="descartado").length;
   const full = cat.items.length>0 && pend===0;
-  const open = PK.openCats[cat.key] !== undefined ? PK.openCats[cat.key] : !full;
+  // Una categoría sin pendientes se pliega sola, salvo que tenga algo
+  // descartado: ahí sigue habiendo algo que mirar (el botón "volver").
+  const open = PK.openCats[cat.key] !== undefined ? PK.openCats[cat.key] : (!full || dropped>0);
   const icon = CAT_ICON[cat.key] || "doc";
   return `<div class="pk-cat ${full?"full":""}" data-open="${open}">
     <button class="pk-cat-hd" aria-expanded="${open}" data-cat="${esc(cat.key)}">
@@ -2973,7 +2976,7 @@ function renderTypeSelector(trip, list){
 function renderPackingBoard(trip, list){
   const canWrite = Store.canWrite;
   const generating = PK.generating;
-  const c = list.conteo || PackingEngine.packingProgress(list);
+  const c = PackingEngine.packingProgress(list);
   const complete = c.total>0 && c.pendientes===0;
   const cap = list.capaInteligente || {};
 
@@ -3009,7 +3012,7 @@ function renderPackingBoard(trip, list){
     }
   }
 
-  const grouped = PackingEngine.groupByCategory(list);
+  const grouped = PackingEngine.groupByCategory(list, {includeDismissed:true});
   const groups = grouped.map(g=> pkCategoryHtml(g, trip, canWrite));
   const destGroupExists = grouped.some(g=>g.key==="destino");
 

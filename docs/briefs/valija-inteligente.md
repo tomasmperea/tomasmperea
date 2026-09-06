@@ -2,7 +2,7 @@
 
 **Épica:** VAL-30
 **Escribe:** Product Owner
-**Estado:** en desarrollo
+**Estado:** entregada y publicada
 **Consumen este brief:** diseño UX/UI, motor de sugerencias, QA
 
 Este documento es el contrato de la iteración. Todo lo que se construya se valida contra los criterios de
