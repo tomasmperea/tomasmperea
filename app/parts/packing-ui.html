@@ -134,7 +134,6 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
 .btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
-.btn.danger{color:var(--crit);border-color:var(--crit-soft);background:var(--crit-soft)}
 .btn.block{width:100%}
 .btn.sm{padding:8px 11px;font-size:13px;border-radius:9px}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
@@ -190,19 +189,18 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
    Sin tokens nuevos: todo sale de los de arriba.
    ============================================================ */
 
-/* --- C1. Variante que falta en el sistema: aviso en verde ---
-   .notice ya tiene neutra (acento) y .warn. Falta la de "salió bien",
-   necesaria para el estado "valija lista". Usa --ok-soft / --ok. */
+/* --- C1. Variante que le falta al sistema: aviso en verde ---
+   .notice ya tiene la neutra (acento) y la .warn. Falta la de "salió
+   bien", necesaria para el estado "valija lista". Usa --ok-soft / --ok. */
 .notice.ok{background:var(--ok-soft);color:var(--ok)}
-/* Acción dentro de un aviso: hereda el color del aviso, no compite con él. */
-.notice .act{background:none;border:0;padding:0;margin-top:6px;color:inherit;font:inherit;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;display:block}
 .notice .bd{flex:1;min-width:0}
+.notice .act{background:none;border:0;padding:0;margin-top:6px;color:inherit;font:inherit;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;display:block}
 .notice .x{background:none;border:0;color:inherit;opacity:.7;cursor:pointer;padding:0;flex:none;line-height:1}
 .notice .x svg{margin:0}
 
 /* --- C2. Tira de entrada a la valija (vive en la pantalla del viaje) --- */
 .vj-entry{
-  display:flex;align-items:stretch;gap:0;width:100%;text-align:left;padding:0;
+  display:flex;align-items:stretch;width:100%;text-align:left;padding:0;
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);
   box-shadow:var(--shadow);overflow:hidden;cursor:pointer;
   transition:transform .16s ease,box-shadow .16s ease;
@@ -210,6 +208,7 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .vj-entry:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
 .vj-entry .band{width:8px;flex:none;background:var(--ink-3)}
 .vj-entry.due .band{background:var(--flap)}
+.vj-entry.live .band{background:var(--accent)}
 .vj-entry.done .band{background:var(--ok)}
 .vj-entry .bd{flex:1;min-width:0;padding:12px 4px 12px 13px;display:flex;flex-direction:column;gap:6px}
 .vj-entry .t{display:flex;align-items:baseline;gap:8px;font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em;line-height:1.2}
@@ -217,13 +216,19 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .vj-entry .go{flex:none;display:grid;place-items:center;padding:0 12px;color:var(--ink-3)}
 .vj-entry .go svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-/* --- C3. Progreso de empacado --- */
+/* --- C3. Progreso de empacado ---
+   La barra tiene DOS tramos: lo empacado y lo descartado. Los dos son
+   trabajo resuelto, así que los dos avanzan la barra. Descartar nunca
+   deja el progreso trabado. Sólo el tramo verde significa "está adentro". */
 .pk-prog{display:flex;align-items:center;gap:9px;width:100%}
-.pk-bar{flex:1;min-width:60px;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden}
-.pk-bar i{display:block;height:100%;width:0;border-radius:99px;background:var(--ok);transition:width .35s ease}
-.pk-bar.empty i{background:var(--ink-3)}
+.pk-bar{flex:1;min-width:56px;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden;display:flex}
+.pk-bar i{display:block;height:100%;transition:width .35s ease}
+.pk-bar i.p{background:var(--ok)}
+.pk-bar i.d{background:var(--ink-3);opacity:.5}
 .pk-prog .n{flex:none;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.pk-prog .n b{font-weight:500;color:var(--ink)}
 .pk-prog.full .n{color:var(--ok);font-weight:500}
+.pk-prog.full .n b{color:var(--ok)}
 
 /* --- C4. Tarjeta de categoría --- */
 .pk-cat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
@@ -237,17 +242,30 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .pk-cat[data-open="false"] .chev{transform:rotate(-90deg)}
 .pk-cat[data-open="false"] .pk-body-wrap{display:none}
 .pk-cat.full .pk-cat-ico{background:var(--ok-soft);color:var(--ok)}
-.pk-cat.full .pk-cat-hd .cnt{color:var(--ok)}
 .pk-body-wrap{border-top:1px solid var(--line-2)}
 
-/* --- C5. Fila de ítem --- */
-.pk-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line-2)}
+/* --- C5. Fila de ítem: TRES estados ---
+   pendiente  · cuadrado vacío, borde entero      · fila a contraste pleno
+   empacado   · cuadrado lleno verde con tilde    · nombre tachado
+   descartado · cuadrado punteado con raya        · fila compacta y apagada
+   Se distinguen por relleno, borde y glifo, no sólo por color. */
+.pk-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line-2);position:relative;background:var(--surface)}
 .pk-row:last-child{border-bottom:0}
-.pk-check{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;cursor:pointer;padding:0}
-.pk-box{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--ink-3);display:grid;place-items:center;color:transparent;background:transparent;transition:background .14s,border-color .14s,color .14s}
-.pk-box svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.pk-check:hover .pk-box{border-color:var(--ok)}
-.pk-check[aria-checked="true"] .pk-box{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+
+/* panel que aparece atrás de la fila al deslizarla hacia la izquierda */
+.pk-row .pk-swipe{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
+  gap:7px;padding-right:16px;background:var(--surface-2);color:var(--ink-2);
+  font-size:12.5px;font-weight:600;
+}
+.pk-row .pk-swipe svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.pk-slide{display:flex;flex:1;min-width:0;position:relative;background:var(--surface);transition:transform .18s ease}
+
+.pk-mark{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;cursor:pointer;padding:0}
+.pk-state{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--ink-3);display:grid;place-items:center;color:transparent;background:transparent;transition:background .14s,border-color .14s,color .14s}
+.pk-state svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pk-mark:hover .pk-state{border-color:var(--ok)}
+
 .pk-txt{flex:1;min-width:0;background:none;border:0;text-align:left;cursor:pointer;padding:10px 4px 10px 0;display:flex;flex-direction:column;gap:3px}
 .pk-txt:hover .pk-nm .t{color:var(--accent)}
 .pk-nm{display:flex;align-items:baseline;gap:10px}
@@ -255,21 +273,33 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .pk-nm .q{flex:none;font-family:var(--f-mono);font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .pk-why{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
 .pk-why .r{font-size:11.5px;color:var(--ink-2);line-height:1.35}
-.pk-drop{flex:none;width:34px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;padding:0}
-.pk-drop svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.pk-drop:hover{color:var(--crit)}
 
-/* empacado: no se mueve de lugar, se apaga */
-.pk-row.packed .pk-nm .t{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1.5px}
-.pk-row.packed .pk-nm .q{color:var(--ink-3)}
-.pk-row.packed .pk-why{opacity:.5}
+/* el botón de descartar es del mismo tamaño que el de empacar: 44 px de
+   ancho por el alto de la fila. Descartar no puede pedir puntería. */
+.pk-drop{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;padding:0}
+.pk-drop svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-drop:hover{background:var(--surface-2);color:var(--ink-2)}
 
-/* origen del ítem: el chip es el que lo dice, no el color de fondo */
-.pk-src{border-style:dashed;border-color:var(--ink-3);color:var(--ink-3)}
+/* estado 2 — empacado */
+.pk-row[data-st="pack"] .pk-mark .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-row[data-st="pack"] .pk-nm .t{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1.5px}
+.pk-row[data-st="pack"] .pk-nm .q{color:var(--ink-3)}
+.pk-row[data-st="pack"] .pk-why{opacity:.5}
+
+/* estado 3 — descartado: se queda en su lugar, en una línea, apagado */
+.pk-row[data-st="drop"]{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-slide{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-state{border-style:dashed;color:var(--ink-3);background:transparent}
+.pk-row[data-st="drop"] .pk-txt{padding-top:7px;padding-bottom:7px}
+.pk-row[data-st="drop"] .pk-nm .t{font-weight:500;font-size:13.5px;color:var(--ink-3)}
+.pk-row[data-st="drop"] .pk-nm .q{display:none}
+.pk-row[data-st="drop"] .pk-why{display:none}
+.pk-back{flex:none;align-self:center;margin-right:8px;background:none;border:0;color:var(--ink-3);cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.05em;padding:7px 8px;border-radius:6px;white-space:nowrap}
+.pk-back:hover{background:var(--accent-soft);color:var(--accent)}
 
 /* llegada de los ítems del ajuste por destino */
-@keyframes pkin{from{background:var(--flap-soft)}to{background:transparent}}
-.pk-row.fresh{animation:pkin 2.6s ease 1}
+@keyframes pkin{from{background:var(--flap-soft)}to{background:var(--surface)}}
+.pk-row.fresh .pk-slide{animation:pkin 2.6s ease 1}
 
 /* fila esqueleto mientras llega el ajuste por destino */
 .pk-row.loading{padding:12px 12px 12px 44px;flex-direction:column;gap:7px;align-items:flex-start}
@@ -283,18 +313,25 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .pk-addform input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 11px;border-radius:9px;font-size:15px}
 .pk-addform input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
 
-/* --- C7. Descartados: no se borran, se guardan y se pueden volver --- */
-.pk-cat.dropped{box-shadow:none;background:transparent;border-style:dashed}
-.pk-cat.dropped .pk-cat-hd .nm,.pk-cat.dropped .pk-cat-hd .cnt{color:var(--ink-2)}
-.pk-cat.dropped .pk-row .pk-nm .t{font-weight:500;color:var(--ink-2)}
-.pk-back{flex:none;align-self:center;margin-right:10px;background:none;border:0;color:var(--ink-3);cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.05em;padding:5px 7px;border-radius:6px}
-.pk-back:hover{background:var(--accent-soft);color:var(--accent)}
-
-/* --- C8. Cabecera de la lista: contexto que usó el motor --- */
+/* --- C7. Contexto que usó el motor --- */
 .pk-inputs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 
-/* --- C9. Selector de tipo de viaje: 6 opciones, 3 x 2 --- */
+/* --- C8. Selector de tipo de viaje: 6 opciones en 3 x 2, con historial ---
+   El número es cuántos viajes tuyos ya llevan ese tipo. Hace visible el
+   camino gastado: elegir consistente tiene que ser lo más fácil. */
 .tp.tp3{grid-template-columns:repeat(3,1fr)}
+.tp button .n{font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;color:var(--ink-3);font-weight:400}
+.tp button[aria-pressed="true"] .n{color:var(--accent)}
+.tp button.used{border-color:var(--ink-3)}
+
+/* --- C9. Estado de un ítem en la hoja de detalle: los tres, explícitos --- */
+.pk-states{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pk-states button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-2);transition:all .14s}
+.pk-states button .pk-state{pointer-events:none}
+.pk-states button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pk-states button[aria-pressed="true"] .pk-state{border-color:currentColor;color:currentColor}
+.pk-states button[data-s="pack"][aria-pressed="true"] .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-states button[data-s="drop"] .pk-state{border-style:dashed}
 
 /* --- C10. Cantidad en la hoja de detalle --- */
 .pk-qty{display:flex;align-items:center;gap:14px;justify-content:center;padding:4px 0}
@@ -302,6 +339,9 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .pk-qty button:hover{background:var(--surface);border-color:var(--ink-3)}
 .pk-qty button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
 .pk-qty .v{font-family:var(--f-mono);font-size:30px;font-weight:500;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* --- C11. Chip de origen "lo pusiste vos": borde punteado, sin color propio --- */
+.chip.own{border-style:dashed;border-color:var(--ink-3);color:var(--ink-3)}
 
 
 /* ============================================================
@@ -319,10 +359,9 @@ body.demo{background:var(--ground);padding:0 0 60px}
 .spec-hd p{margin:0;font-size:13px;color:var(--ink-2);line-height:1.5}
 .frame{background:var(--ground);border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;box-shadow:var(--shadow)}
 .frame .hdr{position:static}
-.frame main{padding:14px 14px 14px}
+.frame main{padding:14px}
 .frame .fab{position:static;transform:none;width:auto;margin:0 14px 14px;padding:0}
 .frame .sheet{border-radius:0;box-shadow:none;max-width:none}
-.frame .sheet-hd{border-top:0}
 </style>
 
 <body class="demo">
@@ -341,8 +380,8 @@ body.demo{background:var(--ground);padding:0 0 60px}
 
   <p class="demo-intro">
     Todos los estados de la valija inteligente, con datos de un viaje real: <b>Madrid, 12 al 18 de octubre,
-    6 días, dos personas</b>. El estado 04 es interactivo: tildá, descartá y agregá ítems para ver cómo se
-    comporta. El resto es estático a propósito, para poder mirarlos todos juntos.
+    6 días, dos personas</b>. El estado <b>04 es interactivo</b>: marcá, descartá, deslizá una fila hacia la
+    izquierda y agregá ítems propios. El resto es estático a propósito, para poder mirarlos todos juntos.
   </p>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -352,13 +391,12 @@ body.demo{background:var(--ground);padding:0 0 60px}
     <div class="spec-hd">
       <span class="n">00 · UBICACIÓN</span>
       <h2>La entrada, en la pantalla del viaje</h2>
-      <p>Una tira arriba del segmentado, no una tercera pestaña. Vive fuera de las pestañas porque la valija
-        es del viaje, no de una de sus dos vistas. Tres variantes, según en qué anda.</p>
+      <p>Una tira arriba del segmentado, no una tercera pestaña. Vive afuera de las pestañas porque la
+        valija es del viaje, no de una de sus dos vistas de reservas. Cuatro variantes, según en qué anda.</p>
     </div>
 
     <div class="frame">
       <main style="gap:12px">
-        <!-- variante A: sin lista, todavía falta -->
         <button class="vj-entry">
           <span class="band"></span>
           <span class="bd">
@@ -368,7 +406,6 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <span class="go" data-i="chev"></span>
         </button>
 
-        <!-- variante B: sin lista y el viaje es inminente -->
         <button class="vj-entry due">
           <span class="band"></span>
           <span class="bd">
@@ -378,24 +415,26 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <span class="go" data-i="chev"></span>
         </button>
 
-        <!-- variante C: lista en curso -->
-        <button class="vj-entry">
-          <span class="band" style="background:var(--accent)"></span>
+        <button class="vj-entry live">
+          <span class="band"></span>
           <span class="bd">
             <span class="t">Valija</span>
-            <span class="pk-prog"><span class="pk-bar"><i style="width:37.5%"></i></span>
-              <span class="n">12 de 32</span></span>
+            <span class="pk-prog">
+              <span class="pk-bar"><i class="p" style="width:37.5%"></i><i class="d" style="width:6.2%"></i></span>
+              <span class="n"><b>12</b> de 32 · faltan 18</span>
+            </span>
           </span>
           <span class="go" data-i="chev"></span>
         </button>
 
-        <!-- variante D: terminada -->
         <button class="vj-entry done">
           <span class="band"></span>
           <span class="bd">
             <span class="t">Valija lista</span>
-            <span class="pk-prog full"><span class="pk-bar"><i style="width:100%"></i></span>
-              <span class="n">32 de 32</span></span>
+            <span class="pk-prog full">
+              <span class="pk-bar"><i class="p" style="width:90%"></i><i class="d" style="width:10%"></i></span>
+              <span class="n"><b>29</b> de 32 · 3 descartados</span>
+            </span>
           </span>
           <span class="go" data-i="chev"></span>
         </button>
@@ -410,14 +449,15 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       01 — Sin lista generada
+       01 — Sin lista generada + elección del tipo
        ══════════════════════════════════════════════════════════ -->
   <section class="spec" id="s1">
     <div class="spec-hd">
       <span class="n">01 · ESTADO VACÍO</span>
       <h2>Sin lista generada</h2>
-      <p>La única decisión es el tipo de viaje, así que va acá, no en una hoja aparte. Viene propuesto y
-        explicado. Arriba, lo que el motor ya sabe del viaje: es lo que después justifica las cantidades.</p>
+      <p>La única decisión es el tipo de viaje, así que va acá y no en una hoja aparte. Cada tipo muestra
+        cuántos viajes tuyos ya lleva: el camino gastado se ve, y elegir igual que la vez pasada es lo más
+        fácil que hay en la pantalla.</p>
     </div>
 
     <div class="frame">
@@ -436,7 +476,7 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <span class="chip">2 personas</span>
         </div>
 
-        <div class="empty" style="padding:26px 20px">
+        <div class="empty" style="padding:24px 20px">
           <h3>Todavía no armaste la valija</h3>
           <p>Te propongo qué llevar según el destino, las fechas, los días que te quedás y lo que llevaste en
             viajes parecidos. Todo lo que sugiera lo podés sacar.</p>
@@ -444,16 +484,22 @@ body.demo{background:var(--ground);padding:0 0 60px}
 
         <div class="f">
           <label>Tipo de viaje</label>
-          <div class="tp tp3">
-            <button type="button" aria-pressed="false"><span data-i="beach"></span> Playa</button>
-            <button type="button" aria-pressed="true"><span data-i="city"></span> Ciudad</button>
-            <button type="button" aria-pressed="false"><span data-i="mountain"></span> Montaña</button>
-            <button type="button" aria-pressed="false"><span data-i="work"></span> Trabajo</button>
-            <button type="button" aria-pressed="false"><span data-i="adv"></span> Aventura</button>
-            <button type="button" aria-pressed="false"><span data-i="mix"></span> Mixto</button>
+          <div class="tp tp3" id="tp-demo">
+            <button type="button" aria-pressed="false" class="used" data-t="playa">
+              <span data-i="beach"></span> Playa <span class="n">2 viajes</span></button>
+            <button type="button" aria-pressed="true" class="used" data-t="ciudad">
+              <span data-i="city"></span> Ciudad <span class="n">5 viajes</span></button>
+            <button type="button" aria-pressed="false" data-t="montana">
+              <span data-i="mountain"></span> Montaña <span class="n">—</span></button>
+            <button type="button" aria-pressed="false" class="used" data-t="trabajo">
+              <span data-i="work"></span> Trabajo <span class="n">3 viajes</span></button>
+            <button type="button" aria-pressed="false" data-t="aventura">
+              <span data-i="adv"></span> Aventura <span class="n">—</span></button>
+            <button type="button" aria-pressed="false" data-t="mixto">
+              <span data-i="mix"></span> Mixto <span class="n">1 viaje</span></button>
           </div>
-          <span class="hint">Te propongo <b>Ciudad</b> por Madrid y 6 días, sin actividades de montaña ni de
-            playa en el itinerario. Cambialo si no va.</span>
+          <span class="hint" id="tp-hint">Te propongo <b>Ciudad</b>: es el que usaste en Barcelona y en
+            Lisboa, que se parecen a este. Sobre esos 5 viajes ya sé qué llevás.</span>
         </div>
       </main>
       <div class="fab">
@@ -463,14 +509,55 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       02 — Sin fechas: no se puede generar
+       02 — Elegir un tipo distinto al propuesto
        ══════════════════════════════════════════════════════════ -->
   <section class="spec" id="s2">
     <div class="spec-hd">
-      <span class="n">02 · ESTADO VACÍO BLOQUEADO</span>
+      <span class="n">02 · CONSISTENCIA DEL TIPO</span>
+      <h2>Cuando elegís otro tipo</h2>
+      <p>Nada se bloquea, pero se dice el costo. El aprendizaje agrupa por tipo: partir la misma clase de
+        escapada en dos etiquetas hace que nunca se llegue al umbral de dos apariciones. La app no puede
+        prohibirlo, puede hacerlo visible. Probalo tocando otro tipo en el estado 01.</p>
+    </div>
+
+    <div class="frame">
+      <main>
+        <div class="f">
+          <label>Tipo de viaje</label>
+          <div class="tp tp3">
+            <button type="button" aria-pressed="false" class="used">
+              <span data-i="beach"></span> Playa <span class="n">2 viajes</span></button>
+            <button type="button" aria-pressed="false" class="used">
+              <span data-i="city"></span> Ciudad <span class="n">5 viajes</span></button>
+            <button type="button" aria-pressed="false">
+              <span data-i="mountain"></span> Montaña <span class="n">—</span></button>
+            <button type="button" aria-pressed="false" class="used">
+              <span data-i="work"></span> Trabajo <span class="n">3 viajes</span></button>
+            <button type="button" aria-pressed="false">
+              <span data-i="adv"></span> Aventura <span class="n">—</span></button>
+            <button type="button" aria-pressed="true" class="used">
+              <span data-i="mix"></span> Mixto <span class="n">1 viaje</span></button>
+          </div>
+        </div>
+        <div class="notice warn">
+          <span data-i="info"></span>
+          <span class="bd">Con <b>Mixto</b> arranco casi de cero: tenés 1 viaje mixto. En <b>Ciudad</b> ya
+            tengo 5, y Madrid se parece bastante a Barcelona y a Lisboa.
+            <button class="act">Usar Ciudad</button></span>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       03 — Sin fechas
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s3">
+    <div class="spec-hd">
+      <span class="n">03 · ESTADO VACÍO BLOQUEADO</span>
       <h2>El viaje no tiene fechas</h2>
       <p>Las cantidades salen de los días. Sin fechas no hay lista, y el estado dice qué falta y ofrece el
-        camino corto para arreglarlo, en lugar de generar una lista de mentira.</p>
+        camino corto, en lugar de generar una lista de mentira.</p>
     </div>
 
     <div class="frame">
@@ -494,11 +581,11 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       03 — Generando: reglas primero, IA después
+       04 — Generando
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s3">
+  <section class="spec" id="s4">
     <div class="spec-hd">
-      <span class="n">03 · GENERANDO</span>
+      <span class="n">04 · GENERANDO</span>
       <h2>La lista base ya está; el ajuste por destino llega después</h2>
       <p>El motor es híbrido y la pantalla lo muestra: la lista de reglas aparece completa y usable de una,
         y lo específico del destino cae encima. Nunca hay una pantalla en blanco esperando a la IA.</p>
@@ -512,10 +599,10 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <button class="iconbtn" aria-label="De dónde sale esta lista" data-i="info"></button>
         </div>
         <div class="hdr-sub">
-          <span class="pk-prog empty" role="progressbar" aria-valuemin="0" aria-valuemax="27"
-                aria-valuenow="0" aria-valuetext="0 de 27 empacados">
-            <span class="pk-bar empty"><i style="width:0"></i></span>
-            <span class="n">0 de 27</span>
+          <span class="pk-prog" role="progressbar" aria-valuemin="0" aria-valuemax="28"
+                aria-valuenow="0" aria-valuetext="0 empacados y 0 descartados de 28">
+            <span class="pk-bar"><i class="p" style="width:0"></i><i class="d" style="width:0"></i></span>
+            <span class="n"><b>0</b> de 28 · faltan 28</span>
           </span>
         </div>
       </header>
@@ -529,24 +616,30 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="doc"></span>
             <span class="nm">Documentación</span>
-            <span class="cnt">0 / 5</span>
+            <span class="cnt">0 de 5</span>
             <span class="chev" data-i="chevd"></span>
           </div>
           <div class="pk-body-wrap">
-            <div class="pk-row">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Pasaporte</span></span>
-                <span class="pk-why"><span class="chip">lista base</span>
-                  <span class="r">Vuelo internacional</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Pasaporte</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Vuelo internacional</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">DNI</span></span>
-                <span class="pk-why"><span class="chip">lista base</span>
-                  <span class="r">Segundo documento, por si perdés el pasaporte</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">DNI</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Segundo documento, por si perdés el pasaporte</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
             </div>
           </div>
@@ -556,7 +649,7 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="globe"></span>
             <span class="nm">Específicos de Madrid</span>
-            <span class="cnt sk" style="width:34px;height:12px;border-radius:5px"></span>
+            <span class="cnt sk" style="width:38px;height:12px;border-radius:5px"></span>
             <span class="chev" data-i="chevd"></span>
           </div>
           <div class="pk-body-wrap">
@@ -576,14 +669,98 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       04 — Lista con datos. INTERACTIVA
+       05 — Los tres estados de un ítem, uno al lado del otro
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s4">
+  <section class="spec" id="s5">
     <div class="spec-hd">
-      <span class="n">04 · CON DATOS — INTERACTIVO</span>
+      <span class="n">05 · LOS TRES ESTADOS</span>
+      <h2>Pendiente, empacado, descartado</h2>
+      <p>Se distinguen por relleno, borde y glifo, no sólo por color: cuadrado vacío, cuadrado lleno con
+        tilde, cuadrado punteado con raya. El descartado además se achica a una línea y pierde el motivo:
+        ya no es una decisión pendiente. La cuarta fila muestra el gesto de deslizar a mitad de camino.</p>
+    </div>
+
+    <div class="frame">
+      <main>
+        <div class="pk-cat" data-open="true">
+          <div class="pk-cat-hd">
+            <span class="pk-cat-ico" data-i="shirt"></span>
+            <span class="nm">Ropa</span><span class="cnt">1 de 4</span>
+            <span class="chev" data-i="chevd"></span>
+          </div>
+          <div class="pk-body-wrap">
+
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Remeras</span><span class="q">×7</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">6 días + 1 de repuesto</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Campera liviana</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">De noche baja a 11° en octubre</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+
+            <div class="pk-row" data-st="drop">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="dash"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Camisa de vestir</span></span>
+                  <span class="pk-why"><span class="chip accent">tus viajes</span></span>
+                </span>
+                <span class="pk-back">volver</span>
+              </span>
+            </div>
+
+            <div class="pk-row" data-st="pend">
+              <span class="pk-swipe"><span data-i="ban"></span> Descartar</span>
+              <span class="pk-slide" style="transform:translateX(-96px)">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Buzo</span></span>
+                  <span class="pk-why"><span class="chip accent">tus viajes</span>
+                    <span class="r">Lo llevaste en 4 de tus 5 viajes de ciudad</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="notice">
+          <span data-i="info"></span>
+          <span class="bd"><b>Los gestos.</b> Deslizá una fila a la izquierda para descartarla y a la
+            derecha para marcarla. Si preferís tocar, el cuadrado de la izquierda marca y el círculo de la
+            derecha descarta: los dos son de 44&nbsp;px, ninguno pide puntería.</span>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       06 — La lista. INTERACTIVA
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s6">
+    <div class="spec-hd">
+      <span class="n">06 · CON DATOS — INTERACTIVO</span>
       <h2>La lista</h2>
-      <p>Tildá en el cuadrado, tocá el texto para ver el detalle, tocá la cruz para descartar. Una categoría
-        que llega a completa se pliega sola. Lo descartado no se borra: baja al fondo y se puede volver.</p>
+      <p>Probá: tocá el cuadrado, tocá el círculo de la derecha, deslizá una fila hacia cualquiera de los
+        dos lados, tocá el texto para el detalle, agregá algo tuyo al pie de una categoría. Una categoría
+        sin pendientes se pliega sola. Lo descartado se queda en su lugar: nada salta bajo el pulgar.</p>
     </div>
 
     <div class="frame" id="live">
@@ -594,10 +771,9 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <button class="iconbtn" aria-label="De dónde sale esta lista" data-i="info"></button>
         </div>
         <div class="hdr-sub">
-          <span class="pk-prog" id="live-prog" role="progressbar" aria-valuemin="0" aria-valuemax="32"
-                aria-valuenow="12" aria-valuetext="12 de 32 empacados">
-            <span class="pk-bar"><i style="width:37.5%"></i></span>
-            <span class="n">12 de 32</span>
+          <span class="pk-prog" id="live-prog" role="progressbar" aria-valuemin="0">
+            <span class="pk-bar"><i class="p"></i><i class="d"></i></span>
+            <span class="n"></span>
           </span>
         </div>
       </header>
@@ -609,14 +785,14 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       05 — Ajuste por destino resuelto
+       07 — Ajuste por destino resuelto
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s5">
+  <section class="spec" id="s7">
     <div class="spec-hd">
-      <span class="n">05 · AJUSTE POR DESTINO, RESUELTO</span>
+      <span class="n">07 · AJUSTE POR DESTINO, RESUELTO</span>
       <h2>Llegó lo específico del lugar</h2>
-      <p>El aviso dice cuánto agregó y desaparece cuando lo cerrás. Los ítems nuevos se marcan un momento
-        para que se vean llegar, y quedan con su chip <span class="chip soon">por Madrid</span>.</p>
+      <p>El aviso dice cuánto agregó y se cierra cuando querés. Los ítems nuevos se marcan un momento para
+        que se vean llegar, y quedan con su chip <span class="chip soon">por Madrid</span>.</p>
     </div>
 
     <div class="frame">
@@ -632,45 +808,53 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="globe"></span>
             <span class="nm">Específicos de Madrid</span>
-            <span class="cnt">0 / 4</span>
+            <span class="cnt">0 de 4</span>
             <span class="chev" data-i="chevd"></span>
           </div>
           <div class="pk-body-wrap">
-            <div class="pk-row fresh">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Tarjeta Multi del metro</span></span>
-                <span class="pk-why"><span class="chip soon">por Madrid</span>
-                  <span class="r">El metro no vende boletos sueltos: se carga en una tarjeta</span></span>
+            <div class="pk-row fresh" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Tarjeta Multi del metro</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">El metro no vende boletos sueltos: se carga en una tarjeta</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row fresh">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Paraguas plegable</span></span>
-                <span class="pk-why"><span class="chip soon">por Madrid</span>
-                  <span class="r">En octubre llueve unos 8 días del mes</span></span>
+            <div class="pk-row fresh" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Paraguas plegable</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">En octubre llueve unos 8 días del mes</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row fresh">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Bolsa de tela</span></span>
-                <span class="pk-why"><span class="chip soon">por Madrid</span>
-                  <span class="r">En los supermercados las bolsas se pagan aparte</span></span>
+            <div class="pk-row fresh" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Bolsa de tela</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">En los supermercados las bolsas se pagan aparte</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row fresh">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Botella recargable</span></span>
-                <span class="pk-why"><span class="chip soon">por Madrid</span>
-                  <span class="r">Hay fuentes de agua potable en toda la ciudad</span></span>
+            <div class="pk-row fresh" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Botella recargable</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">Hay fuentes de agua potable en toda la ciudad</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
           </div>
         </div>
@@ -679,11 +863,11 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       06 — Degradado: la capa inteligente no estuvo
+       08 — Degradado
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s6">
+  <section class="spec" id="s8">
     <div class="spec-hd">
-      <span class="n">06 · DEGRADADO</span>
+      <span class="n">08 · DEGRADADO</span>
       <h2>Sin la capa de ajuste por destino</h2>
       <p>La lista base está entera y sirve. El aviso no pide disculpas: dice qué falta, qué consecuencia
         tiene y cómo reintentar. No se cierra, porque es una advertencia sobre el contenido de la lista.</p>
@@ -697,10 +881,10 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <button class="iconbtn" aria-label="De dónde sale esta lista" data-i="info"></button>
         </div>
         <div class="hdr-sub">
-          <span class="pk-prog" role="progressbar" aria-valuemin="0" aria-valuemax="23"
-                aria-valuenow="2" aria-valuetext="2 de 23 empacados">
-            <span class="pk-bar"><i style="width:8.7%"></i></span>
-            <span class="n">2 de 23</span>
+          <span class="pk-prog" role="progressbar" aria-valuemin="0" aria-valuemax="24"
+                aria-valuenow="2" aria-valuetext="2 empacados y 0 descartados de 24">
+            <span class="pk-bar"><i class="p" style="width:8.3%"></i><i class="d" style="width:0"></i></span>
+            <span class="n"><b>2</b> de 24 · faltan 22</span>
           </span>
           <span class="chip">sin ajuste por destino</span>
         </div>
@@ -717,44 +901,52 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="plug"></span>
             <span class="nm">Electrónica</span>
-            <span class="cnt">1 / 4</span>
+            <span class="cnt">1 de 4</span>
             <span class="chev" data-i="chevd"></span>
           </div>
           <div class="pk-body-wrap">
-            <div class="pk-row packed">
-              <span class="pk-check" aria-checked="true"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Cargador del teléfono</span></span>
-                <span class="pk-why"><span class="chip">lista base</span></span>
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Cargador del teléfono</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Batería portátil</span></span>
-                <span class="pk-why"><span class="chip">lista base</span>
-                  <span class="r">Días largos afuera, sin dónde enchufar</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Batería portátil</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Días largos afuera, sin dónde enchufar</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Auriculares</span></span>
-                <span class="pk-why"><span class="chip accent">tus viajes</span>
-                  <span class="r">Los agregaste a mano en 3 viajes</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Auriculares</span></span>
+                  <span class="pk-why"><span class="chip accent">tus viajes</span>
+                    <span class="r">Los agregaste a mano en 3 viajes</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Adaptador de enchufe</span><span class="q">×2</span></span>
-                <span class="pk-why"><span class="chip">lista base</span>
-                  <span class="r">Viaje al exterior. Cuál va no lo sé sin el ajuste por destino</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Adaptador de enchufe</span><span class="q">×2</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Viaje al exterior. Cuál va no lo sé sin el ajuste por destino</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
           </div>
         </div>
@@ -763,14 +955,14 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       07 — Lista completa
+       09 — Lista completa
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s7">
+  <section class="spec" id="s9">
     <div class="spec-hd">
-      <span class="n">07 · COMPLETA</span>
+      <span class="n">09 · COMPLETA</span>
       <h2>Valija lista</h2>
-      <p>La barra llena y en verde, las categorías plegadas solas y el cierre del ciclo: lo que descartaste
-        ya quedó anotado. Es el único momento del producto donde se puede decir que algo terminó.</p>
+      <p>No queda nada pendiente: 29 empacados y 3 descartados sobre 32. La barra llegó al final con sus dos
+        tramos, las categorías se plegaron solas y se cierra el ciclo diciendo qué se aprendió.</p>
     </div>
 
     <div class="frame">
@@ -782,63 +974,77 @@ body.demo{background:var(--ground);padding:0 0 60px}
         </div>
         <div class="hdr-sub">
           <span class="pk-prog full" role="progressbar" aria-valuemin="0" aria-valuemax="32"
-                aria-valuenow="32" aria-valuetext="32 de 32 empacados">
-            <span class="pk-bar"><i style="width:100%"></i></span>
-            <span class="n">32 de 32</span>
+                aria-valuenow="32" aria-valuetext="29 empacados y 3 descartados de 32. Valija lista.">
+            <span class="pk-bar"><i class="p" style="width:90.6%"></i><i class="d" style="width:9.4%"></i></span>
+            <span class="n"><b>29</b> de 32 · 3 descartados</span>
           </span>
         </div>
       </header>
       <main>
         <div class="notice ok">
           <span data-i="check2"></span>
-          <span class="bd">Valija lista. Lo que descartaste ya lo tengo anotado para tu próximo viaje de
-            ciudad.</span>
+          <span class="bd">Valija lista. Los 3 que descartaste ya quedaron anotados para tu próximo viaje
+            de ciudad.</span>
         </div>
 
         <div class="pk-cat full" data-open="false">
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="doc"></span>
-            <span class="nm">Documentación</span><span class="cnt">5 / 5</span>
+            <span class="nm">Documentación</span><span class="cnt"><span class="chip ok">listo</span></span>
             <span class="chev" data-i="chevd"></span>
           </div>
         </div>
         <div class="pk-cat full" data-open="false">
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="shirt"></span>
-            <span class="nm">Ropa</span><span class="cnt">7 / 7</span>
+            <span class="nm">Ropa</span><span class="cnt"><span class="chip ok">listo</span></span>
             <span class="chev" data-i="chevd"></span>
           </div>
         </div>
         <div class="pk-cat full" data-open="false">
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="shoe"></span>
-            <span class="nm">Calzado</span><span class="cnt">2 / 2</span>
+            <span class="nm">Calzado</span><span class="cnt"><span class="chip ok">listo</span></span>
             <span class="chev" data-i="chevd"></span>
           </div>
         </div>
         <div class="pk-cat full" data-open="true">
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="plug"></span>
-            <span class="nm">Electrónica</span><span class="cnt">4 / 4</span>
+            <span class="nm">Electrónica</span><span class="cnt"><span class="chip ok">listo</span></span>
             <span class="chev" data-i="chevd"></span>
           </div>
           <div class="pk-body-wrap">
-            <div class="pk-row packed">
-              <span class="pk-check" aria-checked="true"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Cargador del teléfono</span></span>
-                <span class="pk-why"><span class="chip">lista base</span></span>
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Cargador del teléfono</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row packed">
-              <span class="pk-check" aria-checked="true"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Adaptador tipo F</span><span class="q">×2</span></span>
-                <span class="pk-why"><span class="chip soon">por Madrid</span>
-                  <span class="r">España usa clavija redonda tipo F: la tuya no entra</span></span>
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Adaptador tipo F</span><span class="q">×2</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">España usa clavija redonda tipo F: la tuya no entra</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
+            </div>
+            <div class="pk-row" data-st="drop">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="dash"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Batería portátil</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span></span>
+                </span>
+                <span class="pk-back">volver</span>
+              </span>
             </div>
           </div>
         </div>
@@ -847,15 +1053,15 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       08 — Sólo lectura
+       10 — Sólo lectura
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s8">
+  <section class="spec" id="s10">
     <div class="spec-hd">
-      <span class="n">08 · SÓLO LECTURA</span>
+      <span class="n">10 · SÓLO LECTURA</span>
       <h2>Quien mira sin permiso de edición</h2>
-      <p>La lista se lee entera y el progreso también, porque leerla es la mitad de su valor. Desaparecen
-        los cuadrados de tildar, las cruces, el pie para agregar y el botón de abajo. Nada deshabilitado
-        que invite a tocarlo: directamente no está.</p>
+      <p>La lista y el progreso se leen enteros, porque leerlos es la mitad del valor. Desaparecen los
+        botones de marcar y descartar, el pie para agregar y el botón de abajo. Nada deshabilitado que
+        invite a tocarlo: directamente no está. Los estados siguen viéndose.</p>
     </div>
 
     <div class="frame">
@@ -867,9 +1073,9 @@ body.demo{background:var(--ground);padding:0 0 60px}
         </div>
         <div class="hdr-sub">
           <span class="pk-prog" role="progressbar" aria-valuemin="0" aria-valuemax="32"
-                aria-valuenow="12" aria-valuetext="12 de 32 empacados">
-            <span class="pk-bar"><i style="width:37.5%"></i></span>
-            <span class="n">12 de 32</span>
+                aria-valuenow="14" aria-valuetext="12 empacados y 2 descartados de 32">
+            <span class="pk-bar"><i class="p" style="width:37.5%"></i><i class="d" style="width:6.2%"></i></span>
+            <span class="n"><b>12</b> de 32 · faltan 18</span>
           </span>
           <span class="chip soon">sólo lectura</span>
         </div>
@@ -884,33 +1090,47 @@ body.demo{background:var(--ground);padding:0 0 60px}
         <div class="pk-cat" data-open="true">
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="shirt"></span>
-            <span class="nm">Ropa</span><span class="cnt">3 / 7</span>
+            <span class="nm">Ropa</span><span class="cnt">1 de 4</span>
             <span class="chev" data-i="chevd"></span>
           </div>
           <div class="pk-body-wrap">
-            <div class="pk-row packed">
-              <span class="pk-check" style="cursor:default"><span class="pk-box" data-i="check"
-                    style="background:var(--ok);border-color:var(--ok);color:var(--surface)"></span></span>
-              <span class="pk-txt" style="cursor:default;padding-right:12px">
-                <span class="pk-nm"><span class="t">Remeras</span><span class="q">×7</span></span>
-                <span class="pk-why"><span class="chip">lista base</span>
-                  <span class="r">6 días + 1 de repuesto</span></span>
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark" style="cursor:default"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt" style="cursor:default;padding-right:14px">
+                  <span class="pk-nm"><span class="t">Remeras</span><span class="q">×7</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">6 días + 1 de repuesto</span></span>
+                </span>
               </span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check" style="cursor:default"><span class="pk-box"></span></span>
-              <span class="pk-txt" style="cursor:default;padding-right:12px">
-                <span class="pk-nm"><span class="t">Campera liviana</span></span>
-                <span class="pk-why"><span class="chip soon">por Madrid</span>
-                  <span class="r">De noche baja a 11° en octubre</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark" style="cursor:default"><span class="pk-state"></span></span>
+                <span class="pk-txt" style="cursor:default;padding-right:14px">
+                  <span class="pk-nm"><span class="t">Campera liviana</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">De noche baja a 11° en octubre</span></span>
+                </span>
               </span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check" style="cursor:default"><span class="pk-box"></span></span>
-              <span class="pk-txt" style="cursor:default;padding-right:12px">
-                <span class="pk-nm"><span class="t">Buzo</span></span>
-                <span class="pk-why"><span class="chip accent">tus viajes</span>
-                  <span class="r">Lo llevaste en 4 de tus 5 viajes de ciudad</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark" style="cursor:default"><span class="pk-state"></span></span>
+                <span class="pk-txt" style="cursor:default;padding-right:14px">
+                  <span class="pk-nm"><span class="t">Buzo</span></span>
+                  <span class="pk-why"><span class="chip accent">tus viajes</span>
+                    <span class="r">Lo llevaste en 4 de tus 5 viajes de ciudad</span></span>
+                </span>
+              </span>
+            </div>
+            <div class="pk-row" data-st="drop">
+              <span class="pk-slide">
+                <span class="pk-mark" style="cursor:default"><span class="pk-state" data-i="dash"></span></span>
+                <span class="pk-txt" style="cursor:default;padding-right:14px">
+                  <span class="pk-nm"><span class="t">Camisa de vestir</span></span>
+                  <span class="pk-why"><span class="chip accent">tus viajes</span></span>
+                </span>
               </span>
             </div>
           </div>
@@ -920,14 +1140,15 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       09 — Hoja de detalle del ítem
+       11 — Hoja de detalle del ítem
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s9">
+  <section class="spec" id="s11">
     <div class="spec-hd">
-      <span class="n">09 · HOJA · DETALLE DEL ÍTEM</span>
+      <span class="n">11 · HOJA · DETALLE DEL ÍTEM</span>
       <h2>De dónde sale este ítem, y cómo lo saco</h2>
-      <p>Se abre tocando el texto de la fila. Acá vive la explicación completa, el ajuste de cantidad y el
-        descarte, con su consecuencia dicha en voz alta antes de tocarlo.</p>
+      <p>Se abre tocando el texto de la fila. Acá están los tres estados como botones explícitos, que es el
+        camino accesible al descarte cuando el deslizar no es una opción: teclado, lector de pantalla, o
+        simplemente no saberlo.</p>
     </div>
 
     <div class="frame">
@@ -937,6 +1158,22 @@ body.demo{background:var(--ground);padding:0 0 60px}
           <button class="iconbtn" aria-label="Cerrar" data-i="x"></button>
         </div>
         <div class="sheet-bd">
+          <div class="f">
+            <label>Estado</label>
+            <div class="pk-states">
+              <button type="button" aria-pressed="true" data-s="pend">
+                <span class="pk-state"></span> Pendiente</button>
+              <button type="button" aria-pressed="false" data-s="pack">
+                <span class="pk-state" data-i="check"></span> Empacado</button>
+              <button type="button" aria-pressed="false" data-s="drop">
+                <span class="pk-state" data-i="dash"></span> Descartado</button>
+            </div>
+            <span class="hint">Descartar no es lo mismo que dejarlo pendiente: me dice que este ítem no va.
+              Si lo descartás en dos viajes de ciudad, dejo de sugerírtelo.</span>
+          </div>
+
+          <hr class="hr">
+
           <div class="f">
             <label>Cuántos llevás</label>
             <div class="pk-qty">
@@ -956,15 +1193,6 @@ body.demo{background:var(--ground);padding:0 0 60px}
             <p style="margin:0;font-size:13.5px;line-height:1.5">Ajuste por destino: <b>Madrid, octubre</b>.
               España usa clavija redonda tipo F y la ficha de acá no entra. Sin esto no cargás nada.</p>
           </div>
-
-          <hr class="hr">
-
-          <div class="f">
-            <label>Si no lo llevás</label>
-            <button class="btn danger block" data-i-before="x">Descartar de esta lista</button>
-            <span class="hint">Lo saco de acá y queda al pie, por si te arrepentís. Si descartás lo mismo en
-              dos viajes de ciudad, dejo de sugerírtelo.</span>
-          </div>
         </div>
         <div class="sheet-ft">
           <button class="btn ghost">Cancelar</button>
@@ -975,15 +1203,15 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       10 — Hoja: de dónde sale la lista
+       12 — Hoja: de dónde sale la lista
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s10">
+  <section class="spec" id="s12">
     <div class="spec-hd">
-      <span class="n">10 · HOJA · TRANSPARENCIA</span>
+      <span class="n">12 · HOJA · TRANSPARENCIA</span>
       <h2>De dónde sale esta lista</h2>
       <p>Se abre con la <span class="mono">i</span> del encabezado. Es la leyenda de los chips, la
-        declaración de que no hay nadie vendiendo nada atrás, y el lugar donde se cambia el tipo de viaje
-        o se rehace la lista.</p>
+        declaración de que no hay nadie vendiendo nada atrás, y el lugar donde se cambia el tipo de viaje o
+        se rehace la lista.</p>
     </div>
 
     <div class="frame">
@@ -998,7 +1226,7 @@ body.demo{background:var(--ground);padding:0 0 60px}
             <span class="chip accent">Ciudad</span>
             <span class="chip">Madrid · octubre</span>
             <span class="chip">6 días</span>
-            <span class="chip">5 viajes anteriores de ciudad</span>
+            <span class="chip">5 viajes de ciudad anteriores</span>
           </div>
 
           <hr class="hr">
@@ -1008,7 +1236,7 @@ body.demo{background:var(--ground);padding:0 0 60px}
 
             <div style="display:flex;gap:10px;align-items:flex-start">
               <span class="chip" style="margin-top:2px">lista base</span>
-              <span class="tiny muted" style="flex:1;line-height:1.5">Las reglas de siempre. Documentación,
+              <span class="tiny muted" style="flex:1;line-height:1.5">Las reglas de siempre: documentación,
                 electrónica y ropa por cantidad de días. Salen sin conexión.</span>
             </div>
             <div style="display:flex;gap:10px;align-items:flex-start">
@@ -1018,11 +1246,11 @@ body.demo{background:var(--ground);padding:0 0 60px}
             </div>
             <div style="display:flex;gap:10px;align-items:flex-start">
               <span class="chip soon" style="margin-top:2px">por Madrid</span>
-              <span class="tiny muted" style="flex:1;line-height:1.5">El ajuste por destino y época. Clima,
+              <span class="tiny muted" style="flex:1;line-height:1.5">El ajuste por destino y época: clima,
                 enchufes, costumbres del lugar. Es lo único que necesita conexión.</span>
             </div>
             <div style="display:flex;gap:10px;align-items:flex-start">
-              <span class="chip pk-src" style="margin-top:2px">lo pusiste vos</span>
+              <span class="chip own" style="margin-top:2px">lo pusiste vos</span>
               <span class="tiny muted" style="flex:1;line-height:1.5">Lo que agregaste a mano en este
                 viaje.</span>
             </div>
@@ -1043,11 +1271,11 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       11 — Compartida con quien viaja con vos
+       13 — Compartida
        ══════════════════════════════════════════════════════════ -->
-  <section class="spec" id="s11">
+  <section class="spec" id="s13">
     <div class="spec-hd">
-      <span class="n">11 · COMPARTIDA (VAL-34, P1)</span>
+      <span class="n">13 · COMPARTIDA (VAL-34, P1)</span>
       <h2>Ítems del grupo</h2>
       <p>Lo que se lleva una sola vez para los dos no necesita otra lista: necesita saber quién lo agarró.
         El ítem del grupo dice quién lo empacó en la línea de abajo, en lugar del motivo.</p>
@@ -1058,35 +1286,41 @@ body.demo{background:var(--ground);padding:0 0 60px}
         <div class="pk-cat" data-open="true">
           <div class="pk-cat-hd">
             <span class="pk-cat-ico" data-i="health"></span>
-            <span class="nm">Salud</span><span class="cnt">2 / 4</span>
+            <span class="nm">Salud</span><span class="cnt">1 de 3</span>
             <span class="chev" data-i="chevd"></span>
           </div>
           <div class="pk-body-wrap">
-            <div class="pk-row packed">
-              <span class="pk-check" aria-checked="true"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Botiquín</span></span>
-                <span class="pk-why"><span class="chip accent">del grupo</span>
-                  <span class="r">Lo empacó Ana</span></span>
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Botiquín</span></span>
+                  <span class="pk-why"><span class="chip accent">del grupo</span>
+                    <span class="r">Lo empacó Ana</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Ibuprofeno</span></span>
-                <span class="pk-why"><span class="chip">lista base</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Ibuprofeno</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
-            <div class="pk-row">
-              <span class="pk-check"><span class="pk-box" data-i="check"></span></span>
-              <span class="pk-txt">
-                <span class="pk-nm"><span class="t">Lo que tomás todos los días</span></span>
-                <span class="pk-why"><span class="chip">lista base</span>
-                  <span class="r">Con la receta, por las dudas en migraciones</span></span>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Lo que tomás todos los días</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Con la receta, por las dudas en migraciones</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
               </span>
-              <span class="pk-drop" data-i="x"></span>
             </div>
           </div>
         </div>
@@ -1099,7 +1333,7 @@ body.demo{background:var(--ground);padding:0 0 60px}
 <script>
 "use strict";
 
-/* ---------- iconos: los 6 nuevos y los que reuso de valija.html ---------- */
+/* ---------- iconos ---------- */
 const I = {
   /* ya existen en valija.html */
   back:'<path d="M15 19l-7-7 7-7"/>',
@@ -1110,13 +1344,14 @@ const I = {
   spark:'<path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/>',
   globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>',
 
-  /* NUEVOS — navegación y control */
+  /* NUEVOS — estados y control */
+  check:'<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
+  dash:'<path d="M6 12h12"/>',
+  ban:'<circle cx="12" cy="12" r="8.2"/><path d="M6.2 6.2l11.6 11.6"/>',
   chev:'<path d="M9 5l7 7-7 7"/>',
   chevd:'<path d="M6 9.5l6 6 6-6"/>',
-  check:'<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
   check2:'<circle cx="12" cy="12" r="9"/><path d="M8 12.2l2.8 2.8L16 9.5"/>',
   minus:'<path d="M5 12h14"/>',
-  undo:'<path d="M4 10h11a4.5 4.5 0 0 1 0 9h-5"/><path d="M8 6l-4 4 4 4"/>',
 
   /* NUEVOS — categorías */
   doc:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/>',
@@ -1137,18 +1372,16 @@ const I = {
 const svg = (p, cls) => `<svg viewBox="0 0 24 24"${cls?` class="${cls}"`:""}>${p}</svg>`;
 const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-/* pinta los iconos declarados con data-i / data-i-before */
 function paintIcons(root){
   (root||document).querySelectorAll("[data-i]").forEach(el=>{
-    const k = el.dataset.i; if(!I[k]) return;
-    el.innerHTML = svg(I[k]) + el.innerHTML;
-    if(el.classList.contains("chev")) el.outerHTML = svg(I[k], "chev");
-    delete el.dataset.i;
+    const k = el.dataset.i; delete el.dataset.i;
+    if(!I[k]) return;
+    if(el.classList.contains("chev")) el.outerHTML = svg(I[k],"chev");
+    else el.insertAdjacentHTML("afterbegin", svg(I[k]));
   });
   (root||document).querySelectorAll("[data-i-before]").forEach(el=>{
-    const k = el.dataset.iBefore; if(!I[k]) return;
-    el.insertAdjacentHTML("afterbegin", svg(I[k]));
-    delete el.dataset.iBefore;
+    const k = el.dataset.iBefore; delete el.dataset.iBefore;
+    if(I[k]) el.insertAdjacentHTML("afterbegin", svg(I[k]));
   });
 }
 
@@ -1160,121 +1393,148 @@ document.getElementById("themes").addEventListener("click", e=>{
   else document.documentElement.setAttribute("data-theme", b.dataset.th);
 });
 
+/* ---------- 01: el tipo de viaje empuja a la consistencia ---------- */
+const TCOUNT = {playa:2, ciudad:5, montana:0, trabajo:3, aventura:0, mixto:1};
+const TNAME  = {playa:"Playa", ciudad:"Ciudad", montana:"Montaña", trabajo:"Trabajo",
+                aventura:"Aventura", mixto:"Mixto"};
+const tpHint = document.getElementById("tp-hint");
+document.getElementById("tp-demo").addEventListener("click", e=>{
+  const b = e.target.closest("[data-t]"); if(!b) return;
+  document.querySelectorAll("#tp-demo [data-t]").forEach(x=>x.setAttribute("aria-pressed", x===b));
+  const k = b.dataset.t, n = TCOUNT[k];
+  if(k==="ciudad"){
+    tpHint.innerHTML = `Te propongo <b>Ciudad</b>: es el que usaste en Barcelona y en Lisboa, que se
+      parecen a este. Sobre esos 5 viajes ya sé qué llevás.`;
+  } else if(n >= 2){
+    tpHint.innerHTML = `Con <b>${TNAME[k]}</b> uso tus ${n} viajes de ese tipo. Ojo que en
+      <b>Ciudad</b> tenés 5, y Madrid se parece a Barcelona y a Lisboa.`;
+  } else {
+    tpHint.innerHTML = `Con <b>${TNAME[k]}</b> arranco casi de cero: ${n?`tenés 1 viaje de ese tipo`:
+      `no tenés viajes de ese tipo`}. En <b>Ciudad</b> ya tengo 5 y este viaje se le parece.`;
+  }
+});
+
 /* ============================================================
-   ESTADO 04 — lista viva. Sólo para demostrar la interacción:
+   ESTADO 06 — lista viva. Sólo para demostrar la interacción:
    la lógica de verdad la construye el motor de sugerencias.
    ============================================================ */
 const CATS = [
-  {id:"doc",   nm:"Documentación",        ico:"doc"},
-  {id:"ropa",  nm:"Ropa",                 ico:"shirt"},
-  {id:"calz",  nm:"Calzado",              ico:"shoe"},
-  {id:"hig",   nm:"Higiene",              ico:"drop"},
-  {id:"elec",  nm:"Electrónica",          ico:"plug"},
-  {id:"salud", nm:"Salud",                ico:"health"},
-  {id:"dest",  nm:"Específicos de Madrid",ico:"globe"}
+  {id:"doc",   nm:"Documentación",         ico:"doc"},
+  {id:"ropa",  nm:"Ropa",                  ico:"shirt"},
+  {id:"calz",  nm:"Calzado",               ico:"shoe"},
+  {id:"hig",   nm:"Higiene",               ico:"drop"},
+  {id:"elec",  nm:"Electrónica",           ico:"plug"},
+  {id:"salud", nm:"Salud",                 ico:"health"},
+  {id:"dest",  nm:"Específicos de Madrid", ico:"globe"}
 ];
-/* src: base | hist | dest | own   ·  q: cantidad  ·  why: de dónde sale la cantidad o el ítem */
+/* st: pend | pack | drop   ·   src: base | hist | dest | own */
 let ITEMS = [
-  {c:"doc", n:"Pasaporte", src:"base", why:"Vuelo internacional", p:1},
-  {c:"doc", n:"DNI", src:"base", why:"Segundo documento, por si perdés el pasaporte", p:1},
-  {c:"doc", n:"Seguro de viaje impreso", src:"base", why:"En Europa lo pueden pedir en migraciones", p:1},
-  {c:"doc", n:"Tarjeta de débito y una de crédito", src:"hist", why:"Lo agregaste a mano en 3 viajes", p:1},
-  {c:"doc", n:"Reserva del hotel impresa", src:"hist", why:"Lo llevaste en 4 de tus 5 viajes de ciudad", p:0},
+  {c:"doc", n:"Pasaporte", src:"base", why:"Vuelo internacional", st:"pack"},
+  {c:"doc", n:"DNI", src:"base", why:"Segundo documento, por si perdés el pasaporte", st:"pack"},
+  {c:"doc", n:"Seguro de viaje impreso", src:"base", why:"En Europa lo pueden pedir en migraciones", st:"pack"},
+  {c:"doc", n:"Tarjeta de débito y una de crédito", src:"hist", why:"Las agregaste a mano en 3 viajes", st:"pack"},
+  {c:"doc", n:"Reserva del hotel impresa", src:"hist", why:"La llevaste en 4 de tus 5 viajes de ciudad", st:"drop"},
 
-  {c:"ropa", n:"Remeras", q:7, src:"base", why:"6 días + 1 de repuesto", p:1},
-  {c:"ropa", n:"Ropa interior", q:7, src:"base", why:"6 días + 1 de repuesto", p:1},
-  {c:"ropa", n:"Medias", q:7, src:"base", why:"6 días + 1 de repuesto", p:1},
-  {c:"ropa", n:"Pantalones", q:2, src:"base", why:"1 cada 3 días", p:1},
-  {c:"ropa", n:"Campera liviana", src:"dest", why:"De noche baja a 11° en octubre", p:0},
-  {c:"ropa", n:"Buzo", src:"hist", why:"Lo llevaste en 4 de tus 5 viajes de ciudad", p:0},
-  {c:"ropa", n:"Pijama", src:"base", p:0},
+  {c:"ropa", n:"Remeras", q:7, src:"base", why:"6 días + 1 de repuesto", st:"pack"},
+  {c:"ropa", n:"Ropa interior", q:7, src:"base", why:"6 días + 1 de repuesto", st:"pack"},
+  {c:"ropa", n:"Medias", q:7, src:"base", why:"6 días + 1 de repuesto", st:"pack"},
+  {c:"ropa", n:"Pantalones", q:2, src:"base", why:"1 cada 3 días", st:"pend"},
+  {c:"ropa", n:"Campera liviana", src:"dest", why:"De noche baja a 11° en octubre", st:"pend"},
+  {c:"ropa", n:"Buzo", src:"hist", why:"Lo llevaste en 4 de tus 5 viajes de ciudad", st:"pend"},
+  {c:"ropa", n:"Pijama", src:"base", st:"pend"},
 
-  {c:"calz", n:"Zapatillas de caminar", src:"dest", why:"El centro de Madrid se recorre a pie", p:1},
-  {c:"calz", n:"Zapatos para salir", src:"hist", why:"Los agregaste a mano en 2 viajes de ciudad", p:0},
+  {c:"calz", n:"Zapatillas de caminar", src:"dest", why:"El centro de Madrid se recorre a pie", st:"pack"},
+  {c:"calz", n:"Zapatos para salir", src:"hist", why:"Los agregaste a mano en 2 viajes de ciudad", st:"pend"},
 
-  {c:"hig", n:"Cepillo y pasta de dientes", src:"base", p:1},
-  {c:"hig", n:"Desodorante", src:"base", p:1},
-  {c:"hig", n:"Shampoo y jabón en envase chico", src:"base", why:"Menos de 100 ml si va en el bolso de mano", p:0},
-  {c:"hig", n:"Crema para labios", src:"dest", why:"Madrid es seco: 45% de humedad en octubre", p:0},
-  {c:"hig", n:"Máquina de afeitar", src:"hist", why:"La agregaste a mano en 2 viajes", p:0},
+  {c:"hig", n:"Cepillo y pasta de dientes", src:"base", st:"pack"},
+  {c:"hig", n:"Desodorante", src:"base", st:"pack"},
+  {c:"hig", n:"Shampoo y jabón en envase chico", src:"base", why:"Menos de 100 ml si va en el bolso de mano", st:"pend"},
+  {c:"hig", n:"Crema para labios", src:"dest", why:"Madrid es seco: 45% de humedad en octubre", st:"pend"},
+  {c:"hig", n:"Secador de pelo", src:"base", why:"Estadía de más de 3 días", st:"drop"},
 
-  {c:"elec", n:"Cargador del teléfono", src:"base", p:1},
-  {c:"elec", n:"Adaptador de enchufe tipo F", q:2, src:"dest", why:"España usa clavija redonda tipo F: la tuya no entra", p:1},
-  {c:"elec", n:"Batería portátil", src:"base", why:"Días largos afuera, sin dónde enchufar", p:0},
-  {c:"elec", n:"Auriculares", src:"hist", why:"Los agregaste a mano en 3 viajes", p:0},
-  {c:"elec", n:"Cargador de la cámara", src:"own", p:0},
+  {c:"elec", n:"Cargador del teléfono", src:"base", st:"pack"},
+  {c:"elec", n:"Adaptador de enchufe tipo F", q:2, src:"dest", why:"España usa clavija redonda tipo F: la tuya no entra", st:"pack"},
+  {c:"elec", n:"Batería portátil", src:"base", why:"Días largos afuera, sin dónde enchufar", st:"pend"},
+  {c:"elec", n:"Auriculares", src:"hist", why:"Los agregaste a mano en 3 viajes", st:"pend"},
+  {c:"elec", n:"Cargador de la cámara", src:"own", st:"pend"},
 
-  {c:"salud", n:"Ibuprofeno", src:"base", p:0},
-  {c:"salud", n:"Curitas", src:"base", p:0},
-  {c:"salud", n:"Lo que tomás todos los días", src:"base", why:"Con la receta, por las dudas en migraciones", p:0},
-  {c:"salud", n:"Antiácido", src:"hist", why:"Lo agregaste a mano en 2 viajes de ciudad", p:0},
+  {c:"salud", n:"Ibuprofeno", src:"base", st:"pack"},
+  {c:"salud", n:"Curitas", src:"base", st:"pend"},
+  {c:"salud", n:"Lo que tomás todos los días", src:"base", why:"Con la receta, por las dudas en migraciones", st:"pend"},
+  {c:"salud", n:"Antiácido", src:"hist", why:"Lo agregaste a mano en 2 viajes de ciudad", st:"pend"},
 
-  {c:"dest", n:"Tarjeta Multi del metro", src:"dest", why:"El metro no vende boletos sueltos: se carga en una tarjeta", p:0},
-  {c:"dest", n:"Paraguas plegable", src:"dest", why:"En octubre llueve unos 8 días del mes", p:0},
-  {c:"dest", n:"Bolsa de tela", src:"dest", why:"En los supermercados las bolsas se pagan aparte", p:0},
-  {c:"dest", n:"Botella recargable", src:"dest", why:"Hay fuentes de agua potable en toda la ciudad", p:0}
-].map((x,i)=>({id:"i"+i, q:null, why:"", p:0, ...x, drop:false}));
-
-let DROPPED = [
-  {id:"d1", c:"hig", n:"Secador de pelo", src:"base", why:"", p:0, drop:true},
-  {id:"d2", c:"doc", n:"Efectivo en euros", src:"hist", why:"", p:0, drop:true}
-];
+  {c:"dest", n:"Tarjeta Multi del metro", src:"dest", why:"El metro no vende boletos sueltos: se carga en una tarjeta", st:"pend"},
+  {c:"dest", n:"Paraguas plegable", src:"dest", why:"En octubre llueve unos 8 días del mes", st:"pend"},
+  {c:"dest", n:"Bolsa de tela", src:"dest", why:"En los supermercados las bolsas se pagan aparte", st:"pend"},
+  {c:"dest", n:"Botella recargable", src:"dest", why:"Hay fuentes de agua potable en toda la ciudad", st:"pend"}
+].map((x,i)=>({id:"i"+i, q:null, why:"", ...x}));
 
 const SRC = {
-  base:{cls:"chip",            tx:"lista base"},
-  hist:{cls:"chip accent",     tx:"tus viajes"},
-  dest:{cls:"chip soon",       tx:"por Madrid"},
-  own: {cls:"chip pk-src",     tx:"lo pusiste vos"}
+  base:{cls:"chip",        tx:"lista base"},
+  hist:{cls:"chip accent", tx:"tus viajes"},
+  dest:{cls:"chip soon",   tx:"por Madrid"},
+  own: {cls:"chip own",    tx:"lo pusiste vos"}
 };
+const ST_LABEL = {pend:"pendiente", pack:"empacado", drop:"descartado"};
 
-let OPEN = {};      // categorías plegadas a mano
+let OPEN = {};      // categorías abiertas o cerradas a mano
 let ADDING = null;  // categoría con el campo de agregar abierto
 
 function rowHtml(it){
-  return `<div class="pk-row ${it.p?"packed":""}" data-row="${it.id}">
-    <button class="pk-check" role="checkbox" aria-checked="${it.p?"true":"false"}"
-            aria-label="${esc(it.n)}${it.p?", empacado":", sin empacar"}" data-t="${it.id}">
-      <span class="pk-box">${svg(I.check)}</span>
-    </button>
-    <button class="pk-txt" data-d="${it.id}">
-      <span class="pk-nm"><span class="t">${esc(it.n)}</span>${it.q?`<span class="q">×${it.q}</span>`:""}</span>
-      <span class="pk-why">
-        <span class="${SRC[it.src].cls}">${SRC[it.src].tx}</span>
-        ${it.why?`<span class="r">${esc(it.why)}</span>`:""}
-      </span>
-    </button>
-    <button class="pk-drop" aria-label="Descartar ${esc(it.n)}" data-x="${it.id}">${svg(I.x)}</button>
+  const drop = it.st === "drop";
+  return `<div class="pk-row" data-st="${it.st}" data-row="${it.id}">
+    <span class="pk-swipe">${svg(I.ban)} Descartar</span>
+    <span class="pk-slide">
+      <button class="pk-mark" data-mark="${it.id}"
+              aria-label="${esc(it.n)}: ${ST_LABEL[it.st]}. ${drop?"Volver a la lista":"Marcar como empacado"}">
+        <span class="pk-state">${svg(drop ? I.dash : I.check)}</span>
+      </button>
+      <button class="pk-txt" data-detail="${it.id}">
+        <span class="pk-nm"><span class="t">${esc(it.n)}</span>${it.q?`<span class="q">×${it.q}</span>`:""}</span>
+        <span class="pk-why">
+          <span class="${SRC[it.src].cls}">${SRC[it.src].tx}</span>
+          ${it.why?`<span class="r">${esc(it.why)}</span>`:""}
+        </span>
+      </button>
+      ${drop
+        ? `<button class="pk-back" data-mark="${it.id}">volver</button>`
+        : `<button class="pk-drop" data-dropbtn="${it.id}" aria-label="Descartar ${esc(it.n)}">${svg(I.ban)}</button>`}
+    </span>
   </div>`;
 }
 
 function renderLive(){
-  const act = ITEMS.filter(i=>!i.drop);
-  const done = act.filter(i=>i.p).length;
-  const pct = act.length ? Math.round(done/act.length*100) : 0;
+  const pack = ITEMS.filter(i=>i.st==="pack").length;
+  const drop = ITEMS.filter(i=>i.st==="drop").length;
+  const tot  = ITEMS.length;
+  const pend = tot - pack - drop;
 
   const prog = document.getElementById("live-prog");
-  prog.querySelector("i").style.width = pct + "%";
-  prog.querySelector(".n").textContent = `${done} de ${act.length}`;
-  prog.classList.toggle("full", done===act.length && act.length>0);
-  prog.querySelector(".pk-bar").classList.toggle("empty", done===0);
-  prog.setAttribute("aria-valuemax", act.length);
-  prog.setAttribute("aria-valuenow", done);
-  prog.setAttribute("aria-valuetext", `${done} de ${act.length} empacados`);
+  prog.querySelector("i.p").style.width = (pack/tot*100) + "%";
+  prog.querySelector("i.d").style.width = (drop/tot*100) + "%";
+  prog.querySelector(".n").innerHTML = pend===0
+    ? `Valija lista · <b>${pack}</b> de ${tot}`
+    : `<b>${pack}</b> de ${tot} · faltan ${pend}`;
+  prog.classList.toggle("full", pend===0);
+  prog.setAttribute("aria-valuemax", tot);
+  prog.setAttribute("aria-valuenow", pack+drop);
+  prog.setAttribute("aria-valuetext", `${pack} empacados y ${drop} descartados de ${tot}`);
 
   let html = "";
   CATS.forEach(cat=>{
-    const list = act.filter(i=>i.c===cat.id);
+    const list = ITEMS.filter(i=>i.c===cat.id);
     if(!list.length && ADDING!==cat.id) return;
-    const d = list.filter(i=>i.p).length;
-    const full = list.length>0 && d===list.length;
-    // una categoría completa se pliega sola, salvo que la hayas abierto a mano
+    const d = list.filter(i=>i.st==="pack").length;
+    const pendings = list.filter(i=>i.st==="pend").length;
+    const full = list.length>0 && pendings===0;
+    // una categoría sin pendientes se pliega sola, salvo que la hayas abierto vos
     const open = OPEN[cat.id] !== undefined ? OPEN[cat.id] : !full;
 
     html += `<div class="pk-cat ${full?"full":""}" data-open="${open}">
       <button class="pk-cat-hd" aria-expanded="${open}" data-cat="${cat.id}">
         <span class="pk-cat-ico">${svg(I[cat.ico])}</span>
         <span class="nm">${esc(cat.nm)}</span>
-        <span class="cnt">${d} / ${list.length}</span>
+        <span class="cnt">${full?`<span class="chip ok">listo</span>`:`${d} de ${list.length}`}</span>
         ${svg(I.chevd,"chev")}
       </button>
       <div class="pk-body-wrap">
@@ -1289,49 +1549,27 @@ function renderLive(){
     </div>`;
   });
 
-  if(DROPPED.length){
-    const open = OPEN.__drop === true;
-    html += `<div class="pk-cat dropped" data-open="${open}">
-      <button class="pk-cat-hd" aria-expanded="${open}" data-cat="__drop">
-        <span class="pk-cat-ico">${svg(I.undo)}</span>
-        <span class="nm">Descartados</span>
-        <span class="cnt">${DROPPED.length}</span>
-        ${svg(I.chevd,"chev")}
-      </button>
-      <div class="pk-body-wrap">
-        ${DROPPED.map(it=>`<div class="pk-row">
-          <button class="pk-txt" style="padding-left:12px" disabled>
-            <span class="pk-nm"><span class="t">${esc(it.n)}</span></span>
-            <span class="pk-why"><span class="${SRC[it.src].cls}">${SRC[it.src].tx}</span></span>
-          </button>
-          <button class="pk-back" data-back="${it.id}">volver a la lista</button>
-        </div>`).join("")}
-      </div>
-    </div>`;
-  }
-
   const main = document.getElementById("live-main");
   main.innerHTML = html;
+  bindLive(main);
+}
 
-  main.querySelectorAll("[data-t]").forEach(b=> b.onclick = ()=>{
-    const it = ITEMS.find(x=>x.id===b.dataset.t); it.p = it.p?0:1;
-    delete OPEN[it.c];            // que vuelva a decidir sola si se pliega
-    renderLive();
+function setState(id, st){
+  const it = ITEMS.find(x=>x.id===id); if(!it) return;
+  it.st = st;
+  delete OPEN[it.c];              // que la categoría vuelva a decidir sola si se pliega
+  renderLive();
+}
+
+function bindLive(main){
+  main.querySelectorAll("[data-mark]").forEach(b=> b.onclick = ()=>{
+    const it = ITEMS.find(x=>x.id===b.dataset.mark);
+    // tocar siempre empuja el ítem hacia la lista activa
+    setState(it.id, it.st==="pack" ? "pend" : it.st==="drop" ? "pend" : "pack");
   });
-  main.querySelectorAll("[data-x]").forEach(b=> b.onclick = ()=>{
-    const i = ITEMS.findIndex(x=>x.id===b.dataset.x);
-    const it = ITEMS.splice(i,1)[0]; it.drop = true; it.p = 0;
-    DROPPED.push(it); renderLive();
-  });
-  main.querySelectorAll("[data-back]").forEach(b=> b.onclick = ()=>{
-    const i = DROPPED.findIndex(x=>x.id===b.dataset.back);
-    const it = DROPPED.splice(i,1)[0]; it.drop = false;
-    ITEMS.push(it); renderLive();
-  });
+  main.querySelectorAll("[data-dropbtn]").forEach(b=> b.onclick = ()=> setState(b.dataset.dropbtn,"drop"));
   main.querySelectorAll("[data-cat]").forEach(b=> b.onclick = ()=>{
-    const k = b.dataset.cat;
-    const cur = b.parentElement.dataset.open === "true";
-    OPEN[k] = !cur; renderLive();
+    OPEN[b.dataset.cat] = b.parentElement.dataset.open !== "true"; renderLive();
   });
   main.querySelectorAll("[data-add]").forEach(b=> b.onclick = ()=>{
     ADDING = b.dataset.add; OPEN[ADDING] = true; renderLive();
@@ -1339,17 +1577,48 @@ function renderLive(){
   });
   main.querySelectorAll("[data-save]").forEach(b=> b.onclick = ()=>{
     const c = b.dataset.save, inp = document.getElementById("add-"+c);
-    const n = inp.value.trim();
-    if(n){ ITEMS.push({id:"u"+Date.now(), c, n, q:null, src:"own", why:"", p:0, drop:false}); }
+    const n = (inp.value||"").trim();
+    if(n) ITEMS.push({id:"u"+Date.now(), c, n, q:null, src:"own", why:"", st:"pend"});
     ADDING = null; renderLive();
   });
   main.querySelectorAll(".pk-addform input").forEach(inp=>{
-    inp.onkeydown = e=>{ if(e.key==="Enter") main.querySelector("[data-save]").click();
-                         if(e.key==="Escape"){ ADDING=null; renderLive(); } };
+    inp.onkeydown = e=>{
+      if(e.key==="Enter") main.querySelector("[data-save]").click();
+      if(e.key==="Escape"){ ADDING=null; renderLive(); }
+    };
   });
-  main.querySelectorAll("[data-d]").forEach(b=> b.onclick = ()=>{
-    const it = ITEMS.find(x=>x.id===b.dataset.d);
-    alert(`Acá se abre la hoja de detalle del estado 09.\n\n${it.n}\n${SRC[it.src].tx}${it.why?" · "+it.why:""}`);
+  main.querySelectorAll("[data-detail]").forEach(b=> b.onclick = ()=>{
+    const it = ITEMS.find(x=>x.id===b.dataset.detail);
+    alert(`Acá se abre la hoja del estado 11.\n\n${it.n}\nEstado: ${ST_LABEL[it.st]}\n`
+        + `${SRC[it.src].tx}${it.why?" · "+it.why:""}`);
+  });
+
+  /* deslizar: izquierda descarta, derecha marca. Sin puntería. */
+  main.querySelectorAll(".pk-row[data-row]").forEach(row=>{
+    const slide = row.querySelector(".pk-slide");
+    let x0=null, dx=0;
+    row.addEventListener("pointerdown", e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
+      x0 = e.clientX; dx = 0; slide.style.transition = "none";
+    });
+    row.addEventListener("pointermove", e=>{
+      if(x0===null) return;
+      dx = e.clientX - x0;
+      if(Math.abs(dx) > 6) slide.style.transform = `translateX(${Math.max(-120, Math.min(120, dx))}px)`;
+    });
+    const end = ()=>{
+      if(x0===null) return;
+      slide.style.transition = ""; slide.style.transform = "";
+      const id = row.dataset.row, it = ITEMS.find(x=>x.id===id);
+      if(dx < -70) setState(id, "drop");
+      else if(dx > 70) setState(id, it.st==="pack" ? "pend" : "pack");
+      x0 = null;
+    };
+    row.addEventListener("pointerup", end);
+    row.addEventListener("pointercancel", end);
+    row.addEventListener("pointerleave", end);
+    // un deslizamiento no debe además disparar el botón que quedó abajo
+    row.addEventListener("click", e=>{ if(Math.abs(dx) > 10){ e.preventDefault(); e.stopPropagation(); } }, true);
   });
 }
 
