@@ -100,12 +100,25 @@ Como viajero quiero que la lista contemple cómo va a estar el clima donde voy.
 - Si la capa inteligente falla o no está disponible, la lista base se muestra igual y se avisa que faltó el
   ajuste por destino.
 
-### VAL-34 · Compartir la lista con quien viaja conmigo — P1
+### VAL-34 · Compartir la lista con quien viaja conmigo — FUERA DE ALCANCE
 
 Como viajero quiero que quien viaja conmigo vea la lista y marque lo suyo.
 
 - La lista es parte del viaje y se comparte con él, respetando permisos de lectura y edición.
-- Se distinguen los ítems compartidos del grupo de los personales de cada uno.
+- ~~Se distinguen los ítems compartidos del grupo de los personales de cada uno.~~
+
+**Sacada del alcance por el PO durante la iteración.** El primer criterio se cumple solo: la lista vive
+dentro del viaje, así que ya viaja con el link compartido y respeta los permisos de lectura y edición.
+
+El segundo es imposible hoy. Distinguir los ítems del grupo de los personales, y poder decir quién empacó
+qué, requiere saber quién es cada persona que abre la app. La plataforma no expone identidad por visitante,
+así que la app no puede diferenciar a dos personas que entran con el mismo link.
+
+Se mueve a la iteración 2, donde llegan las cuentas propias con VAL-13. El diseño ya está hecho y esperando:
+el estado 13 del muestrario tiene resuelta la vista de ítems del grupo.
+
+Consecuencia para esta iteración: la lista se comparte y varios pueden marcarla, pero todos ven una sola
+lista común sin distinguir de quién es cada ítem.
 
 ### VAL-35 · Llevar la lista en el PDF — P2
 
@@ -117,7 +130,7 @@ Como viajero quiero la lista en el resumen imprimible.
 
 - Peso y límites de equipaje por aerolínea.
 - Fotos de los ítems.
-- Listas por persona dentro del mismo viaje, más allá de la distinción de VAL-34.
+- Listas por persona dentro del mismo viaje. Requiere identidad por visitante, que la plataforma no da hoy.
 
 ## Cómo se valida
 

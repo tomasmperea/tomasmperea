@@ -82,8 +82,8 @@ Como viajero quiero un PDF con todo el viaje para tenerlo sin conexión y mandar
 | VAL-31 | Marcar lo que ya está en la valija, descartar y agregar propios | P0 |
 | VAL-32 | Aprender del historial de viajes anteriores | P0 |
 | VAL-33 | Ajustar la lista por destino y época del año | P1 |
-| VAL-34 | Compartir la lista con quien viaja conmigo | P1 |
-| VAL-35 | Incluir la lista en el PDF del viaje | P2 |
+| VAL-34 | Compartir la lista con quien viaja conmigo | Movida a iteración 2 |
+| VAL-35 | Incluir la lista en el PDF del viaje | P2, sin diseñar |
 
 **Por qué se adelanta a la iteración 2:** no necesita backend. Usa la base de datos y la capa de
 inteligencia que ya tiene el MVP.
