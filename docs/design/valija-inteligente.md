@@ -501,19 +501,25 @@ El HTML de cada fila (`rowHtml` en el muestrario) se arma con `PackingEngine.gro
 chip "del grupo" y su línea de motivo pasa a ser "Lo empacó {nombre}".
 
 ### 5.6 Cálculo de la barra de progreso (`pk-prog`)
-El motor devuelve `conteo:{total, empacados, pendientes, descartados, pct}` donde `total` **excluye** los
-descartados (`packingProgress()`: `vivos = arr.filter(i => i.estado !== "descartado")`). El muestrario, en
-cambio, calcula el ancho de los dos tramos de la barra sobre el total completo (empacados + pendientes +
-descartados). Para reproducir la barra tal como está diseñada:
+
+El motor devuelve `conteo:{total, empacados, pendientes, descartados, resueltos, pct}` donde `total`
+**incluye** los descartados, y `pct = resueltos / total` con `resueltos = empacados + descartados`.
+
+La barra se dibuja directamente sobre esos números, sin recalcular denominadores:
+
 ```js
-const totalCompleto = conteo.total + conteo.descartados;   // = itemsArray(list).length
-const pctPack = totalCompleto ? conteo.empacados/totalCompleto*100 : 0;
-const pctDrop = totalCompleto ? conteo.descartados/totalCompleto*100 : 0;
+const pctPack = conteo.total ? conteo.empacados  / conteo.total * 100 : 0;
+const pctDrop = conteo.total ? conteo.descartados / conteo.total * 100 : 0;
+// conteo.pct sirve tal cual para el porcentaje de avance
 ```
-Esto es una nota de integración, no una inconsistencia del diseño: el `pct` que expone el motor sirve para
-otra cosa (medir avance sobre lo que sigue vivo) y la barra visual necesita el denominador completo para que
-el tramo gris de descartados tenga sentido. Documentado acá para que no se use `conteo.pct` directamente en
-el ancho de la barra por error.
+
+El texto de la interfaz muestra los números crudos: `empacados de total` y `faltan pendientes`.
+
+**Por qué el descarte cuenta como progreso.** Es una decisión del PO, tomada durante la iteración. Si
+descartar no mueve la barra, la persona deja de descartar y empieza a marcar como empacado cosas que no
+piensa llevar, sólo para sacarse el pendiente de encima. Ahí se pierden dos cosas: el descarte, que es el
+único insumo del aprendizaje de VAL-32, y la confianza en lo que la lista dice que está guardado. El
+porcentaje mide cuánto falta decidir, no cuánto hay dentro del bolso.
 
 ### 5.7 Sheets nuevas
 Usan `openSheet(title, bodyHtml, footHtml)` tal como ya existe (línea ~1085), sin cambios a esa función:
