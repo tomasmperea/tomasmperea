@@ -136,7 +136,39 @@ existían, sin duplicar el vuelo que ya tenía cargado.
 - El reconocimiento usa número de vuelo y fecha, y ante la duda pregunta en vez de adivinar.
 - La tarjeta de embarque queda guardada y se puede mostrar en el mostrador.
 
-### VAL-43 · La lista de equipaje se adapta de verdad al destino — P1
+### VAL-44 · La capa inteligente ve el viaje completo, no solo el destino — P0
+
+Como viajero quiero que la sugerencia de equipaje razone sobre todo lo que ya cargué, no solo sobre a dónde
+voy.
+
+**Qué falta exactamente.** Hoy la capa inteligente recibe cuatro datos: destino, fechas, duración y tipo de
+viaje. No ve ninguna de las reservas. Las reglas determinísticas sí las ven, pero solo pueden reaccionar a lo
+que alguien anticipó al escribirlas: hay auto alquilado, hay vuelo internacional, hay trekking. Todo lo que
+no esté previsto en una regla, no existe.
+
+- La capa inteligente recibe las reservas del viaje: tramos de vuelo con horarios y escalas, alojamiento con
+  su tipo y sus notas, auto con su rentadora y su lugar de retiro, actividades cargadas.
+- Puede sugerir por combinaciones que ninguna regla anticipó. Una escala de ocho horas, un check-in de
+  madrugada, un alojamiento sin lavandería en un viaje largo, una actividad que pide equipo propio.
+- Cada sugerencia cita el dato del viaje que la motiva, no una generalidad. "Tu escala en Lima es de ocho
+  horas" y no "las escalas largas cansan".
+- Junto con VAL-43, también puede sacar ítems que las reservas vuelven innecesarios.
+
+**Lo que no se toca, y es una decisión de producto ya tomada.** Las reglas determinísticas siguen siendo el
+piso. La capa inteligente trabaja encima, nunca en lugar de. Sin conexión, o si el modelo falla, la lista
+base se genera igual y sirve. Un ítem que una regla marca como crítico, la documentación de identidad entre
+ellos, no se puede sacar automáticamente.
+
+**Cuidado con lo que se manda.** Las reservas tienen códigos de reserva, direcciones y teléfonos que no
+aportan nada a la sugerencia de equipaje. Se manda el tipo, las fechas, los lugares y la duración: lo que
+sirve para razonar. Nunca códigos de reserva ni datos de contacto.
+
+**Riesgo a controlar.** Con más contexto, el modelo tiende a repetir lo que las reglas ya pusieron. Hay que
+pasarle la lista base ya armada y pedirle explícitamente lo que ella no cubre. Si el corte por origen de las
+métricas muestra que los ítems de la capa inteligente aciertan menos que los de las reglas, la decisión es
+subir su umbral o apagarla.
+
+### VAL-43 · La lista de equipaje se adapta de verdad al destino — P0
 
 Como viajero quiero que la lista contemple el clima esperado y las reglas del país al que voy, y que no me
 muestre cosas que no necesito.

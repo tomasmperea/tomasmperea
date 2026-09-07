@@ -58,6 +58,9 @@ carga va primero.
 - Completar un vuelo ya cargado con los datos de la tarjeta de embarque, sin duplicarlo.
 - La lista de equipaje se adapta al destino de verdad: la capa inteligente puede sacar ítems que no
   corresponden, no solo agregar.
+- La capa inteligente pasa a ver el viaje completo, con sus reservas, y no solo el destino y las fechas. Hoy
+  solo las reglas determinísticas ven lo cargado, y por eso únicamente reaccionan a lo que alguien anticipó
+  al escribirlas.
 
 Sigue sin necesitar servidor. Todo se resuelve en el navegador con la capa de inteligencia que ya existe.
 
