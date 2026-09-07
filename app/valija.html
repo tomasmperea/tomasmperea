@@ -3,6 +3,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- pdf.js, versión fija (VAL-40). Si cdnjs está bloqueado o la versión no existe,
+     window.pdfjsLib simplemente no queda definida: ImportEngine ya degrada cada
+     PDF a un error propio sin tocar a los demás archivos ni romper la hoja. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+</script>
 
 <style>
 /* ============================================================
@@ -545,6 +555,90 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .tiny{font-size:11.5px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
+/* ============================================================
+   IMPORTAR DOCUMENTOS — componentes nuevos (VAL-40, VAL-41, VAL-42)
+   Copiados de app/parts/import-ui.html, Bloque C (C1 a C7), sin
+   tokens nuevos: todo sale de los mismos :root de arriba.
+   ============================================================ */
+/* C1. Chip con glifo chico: identifica de qué archivo salió un dato. */
+.chip.src{display:inline-flex;align-items:center;gap:4px}
+.chip.src svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* C2. Botón de origen del archivo: mismo aspecto que .tp button, pero es un
+   <label> que activa un <input type=file> vecino. */
+.tp label.tpbtn{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:all .14s}
+.tp label.tpbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tp label.tpbtn:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* C3. "Pegar el texto en cambio": un <details> nativo, sin JS. */
+.imp-more{border:0}
+.imp-more summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2);list-style:none;display:flex;align-items:center;gap:7px;padding:2px 0}
+.imp-more summary::-webkit-details-marker{display:none}
+.imp-more summary::before{content:"+";font-family:var(--f-mono);width:18px;height:18px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:13px;flex:none}
+.imp-more[open] summary::before{content:"–"}
+.imp-more[open] summary{margin-bottom:10px}
+.imp-more summary:hover{color:var(--ink)}
+
+/* C4. La cola / el progreso de lectura: una lista de archivos. */
+.imp-files{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
+.imp-file{display:flex;align-items:center;gap:10px;padding:10px 8px 10px 12px;border-bottom:1px solid var(--line-2)}
+.imp-file:last-child{border-bottom:0}
+.imp-file.err{background:var(--crit-soft)}
+.imp-thumb{width:38px;height:38px;border-radius:9px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-2)}
+.imp-thumb svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.imp-thumb.pdf{background:var(--accent-soft);color:var(--accent)}
+.imp-thumb.img{background:var(--flap-soft);color:var(--warn)}
+.imp-file .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.imp-file .nm{font-size:13.5px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-file .meta{font-family:var(--f-mono);font-size:11px;color:var(--ink-2);display:flex;align-items:center;gap:6px;line-height:1.4}
+.imp-file .meta.err{color:var(--crit);font-family:var(--f-body);letter-spacing:0;line-height:1.4}
+.imp-file .meta.ok{color:var(--ok)}
+/* C4b. Archivo "vacío": se leyó bien, no había ninguna reserva ahí. No es un
+   error: misma tipografía de frase larga que .err, pero en ink-2. Nunca lleva
+   fondo rojo (nunca .imp-file.err). */
+.imp-file .meta.info{color:var(--ink-2);font-family:var(--f-body);letter-spacing:0;line-height:1.4}
+.imp-file .meta svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.imp-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-3);flex:none}
+.imp-file .rm{flex:none;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;border-radius:9px}
+.imp-file .rm:hover{background:var(--surface-2);color:var(--ink-2)}
+.imp-file .rm svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.imp-file .act{flex:none;font-size:12px;font-weight:700;color:var(--accent);background:none;border:0;cursor:pointer;text-decoration:underline;white-space:nowrap;padding:6px 0 6px 6px}
+.imp-file .row-acts{display:flex;align-items:center;flex:none}
+
+/* C5. Tarjeta de revisión: una reserva encontrada, editable. */
+.imp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
+.imp-card-hd{display:flex;align-items:flex-start;gap:10px;padding:12px 6px 10px 13px}
+.imp-card-hd .ttl{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:1px}
+.imp-title{border:0;background:none;padding:0;font-family:var(--f-display);font-weight:700;font-size:15.5px;color:var(--ink);width:100%;letter-spacing:-.005em}
+.imp-title:focus{outline:none;box-shadow:inset 0 -2px 0 var(--accent)}
+.imp-src{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.imp-discard{flex:none;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;border-radius:9px;margin-top:-2px}
+.imp-discard:hover{background:var(--crit-soft);color:var(--crit)}
+.imp-discard svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.imp-card-bd{padding:0 13px 13px;border-top:1px solid var(--line-2);margin-top:2px;padding-top:11px;display:flex;flex-direction:column;gap:9px}
+.imp-note{font-size:12px;color:var(--ink-2);line-height:1.45;padding:0 13px 12px;margin:0}
+
+/* C6. Tarjeta de embarque: caso de coincidencia con el vuelo cargado. */
+.imp-existing{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-2);border-radius:11px}
+.imp-existing .pass-icon{width:30px;height:30px;flex:none}
+.imp-existing .pass-title{font-size:14px}
+.imp-existing .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.imp-diff{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:9px 12px}
+.imp-diff .field .v{display:inline-block;background:var(--accent-soft);color:var(--accent);padding:2px 7px;border-radius:6px;font-weight:500}
+
+/* C7. Duda entre dos vuelos: lista de opciones tipo radio, más una salida
+   explícita para "ninguno de los dos". Nunca adivina. */
+.imp-choice{display:flex;flex-direction:column;gap:8px}
+.imp-choice button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;cursor:pointer}
+.imp-choice button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.imp-choice .radio{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-3);flex:none;display:grid;place-items:center;background:var(--surface)}
+.imp-choice button[aria-pressed="true"] .radio{border-color:var(--accent)}
+.imp-choice button[aria-pressed="true"] .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.imp-choice .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.imp-choice .t{font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:-.005em}
+.imp-choice .s{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2)}
+.imp-choice .sep{text-align:center;font-size:11px;color:var(--ink-3);padding:1px 0}
+
 @media print{
   .hdr,.fab,.seg,.iconbtn,.btn{display:none !important}
   body,.shell{background:#fff}
@@ -588,6 +682,9 @@ const I = {
   bell:'<path d="M18 8A6 6 0 1 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
   cam:'<path d="M3 8h3l2-2h8l2 2h3v11H3z"/><circle cx="12" cy="12.5" r="3.2"/>',
+  // NUEVOS — importar documentos (VAL-40/41/42): origen de archivo y su badge en la cola
+  gallery:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M3 16.5l3.2-3.2a1.6 1.6 0 0 1 2.3 0L13 17.5"/><circle cx="8.2" cy="11" r="1.3"/><path d="M8 7V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1.2"/>',
+  img:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 17l4.5-4.5a1.8 1.8 0 0 1 2.5 0L15 16.5"/><path d="M13 15l1.8-1.8a1.8 1.8 0 0 1 2.5 0L20 16"/>',
   trash:'<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>',
   globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>',
   // silueta sólida: se lee mejor que un trazo a 15px, como la señalética de aeropuerto
@@ -2324,6 +2421,613 @@ function srcChip(it, trip){
 }
 
 /* ============================================================
+   MOTOR DE IMPORTACIÓN DE DOCUMENTOS — VAL-40, VAL-41, VAL-42
+   Embebido tal cual desde app/parts/import-engine.js (38 pruebas en
+   verde, node app/parts/import-engine.test.js), sin el envoltorio
+   UMD/module.exports que sólo servía para correrlo con node: acá
+   vive directo como ImportEngine, mismo patrón que PackingEngine
+   más arriba.
+
+   JavaScript puro, no toca el DOM salvo `renderPdfPagesToImages`
+   (VAL-40), aislada a propósito para que se pueda inyectar pdf.js
+   ya cargado por <script> (ver PDFJS_VERSION) y para que el resto
+   del módulo se pueda probar con node. Documentado en
+   docs/design/import-engine.md.
+   ============================================================ */
+const ImportEngine = (function () {
+"use strict";
+
+var VERSION = 1;
+
+/** Tipos de reserva que la app conoce (mismas claves que TYPES en valija.html). */
+var RESERVATION_TYPES = ["flight", "stay", "car", "transfer", "act", "note"];
+
+/** Campos de texto de una reserva interpretada. Todos son string, "" si no se supo. */
+var STRING_FIELDS = [
+  "title", "start", "end", "from", "to", "provider", "flightNumber",
+  "confirmation", "seat", "terminal", "gate", "boardingTime",
+  "address", "phone", "cost", "currency", "notes"
+];
+
+/**
+ * Campos que una tarjeta de embarque puede completar en un vuelo ya
+ * cargado (VAL-42). Declarados como datos: agregar un campo completable
+ * es agregar una entrada acá, no tocar la lógica del patch.
+ */
+var CAMPOS_COMPLETABLES = ["gate", "terminal", "seat", "boardingTime"];
+
+/** Versión fija de pdf.js, cargada desde cdnjs por la app (ver nota de integración). */
+var PDFJS_VERSION = "3.11.174";
+var PDFJS_CDN_BASE = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/" + PDFJS_VERSION + "/";
+
+/* ============================================================
+   UTILIDADES
+   ============================================================ */
+
+function norm(s) { return String(s == null ? "" : s).trim(); }
+
+/** Crea un error interno marcado, para que `interpretFile` lo reconozca y no lo confunda con uno inesperado. */
+function ImportError(codigo, mensaje) {
+  var e = new Error(mensaje);
+  e.__importError = true;
+  e.info = { codigo: codigo, mensaje: mensaje };
+  return e;
+}
+
+function errorInfo(codigo, mensaje) {
+  return { codigo: codigo || "desconocido", mensaje: mensaje || "No se pudo interpretar el archivo." };
+}
+
+function fileResult(archivo, estado, reservas, error, paginas) {
+  return {
+    archivo: archivo,
+    estado: estado,
+    reservas: reservas || [],
+    error: error || null,
+    paginas: paginas == null ? null : paginas
+  };
+}
+
+/* ============================================================
+   QUÉ TIPO DE ARCHIVO ES
+   ============================================================ */
+
+/**
+ * @param {{name?:string, mimeType?:string, type?:string}} file
+ * @returns {"pdf"|"imagen"|"desconocido"}
+ */
+function fileKind(file) {
+  var mime = String((file && (file.mimeType || file.type)) || "").toLowerCase();
+  var name = String((file && file.name) || "").toLowerCase();
+  if (mime === "application/pdf" || /\.pdf$/.test(name)) return "pdf";
+  if (mime.indexOf("image/") === 0 || /\.(png|jpe?g|jpg|heic|heif|webp)$/.test(name)) return "imagen";
+  return "desconocido";
+}
+
+/* ============================================================
+   RENDER DE PDF A IMÁGENES — VAL-40
+   Única función del módulo que toca el DOM. Todo lo demás en este
+   archivo se puede probar con `node`.
+   ============================================================ */
+
+/**
+ * Abre el PDF con pdf.js. Primero intenta con el Web Worker, que es el
+ * camino rápido. Si instanciarlo falla —típico dentro de un iframe con
+ * sandbox restringido, que suele bloquear un Worker de otro origen—
+ * reintenta en el hilo principal (`disableWorker:true`, la opción que
+ * pdf.js expone para ese caso). La caída es automática y silenciosa: la
+ * persona ya está mirando una pantalla de progreso, no un error.
+ *
+ * pdf.js puede fallar tanto lanzando de forma síncrona al pedir el
+ * documento como rechazando la promesa una vez que arrancó el worker;
+ * se cubren los dos casos.
+ *
+ * @param {Object} pdfjsLib
+ * @param {ArrayBuffer} buf
+ * @returns {Promise<Object>} el documento de pdf.js
+ */
+function openPdfDocument(pdfjsLib, buf) {
+  function intentar(extraParams) {
+    var task;
+    try {
+      task = pdfjsLib.getDocument(Object.assign({ data: buf }, extraParams || {}));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+    return task.promise;
+  }
+  return intentar().catch(function () {
+    return intentar({ disableWorker: true });
+  });
+}
+
+/**
+ * Renderiza cada página de un PDF a una imagen, con pdf.js. Corre sólo
+ * en el navegador: usa document.createElement("canvas") y su contexto 2D.
+ *
+ * pdf.js NO se importa desde acá — este módulo no agrega dependencias.
+ * Se recibe ya cargado (`opts.pdfjsLib`, o `window.pdfjsLib` si la app
+ * ya lo cargó globalmente con un <script> a la versión fija de cdnjs,
+ * ver PDFJS_VERSION y docs/design/import-engine.md). Así el resto del
+ * módulo se puede probar sin navegador, inyectando una función propia
+ * en lugar de esta.
+ *
+ * Un PDF escaneado sin texto seleccionable se renderiza igual: pdf.js
+ * dibuja la página como imagen sin importar si tiene texto debajo.
+ *
+ * @param {Blob} pdfBlob
+ * @param {Object} [opts]
+ * @param {Object} [opts.pdfjsLib] librería pdf.js ya cargada
+ * @param {number} [opts.scale]    resolución del render (2 por defecto)
+ * @param {string} [opts.mimeType] tipo de imagen de salida ("image/png" por defecto)
+ * @returns {Promise<Blob[]>} una imagen por página, en el orden del PDF
+ */
+function renderPdfPagesToImages(pdfBlob, opts) {
+  opts = opts || {};
+  var pdfjsLib = opts.pdfjsLib || (typeof globalThis !== "undefined" && globalThis.pdfjsLib);
+  if (!pdfjsLib) {
+    return Promise.reject(new Error("pdfjs-no-disponible: cargá pdf.js (ver PDFJS_VERSION) antes de llamar a esta función."));
+  }
+  if (typeof document === "undefined") {
+    return Promise.reject(new Error("renderPdfPagesToImages necesita un navegador: usa document y canvas."));
+  }
+  var scale = opts.scale || 2;
+  var mimeType = opts.mimeType || "image/png";
+
+  return pdfBlob.arrayBuffer()
+    .then(function (buf) { return openPdfDocument(pdfjsLib, buf); })
+    .then(function (pdf) {
+      var paginas = [];
+      for (var n = 1; n <= pdf.numPages; n++) paginas.push(n);
+      // Secuencial, no en paralelo: varias páginas grandes al mismo tiempo
+      // multiplican la memoria de canvas en un teléfono.
+      return paginas.reduce(function (chain, n) {
+        return chain.then(function (acc) {
+          return pdf.getPage(n).then(function (page) {
+            var viewport = page.getViewport({ scale: scale });
+            var canvas = document.createElement("canvas");
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            var ctx = canvas.getContext("2d");
+            return page.render({ canvasContext: ctx, viewport: viewport }).promise
+              .then(function () {
+                return new Promise(function (resolve) { canvas.toBlob(resolve, mimeType); });
+              })
+              .then(function (blob) { if (blob) acc.push(blob); return acc; });
+          });
+        });
+      }, Promise.resolve([]));
+    });
+}
+
+/* ============================================================
+   EL PROMPT DE INTERPRETACIÓN
+   ============================================================ */
+
+/**
+ * Arma el prompt para una tanda de imágenes que pertenecen a un mismo
+ * archivo. Mejora el prompt existente de `sheetImport` en valija.html:
+ * agrega `boardingTime` y deja explícito que varias páginas son un
+ * mismo comprobante, sin perder la instrucción de no inventar nada.
+ *
+ * @param {Object} [ctx]
+ * @param {Object} [ctx.trip] {name, destination, startDate, endDate}
+ * @param {string} [ctx.now]  fecha ISO, para pruebas determinísticas
+ * @param {string} [ctx.archivo] nombre del archivo, sólo para el mensaje
+ * @param {number|null} [ctx.paginas] cantidad de imágenes de este archivo
+ * @returns {string}
+ */
+function buildImportPrompt(ctx) {
+  ctx = ctx || {};
+  var trip = ctx.trip || {};
+  var hoy = ctx.now ? String(ctx.now).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  var paginas = ctx.paginas;
+
+  var nombreArchivo = ctx.archivo ? " (\"" + ctx.archivo + "\")" : "";
+  var origenTxt = (paginas && paginas > 1)
+    ? "Las " + paginas + " imágenes adjuntas son las páginas, en orden, de un mismo comprobante" + nombreArchivo +
+      ". Pueden describir una reserva o varias (por ejemplo ida y vuelta): leelas todas juntas antes de decidir cuántas hay."
+    : "La imagen adjunta" + nombreArchivo + " es un comprobante de viaje: tarjeta de embarque, voucher de hotel, contrato de auto, o la captura de un mail de confirmación.";
+
+  var contexto = "El viaje se llama \"" + (trip.name || "") + "\"" +
+    (trip.destination ? ", destino " + trip.destination : "") +
+    (trip.startDate ? ", entre " + trip.startDate + " y " + (trip.endDate || "?") : "") +
+    ". Hoy es " + hoy + ".";
+
+  return [
+    "Extraés datos de reservas de viaje a partir de imágenes y devolvés SOLO JSON, sin texto alrededor.",
+    "",
+    origenTxt,
+    "",
+    "Contexto: " + contexto,
+    "",
+    "Devolvé este JSON exacto:",
+    '{"items":[{',
+    '"type":"flight|stay|car|transfer|act|note",',
+    '"title":"texto corto y humano, ej: Buenos Aires → Madrid",',
+    '"start":"YYYY-MM-DDTHH:mm o vacío",',
+    '"end":"YYYY-MM-DDTHH:mm o vacío",',
+    '"from":"IATA de 3 letras si es vuelo, si no ciudad o lugar",',
+    '"to":"idem",',
+    '"provider":"aerolínea, hotel, plataforma o rentadora",',
+    '"flightNumber":"","confirmation":"","seat":"","terminal":"","gate":"",',
+    '"boardingTime":"HH:mm o vacío",',
+    '"address":"","phone":"","cost":"","currency":"","notes":""',
+    "}]}",
+    "",
+    "Reglas que no se rompen:",
+    "1. Un objeto por reserva. Ida y vuelta son DOS vuelos separados, cada uno con su propio número.",
+    "2. Usá 24 horas. Si el año no figura en la imagen, deducilo del contexto del viaje de arriba.",
+    "3. Si un dato no aparece con claridad en la imagen, dejá \"\" en ese campo. Es preferible un campo vacío: NUNCA inventes códigos de vuelo, horarios, direcciones ni montos que no estén escritos ahí.",
+    "4. Para alojamiento, \"start\" es el check-in y \"end\" el check-out.",
+    "5. \"boardingTime\" es la hora de embarque impresa en una tarjeta de embarque, distinta de la hora de salida del vuelo. Si la imagen no es una tarjeta de embarque, dejalo vacío.",
+    "6. Si no reconocés ninguna reserva en las imágenes, devolvé {\"items\":[]}. Es preferible eso a inventar una.",
+    "7. Nada de comentarios ni texto fuera del JSON."
+  ].join("\n");
+}
+
+/* ============================================================
+   VALIDAR LA RESPUESTA DEL MODELO
+   Nunca confía: una respuesta rota, sin JSON, o con basura adentro
+   se convierte en una lista vacía, no en una excepción.
+   ============================================================ */
+
+/**
+ * @param {*} x un elemento de `items` en la respuesta cruda
+ * @returns {Object|null} la reserva saneada, o null si no sirve
+ */
+function sanitizeReservation(x) {
+  if (!x || typeof x !== "object") return null;
+  var out = { type: RESERVATION_TYPES.indexOf(x.type) >= 0 ? x.type : "note" };
+  STRING_FIELDS.forEach(function (f) {
+    out[f] = typeof x[f] === "string" ? x[f].trim() : "";
+  });
+  // Sin título ni proveedor no hay nada que mostrarle a la persona para revisar.
+  if (!out.title && !out.provider) return null;
+  return out;
+}
+
+/**
+ * @param {*} raw lo que devolvió `callModel`: objeto ya parseado o un string con JSON
+ * @returns {Array<Object>} reservas saneadas; vacío si la respuesta es basura
+ */
+function parseImportResponse(raw) {
+  var data = raw;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch (e) { return []; }
+  }
+  if (!data || typeof data !== "object" || !Array.isArray(data.items)) return [];
+  var out = [];
+  data.items.forEach(function (x) {
+    var r = sanitizeReservation(x);
+    if (r) out.push(r);
+  });
+  return out;
+}
+
+/* ============================================================
+   ERRORES DEL MODELO, EN MENSAJES HUMANOS
+   Tabla declarativa: agregar un código conocido es agregar una
+   entrada acá, igual que sheetImport en valija.html.
+   ============================================================ */
+
+var MODEL_ERROR_MESSAGES = {
+  not_granted: "La lectura automática no está habilitada en esta vista.",
+  rate_limited: "Demasiados pedidos seguidos. Esperá un momento y probá de nuevo.",
+  images_unavailable: "Esta vista no acepta imágenes.",
+  image_rejected: "No pude leer esa imagen. Probá con otra foto, con más luz o sin reflejos."
+};
+
+function friendlyModelError(e) {
+  var code = e && e.code;
+  var mensaje = (code && MODEL_ERROR_MESSAGES[code]) || (e && e.message) || "No pude interpretar el archivo.";
+  return { codigo: code || "desconocido", mensaje: String(mensaje) };
+}
+
+/* ============================================================
+   INTERPRETAR UN ARCHIVO — VAL-40 / VAL-41
+   ============================================================ */
+
+/**
+ * Convierte un archivo (imagen o PDF) en las imágenes que hay que
+ * mandarle al modelo. No llama al modelo: sólo prepara la entrada.
+ * @returns {Promise<{imagenes:Array, paginas:number|null}>}
+ */
+function prepareImages(file, opts) {
+  var kind = fileKind(file);
+
+  if (kind === "desconocido") {
+    return Promise.reject(ImportError("tipo-no-soportado",
+      "No reconozco este tipo de archivo. Subí una foto (PNG o JPG) o un PDF."));
+  }
+
+  if (kind === "imagen") {
+    return Promise.resolve({ imagenes: [file.blob], paginas: null });
+  }
+
+  // PDF: VAL-40, se renderiza completo, tenga texto o sea escaneado.
+  if (typeof opts.renderPdfToImages !== "function") {
+    return Promise.reject(ImportError("pdf-no-disponible",
+      "No pude convertir el PDF a imagen en este dispositivo. Probá con una foto del comprobante."));
+  }
+  return Promise.resolve()
+    .then(function () { return opts.renderPdfToImages(file.blob, { name: file.name }); })
+    .catch(function () {
+      throw ImportError("pdf-fallo", "No pude leer ese PDF. Probá con una foto del comprobante.");
+    })
+    .then(function (imagenes) {
+      imagenes = (imagenes || []).filter(Boolean);
+      if (!imagenes.length) {
+        throw ImportError("pdf-vacio", "El PDF no tiene páginas legibles.");
+      }
+      return { imagenes: imagenes, paginas: imagenes.length };
+    });
+}
+
+/** Llama al modelo con las imágenes ya preparadas. Nunca rechaza: degrada a un fileResult de error. */
+function callModelForImages(prep, nombre, opts) {
+  if (typeof opts.callModel !== "function") {
+    return fileResult(nombre, "error", [],
+      errorInfo("ia-no-disponible", "La lectura automática no está disponible ahora mismo. Cargá la reserva a mano."),
+      prep.paginas);
+  }
+  var prompt = buildImportPrompt({ trip: opts.trip, now: opts.now, archivo: nombre, paginas: prep.paginas });
+  return Promise.resolve()
+    .then(function () { return opts.callModel(prompt, { images: prep.imagenes }); })
+    .then(function (raw) {
+      var reservas = parseImportResponse(raw).map(function (r) { return Object.assign({}, r, { archivo: nombre }); });
+      return fileResult(nombre, reservas.length ? "ok" : "vacio", reservas, null, prep.paginas);
+    })
+    .catch(function (e) {
+      return fileResult(nombre, "error", [], friendlyModelError(e), prep.paginas);
+    });
+}
+
+/**
+ * Interpreta UN archivo. Nunca rechaza la promesa: cualquier falla
+ * (tipo no soportado, PDF que no se pudo renderizar, modelo caído,
+ * respuesta basura) se convierte en un `fileResult` con `estado:"error"`.
+ * Así un archivo roto nunca invalida a los demás en `interpretFiles`.
+ *
+ * @param {{name:string, blob:Blob, mimeType?:string}} file
+ * @param {Object} opts
+ * @param {Function} opts.callModel        async (prompt, {images}) => objeto o string JSON
+ * @param {Function} [opts.renderPdfToImages] async (blob) => Blob[]; sin esto los PDF fallan con dignidad
+ * @param {Object}   [opts.trip]           {name, destination, startDate, endDate}
+ * @param {string}   [opts.now]            fecha ISO fija, para pruebas
+ * @returns {Promise<Object>} fileResult
+ */
+function interpretFile(file, opts) {
+  opts = opts || {};
+  var nombre = (file && file.name) || "archivo";
+  return prepareImages(file, opts)
+    .then(function (prep) { return callModelForImages(prep, nombre, opts); })
+    .catch(function (e) {
+      if (e && e.__importError) return fileResult(nombre, "error", [], e.info, null);
+      return fileResult(nombre, "error", [], errorInfo("desconocido", (e && e.message) || "No pude interpretar el archivo."), null);
+    });
+}
+
+/**
+ * Interpreta varios archivos a la vez (VAL-41), mezclando fotos y PDFs.
+ * La promesa se resuelve siempre: cada archivo lleva su propio resultado.
+ *
+ * @param {Array<{name:string, blob:Blob, mimeType?:string}>} files
+ * @param {Object} opts ver `interpretFile`
+ * @returns {Promise<{archivos:Array, reservas:Array, resumen:Object}>}
+ */
+function interpretFiles(files, opts) {
+  opts = opts || {};
+  files = (files || []).filter(Boolean);
+  return Promise.all(files.map(function (f) { return interpretFile(f, opts); }))
+    .then(function (archivos) {
+      var reservas = [];
+      archivos.forEach(function (a) { reservas = reservas.concat(a.reservas); });
+      var resumen = {
+        total: archivos.length,
+        ok: archivos.filter(function (a) { return a.estado === "ok"; }).length,
+        vacios: archivos.filter(function (a) { return a.estado === "vacio"; }).length,
+        errores: archivos.filter(function (a) { return a.estado === "error"; }).length,
+        reservas: reservas.length
+      };
+      return { archivos: archivos, reservas: reservas, resumen: resumen };
+    });
+}
+
+/* ============================================================
+   RECONOCER UN VUELO YA CARGADO — VAL-42
+   ============================================================ */
+
+/** Sólo letras y números, en mayúsculas: "JA 3040" y "ja3040" caen igual. */
+function normalizeFlightNumber(fn) {
+  return String(fn || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+function flightNumberDigits(fn) {
+  var m = /\d+/.exec(normalizeFlightNumber(fn));
+  return m ? m[0].replace(/^0+(?=\d)/, "") : "";
+}
+function flightNumberLetters(fn) {
+  return normalizeFlightNumber(fn).replace(/[0-9]/g, "");
+}
+
+/**
+ * Dos números de vuelo son "el mismo" si comparten los mismos dígitos y
+ * las letras no se contradicen. Una tarjeta de embarque a veces sólo trae
+ * "3040" donde el vuelo ya cargado tiene "JA3040": igual cuentan como el
+ * mismo número.
+ */
+function sameFlightNumber(a, b) {
+  var da = flightNumberDigits(a), db = flightNumberDigits(b);
+  if (!da || !db || da !== db) return false;
+  var la = flightNumberLetters(a), lb = flightNumberLetters(b);
+  return !la || !lb || la === lb;
+}
+
+/** Sólo la parte de fecha, YYYY-MM-DD, de un string ISO o "YYYY-MM-DD HH:mm". */
+function dateOnly(s) {
+  var m = /^(\d{4}-\d{2}-\d{2})/.exec(String(s || "").trim());
+  return m ? m[1] : "";
+}
+function sameFlightDate(a, b) {
+  var da = dateOnly(a), db = dateOnly(b);
+  return !!da && da === db;
+}
+
+/**
+ * Los campos que la tarjeta de embarque completa en el vuelo ya cargado,
+ * sólo cuando el vuelo cargado los tiene vacíos. Nunca pisa un dato que
+ * la persona ya había puesto.
+ * @param {Object} candidato reserva interpretada, tipo "flight"
+ * @param {Object} existente reserva ya cargada en el viaje
+ * @returns {Object} patch parcial, listo para mostrar y para guardar
+ */
+function buildFlightPatch(candidato, existente) {
+  var patch = {};
+  CAMPOS_COMPLETABLES.forEach(function (campo) {
+    var nuevo = norm(candidato && candidato[campo]);
+    var actual = norm(existente && existente[campo]);
+    if (nuevo && !actual) {
+      patch[campo] = (campo === "boardingTime") ? nuevo : nuevo.toUpperCase();
+    }
+  });
+  return patch;
+}
+
+/**
+ * VAL-42. Decide si una reserva de vuelo interpretada es nueva, es un
+ * vuelo ya cargado (y con qué se completa), o hay más de un candidato
+ * y hace falta preguntar. El criterio es número de vuelo y fecha.
+ *
+ * Ante la duda, nunca decide. Eso incluye el caso en que la tarjeta no
+ * trae número de vuelo: sin número no hay certeza, así que si la fecha
+ * coincide con uno o más vuelos ya cargados, el resultado es "ambiguo"
+ * con esos vuelos como candidatos — nunca "nuevo". Un duplicado
+ * silencioso es peor que una pregunta: la persona pierde la confianza
+ * en el importador si ve el mismo vuelo dos veces.
+ *
+ * Sólo es "nuevo" cuando no hay ningún vuelo cargado ese día, o cuando
+ * hay número de vuelo y no coincide con ninguno de los de ese día.
+ *
+ * @param {Object} candidato    reserva interpretada (de `interpretFiles`)
+ * @param {Array}  existentes   reservas que el viaje ya tiene
+ * @returns {{resultado:"nuevo"|"mismo"|"ambiguo", motivo:string, candidato:Object,
+ *            existente?:Object, patch?:Object, candidatos?:Array}}
+ */
+function matchFlightReservation(candidato, existentes) {
+  existentes = (existentes || []).filter(Boolean);
+
+  if (!candidato || candidato.type !== "flight") {
+    return { resultado: "nuevo", motivo: "No es un vuelo.", candidato: candidato };
+  }
+
+  var numero = candidato.flightNumber;
+  var fecha = dateOnly(candidato.start);
+
+  if (!fecha) {
+    return {
+      resultado: "nuevo",
+      motivo: "No se pudo determinar la fecha del vuelo: no hay con qué comparar, se carga como reserva nueva.",
+      candidato: candidato
+    };
+  }
+
+  var vuelosEseDia = existentes.filter(function (it) {
+    return it && it.type === "flight" && sameFlightDate(it.start, fecha);
+  });
+
+  if (!numero) {
+    if (!vuelosEseDia.length) {
+      return {
+        resultado: "nuevo",
+        motivo: "La tarjeta no trae número de vuelo, pero no hay ningún vuelo cargado ese día: se carga como reserva nueva.",
+        candidato: candidato
+      };
+    }
+    return {
+      resultado: "ambiguo",
+      motivo: "La tarjeta no trae número de vuelo y hay " + vuelosEseDia.length +
+        (vuelosEseDia.length === 1 ? " vuelo cargado" : " vuelos cargados") +
+        " ese mismo día: sin número no hay forma de distinguir sin adivinar.",
+      candidato: candidato,
+      candidatos: vuelosEseDia
+    };
+  }
+
+  var candidatos = vuelosEseDia.filter(function (it) { return sameFlightNumber(it.flightNumber, numero); });
+
+  if (!candidatos.length) {
+    return { resultado: "nuevo", motivo: "Ningún vuelo cargado coincide en número y fecha.", candidato: candidato };
+  }
+
+  if (candidatos.length > 1) {
+    return {
+      resultado: "ambiguo",
+      motivo: "Hay " + candidatos.length + " vuelos cargados con el mismo número y la misma fecha.",
+      candidato: candidato,
+      candidatos: candidatos
+    };
+  }
+
+  var existente = candidatos[0];
+  return {
+    resultado: "mismo",
+    motivo: "Mismo número de vuelo (" + numero + ") y misma fecha (" + fecha + ").",
+    candidato: candidato,
+    existente: existente,
+    patch: buildFlightPatch(candidato, existente)
+  };
+}
+
+/**
+ * Azúcar sobre `matchFlightReservation` para usar sobre cualquier reserva
+ * interpretada sin fijarse antes el tipo: lo que no es vuelo siempre es
+ * nuevo, porque el reconocimiento de duplicados de VAL-42 es sólo para
+ * vuelos.
+ * @param {Object} reserva
+ * @param {Array}  existentes
+ * @returns {Object} igual forma que matchFlightReservation
+ */
+function matchAgainstExisting(reserva, existentes) {
+  if (reserva && reserva.type === "flight") return matchFlightReservation(reserva, existentes);
+  return { resultado: "nuevo", motivo: "No es un vuelo: se carga como reserva nueva.", candidato: reserva };
+}
+
+/* ============================================================
+   EXPORTA
+   ============================================================ */
+return {
+  VERSION: VERSION,
+  RESERVATION_TYPES: RESERVATION_TYPES,
+  STRING_FIELDS: STRING_FIELDS,
+  CAMPOS_COMPLETABLES: CAMPOS_COMPLETABLES,
+  PDFJS_VERSION: PDFJS_VERSION,
+  PDFJS_CDN_BASE: PDFJS_CDN_BASE,
+
+  // VAL-40: PDF a imágenes (única función que toca el DOM)
+  renderPdfPagesToImages: renderPdfPagesToImages,
+  openPdfDocument: openPdfDocument,
+
+  // VAL-40 / VAL-41: interpretar archivos
+  fileKind: fileKind,
+  buildImportPrompt: buildImportPrompt,
+  parseImportResponse: parseImportResponse,
+  sanitizeReservation: sanitizeReservation,
+  friendlyModelError: friendlyModelError,
+  interpretFile: interpretFile,
+  interpretFiles: interpretFiles,
+
+  // VAL-42: reconocer un vuelo ya cargado
+  matchFlightReservation: matchFlightReservation,
+  matchAgainstExisting: matchAgainstExisting,
+  buildFlightPatch: buildFlightPatch,
+  normalizeFlightNumber: normalizeFlightNumber,
+  sameFlightNumber: sameFlightNumber,
+  sameFlightDate: sameFlightDate,
+  dateOnly: dateOnly
+};
+})();
+
+/* ============================================================
    ROUTER
    ============================================================ */
 const App = { view:"home", tripId:null, tab:"plan" };
@@ -2654,7 +3358,8 @@ function cardItem(it){
       ["Reserva", it.confirmation, true],
       ["Asiento", it.seat, false],
       ["Terminal", it.terminal, false],
-      ["Puerta", it.gate, false]
+      ["Puerta", it.gate, false],
+      ["Embarque", it.boardingTime, false]
     ];
   } else if(it.type==="stay"){
     stub = [
@@ -3288,7 +3993,10 @@ function sheetItem(trip, item, prefill){
         <div class="f"><label for="i_seat">Asiento</label><input id="i_seat" class="mono" value="${esc(it.seat||"")}" placeholder="14A" autocomplete="off"></div>
         <div class="f"><label for="i_terminal">Terminal</label><input id="i_terminal" class="mono" value="${esc(it.terminal||"")}" placeholder="T4" autocomplete="off"></div>
       </div>
-      <div class="f"><label for="i_gate">Puerta</label><input id="i_gate" class="mono" value="${esc(it.gate||"")}" placeholder="B12" autocomplete="off"></div>
+      <div class="f2">
+        <div class="f"><label for="i_gate">Puerta</label><input id="i_gate" class="mono" value="${esc(it.gate||"")}" placeholder="B12" autocomplete="off"></div>
+        <div class="f"><label for="i_boarding">Hora de embarque</label><input id="i_boarding" class="mono" value="${esc(it.boardingTime||"")}" placeholder="20:40" autocomplete="off"></div>
+      </div>
       ${money}${notes}`;
 
     if(type==="stay") return common + `
@@ -3366,6 +4074,7 @@ function sheetItem(trip, item, prefill){
       it.address = g("i_address"); it.notes = g("i_notes");
       it.cost = g("i_cost"); it.currency = up("i_cur");
       it.seat = up("i_seat"); it.terminal = up("i_terminal"); it.gate = up("i_gate");
+      it.boardingTime = g("i_boarding");
       it.flightNumber = up("i_flight"); it.phone = g("i_phone");
       if(it.type==="flight"){ it.from = up("i_from"); it.to = up("i_to"); }
       else { it.from = g("i_from"); it.to = g("i_to"); }
@@ -3392,125 +4101,639 @@ function sheetItem(trip, item, prefill){
 }
 
 /* ---------- importador con IA ---------- */
-async function sheetImport(trip){
-  let sample = null, limits = null;
-  try{ sample = await claude.use("sample"); }catch(e){}
-  if(sample){ try{ limits = await sample.limits(); }catch(e){} }
+/* ============================================================
+   IMPORTAR DOCUMENTOS — VAL-40, VAL-41, VAL-42
+   Reemplaza al viejo sheetImport (texto pegado + una foto suelta) por
+   el flujo completo del muestrario aprobado (app/parts/import-ui.html,
+   14 estados) sobre el motor ImportEngine embebido más arriba.
+   Ver docs/design/importar.md sección 5 (nota de integración).
+   ============================================================ */
+const MAX_FILE_MB = 15;
+const MAX_FILE_BYTES = MAX_FILE_MB*1024*1024;
 
-  const canImg = !!(limits && limits.images);
-  openSheet("Importar reserva", `
-    <div class="notice">${svg(I.spark)}
-      <div>Pegá el mail de confirmación de Booking, Hertz, JetSmart o quien sea. Lo leo y completo los campos por vos.</div>
-    </div>
-    ${!sample?`<div class="notice warn">${svg(I.info)}<div>La lectura automática no está disponible en esta vista. Cargá la reserva a mano desde <b>Agregar</b>.</div></div>`:`
-      <div class="f"><label for="im_text">Texto de la confirmación</label>
-        <textarea id="im_text" class="mono" style="min-height:150px" placeholder="Tu reserva está confirmada&#10;Vuelo JA 3040 · EZE → MAD&#10;12 de octubre, 22:40&#10;Código: XKD9P2"></textarea>
-        <span class="hint">Podés pegar varias reservas juntas. Las separo yo.</span>
+function fmtSize(bytes){
+  if(bytes==null) return "";
+  if(bytes < 1024*1024) return `${Math.round(bytes/1024)} KB`;
+  return `${(bytes/1024/1024).toFixed(1).replace(".",",")} MB`;
+}
+function kindIcon(kind){ return kind==="img" ? "img" : "doc"; }
+function kindThumbCls(kind){ return kind==="pdf" ? "pdf" : (kind==="img" ? "img" : ""); }
+
+/** Prompt para el camino legado de texto pegado (el <details> del estado 01).
+    ImportEngine sólo interpreta imágenes/PDF; el texto se resuelve acá mismo,
+    reusando parseImportResponse/friendlyModelError para quedar consistente. */
+function buildTextImportPrompt(trip, text){
+  const hoy = new Date().toISOString().slice(0,10);
+  return [
+    "Extraés datos de reservas de viaje a partir de un texto y devolvés SOLO JSON, sin texto alrededor.",
+    "",
+    "Texto de la confirmación:",
+    '"""', String(text).slice(0,12000), '"""',
+    "",
+    `Contexto: el viaje se llama "${trip.name||""}"${trip.destination?`, destino ${trip.destination}`:""}${trip.startDate?`, entre ${trip.startDate} y ${trip.endDate||"?"}`:""}. Hoy es ${hoy}.`,
+    "",
+    "Devolvé este JSON exacto:",
+    '{"items":[{',
+    '"type":"flight|stay|car|transfer|act|note",',
+    '"title":"texto corto y humano, ej: Buenos Aires → Madrid",',
+    '"start":"YYYY-MM-DDTHH:mm o vacío",',
+    '"end":"YYYY-MM-DDTHH:mm o vacío",',
+    '"from":"IATA de 3 letras si es vuelo, si no ciudad o lugar",',
+    '"to":"idem",',
+    '"provider":"aerolínea, hotel, plataforma o rentadora",',
+    '"flightNumber":"","confirmation":"","seat":"","terminal":"","gate":"",',
+    '"boardingTime":"HH:mm o vacío",',
+    '"address":"","phone":"","cost":"","currency":"","notes":""',
+    "}]}",
+    "",
+    "Reglas: un objeto por reserva; ida y vuelta son DOS vuelos separados. Usá 24 horas. Si un dato no aparece, dejá \"\" (nunca inventes códigos ni horarios). Para alojamiento, start es el check-in y end el check-out. Si el año no figura, deducilo del contexto del viaje."
+  ].join("\n");
+}
+function interpretPastedText(text, name, opts){
+  if(typeof opts.callModel !== "function"){
+    return Promise.resolve({archivo:name, estado:"error", reservas:[],
+      error:{codigo:"ia-no-disponible", mensaje:"La lectura automática no está disponible ahora mismo."}, paginas:null});
+  }
+  const prompt = buildTextImportPrompt(opts.trip||{}, text);
+  return Promise.resolve()
+    .then(()=> opts.callModel(prompt, {}))
+    .then(raw=>{
+      const reservas = ImportEngine.parseImportResponse(raw).map(r=> Object.assign({}, r, {archivo:name}));
+      return {archivo:name, estado: reservas.length?"ok":"vacio", reservas, error:null, paginas:null};
+    })
+    .catch(e=> ({archivo:name, estado:"error", reservas:[], error:ImportEngine.friendlyModelError(e), paginas:null}));
+}
+
+/** Campos editables por tipo, en la tarjeta de revisión (04/05/08). Sin
+    tabla de tipo (ya se sabe qué tipo es): sólo lo que la lectura automática
+    suele errar. Costo, teléfono y notas se completan después, abriendo la
+    reserva ya guardada — mismo criterio que dice el muestrario. */
+function cardFieldsHtml(r, chip){
+  const v = x => esc(x||"");
+  if(r.type==="flight"){
+    const showSeat = chip === "Tarjeta de embarque";
+    return `
+      <div class="f2">
+        <div class="f"><label>Aerolínea</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
+        <div class="f"><label>Nº de vuelo</label><input data-f="flightNumber" class="mono" value="${v(r.flightNumber)}" placeholder="No lo encontré"></div>
       </div>
-      ${canImg?`
-        <div class="f"><label for="im_img">O subí una foto</label>
-          <input id="im_img" type="file" accept="${limits.images.mediaTypes.join(",")}" ${limits.images.maxCount>1?"multiple":""}>
-          <span class="hint">Tarjeta de embarque, voucher del hotel, el contrato del auto. Hasta ${limits.images.maxCount} ${limits.images.maxCount===1?"imagen":"imágenes"}.</span>
-        </div>`:""}
-      <div id="im_out"></div>
-    `}
-  `, sample?`
-    <button class="btn ghost" id="cancel">Cancelar</button>
-    <button class="btn primary" id="run">${svg(I.spark)} Interpretar</button>`:`
-    <button class="btn block" id="cancel">Cerrar</button>`);
+      <div class="f2">
+        <div class="f"><label>Origen</label><input data-f="from" class="mono" value="${v(r.from)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
+        <div class="f"><label>Destino</label><input data-f="to" class="mono" value="${v(r.to)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
+      </div>
+      <div class="f2">
+        <div class="f"><label>Sale</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
+        <div class="f"><label>Llega</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      </div>
+      ${showSeat ? `
+      <div class="f2">
+        <div class="f"><label>Asiento</label><input data-f="seat" class="mono" value="${v(r.seat)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
+        <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
+      </div>` : `
+      <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`}`;
+  }
+  if(r.type==="stay") return `
+      <div class="f"><label>Dirección</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
+      <div class="f2">
+        <div class="f"><label>Check-in</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
+        <div class="f"><label>Check-out</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      </div>
+      <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
+  if(r.type==="car") return `
+      <div class="f"><label>Lugar de retiro</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
+      <div class="f2">
+        <div class="f"><label>Retiro</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
+        <div class="f"><label>Devolución</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      </div>
+      <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
+  if(r.type==="transfer") return `
+      <div class="f"><label>Proveedor</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
+      <div class="f2">
+        <div class="f"><label>Desde</label><input data-f="from" value="${v(r.from)}" placeholder="No lo encontré"></div>
+        <div class="f"><label>Hasta</label><input data-f="to" value="${v(r.to)}" placeholder="No lo encontré"></div>
+      </div>
+      <div class="f"><label>Fecha y hora</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
+      <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
+  // act / note: sin ejemplo en el muestrario, campos mínimos razonables.
+  return `
+      <div class="f2">
+        <div class="f"><label>Cuándo</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
+        <div class="f"><label>Termina</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      </div>
+      <div class="f"><label>Dónde</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
+      <div class="f"><label>Código / entrada</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
+}
 
-  document.getElementById("cancel").onclick = closeSheet;
-  if(!sample) return;
+/** Lista de archivos que no aportaron nada (05/10): vacío ≠ error, nunca el
+    mismo tratamiento (ver docs/design/importar.md sección 3.2). */
+function issuesListHtml(issues){
+  return `<div class="imp-files">${issues.map(a=>{
+    const cls = kindThumbCls(a.kind), icon = kindIcon(a.kind);
+    if(a.estado==="error") return `<div class="imp-file err">
+        <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
+        <span class="bd"><span class="nm">${esc(a.archivo)}</span>
+          <span class="meta err">${esc((a.error&&a.error.mensaje)||"No pude leer este archivo.")}</span></span>
+        <span class="row-acts">
+          <button class="act" data-retry="${esc(a.archivo)}">Reintentar</button>
+          <button class="rm" aria-label="Sacar ${esc(a.archivo)}" data-rmfile="${esc(a.archivo)}">${svg(I.x)}</button>
+        </span>
+      </div>`;
+    return `<div class="imp-file">
+        <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
+        <span class="bd"><span class="nm">${esc(a.archivo)}</span>
+          <span class="meta info">Se leyó bien, pero no encontré ninguna reserva ahí. Puede ser una foto borrosa o un documento que no es de viaje.</span></span>
+        <span class="row-acts"><button class="rm" aria-label="Sacar ${esc(a.archivo)}" data-rmfile="${esc(a.archivo)}">${svg(I.x)}</button></span>
+      </div>`;
+  }).join("")}</div>`;
+}
 
-  document.getElementById("run").onclick = async ()=>{
-    const text = val("im_text");
-    const files = document.getElementById("im_img")?.files;
-    const hasImg = files && files.length;
-    if(!text && !hasImg){ toast("Pegá el texto o subí una foto", true); return; }
+function renderImportNoAi(){
+  openSheet("Importar reservas",
+    `<div class="notice warn">${svg(I.info)}<span class="bd">La lectura automática no está disponible en esta vista. Cargá la reserva a mano desde <b>Agregar</b>.</span></div>`,
+    `<button class="btn block" id="im-close">Cerrar</button>`);
+  document.getElementById("im-close").onclick = closeSheet;
+}
+function renderImportReadOnly(){
+  openSheet("Importar reservas",
+    `<div class="notice">${svg(I.info)}<span class="bd"><span class="chip soon">sólo lectura</span><br><br>
+      Quien mira este viaje sin permiso de edición no puede importar reservas. Pedile a quien te compartió el link que te dé permiso para cargar.</span></div>`,
+    `<button class="btn block" id="im-close">Cerrar</button>`);
+  document.getElementById("im-close").onclick = closeSheet;
+}
 
-    const btn = document.getElementById("run");
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spin"></span> Leyendo…`;
-    const out = document.getElementById("im_out");
-    out.innerHTML = `<div class="notice">${svg(I.spark)}<div>Interpretando la reserva…</div></div>`;
+async function sheetImport(trip){
+  if(!Store.canWrite){ renderImportReadOnly(); return; }
 
-    const hoy = new Date().toISOString().slice(0,10);
-    const prompt = `Extraés datos de reservas de viaje y devolvés SOLO JSON.
+  let sample = null;
+  try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
+  const callModel = sample ? (prompt, opts) => sample.json(prompt, {...(opts||{}), modelTier:"complex"}) : null;
+  if(!callModel){ renderImportNoAi(); return; }
 
-${hasImg ? "Las imágenes adjuntas son comprobantes de viaje (tarjeta de embarque, voucher de hotel, contrato de alquiler de auto). Leelas." : ""}
-${text ? `Texto de la confirmación:\n"""\n${text.slice(0,12000)}\n"""` : ""}
+  // Estado de la hoja: nada de esto se guarda hasta que se toca un botón
+  // explícito de guardar/completar (Store nunca se toca antes de eso).
+  const st = {
+    queue:[], pastedText:"", sources:[],
+    archivos:[], reviewList:[], matchQueue:[],
+    matchDone:0, savedTotal:0, acceptPartial:null
+  };
+  const tripCtx = ()=> ({name:trip.name, destination:trip.destination, startDate:trip.startDate, endDate:trip.endDate});
+  // Marca viva: mientras exista en el DOM, esta hoja sigue siendo la que se
+  // ve. Si el visitante cerró/navegó a otro lado, una promesa que resuelve
+  // tarde no debe reabrir ni pisar un modal ajeno.
+  const alive = ()=> !!document.getElementById("imp-live");
+  const marker = `<span id="imp-live" hidden></span>`;
 
-Contexto: el viaje se llama "${trip.name||""}"${trip.destination?`, destino ${trip.destination}`:""}${trip.startDate?`, entre ${trip.startDate} y ${trip.endDate||"?"}`:""}. Hoy es ${hoy}.
+  function makeCard(reserva, chip, meta){ return {id:uid(), reserva, chip, meta:meta||{}}; }
 
-Devolvé este JSON exacto:
-{"items":[{
-"type":"flight|stay|car|transfer|act|note",
-"title":"texto corto y humano, ej: Buenos Aires → Madrid",
-"start":"YYYY-MM-DDTHH:mm o vacío",
-"end":"YYYY-MM-DDTHH:mm o vacío",
-"from":"IATA de 3 letras si es vuelo, si no ciudad o lugar",
-"to":"idem",
-"provider":"aerolínea, hotel, plataforma o rentadora",
-"flightNumber":"","confirmation":"","seat":"","terminal":"","gate":"",
-"address":"","phone":"","cost":"","currency":"","notes":""
-}]}
+  function runOne(source){
+    const opts = { callModel, renderPdfToImages:b=>ImportEngine.renderPdfPagesToImages(b), trip:tripCtx() };
+    const p = source.kind==="texto"
+      ? interpretPastedText(source.text, source.name, opts)
+      : ImportEngine.interpretFile({name:source.name, blob:source.blob, mimeType:source.mimeType}, opts);
+    return p.then(result=>{
+      result.kind = source.kind;
+      const idx = st.archivos.findIndex(a=>a.archivo===result.archivo);
+      if(idx>=0) st.archivos[idx] = result; else st.archivos.push(result);
+      return result;
+    });
+  }
 
-Reglas: un objeto por reserva; ida y vuelta son DOS vuelos separados. Usá 24 horas. Si un dato no aparece, dejá "" (nunca inventes códigos ni horarios). Para alojamiento, start es el check-in y end el check-out. Si el año no figura, deducilo del contexto del viaje.`;
+  function classifyAndQueue(reservas, ctx){
+    const existentes = Store.itemsOf(trip.id);
+    const assignPage = ctx && ctx.kind==="pdf" && ctx.paginas>1 && reservas.length===ctx.paginas;
+    reservas.forEach((r,i)=>{
+      const meta = { archivo:r.archivo||(ctx&&ctx.archivo)||"", kind:(ctx&&ctx.kind)||"img", page:assignPage?(i+1):null };
+      if(r.type==="flight"){
+        const m = ImportEngine.matchAgainstExisting(r, existentes);
+        if(m.resultado==="nuevo") st.reviewList.push(makeCard(r,"Vuelo",meta));
+        else st.matchQueue.push({reserva:r, match:m, meta});
+      } else {
+        st.reviewList.push(makeCard(r, TYPES[r.type]?.label || "Nota", meta));
+      }
+    });
+  }
 
-    try{
-      const data = await sample.json(hasImg ? prompt : prompt, {
-        images: hasImg ? files : undefined,
-        modelTier: "complex"
+  /* ---------- 01/02: elegir archivos ---------- */
+  function wireFileInput(id, forcedKind){
+    const input = document.getElementById(id);
+    if(!input) return;
+    input.onchange = ()=>{
+      Array.from(input.files||[]).forEach(file=>{
+        const engineKind = ImportEngine.fileKind({name:file.name, mimeType:file.type});
+        const kind = forcedKind || (engineKind==="pdf" ? "pdf" : "img");
+        const invalid = !forcedKind && engineKind==="desconocido";
+        const big = file.size > MAX_FILE_BYTES;
+        st.queue.push({id:uid(), name:file.name, mimeType:file.type, blob:file, size:file.size, kind, big, invalid});
       });
-      const found = (data && Array.isArray(data.items)) ? data.items.filter(x=>x && (x.title||x.provider)) : [];
-      if(!found.length){
-        out.innerHTML = `<div class="notice warn">${svg(I.info)}<div>No pude reconocer ninguna reserva ahí. Probá pegando el mail completo, o cargala a mano.</div></div>`;
-        btn.disabled=false; btn.innerHTML = `${svg(I.spark)} Interpretar`;
+      input.value = "";
+      renderElegir();
+    };
+  }
+  function queueRowHtml(f){
+    const cls = kindThumbCls(f.kind), icon = kindIcon(f.kind);
+    let meta;
+    if(f.big) meta = `<span class="meta err">Pesa ${fmtSize(f.size)}, más de lo que puedo leer (máx. ${MAX_FILE_MB} MB). Elegí otro archivo o sacá la foto de nuevo con menos calidad.</span>`;
+    else if(f.invalid) meta = `<span class="meta err">No reconozco este tipo de archivo. Subí una foto (PNG o JPG) o un PDF.</span>`;
+    else meta = `<span class="meta">${fmtSize(f.size)}</span>`;
+    return `<div class="imp-file ${(f.big||f.invalid)?"err":""}">
+      <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
+      <span class="bd"><span class="nm">${esc(f.name)}</span>${meta}</span>
+      <button class="rm" aria-label="Sacar ${esc(f.name)}" data-rmq="${f.id}">${svg(I.x)}</button>
+    </div>`;
+  }
+  function renderElegir(){
+    const validCount = st.queue.filter(f=>!f.big && !f.invalid).length;
+    const body = `${marker}
+      <div class="notice">${svg(I.spark)}
+        <span class="bd">Sacale una foto al voucher, subí la captura del mail o el PDF del pasaje. Te muestro lo que encuentro antes de guardar nada.</span>
+      </div>
+      <div class="f">
+        <label>Cómo lo cargás</label>
+        <div class="tp tp3">
+          <label class="tpbtn" for="im_cam">${svg(I.cam)} Sacar foto <span class="n">con la cámara</span></label>
+          <input id="im_cam" type="file" accept="image/*" capture="environment" class="sr">
+          <label class="tpbtn" for="im_gal">${svg(I.gallery)} Galería <span class="n">fotos y capturas</span></label>
+          <input id="im_gal" type="file" accept="image/*" multiple class="sr">
+          <label class="tpbtn" for="im_doc">${svg(I.doc)} Archivo <span class="n">PDF o imagen</span></label>
+          <input id="im_doc" type="file" accept="application/pdf,image/*" multiple class="sr">
+        </div>
+        <span class="hint">Podés elegir varios a la vez, y combinar fotos con PDF en la misma carga.</span>
+      </div>
+      ${st.queue.length ? `
+      <div class="f">
+        <label>Vas a interpretar</label>
+        <div class="imp-files">${st.queue.map(queueRowHtml).join("")}</div>
+      </div>` : ""}
+      <details class="imp-more" ${st.pastedText?"open":""}>
+        <summary>Pegar el texto en cambio</summary>
+        <div class="f">
+          <label for="im_text">Texto de la confirmación</label>
+          <textarea id="im_text" class="mono" placeholder="Tu reserva está confirmada&#10;Vuelo G3 1234 · EZE → GIG&#10;20 de septiembre, 06:40&#10;Código: K7QXPL">${esc(st.pastedText)}</textarea>
+          <span class="hint">Podés pegar varias reservas juntas. Las separo yo.</span>
+        </div>
+      </details>`;
+    const canInterpret = validCount>0 || st.pastedText.trim().length>0;
+    const footer = `<button class="btn ghost" id="im-cancel">Cancelar</button>
+      <button class="btn primary" id="im-run" ${canInterpret?"":"disabled"}>${svg(I.spark)} ${validCount?`Interpretar ${validCount} ${validCount===1?"archivo":"archivos"}`:"Interpretar"}</button>`;
+    openSheet("Importar reservas", body, footer);
+    document.getElementById("im-cancel").onclick = closeSheet;
+    wireFileInput("im_cam","img"); wireFileInput("im_gal","img"); wireFileInput("im_doc",null);
+    document.querySelectorAll("[data-rmq]").forEach(b=>{
+      b.onclick = ()=>{ st.queue = st.queue.filter(f=>f.id!==b.dataset.rmq); renderElegir(); };
+    });
+    const ta = document.getElementById("im_text");
+    ta.oninput = ()=>{
+      st.pastedText = ta.value;
+      const btn = document.getElementById("im-run");
+      if(btn) btn.disabled = !(validCount>0 || ta.value.trim());
+    };
+    document.getElementById("im-run").onclick = startInterpret;
+  }
+  function startInterpret(){
+    const fileSources = st.queue.filter(f=>!f.big && !f.invalid)
+      .map(f=>({name:f.name, mimeType:f.mimeType, blob:f.blob, kind:f.kind}));
+    const sources = fileSources.slice();
+    if(st.pastedText && st.pastedText.trim()) sources.push({name:"Texto pegado", kind:"texto", text:st.pastedText.trim()});
+    if(!sources.length) return;
+    st.sources = sources;
+    runInterpretation(sources);
+  }
+
+  /* ---------- 03: leyendo, archivo por archivo ---------- */
+  function rowHtml(r){
+    const cls = kindThumbCls(r.kind), icon = kindIcon(r.kind);
+    let meta;
+    if(r.status==="queued") meta = `<span class="meta"><span class="imp-dot"></span> En cola</span>`;
+    else if(r.status==="leyendo") meta = `<span class="meta"><span class="spin"></span> Leyendo…</span>`;
+    else if(r.status==="ok") meta = `<span class="meta ok">${svg(I.check2)} Listo · ${r.found} ${r.found===1?"reserva encontrada":"reservas encontradas"}</span>`;
+    else if(r.status==="vacio") meta = `<span class="meta info">${svg(I.info)} Listo · no encontré ninguna reserva</span>`;
+    else meta = `<span class="meta err">${svg(I.info)} No se pudo leer</span>`;
+    return `<div class="imp-file" id="${r.rowId}">
+      <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
+      <span class="bd"><span class="nm">${esc(r.name)}</span>${meta}</span>
+    </div>`;
+  }
+  function renderLeyendo(rows){
+    const body = `${marker}
+      <div class="notice"><span class="spin"></span><span class="bd">Leyendo ${rows.length} ${rows.length===1?"archivo":"archivos"}…</span></div>
+      <div class="imp-files">${rows.map(rowHtml).join("")}</div>
+      <div id="im-slow"></div>`;
+    openSheet("Importar reservas", body, `<button class="btn ghost block" id="im-cancelall">Cancelar todo</button>`);
+    document.getElementById("im-cancelall").onclick = closeSheet;
+  }
+  function updateRow(r){
+    const el = document.getElementById(r.rowId);
+    if(el) el.outerHTML = rowHtml(r);
+  }
+  function showSlowNotice(){
+    const el = document.getElementById("im-slow");
+    if(!el) return;
+    el.innerHTML = `<div class="notice warn">${svg(I.info)}<span class="bd">Che, esto está tardando más de lo normal. Las fotos con poca luz y los PDF pesados tardan más en leerse.
+      <button class="act" id="im-acceptpartial">Quedarme con lo que ya está listo</button></span></div>`;
+    const b = document.getElementById("im-acceptpartial");
+    if(b) b.onclick = ()=>{ if(st.acceptPartial) st.acceptPartial(); };
+  }
+  function runInterpretation(sources){
+    const rows = sources.map((s,i)=>({rowId:`im-row-${i}-${uid()}`, name:s.name, kind:s.kind, status:"queued", found:0}));
+    renderLeyendo(rows);
+    let doneCount = 0, finished = false;
+    const slowTimer = setTimeout(()=>{ if(!finished && alive()) showSlowNotice(); }, 7000);
+    function finishRun(){ if(finished) return; finished = true; clearTimeout(slowTimer); advance(); }
+    st.acceptPartial = finishRun;
+    sources.forEach((s,i)=>{
+      rows[i].status = "leyendo";
+      if(alive()) updateRow(rows[i]);
+      runOne(s).then(result=>{
+        doneCount++;
+        rows[i].status = result.estado; rows[i].found = result.reservas.length;
+        if(alive()) updateRow(rows[i]);
+        classifyAndQueue(result.reservas, {archivo:result.archivo, kind:result.kind, paginas:result.paginas});
+        if(doneCount>=sources.length) finishRun();
+      });
+    });
+  }
+  function advance(){
+    if(!alive()) return;
+    const totalReservas = st.archivos.reduce((n,a)=>n+a.reservas.length,0);
+    if(totalReservas===0 && !st.reviewList.length && !st.matchQueue.length) renderTotalEmpty();
+    else proceed();
+  }
+  function proceed(){
+    if(!alive()) return;
+    if(st.matchQueue.length){ renderMatchStep(); return; }
+    if(st.reviewList.length || st.archivos.some(a=>a.estado!=="ok")){ renderReview(); return; }
+    finish();
+  }
+
+  /* ---------- 10: ninguno aportó nada ---------- */
+  function bindIssuesActions(){
+    document.querySelectorAll("[data-retry]").forEach(b=>{
+      b.onclick = ()=>{
+        const source = st.sources.find(s=>s.name===b.dataset.retry);
+        if(source) runInterpretation([source]);
+      };
+    });
+    document.querySelectorAll("[data-rmfile]").forEach(b=>{
+      b.onclick = ()=>{ st.archivos = st.archivos.filter(a=>a.archivo!==b.dataset.rmfile); proceed(); };
+    });
+  }
+  function renderTotalEmpty(){
+    if(!alive()) return;
+    const n = st.archivos.length;
+    const errCount = st.archivos.filter(a=>a.estado==="error").length;
+    const vacioCount = n - errCount;
+    let detalle;
+    if(errCount && vacioCount) detalle = "Uno o más no se pudieron leer y los demás se leyeron bien pero no tenían pinta de reserva de viaje.";
+    else if(errCount) detalle = n===1 ? "No se pudo leer." : "Ninguno se pudo leer.";
+    else detalle = n===1 ? "Se leyó bien, pero no tenía pinta de reserva de viaje." : "Se leyeron bien, pero no tenían pinta de reserva de viaje.";
+    const body = `${marker}
+      <div class="empty">
+        <h3>No conseguí ninguna reserva de ${n===1?"este archivo":`estos ${n} archivos`}</h3>
+        <p>${detalle} El detalle de cada uno está abajo.</p>
+      </div>
+      ${issuesListHtml(st.archivos)}`;
+    const footer = `<button class="btn ghost" id="im-manual">Cargar a mano</button>
+      ${errCount?`<button class="btn primary" id="im-retryall">Reintentar ${errCount} ${errCount===1?"archivo":"archivos"}</button>`:""}`;
+    openSheet("Importar reservas", body, footer);
+    document.getElementById("im-manual").onclick = ()=>{ closeSheet(); sheetItem(trip, null); };
+    const retryAll = document.getElementById("im-retryall");
+    if(retryAll) retryAll.onclick = ()=>{
+      const errNames = new Set(st.archivos.filter(a=>a.estado==="error").map(a=>a.archivo));
+      const errSources = st.sources.filter(s=>errNames.has(s.name));
+      if(errSources.length) runInterpretation(errSources);
+    };
+    bindIssuesActions();
+  }
+
+  /* ---------- 06/07/07B: tarjeta de embarque ---------- */
+  function renderMatchStep(){
+    if(!alive() || !st.matchQueue.length) return;
+    const step = st.matchQueue[0];
+    if(step.match.resultado==="mismo") renderMatchMismo(step);
+    else renderMatchAmbiguo(step);
+  }
+  function srcChipForMeta(meta){
+    if(!meta || !meta.archivo) return "";
+    return `<span class="chip src">${svg(I[kindIcon(meta.kind)])}${esc(meta.archivo)}</span>`;
+  }
+  function flightLineHtml(f){
+    const parts = [];
+    if(f.provider) parts.push(esc(f.provider));
+    if(f.flightNumber) parts.push(esc(f.flightNumber));
+    let line = parts.join(" ");
+    if(f.start) line += `${line?" · ":""}sale ${esc(fmtDateLong(f.start))}${fmtTime(f.start)?` ${esc(fmtTime(f.start))}`:""}`;
+    return line || "Vuelo";
+  }
+  function renderMatchMismo(step){
+    const {reserva, match, meta} = step;
+    const ex = match.existente;
+    const patchFields = [["gate","Puerta"],["terminal","Terminal"],["seat","Asiento"],["boardingTime","Embarque"]]
+      .filter(([k])=> match.patch[k]);
+    const title = reserva.flightNumber
+      ? `Vuelo ${esc(reserva.flightNumber)}${reserva.start?`, ${esc(fmtDateLong(reserva.start))}`:""}`
+      : "Tarjeta de embarque";
+    const body = `${marker}
+      <div class="imp-card">
+        <div class="imp-card-hd">
+          <span class="pass-icon">${svg(TYPES.flight.icon)}</span>
+          <span class="ttl">
+            <span style="font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em">${title}</span>
+            <span class="imp-src"><span class="chip accent">Tarjeta de embarque</span>${srcChipForMeta(meta)}</span>
+          </span>
+        </div>
+        <div class="imp-card-bd">
+          <div class="f">
+            <label>Ya tenías cargado</label>
+            <div class="imp-existing">
+              <span class="pass-icon">${svg(TYPES.flight.icon)}</span>
+              <span class="info">
+                <span class="pass-title">${esc(ex.title||"Vuelo")}</span>
+                <span class="pass-when">${esc(flightLineHtml(ex))}</span>
+              </span>
+            </div>
+          </div>
+          ${patchFields.length?`
+          <div class="f">
+            <label>Se completa con</label>
+            <div class="imp-diff">
+              ${patchFields.map(([k,label])=>`<div class="field"><span class="k">${esc(label)}</span><span class="v">${esc(match.patch[k])}</span></div>`).join("")}
+            </div>
+          </div>`:""}
+          <p class="tiny muted" style="margin:0">${esc(match.motivo)}</p>
+        </div>
+      </div>`;
+    openSheet("Importar reservas", body, `
+      <button class="btn ghost" id="im-asnew">Cargar como nuevo</button>
+      <button class="btn primary" id="im-complete">${svg(I.check2)} Completar vuelo</button>`);
+    document.getElementById("im-asnew").onclick = ()=>{
+      st.matchQueue.shift();
+      st.reviewList.push(makeCard(reserva, "Tarjeta de embarque", meta));
+      proceed();
+    };
+    document.getElementById("im-complete").onclick = async ()=>{
+      const btn = document.getElementById("im-complete");
+      btn.disabled = true;
+      try{
+        await Store.saveItem(trip.id, {...ex, ...match.patch});
+        st.matchDone++;
+        st.matchQueue.shift();
+        proceed();
+      }catch(e){ toast(writeErr(e), true); btn.disabled = false; }
+    };
+  }
+  function renderMatchAmbiguo(step){
+    const {reserva, match, meta} = step;
+    const cand = match.candidatos;
+    let selected = null;
+    const body = `${marker}
+      <div class="notice warn">${svg(I.info)}
+        <span class="bd">${esc(match.motivo)} ¿A cuál corresponde?</span>
+      </div>
+      <div class="imp-choice" id="im-choice">
+        ${cand.map((c,i)=>`
+          <button type="button" aria-pressed="false" data-c="${i}">
+            <span class="radio"></span>
+            <span class="info"><span class="t">${esc(c.title||"Vuelo")}</span>
+              <span class="s">${esc(flightLineHtml(c))}</span></span>
+          </button>`).join("")}
+        <div class="sep">o</div>
+        <button type="button" aria-pressed="false" data-c="n">
+          <span class="radio"></span>
+          <span class="info"><span class="t">Ninguno de los dos</span>
+            <span class="s">Es un vuelo nuevo, no lo tenía cargado</span></span>
+        </button>
+      </div>`;
+    openSheet("Importar reservas", body, `
+      <button class="btn ghost" id="im-cancel">Cancelar</button>
+      <button class="btn primary" id="im-choicesave" disabled>Elegí una opción</button>`);
+    document.getElementById("im-cancel").onclick = closeSheet;
+    const choiceEl = document.getElementById("im-choice");
+    const saveBtn = document.getElementById("im-choicesave");
+    choiceEl.addEventListener("click", e=>{
+      const b = e.target.closest("[data-c]"); if(!b) return;
+      choiceEl.querySelectorAll("[data-c]").forEach(x=>x.setAttribute("aria-pressed", x===b));
+      selected = b.dataset.c;
+      saveBtn.disabled = false;
+      saveBtn.textContent = selected==="n" ? "Guardar como vuelo nuevo" : "Completar vuelo";
+    });
+    saveBtn.onclick = async ()=>{
+      if(selected===null) return;
+      if(selected==="n"){
+        st.matchQueue.shift();
+        st.reviewList.push(makeCard(reserva, "Tarjeta de embarque", meta));
+        proceed();
         return;
       }
-      out.innerHTML = `<div class="notice">${svg(I.info)}<div>Encontré ${found.length} ${found.length===1?"reserva":"reservas"}. Revisá antes de guardar.</div></div>
-        <div class="stack" style="margin-top:10px">${found.map((f,i)=>`
-          <div class="pass"><div class="pass-main" style="cursor:default">
-            <span class="pass-icon ${TYPES[f.type]?.cls||"note"}">${svg(TYPES[f.type]?.icon||I.note)}</span>
-            <span class="pass-txt">
-              <span class="pass-title">${esc(f.title||"Reserva")}</span>
-              <span class="pass-when">${esc(TYPES[f.type]?.label||"Nota")}${f.provider?` · ${esc(f.provider)}`:""}${f.start?` · ${esc(fmtDate(f.start))}`:""}</span>
-            </span>
-          </div></div>`).join("")}</div>`;
+      saveBtn.disabled = true;
+      const ex = cand[Number(selected)];
+      const patch = ImportEngine.buildFlightPatch(reserva, ex);
+      try{
+        await Store.saveItem(trip.id, {...ex, ...patch});
+        st.matchDone++;
+        st.matchQueue.shift();
+        proceed();
+      }catch(e){ toast(writeErr(e), true); saveBtn.disabled = false; }
+    };
+  }
 
-      btn.innerHTML = `Guardar ${found.length===1?"la reserva":`las ${found.length}`}`;
-      btn.disabled = false;
-      btn.onclick = async ()=>{
-        btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Guardando…`;
-        try{
-          for(const f of found){
-            const type = TYPES[f.type] ? f.type : "note";
-            await Store.saveItem(trip.id, {
-              id: uid(), type,
-              title:f.title||"", start:f.start||"", end:f.end||"",
-              from:(f.from||"").toUpperCase(), to:(f.to||"").toUpperCase(),
-              provider:f.provider||"", flightNumber:(f.flightNumber||"").toUpperCase(),
-              confirmation:(f.confirmation||"").toUpperCase(), seat:(f.seat||"").toUpperCase(),
-              terminal:(f.terminal||"").toUpperCase(), gate:(f.gate||"").toUpperCase(),
-              address:f.address||"", phone:f.phone||"", cost:f.cost||"",
-              currency:(f.currency||"").toUpperCase(), notes:f.notes||"", source:"import"
-            });
-          }
-          closeSheet();
-          toast(`${found.length} ${found.length===1?"reserva agregada":"reservas agregadas"}`);
-        }catch(e){ toast(writeErr(e), true); btn.disabled=false; btn.innerHTML="Guardar"; }
+  /* ---------- 04/05: revisión ---------- */
+  function reviewCardHtml(card){
+    const r = card.reserva;
+    const T = TYPES[r.type] || TYPES.note;
+    const pageTxt = card.meta.page ? ` · pág. ${card.meta.page}` : "";
+    const srcHtml = card.meta.archivo ? `<span class="chip src">${svg(I[kindIcon(card.meta.kind)])}${esc(card.meta.archivo)}${pageTxt}</span>` : "";
+    return `<div class="imp-card" data-card="${card.id}">
+      <div class="imp-card-hd">
+        <span class="pass-icon ${T.cls}">${svg(T.icon)}</span>
+        <span class="ttl">
+          <input class="imp-title" data-f="title" value="${esc(r.title||"")}" placeholder="Sin título">
+          <span class="imp-src"><span class="chip accent">${esc(card.chip)}</span>${srcHtml}</span>
+        </span>
+        <button class="imp-discard" aria-label="Descartar esta reserva" data-discard="${card.id}">${svg(I.x)}</button>
+      </div>
+      <div class="imp-card-bd">${cardFieldsHtml(r, card.chip)}</div>
+    </div>`;
+  }
+  function syncReviewInputsToState(){
+    st.reviewList.forEach(c=>{
+      const el = document.querySelector(`[data-card="${c.id}"]`);
+      if(!el) return;
+      el.querySelectorAll("[data-f]").forEach(inp=>{ c.reserva[inp.dataset.f] = inp.value.trim(); });
+    });
+  }
+  function renderReview(){
+    if(!alive()) return;
+    const cards = st.reviewList;
+    const issues = st.archivos.filter(a=>a.estado!=="ok");
+    const n = cards.length, totalArchivos = st.archivos.length;
+    const noticeTxt = n
+      ? `Encontré ${n} ${n===1?"reserva":"reservas"}${totalArchivos>1?` en ${totalArchivos} archivos`:""}. ${issues.length?"Los que no aportaron nada, mirá el detalle más abajo. ":""}Revisá los datos y corregí lo que haga falta antes de guardar.`
+      : "Ya no queda ninguna reserva para revisar. Mirá el detalle de los archivos más abajo.";
+    const body = `${marker}
+      <div class="notice">${svg(I.info)}<span class="bd">${esc(noticeTxt)}</span></div>
+      ${n?`<div class="stack">${cards.map(reviewCardHtml).join("")}</div>
+        <p class="tiny muted" style="margin:0">Costo, teléfono y notas se completan después, abriendo la reserva ya guardada. Acá sólo lo que la lectura automática suele errar: fechas, rutas y códigos.</p>`:""}
+      ${issues.length?issuesListHtml(issues):""}`;
+    const footer = `<button class="btn ghost" id="im-cancel">Cancelar</button>
+      <button class="btn primary" id="im-save" ${n?"":"disabled"}>${svg(I.spark)} ${n?`Guardar ${n} ${n===1?"reserva":"reservas"}`:"Nada para guardar"}</button>`;
+    openSheet("Importar reservas", body, footer);
+    document.getElementById("im-cancel").onclick = closeSheet;
+    document.querySelectorAll("[data-discard]").forEach(b=>{
+      b.onclick = ()=>{
+        syncReviewInputsToState();
+        st.reviewList = st.reviewList.filter(c=>c.id!==b.dataset.discard);
+        renderReview();
       };
+    });
+    bindIssuesActions();
+    if(n) document.getElementById("im-save").onclick = doSaveReview;
+  }
+  async function doSaveReview(){
+    if(!alive()) return;
+    syncReviewInputsToState();
+    const cards = st.reviewList.slice();
+    if(!cards.length) return;
+    const saveBtn = document.getElementById("im-save");
+    saveBtn.disabled = true; saveBtn.innerHTML = `<span class="spin"></span> Guardando…`;
+    try{
+      for(const c of cards){
+        const r = c.reserva;
+        const type = TYPES[r.type] ? r.type : "note";
+        await Store.saveItem(trip.id, {
+          id: uid(), type,
+          title:r.title||"", start:r.start||"", end:r.end||"",
+          from:(r.from||"").toUpperCase(), to:(r.to||"").toUpperCase(),
+          provider:r.provider||"", flightNumber:(r.flightNumber||"").toUpperCase(),
+          confirmation:(r.confirmation||"").toUpperCase(), seat:(r.seat||"").toUpperCase(),
+          terminal:(r.terminal||"").toUpperCase(), gate:(r.gate||"").toUpperCase(),
+          boardingTime:r.boardingTime||"",
+          address:r.address||"", phone:r.phone||"", cost:r.cost||"",
+          currency:(r.currency||"").toUpperCase(), notes:r.notes||"", source:"import"
+        });
+      }
+      st.savedTotal += cards.length;
+      st.reviewList = [];
+      finish();
     }catch(e){
-      const code = e && e.code;
-      const msg = code==="not_granted" ? "La lectura automática no está habilitada en esta vista."
-        : code==="rate_limited" ? "Demasiados pedidos seguidos. Esperá un momento."
-        : code==="images_unavailable" ? "Esta vista no acepta imágenes. Pegá el texto."
-        : code==="image_rejected" ? "No pude leer esa imagen. Probá con otra foto o pegá el texto."
-        : "No pude interpretar la reserva. Cargala a mano.";
-      out.innerHTML = `<div class="notice warn">${svg(I.info)}<div>${esc(msg)}</div></div>`;
-      btn.disabled=false; btn.innerHTML = `${svg(I.spark)} Interpretar`;
+      toast(writeErr(e), true);
+      saveBtn.disabled = false; saveBtn.innerHTML = `${svg(I.spark)} Guardar ${cards.length} ${cards.length===1?"reserva":"reservas"}`;
     }
-  };
+  }
+
+  /* ---------- 09: guardado ---------- */
+  function finish(){
+    if(!alive()) return;
+    closeSheet();
+    const n = st.savedTotal, m = st.matchDone;
+    let msg;
+    if(n && m) msg = `Guardado. Agregué ${n} ${n===1?"reserva":"reservas"} y completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.`;
+    else if(m) msg = `Guardado. Completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.`;
+    else if(n) msg = `${n} ${n===1?"reserva agregada":"reservas agregadas"}`;
+    else msg = "Listo";
+    toast(msg);
+  }
+
+  renderElegir();
 }
 
 /* ---------- compartir ---------- */
@@ -3827,6 +5050,7 @@ async function exportPDF(trip){
     if(it.seat) stub.push(["ASIENTO", it.seat]);
     if(it.terminal) stub.push(["TERMINAL", it.terminal]);
     if(it.gate) stub.push(["PUERTA", it.gate]);
+    if(it.boardingTime) stub.push(["EMBARQUE", it.boardingTime]);
     if(it.address) stub.push(["DIRECCIÓN", it.address]);
     if(it.phone) stub.push(["TEL", it.phone]);
     if(it.cost) stub.push(["COSTO", `${it.currency||""} ${it.cost}`.trim()]);
