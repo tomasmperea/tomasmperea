@@ -441,6 +441,10 @@ await test("la capa de destino agrega ítems con su justificación y su origen",
     vistoPrompt = prompt;
     return {
       items:[
+        // "Adaptador tipo F" es el mismo ítem que "Adaptador de enchufe", que la
+        // regla del vuelo internacional ya puso: VAL-45 tiene que descartarlo, no
+        // duplicarlo. Es el caso exacto que describe el brief ("va a proponer el
+        // adaptador de enchufe que la regla del vuelo internacional ya puso").
         { nombre:"Adaptador tipo F", categoria:"electronica", cantidad:1, motivo:"En España el enchufe es tipo F, distinto del argentino." },
         { nombre:"Campera de entretiempo", categoria:"ropa", motivo:"En octubre Madrid tiene amplitud térmica de más de diez grados." },
         { nombre:"Esto no tiene razón" },
@@ -452,14 +456,15 @@ await test("la capa de destino agrega ítems con su justificación y su origen",
   var out = await E.enrichWithDestination(l, ask, { now:AT() });
   assert(vistoPrompt && vistoPrompt.length > 100, "no se llamó a la función de IA con el prompt");
   eq(out.capaInteligente.estado, "ok", "estado de la capa de IA");
-  var ad = hasItem(out, E.slug("Adaptador tipo F"));
-  eq(ad.origen, E.ORIGEN.DESTINO, "el ítem tiene que declararse como del destino");
-  assert(/tipo F/.test(ad.motivo), "el ítem del destino tiene que explicar por qué");
-  hasItem(out, E.slug("Campera de entretiempo"));
+  assert(!item(out, E.slug("Adaptador tipo F")), "VAL-45: \"adaptador tipo F\" es el mismo ítem que ya puso la regla, no se duplica");
+  eq(out.items[E.slug("Adaptador de enchufe")].origen, E.ORIGEN.REGLA,
+    "VAL-45: el adaptador se sigue acreditando a la regla, no a la IA, aunque la IA lo haya nombrado distinto");
+  var camp = hasItem(out, E.slug("Campera de entretiempo"));
+  eq(camp.origen, E.ORIGEN.DESTINO, "el ítem tiene que declararse como del destino");
   assert(!item(out, E.slug("Esto no tiene razón")), "un ítem sin razón no entra");
   eq(out.items.pasaporte.motivo, l.items.pasaporte.motivo, "no se pisa lo que ya estaba en la lista base");
   eq(out.capaInteligente.clima, "Días templados y noches frescas.", "la nota de clima se conserva");
-  eq(count(out), count(l) + 2, "entraron sólo los dos ítems válidos");
+  eq(count(out), count(l) + 1, "sólo entró la campera: el adaptador ya estaba, por sinónimo");
 });
 
 await test("si la capa de destino falla, la lista base se muestra igual y se avisa", async function () {

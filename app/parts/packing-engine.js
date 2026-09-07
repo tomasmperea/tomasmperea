@@ -302,7 +302,9 @@ function slug(label) {
 var SYNONYM_GROUPS = [
   { canon:"Adaptador de enchufe",
     palabras:["Adaptador de enchufe","Adaptador de corriente","Adaptador universal","Adaptador universal de enchufe","Adaptador de viaje","Enchufe universal","Adaptador de toma corriente"],
-    patron:/^adaptador\b.*(enchufe|corriente|toma|clavija|universal|viaje|tipo\s+[a-n]\b)/ },
+    // patron trabaja sobre la CLAVE ya normalizada (slug: minúsculas, con
+    // guiones en vez de espacios), no sobre el texto original.
+    patron:/^adaptador-.*(enchufe|corriente|toma|clavija|universal|viaje|tipo-[a-n]\b)/ },
   { canon:"Celular y cargador",
     palabras:["Celular y cargador","Cargador de celular","Cargador de teléfono","Cargador para el celular","Cargador de celular y cable"] },
   { canon:"Protector solar",
@@ -1303,7 +1305,95 @@ function mergeLists(previous, fresh) {
 }
 
 /* ============================================================
-   CAPA 2 · AJUSTE POR DESTINO CON IA  (VAL-33)
+   VAL-44 · RESUMEN SEGURO DE RESERVAS PARA LA CAPA DE IA
+   Lo que se manda a la capa de destino nunca puede ser el objeto de
+   la reserva tal cual: tiene código de reserva, teléfono y dirección
+   exacta. Esta función arma el resumen que SÍ se puede mandar: tipo,
+   fechas, ciudades, duración y notas. Nada más. Se computa una vez
+   (en buildPackingList) y queda en `list.base.reservas`, así
+   `destinationPrompt` no necesita las reservas completas para armar
+   el prompt — sólo puede ver lo que ya pasó por este filtro.
+   ============================================================ */
+
+/** Sale de una nota libre cualquier secuencia larga de dígitos, por si alguien
+ *  pegó un teléfono en el campo de notas. Defensa en profundidad, no la única. */
+var DIGIT_RUN_RE = /(\+?\d[\d\s\-().]{5,}\d)/g;
+function sanitizeNotesForAI(text) {
+  var t = String(text == null ? "" : text).trim();
+  if (!t) return "";
+  return t.replace(DIGIT_RUN_RE, "[dato omitido]").slice(0, 240);
+}
+
+function hoursBetween(a, b) {
+  var da = Date.parse(a), db = Date.parse(b);
+  if (isNaN(da) || isNaN(db)) return null;
+  return (db - da) / 3600000;
+}
+
+/**
+ * VAL-44: arma el resumen seguro de reservas que ve la capa de IA.
+ * NUNCA incluye `confirmation`, `phone` ni `address`: esos campos ni
+ * se leen acá. Sólo tipo, fechas, ciudades (código de vuelo, no
+ * dirección) y notas, que es lo que sirve para decidir qué llevar.
+ * @param {Object} trip
+ * @param {Array} items reservas completas del viaje
+ * @returns {Array<Object>} resumen, listo para ir en el prompt
+ */
+function summarizeReservationsForAI(trip, items) {
+  items = (items || []).filter(Boolean);
+  var out = [];
+
+  var flights = items.filter(function (i) { return i && i.type === "flight"; })
+    .slice()
+    .sort(function (a, b) { return String(a.start || "").localeCompare(String(b.start || "")); });
+
+  flights.forEach(function (f) {
+    out.push({
+      tipo:"vuelo", desde:f.start || "", hasta:f.end || "",
+      origen:String(f.from || "").trim().toUpperCase(),
+      destino:String(f.to || "").trim().toUpperCase(),
+      notas:sanitizeNotesForAI(f.notes)
+    });
+  });
+
+  // Escala: dos vuelos consecutivos donde el primero llega adonde sale el
+  // segundo, con una espera real en el medio. Es justo el dato puntual que
+  // ninguna regla podía anticipar (VAL-44).
+  for (var i = 0; i < flights.length - 1; i++) {
+    var a = flights[i], b = flights[i + 1];
+    if (!a.to || !b.from || String(a.to).toUpperCase() !== String(b.from).toUpperCase()) continue;
+    var horas = hoursBetween(a.end, b.start);
+    if (horas == null || horas <= 0) continue;
+    out.push({ tipo:"escala", ciudad:String(a.to).toUpperCase(), duracionHoras:Math.round(horas * 10) / 10 });
+  }
+
+  items.filter(function (i) { return i && i.type === "stay"; }).forEach(function (s) {
+    var noches = daysBetweenInclusive(s.start, s.end);
+    out.push({
+      tipo:"alojamiento", desde:s.start || "", hasta:s.end || "",
+      noches:noches != null ? Math.max(0, noches - 1) : null,
+      notas:sanitizeNotesForAI(s.notes)
+    });
+  });
+
+  items.filter(function (i) { return i && i.type === "car"; }).forEach(function (c) {
+    var dias = daysBetweenInclusive(c.start, c.end);
+    out.push({ tipo:"auto", desde:c.start || "", hasta:c.end || "", dias:dias, notas:sanitizeNotesForAI(c.notes) });
+  });
+
+  items.filter(function (i) { return i && i.type === "act"; }).forEach(function (a) {
+    out.push({
+      tipo:"actividad", fecha:a.start || "",
+      titulo:String(a.title || "").trim().slice(0, 80),
+      notas:sanitizeNotesForAI(a.notes)
+    });
+  });
+
+  return out;
+}
+
+/* ============================================================
+   CAPA 2 · AJUSTE POR DESTINO CON IA  (VAL-33, ampliada en VAL-44 y VAL-43)
    El módulo no llama a claude.use. Recibe una función asíncrona
    `ask(prompt) -> objeto` y la app le pasa la implementación
    (en la app: sample.json). Así se prueba con node.
@@ -1312,6 +1402,10 @@ function mergeLists(previous, fresh) {
 /**
  * Arma el prompt de la capa de destino.
  * Lleva instrucción explícita de no inventar: antes una lista corta que un dato falso.
+ * Desde VAL-44 incluye el resumen seguro de reservas (`list.base.reservas`,
+ * armado por `summarizeReservationsForAI`), así el modelo puede razonar
+ * sobre combinaciones puntuales del viaje y no sólo sobre el destino.
+ * Desde VAL-43 también puede proponer sacar ítems que no apliquen.
  * @param {Object} list lista base ya generada
  * @returns {string}
  */
@@ -1319,6 +1413,10 @@ function destinationPrompt(list) {
   var b = (list && list.base) || {};
   var yaHay = itemsArray(list).map(function (i) { return i.nombre; }).join(", ");
   var tipo = TRIP_TYPE_LABEL[list.tipoViaje] || list.tipoViaje || "mixto";
+  var reservas = b.reservas || [];
+  var lineasReservas = reservas.length
+    ? reservas.map(function (r) { return "  - " + JSON.stringify(r); }).join("\n")
+    : "  (todavía no hay reservas cargadas)";
 
   return [
     "Sos parte de una app de viajes y ajustás una lista de equipaje al destino. Devolvés SOLO JSON.",
@@ -1330,60 +1428,123 @@ function destinationPrompt(list) {
     "- Tipo de viaje: " + tipo,
     "- " + (b.internacional ? "Es un viaje internacional." : "Es un viaje dentro del país."),
     "",
+    "Reservas del viaje (resumen seguro: nunca incluye código de reserva, teléfono ni dirección exacta):",
+    lineasReservas,
+    "",
     "La lista base ya incluye: " + (yaHay || "nada"),
     "",
-    "Agregá hasta " + MAX_AI_ITEMS + " ítems que sean específicos de ESE destino en ESA época del año y que",
-    "no estén ya en la lista base. Por ejemplo el tipo de enchufe del país, la amplitud térmica de la zona",
-    "en ese mes, la temporada de lluvias, la altura, o un requisito de ingreso conocido.",
+    "Agregá hasta " + MAX_AI_ITEMS + " ítems que sean específicos de ESE destino en ESA época del año, o de",
+    "una combinación puntual de ESTE viaje que ninguna regla genérica podría anticipar: una escala larga,",
+    "un check-in de madrugada, un alojamiento sin lavandería en un viaje largo, una actividad que pide",
+    "equipo propio. También sirve el tipo de enchufe del país, la amplitud térmica de la zona en ese mes,",
+    "la temporada de lluvias, la altura, o un requisito de ingreso conocido. Ningún ítem que agregues puede",
+    "estar ya en la lista base.",
+    "",
+    "Cuando el motivo venga de una reserva puntual, citá el dato concreto: \"tu escala en Lima es de ocho",
+    "horas\", no \"las escalas largas cansan\". Una generalidad sin el dato del viaje no sirve.",
+    "",
+    "También podés proponer SACAR ítems de \"La lista base ya incluye\" que no apliquen a este destino",
+    "puntual (por ejemplo, no hace falta visa si el país no la pide). Usá el nombre EXACTO tal como aparece",
+    "arriba. Nunca pongas documentación de identidad (DNI, pasaporte) en \"quitar\": no tiene ningún efecto,",
+    "el sistema la conserva siempre pase lo que pase acá.",
     "",
     "Devolvé este JSON exacto:",
-    '{"items":[{"nombre":"nombre corto del ítem","categoria":"documentacion|ropa|calzado|higiene|electronica|salud|destino","cantidad":numero o null,"motivo":"por qué, en una frase, mencionando el dato del destino"}],"clima":"una frase sobre el clima esperado, o vacío"}',
+    '{"items":[{"nombre":"nombre corto del ítem","categoria":"documentacion|ropa|calzado|higiene|electronica|salud|destino","cantidad":numero o null,"motivo":"por qué, en una frase, mencionando el dato del destino o de la reserva"}],"quitar":[{"nombre":"nombre EXACTO tal como aparece en la lista base","motivo":"por qué no aplica a este destino puntual"}],"clima":"una frase sobre el clima esperado, o vacío"}',
     "",
     "Reglas que no se rompen:",
-    "1. Si no estás seguro de un dato del destino, NO lo incluyas. Es preferible una lista más corta que un dato inventado.",
+    "1. Si no estás seguro de un dato del destino o de la reserva, NO lo incluyas. Es preferible una lista más corta que un dato inventado.",
     "2. Nunca inventes tipos de enchufe, temperaturas, requisitos de visa, nombres de lugares ni precios. Si no lo sabés con certeza, omitilo.",
-    '3. Si no tenés nada seguro para agregar, devolvé {"items":[],"clima":""}.',
-    "4. Cada ítem lleva su motivo. Un ítem sin motivo no sirve: no lo incluyas.",
+    '3. Si no tenés nada seguro para agregar ni para sacar, devolvé {"items":[],"quitar":[],"clima":""}.',
+    "4. Cada ítem y cada sugerencia de \"quitar\" lleva su motivo. Sin motivo, no sirve: no lo incluyas.",
     "5. Nada de marcas, links ni recomendaciones de compra.",
-    "6. Escribí en español rioplatense, de vos, en frases cortas."
+    "6. Escribí en español rioplatense, de vos, en frases cortas.",
+    "7. \"quitar\" nunca lleva documentación de identidad, aunque te parezca que sobra."
   ].join("\n");
 }
 
 /**
  * Valida y normaliza lo que devolvió la IA. Descarta todo lo que no cumple.
+ *
+ * VAL-45: un ítem que la IA propone no entra si ya existe en la lista, ni
+ * literal ni por sinónimo (`canonicalKey`) — así nunca se acredita a la IA
+ * lo que una regla o el historial ya pusieron.
+ *
+ * VAL-43: `quitar` sólo puede apuntar a un ítem que existe en la lista, que
+ * no sea propio de la persona (`origen:"manual"`, eso no lo toca nadie más
+ * que ella) y que no esté marcado crítico (`isCriticalClave`) — el piso de
+ * la documentación de identidad se hace cumplir acá, no sólo en el prompt.
+ *
  * @param {Object|string} raw respuesta cruda
  * @param {Object} list lista base, para no duplicar ni resucitar lo suprimido
- * @returns {{items:Array, clima:string}}
+ * @returns {{items:Array, quitar:Array, clima:string}}
  */
 function parseDestinationItems(raw, list) {
   var data = raw;
   if (typeof data === "string") { try { data = JSON.parse(data); } catch (e) { data = null; } }
-  if (!data || !Array.isArray(data.items)) return { items:[], clima:"" };
+  if (!data || typeof data !== "object") return { items:[], quitar:[], clima:"" };
 
-  var have = indexItems(itemsArray(list));
+  var haveOriginal = indexItems(itemsArray(list));
+  var haveCanonOriginal = {};
+  Object.keys(haveOriginal).forEach(function (k) { haveCanonOriginal[canonicalKey(k)] = k; });
+
   var suprimidos = {};
   ((list && list.aprendizaje && list.aprendizaje.suprimidos) || []).forEach(function (e) { suprimidos[e.clave] = true; });
 
-  var out = [];
-  data.items.forEach(function (x) {
-    if (out.length >= MAX_AI_ITEMS) return;
-    if (!x || typeof x !== "object") return;
-    var nombre = String(x.nombre || x.label || "").trim();
-    var motivo = String(x.motivo || x.reason || "").trim();
-    if (!nombre || !motivo) return;                 // sin motivo no entra: VAL-33 lo exige
-    var clave = slug(nombre);
-    if (!clave || have[clave] || suprimidos[clave]) return;
-    var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
-    var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0) ? Math.round(x.cantidad) : null;
-    have[clave] = true;
-    out.push({ clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad, motivo:motivo });
-  });
+  // copia mutable: se va completando con lo que la propia IA agrega en esta
+  // pasada, para que dos ítems de la misma respuesta tampoco se dupliquen entre sí
+  var have = Object.assign({}, haveOriginal);
+  var haveCanon = Object.assign({}, haveCanonOriginal);
 
-  return { items:out, clima:typeof data.clima === "string" ? data.clima.trim() : "" };
+  var items = [];
+  if (Array.isArray(data.items)) {
+    data.items.forEach(function (x) {
+      if (items.length >= MAX_AI_ITEMS) return;
+      if (!x || typeof x !== "object") return;
+      var nombre = String(x.nombre || x.label || "").trim();
+      var motivo = String(x.motivo || x.reason || "").trim();
+      if (!nombre || !motivo) return;                 // sin motivo no entra: VAL-33 lo exige
+      var clave = slug(nombre);
+      if (!clave || suprimidos[clave]) return;
+      var canon = canonicalKey(clave);
+      if (have[clave] || haveCanon[canon]) return;     // VAL-45: ya está, literal o por sinónimo
+      var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
+      var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0) ? Math.round(x.cantidad) : null;
+      have[clave] = true; haveCanon[canon] = clave;
+      items.push({ clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad, motivo:motivo });
+    });
+  }
+
+  var quitar = [];
+  if (Array.isArray(data.quitar)) {
+    var vistos = {};
+    data.quitar.forEach(function (x) {
+      if (!x || typeof x !== "object") return;
+      var nombre = String(x.nombre || x.clave || x.label || "").trim();
+      var motivo = String(x.motivo || x.reason || "").trim();
+      if (!nombre || !motivo) return;
+      var clave = slug(nombre);
+      if (!clave) return;
+      var target = haveOriginal[clave] ? clave : haveCanonOriginal[canonicalKey(clave)];
+      if (!target || vistos[target]) return;
+      if (isCriticalClave(target)) return;                          // VAL-43: piso que no se toca, en código
+      var actual = haveOriginal[target];
+      if (!actual || actual.origen === ORIGEN.MANUAL || actual.estado === ESTADO.DESCARTADO) return;
+      vistos[target] = true;
+      quitar.push({ clave:target, motivo:motivo });
+    });
+  }
+
+  return { items:items, quitar:quitar, clima:typeof data.clima === "string" ? data.clima.trim() : "" };
 }
 
 /**
  * CAPA 2. Nunca lanza: si la IA falla, devuelve la lista base con el aviso puesto.
+ *
+ * Además de agregar ítems (VAL-33/VAL-44), puede sugerir sacarlos (VAL-43):
+ * no los elimina ni los descarta sola — nada se guarda sin revisar — deja la
+ * propuesta en `item.sugerenciaQuitar:{motivo,en}` para que la persona decida.
+ * Aceptarla es un `dismissItem` común; rechazarla, `clearRemovalSuggestion`.
+ *
  * @param {Object} list lista base
  * @param {Function} ask función asíncrona (prompt) => objeto o string JSON
  * @param {Object} [opts] {now}
@@ -1415,8 +1576,8 @@ function enrichWithDestination(list, ask, opts) {
     .then(function () { return ask(destinationPrompt(list), { list:list, base:list.base }); })
     .then(function (raw) {
       var parsed = parseDestinationItems(raw, list);
-      if (!parsed.items.length) {
-        return conCapa("vacio", "El modelo no agregó nada específico del destino.",
+      if (!parsed.items.length && !parsed.quitar.length) {
+        return conCapa("vacio", "El modelo no encontró ajustes específicos para este destino.",
                        parsed.clima ? { clima:parsed.clima } : null);
       }
       var items = Object.assign({}, list.items);
@@ -1427,8 +1588,17 @@ function enrichWithDestination(list, ask, opts) {
           orden:orderOf(x.categoria, 800 + i)
         }, at);
       });
-      var out = conCapa("ok",
-        "Ajustada al destino: " + parsed.items.length + (parsed.items.length === 1 ? " ítem agregado." : " ítems agregados."),
+      parsed.quitar.forEach(function (q) {
+        var actual = items[q.clave];
+        if (!actual) return;
+        items[q.clave] = Object.assign({}, actual, { sugerenciaQuitar:{ motivo:q.motivo, en:at } });
+      });
+
+      var notaPartes = [];
+      if (parsed.items.length) notaPartes.push(parsed.items.length + (parsed.items.length === 1 ? " ítem agregado" : " ítems agregados"));
+      if (parsed.quitar.length) notaPartes.push(parsed.quitar.length + (parsed.quitar.length === 1 ? " sugerencia para sacar" : " sugerencias para sacar"));
+
+      var out = conCapa("ok", "Ajustada al destino: " + notaPartes.join(", ") + ".",
         { items:items, clima:parsed.clima || "" });
       out.conteo = packingProgress(out);
       return out;
@@ -1436,6 +1606,24 @@ function enrichWithDestination(list, ask, opts) {
     .catch(function (e) {
       return conCapa("error", (e && e.message) ? String(e.message) : "Error desconocido.");
     });
+}
+
+/**
+ * VAL-43: la persona rechaza la sugerencia de sacar un ítem. El ítem sigue
+ * en la lista, tal como estaba; sólo se borra la propuesta para que la
+ * interfaz deje de mostrarla. Aceptarla, en cambio, es un `dismissItem`
+ * común — no hace falta una función especial para eso.
+ * @param {Object} list
+ * @param {string} clave
+ * @returns {Object} lista nueva
+ */
+function clearRemovalSuggestion(list, clave) {
+  return replaceItem(list, clave, function (i) {
+    if (!i.sugerenciaQuitar) return i;
+    var out = Object.assign({}, i);
+    delete out.sugerenciaQuitar;
+    return out;
+  });
 }
 
 /* ============================================================
@@ -1544,6 +1732,8 @@ function setQty(list, clave, cantidad, opts) {
  * Agrega un ítem propio. Es lo que después aprende el historial.
  * Si el ítem ya existía, no lo duplica: lo vuelve a pendiente y NO le cambia
  * el origen, porque la precedencia dice que gana la capa más básica.
+ * VAL-45: "ya existía" incluye un sinónimo declarado (`canonicalKey`), no
+ * sólo el mismo texto — así tampoco se duplica a mano lo que ya puso otra capa.
  * @returns {Object} lista nueva
  */
 function addManualItem(list, fields, opts) {
@@ -1553,7 +1743,8 @@ function addManualItem(list, fields, opts) {
   if (!nombre) return list;
   var clave = slug(nombre);
   if (!clave) return list;
-  if ((list.items || {})[clave]) return setItemState(list, clave, ESTADO.PENDIENTE, { now:at });
+  var existente = (list.items || {})[clave] ? clave : findCanonicalMatch(list.items, clave);
+  if (existente) return setItemState(list, existente, ESTADO.PENDIENTE, { now:at });
 
   var categoria = CATEGORY_ORDER[fields.categoria] !== undefined ? fields.categoria : "otros";
   var it = makeItem({
@@ -1594,6 +1785,214 @@ function groupByCategory(list, opts) {
 }
 
 /* ============================================================
+   VAL-46 · LA LISTA SE ACTUALIZA CUANDO EL VIAJE CRECE
+   No escribe nada sola: `planListUpdate` sólo dice qué cambió y por
+   qué, y la app decide cuándo ofrecerlo. Lo empacado sigue empacado,
+   lo descartado nunca vuelve (las mismas garantías de `mergeLists`,
+   que es lo que arma el plan por dentro) y cada ítem nuevo declara
+   qué reserva lo motivó.
+   ============================================================ */
+
+/** Para cada hecho de FACTS, la reserva puntual que lo hizo verdadero
+ *  (la primera que matchea), para poder citarla al explicar un ítem nuevo. */
+function findFactSource(name, ctx) {
+  var items = (ctx && ctx.items) || [];
+  function texto(i) { return norm([i && i.title, i && i.notes, i && i.provider].filter(Boolean).join(" ")); }
+  switch (name) {
+    case "hasFlight":        return items.filter(function (i) { return i && i.type === "flight"; })[0] || null;
+    case "hasRentalCar":     return items.filter(function (i) { return i && i.type === "car"; })[0] || null;
+    case "hasStay":          return items.filter(function (i) { return i && i.type === "stay"; })[0] || null;
+    case "hasInternationalFlight":
+      return ctx.international ? (items.filter(function (i) { return i && i.type === "flight"; })[0] || null) : null;
+    case "hasTrekking":      return items.filter(function (i) { return i && TREK_RE.test(texto(i)); })[0] || null;
+    case "hasWaterActivity": return items.filter(function (i) { return i && WATER_RE.test(texto(i)); })[0] || null;
+    case "hasWorkActivity":  return items.filter(function (i) { return i && WORK_RE.test(texto(i)); })[0] || null;
+    case "hasSnow":          return items.filter(function (i) { return i && SNOW_RE.test(texto(i)); })[0] || null;
+    default: return null;
+  }
+}
+
+/** Recorre una condición declarativa y junta los nombres de hechos que pide en positivo
+ *  (`facts`, `anyFacts`). `notFacts` queda afuera a propósito: la ausencia de un hecho
+ *  no es una reserva que "motive" nada. */
+function collectFactNames(cond) {
+  var out = [];
+  (function walk(c) {
+    if (c == null || typeof c === "function") return;
+    if (Array.isArray(c)) { c.forEach(walk); return; }
+    if (c.facts) out.push.apply(out, c.facts);
+    if (c.anyFacts) out.push.apply(out, c.anyFacts);
+    if (c.all) c.all.forEach(walk);
+    if (c.any) c.any.forEach(walk);
+  })(cond);
+  return out;
+}
+
+/**
+ * Describe una reserva en un texto corto para citarla como motivo de un
+ * ítem nuevo. Esto no sale nunca hacia la capa de IA (esa restricción es de
+ * `summarizeReservationsForAI`); es sólo para que la persona entienda por
+ * qué apareció el ítem, así que puede usar cualquier dato de la reserva.
+ * @param {Object} it
+ * @returns {string|null}
+ */
+function describeReservation(it) {
+  if (!it) return null;
+  var LABEL = { flight:"el vuelo", stay:"el alojamiento", car:"el auto", act:"la actividad" };
+  var base = LABEL[it.type] || "la reserva";
+  if (it.type === "flight" && (it.from || it.to)) base += " " + [it.from, it.to].filter(Boolean).join(" – ");
+  else if (it.type === "act" && it.title) base += " \"" + String(it.title).trim() + "\"";
+  else if ((it.type === "stay" || it.type === "car") && it.provider) base += " (" + String(it.provider).trim() + ")";
+  return base;
+}
+
+/**
+ * Por qué apareció un ítem nuevo, citando la reserva puntual si se puede
+ * rastrear una regla-hecho-reserva; si no, el motivo genérico de la regla.
+ * @param {Object} it   ítem nuevo, ya armado
+ * @param {Object} ctx  contexto del viaje (de tripContext)
+ * @returns {{texto:string, reserva:string|null}}
+ */
+function explainNewItem(it, ctx) {
+  if (it.origen === ORIGEN.HISTORIAL) return { texto:it.motivo, reserva:null };
+  var rule = BASE_RULES.filter(function (r) { return r.id === it.regla; })[0];
+  if (rule && rule.when) {
+    var nombres = collectFactNames(rule.when);
+    for (var i = 0; i < nombres.length; i++) {
+      var src = findFactSource(nombres[i], ctx);
+      if (src) return { texto:it.motivo, reserva:describeReservation(src) };
+    }
+  }
+  return { texto:it.motivo, reserva:null };
+}
+
+/**
+ * VAL-46: compara la lista ya guardada contra las reservas ACTUALES del
+ * viaje (capas 1 + 3, sin IA — sincrónica a propósito) y arma el plan de
+ * qué cambió. No toca `list`: devuelve un plan que la app ofrece aplicar.
+ *
+ * Garantías, iguales a las de `mergeLists` porque se apoya en ella:
+ *   - lo empacado sigue empacado, lo descartado sigue descartado,
+ *   - un ítem descartado nunca vuelve, aunque el viaje crezca,
+ *   - cada ítem nuevo queda marcado `nuevo:true` y dice qué reserva lo motivó.
+ *
+ * @param {Object}  input
+ * @param {Object}  input.list        lista ya guardada
+ * @param {Object}  input.trip
+ * @param {Array}   [input.items]     reservas ACTUALES del viaje
+ * @param {string}  [input.tipoViaje]
+ * @param {Array}   [input.history]
+ * @param {string}  [input.now]
+ * @returns {{desactualizada:boolean, nuevos:Array, motivo:string, listaPropuesta:Object|null}}
+ */
+function planListUpdate(input) {
+  input = input || {};
+  var list = input.list;
+  if (!list) return { desactualizada:false, nuevos:[], motivo:"No hay una lista previa para comparar.", listaPropuesta:null };
+
+  var at = input.now || nowISO();
+  var trip = input.trip || {};
+  var items = input.items || [];
+  var freshBase = buildPackingList({
+    trip:trip, items:items, tipoViaje:input.tipoViaje, history:input.history, now:at
+  });
+  var merged = mergeLists(list, freshBase);
+  var ctx = tripContext(trip, items, { tipoViaje:input.tipoViaje });
+
+  var yaHabia = {};
+  itemsArray(list).forEach(function (i) { if (i && i.clave) yaHabia[canonicalKey(i.clave)] = true; });
+
+  var nuevos = [];
+  var itemsConFlag = Object.assign({}, merged.items);
+  itemsArray(merged).forEach(function (it) {
+    if (yaHabia[canonicalKey(it.clave)]) return;         // ya estaba, activo o descartado: no es nuevo
+    var explicacion = explainNewItem(it, ctx);
+    itemsConFlag[it.clave] = Object.assign({}, it, { nuevo:true });
+    nuevos.push({
+      clave:it.clave, nombre:it.nombre, categoria:it.categoria,
+      motivo:explicacion.texto, reserva:explicacion.reserva, origen:it.origen
+    });
+  });
+
+  var desactualizada = nuevos.length > 0;
+  var listaPropuesta = Object.assign({}, merged, { items:itemsConFlag });
+
+  return {
+    desactualizada:desactualizada,
+    nuevos:nuevos,
+    motivo:desactualizada
+      ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
+      : "La lista sigue al día con lo que cargaste.",
+    listaPropuesta:listaPropuesta
+  };
+}
+
+/**
+ * Igual que `planListUpdate`, pero además corre la capa de IA (VAL-44) sobre
+ * la lista propuesta, así los ítems nuevos por combinaciones puntuales del
+ * viaje (una escala que recién apareció, un alojamiento sin lavandería)
+ * también entran en el plan. Nunca lanza por culpa de la IA: si `ask` falla
+ * o no está, el plan sale igual con capas 1 + 3.
+ * @param {Object} input mismos campos que planListUpdate, más `ask`
+ * @returns {Promise<Object>} mismo shape que planListUpdate
+ */
+function planListUpdateAsync(input) {
+  input = input || {};
+  var base = planListUpdate(input);
+  if (!base.listaPropuesta || typeof input.ask !== "function") return Promise.resolve(base);
+
+  return enrichWithDestination(base.listaPropuesta, input.ask, { now:input.now }).then(function (enriched) {
+    var yaHabia = {};
+    itemsArray(base.listaPropuesta).forEach(function (i) { if (i && i.clave) yaHabia[canonicalKey(i.clave)] = true; });
+
+    var nuevosIA = [];
+    var itemsConFlag = Object.assign({}, enriched.items);
+    itemsArray(enriched).forEach(function (it) {
+      if (it.origen !== ORIGEN.DESTINO) return;
+      if (yaHabia[canonicalKey(it.clave)]) return;
+      itemsConFlag[it.clave] = Object.assign({}, it, { nuevo:true });
+      nuevosIA.push({ clave:it.clave, nombre:it.nombre, categoria:it.categoria, motivo:it.motivo, reserva:null, origen:it.origen });
+    });
+
+    var nuevos = base.nuevos.concat(nuevosIA);
+    var desactualizada = nuevos.length > 0;
+    return {
+      desactualizada:desactualizada,
+      nuevos:nuevos,
+      motivo:desactualizada
+        ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
+        : "La lista sigue al día con lo que cargaste.",
+      listaPropuesta:Object.assign({}, enriched, { items:itemsConFlag })
+    };
+  });
+}
+
+/**
+ * Saca el flag `nuevo` de todos los ítems: la persona ya vio la actualización.
+ * Se llama después de mostrar la lista propuesta de `planListUpdate`, cuando
+ * la persona la revisó (no antes: "nada se guarda sin revisar").
+ * @param {Object} list
+ * @returns {Object} lista nueva
+ */
+function clearNewFlags(list) {
+  if (!list) return list;
+  var cambio = false;
+  var items = {};
+  Object.keys(list.items || {}).forEach(function (k) {
+    var it = list.items[k];
+    if (it && it.nuevo) {
+      cambio = true;
+      var copia = Object.assign({}, it);
+      delete copia.nuevo;
+      items[k] = copia;
+    } else {
+      items[k] = it;
+    }
+  });
+  return cambio ? Object.assign({}, list, { items:items }) : list;
+}
+
+/* ============================================================
    EXPORTA
    ============================================================ */
 return {
@@ -1604,6 +2003,7 @@ return {
   MAX_AI_ITEMS:MAX_AI_ITEMS,
   CATEGORIES:CATEGORIES, TRIP_TYPES:TRIP_TYPES, BASE_RULES:BASE_RULES, FACTS:FACTS,
   AR_IATA:AR_IATA, AR_HINTS:AR_HINTS, FOREIGN_HINTS:FOREIGN_HINTS, TYPE_HINTS:TYPE_HINTS,
+  SYNONYM_GROUPS:SYNONYM_GROUPS, CRITICAL_CLAVES:CRITICAL_CLAVES,
 
   // motor
   generatePackingList:generatePackingList,
@@ -1615,9 +2015,16 @@ return {
   tripContext:tripContext,
   deduceInternational:deduceInternational,
 
-  // capa de IA, expuesta para poder probarla suelta
+  // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,
   parseDestinationItems:parseDestinationItems,
+  summarizeReservationsForAI:summarizeReservationsForAI,
+  clearRemovalSuggestion:clearRemovalSuggestion,
+
+  // VAL-46: la lista se actualiza cuando el viaje crece
+  planListUpdate:planListUpdate,
+  planListUpdateAsync:planListUpdateAsync,
+  clearNewFlags:clearNewFlags,
 
   // estado de la lista (VAL-31)
   setItemState:setItemState, packItem:packItem, dismissItem:dismissItem, resetItem:resetItem,
@@ -1628,6 +2035,8 @@ return {
   // utilidades y control de calidad
   slug:slug, normalizeTripType:normalizeTripType, daysBetweenInclusive:daysBetweenInclusive,
   matchesCondition:matchesCondition, computeQty:computeQty, validateRules:validateRules,
-  lowestOrigin:lowestOrigin, itemsArray:itemsArray
+  lowestOrigin:lowestOrigin, itemsArray:itemsArray,
+  canonicalKey:canonicalKey, findCanonicalMatch:findCanonicalMatch,
+  verifyNoDuplicateItems:verifyNoDuplicateItems, isCriticalClave:isCriticalClave
 };
 });
