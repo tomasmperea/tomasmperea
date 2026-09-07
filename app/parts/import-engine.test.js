@@ -80,6 +80,58 @@ function existente(over) {
     seat: "", terminal: "", gate: "", boardingTime: "" }, over || {});
 }
 
+/* ---------- DOM falso, sólo para probar renderPdfPagesToImages sin navegador ----------
+   No es jsdom ni ninguna librería nueva: el motor sólo necesita `document.createElement("canvas")`
+   con un `getContext` y un `toBlob`, así que se simula con lo mínimo. Se instala en `global.document`
+   antes de cada prueba de esta sección y se saca después, para no ensuciar al resto de las pruebas. */
+function withFakeDom(fn) {
+  global.document = {
+    createElement: function (tag) {
+      if (tag !== "canvas") throw new Error("elemento inesperado: " + tag);
+      return {
+        width: 0, height: 0,
+        getContext: function () { return {}; },
+        toBlob: function (cb, mimeType) { cb({ __fakeBlob: true, mimeType: mimeType }); }
+      };
+    }
+  };
+  return Promise.resolve().then(fn).finally(function () { delete global.document; });
+}
+
+/** Documento de pdf.js falso, con `numPages` páginas que "renderizan" sin problema. */
+function fakePdfDocument(numPages) {
+  return {
+    numPages: numPages,
+    getPage: function () {
+      return Promise.resolve({
+        getViewport: function () { return { width: 100, height: 100 }; },
+        render: function () { return { promise: Promise.resolve() }; }
+      });
+    }
+  };
+}
+
+/**
+ * pdf.js falso. `opts.workerFails:true` hace que `getDocument` lance una
+ * excepción SÍNCRONA la primera vez (worker no se pudo instanciar) y sólo
+ * funcione cuando se lo llama con `disableWorker:true`, que es exactamente
+ * lo que hace `openPdfDocument` al reintentar.
+ */
+function fakePdfjsLib(opts) {
+  opts = opts || {};
+  var llamadas = [];
+  return {
+    llamadas: llamadas,
+    getDocument: function (params) {
+      llamadas.push(params);
+      if (opts.workerFails && !params.disableWorker) {
+        throw new Error("no se pudo instanciar el Worker: bloqueado por el sandbox del iframe");
+      }
+      return { promise: Promise.resolve(fakePdfDocument(opts.numPages || 1)) };
+    }
+  };
+}
+
 async function main() {
 
 group("fileKind — qué tipo de archivo es");
@@ -316,6 +368,45 @@ await test("sin pdf.js cargado, rechaza con un mensaje claro (no intenta tocar e
   }
 });
 
+await test("con pdf.js y worker disponibles, renderiza sin caer al modo sin worker", async function () {
+  await withFakeDom(async function () {
+    var pdfjsLib = fakePdfjsLib({ numPages: 2 });
+    var pdfBlobFalso = { arrayBuffer: async function () { return new ArrayBuffer(1); } };
+    var imagenes = await E.renderPdfPagesToImages(pdfBlobFalso, { pdfjsLib: pdfjsLib });
+    eq(imagenes.length, 2);
+    eq(pdfjsLib.llamadas.length, 1, "no hizo falta reintentar: el worker anduvo a la primera");
+  });
+});
+
+await test("si instanciar el Worker de pdf.js lanza (sandbox del iframe), cae solo al modo sin worker y de todas formas obtiene las imágenes", async function () {
+  await withFakeDom(async function () {
+    var pdfjsLib = fakePdfjsLib({ workerFails: true, numPages: 3 });
+    var pdfBlobFalso = { arrayBuffer: async function () { return new ArrayBuffer(1); } };
+    var imagenes = await E.renderPdfPagesToImages(pdfBlobFalso, { pdfjsLib: pdfjsLib });
+    eq(imagenes.length, 3, "igual se obtienen las imágenes, aunque el worker no haya arrancado");
+    eq(pdfjsLib.llamadas.length, 2, "primero intentó con worker, después reintentó sin worker");
+    assert(!pdfjsLib.llamadas[0].disableWorker, "el primer intento es el camino rápido, con worker");
+    eq(pdfjsLib.llamadas[1].disableWorker, true, "el reintento pide explícitamente correr sin worker");
+  });
+});
+
+await test("la caída al modo sin worker no llega como error a interpretFile: el archivo queda ok", async function () {
+  await withFakeDom(async function () {
+    var pdfjsLib = fakePdfjsLib({ workerFails: true, numPages: 1 });
+    var renderPdfToImages = function (blob) {
+      return E.renderPdfPagesToImages(blob, { pdfjsLib: pdfjsLib });
+    };
+    var callModel = callModelPorArchivo({
+      "voucher.pdf": { items: [{ type: "flight", title: "Vuelo", provider: "AR", flightNumber: "AR1140" }] }
+    });
+    var archivoFalso = filePdf("voucher.pdf");
+    archivoFalso.blob = { arrayBuffer: async function () { return new ArrayBuffer(1); } };
+    var r = await E.interpretFile(archivoFalso, { callModel: callModel, renderPdfToImages: renderPdfToImages });
+    eq(r.estado, "ok", "el fallo del worker es interno y no se le nota a quien está esperando la reserva");
+    eq(r.reservas.length, 1);
+  });
+});
+
 group("VAL-42 · reconocer un vuelo ya cargado");
 
 await test("vuelo nuevo: no hay ningún vuelo cargado que coincida", function () {
@@ -329,9 +420,27 @@ await test("vuelo nuevo: hay vuelos cargados pero ninguno coincide en número y 
   eq(r.resultado, "nuevo");
 });
 
-await test("vuelo nuevo cuando la tarjeta no trae número de vuelo: no hay con qué comparar", function () {
-  var r = E.matchFlightReservation(reservaVuelo({ flightNumber: "" }), [existente()]);
+await test("vuelo nuevo cuando la tarjeta no trae número de vuelo y no hay ningún vuelo cargado ese día", function () {
+  var otroDia = existente({ start: "2026-05-01T10:00" });
+  var r = E.matchFlightReservation(reservaVuelo({ flightNumber: "" }), [otroDia]);
   eq(r.resultado, "nuevo");
+});
+
+await test("sin número de vuelo pero con un vuelo cargado ese mismo día: ambiguo, nunca duplica en silencio", function () {
+  var ya = existente(); // mismo día que reservaVuelo(): 2026-03-10
+  var r = E.matchFlightReservation(reservaVuelo({ flightNumber: "" }), [ya]);
+  eq(r.resultado, "ambiguo");
+  eq(r.candidatos.length, 1);
+  eq(r.candidatos[0].id, "it-1");
+  assert(!r.existente, "no decide por la persona: no hay `existente` en un resultado ambiguo");
+});
+
+await test("sin número de vuelo y con más de un vuelo cargado ese día: ambiguo con todos los candidatos", function () {
+  var ya1 = existente({ id: "it-1" });
+  var ya2 = existente({ id: "it-9", flightNumber: "AR9999" }); // distinto número, mismo día: igual es candidato
+  var r = E.matchFlightReservation(reservaVuelo({ flightNumber: "" }), [ya1, ya2]);
+  eq(r.resultado, "ambiguo");
+  eq(r.candidatos.length, 2);
 });
 
 await test("es el mismo vuelo: mismo número y misma fecha", function () {

@@ -3,7 +3,7 @@
 **Épica:** VAL-40, VAL-41, VAL-42 (Bloque A de `docs/briefs/interpretar.md`) · **Escribe:** motor de
 importación · **Estado:** listo para integrar
 
-Este documento describe `app/parts/import-engine.js`, probado en `app/parts/import-engine.test.js` (33
+Este documento describe `app/parts/import-engine.js`, probado en `app/parts/import-engine.test.js` (38
 casos, `node app/parts/import-engine.test.js`). El módulo es JavaScript puro: no toca el DOM, no pide red, no
 depende de nada externo salvo pdf.js, que ni siquiera importa — lo recibe ya cargado. Recibe archivos y
 devuelve datos, en el mismo espíritu que `packing-engine.js`: reglas declaradas como datos, no enterradas en
@@ -118,8 +118,14 @@ persona ya había cargado nunca se pisa. Si coinciden **dos o más**, es `"ambig
 los candidatos completos para que la interfaz pregunte a cuál corresponde — es la regla del brief que no se
 negocia ("ante la duda pregunta a cuál corresponde, no adivina").
 
-Si la tarjeta no trae número de vuelo o no se pudo determinar la fecha, no hay con qué comparar: el resultado
-es `"nuevo"` con el motivo explicado, no un intento de adivinar por ruta o por horario.
+**Una tarjeta sin número de vuelo nunca decide sola que es nueva.** Si no se pudo determinar la fecha, no hay
+con qué comparar y el resultado es `"nuevo"`. Pero si la fecha sí se conoce y falta el número de vuelo —pasa
+con algunas tarjetas de embarque, que a veces vienen recortadas o borrosas justo en ese dato—, y hay uno o
+más vuelos cargados ese mismo día, el resultado es `"ambiguo"` con esos vuelos como candidatos, **nunca**
+`"nuevo"`. La primera versión de este módulo devolvía `"nuevo"` en ese caso y eso creaba un vuelo duplicado en
+silencio el mismo día; se corrigió porque un duplicado silencioso es peor que una pregunta — la persona ve dos
+vuelos iguales y deja de confiar en el importador. Sólo es `"nuevo"` cuando no hay ningún vuelo cargado ese
+día, o cuando hay número de vuelo y no coincide con ninguno de los de ese día.
 
 `matchAgainstExisting(reserva, existentes)` es el azúcar para usar sobre cualquier reserva interpretada sin
 mirar antes el tipo: lo que no es un vuelo siempre es `"nuevo"`, porque VAL-42 sólo pide este reconocimiento
@@ -144,6 +150,30 @@ memoria de varios canvas grandes en un teléfono a la vez). Un PDF escaneado sin
 renderiza exactamente igual que uno con texto: pdf.js dibuja la página como imagen sin mirar si hay una capa
 de texto debajo, así que VAL-40 lo cubre sin necesitar código aparte.
 
+### 3.1 · pdf.js puede no conseguir instanciar su Web Worker, y ahí no puede caerse la función
+
+Valija corre embebida en un iframe con permisos restringidos. Por defecto pdf.js instancia un Web Worker
+desde una URL de otro origen (el CDN), y eso es exactamente el tipo de cosa que un sandbox de iframe suele
+bloquear. Si eso pasa y `renderPdfPagesToImages` dependiera únicamente del worker, VAL-40 —la prioridad
+máxima de la iteración— dejaría de funcionar en ese contexto sin que hubiera ningún camino de respaldo.
+
+Por eso `renderPdfPagesToImages` no llama a `pdfjsLib.getDocument` directo: pasa por `openPdfDocument`
+(exportada también, para poder probarla sola), que:
+
+1. **Intenta primero con worker**, que es el camino rápido y el que pdf.js usa por defecto.
+2. **Si instanciarlo falla** —ya sea porque `getDocument` lanza de forma síncrona al crear el worker, o
+   porque la promesa que devuelve se rechaza por eso— **reintenta automáticamente con
+   `disableWorker:true`**, la opción que la propia API de pdf.js expone para correr todo en el hilo
+   principal. Es más lento, pero no depende de que el sandbox permita instanciar un worker de otro origen.
+3. La caída es **silenciosa para quien está esperando**: no hay ningún mensaje de error ni una segunda
+   confirmación. La persona ya está mirando la pantalla de progreso que la app puso a propósito para esta
+   espera; el único efecto visible es que tarda un poco más.
+
+Las pruebas *"si instanciar el Worker de pdf.js lanza (sandbox del iframe), cae solo al modo sin worker..."*
+y *"la caída al modo sin worker no llega como error a interpretFile..."* verifican los dos niveles: que
+`openPdfDocument` reintenta y consigue las imágenes, y que ese reintento es invisible para
+`interpretFile` — el archivo termina en `estado:"ok"`, no en `"error"`.
+
 ---
 
 ## 4 · Nota de integración — qué necesita `app/valija.html`
@@ -153,10 +183,8 @@ Este módulo no se edita desde acá; esto es la lista de lo que el rol de integr
 1. **Cargar el módulo y pdf.js.** `import-engine.js` es UMD, igual que `packing-engine.js`: hay que pegarlo
    dentro de un `<script>` de `valija.html` (sin build, un solo archivo). Además, para que VAL-40 funcione,
    agregar antes del cierre de `</body>` (o donde ya vayan los `<script>` de terceros) las dos etiquetas de
-   pdf.js con la versión fija que declara el módulo. Este entorno de trabajo no tuvo salida de red hacia
-   cdnjs para confirmar la URL exacta al momento de esta entrega — quien integre debe verificar que la
-   versión resuelva (o fijar la última estable disponible y actualizar `PDFJS_VERSION` en el módulo para que
-   coincida) antes de dar esto por cerrado:
+   pdf.js con la versión fija que declara el módulo. Los dos archivos exactos, con la versión que fija
+   `PDFJS_VERSION` (`3.11.174`):
    ```html
    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
    <script>
@@ -167,6 +195,26 @@ Este módulo no se edita desde acá; esto es la lista de lo que el rol de integr
    Con eso, `ImportEngine.renderPdfPagesToImages(blob)` ya encuentra `window.pdfjsLib` sin que la app tenga
    que pasarlo a mano (aunque puede, vía `opts.pdfjsLib`, si en algún momento se prefiere cargarlo
    asincrónicamente y no como variable global).
+
+   **Sobre cdnjs, para quien integre:** este entorno de trabajo tiene `cdnjs.cloudflare.com` bloqueado por
+   política de egreso de la organización (confirmado con 403 en el túnel del proxy), así que la URL de arriba
+   no se pudo confirmar desde acá. No hace falta reintentarlo en este entorno — no va a cambiar. Se verifica
+   así, en la app publicada, que es donde sí hay salida de red real:
+   1. Abrir la app publicada, abrir las herramientas de desarrollador del navegador y mirar la pestaña
+      **Red/Network** mientras carga: `pdf.min.js` y `pdf.worker.min.js` tienen que responder `200`, no `404`.
+      Un `404` significa que hay que ajustar `PDFJS_VERSION` a una versión que sí esté publicada en cdnjs
+      (`https://cdnjs.com/libraries/pdf.js` lista las versiones disponibles) y actualizarla en las dos
+      etiquetas `<script>` de arriba **y** en la constante `PDFJS_VERSION` de `import-engine.js`, para que el
+      número no quede desincronizado entre el HTML y el módulo.
+   2. En la **consola**, `window.pdfjsLib.version` tiene que devolver `"3.11.174"` (o la versión que haya
+      quedado fijada).
+   3. Subir un PDF real de varias páginas desde `sheetImport` y confirmar que las reservas de todas las
+      páginas aparecen para revisar, no sólo las de la primera — es el criterio de aceptación de VAL-40.
+   4. Para confirmar puntualmente el respaldo sin worker de la sección 3.1: en la consola, antes de subir el
+      PDF, correr `pdfjsLib.GlobalWorkerOptions.workerSrc = ""` (deja el worker sin URL válida, forzando que
+      falle su instanciación) y volver a subir el mismo PDF. Tiene que interpretarse igual, sólo que un poco
+      más lento; si en cambio no pasa nada o tarda para siempre, el respaldo de `openPdfDocument` no está
+      encontrando el camino sin worker y hay que revisarlo antes de dar esto por cerrado.
 
 2. **Armar la lista de archivos.** Desde el `<input type="file" multiple accept="image/*,application/pdf">`
    de `sheetImport`, convertir cada `File` a `{ name:file.name, mimeType:file.type, blob:file }` (un `File`
@@ -214,17 +262,23 @@ No hace falta ninguna dependencia nueva más allá de pdf.js. El resto del módu
 node app/parts/import-engine.test.js
 ```
 
-33 casos, sin frameworks, mismo arnés que `packing-engine.test.js` (`test(nombre, fn)`, `assert`, `eq`,
+38 casos, sin frameworks, mismo arnés que `packing-engine.test.js` (`test(nombre, fn)`, `assert`, `eq`,
 salida con `process.exitCode` fijado una sola vez al final, nunca con `process.exit()` a mitad de camino).
 Cubre, en orden: qué tipo de archivo es cada cosa, que una respuesta basura del modelo nunca rompe nada, un
 archivo interpretado solo, un PDF de varias páginas interpretado completo, un PDF "escaneado" (misma
 mecánica, sin distinguirlo del resto: es la prueba de que VAL-40 lo cubre sin código aparte), varios archivos
 juntos, mezcla de fotos y PDF, un archivo que falla entre otros que funcionan, el prompt (que pide dejar vacío
 antes que inventar y avisa cuando son varias páginas de un mismo archivo), las guardas de
-`renderPdfPagesToImages` sin tocar el DOM, y los tres resultados de VAL-42: vuelo nuevo, vuelo que completa
-uno existente (con y sin número de vuelo exacto), y coincidencia ambigua entre dos candidatos.
+`renderPdfPagesToImages` sin tocar el DOM (incluida la caída automática al modo sin worker, ver 3.1), y los
+tres resultados de VAL-42: vuelo nuevo (con y sin número de vuelo, con y sin otros vuelos ese día), vuelo que
+completa uno existente (con número exacto y con número tolerante), y coincidencia ambigua entre dos
+candidatos — tanto con número de vuelo repetido como sin número de vuelo del todo.
 
-Ninguna prueba usa un navegador real: los "blobs" de PDF e imagen son objetos cualquiera (el motor nunca mira
-su contenido, sólo los transporta hasta `callModel`), y `renderPdfToImages` se inyecta como una función falsa
-en cada caso — la misma técnica que `packing-engine.test.js` usa para probar `enrichWithDestination` con un
-`ask` simulado, sin red.
+Ninguna prueba usa un navegador real. Para `parseImportResponse`, `matchFlightReservation` e `interpretFiles`,
+los "blobs" de PDF e imagen son objetos cualquiera (el motor nunca mira su contenido, sólo los transporta
+hasta `callModel`), y `renderPdfToImages` se inyecta como una función falsa en cada caso — la misma técnica
+que `packing-engine.test.js` usa para probar `enrichWithDestination` con un `ask` simulado, sin red. Para
+`renderPdfPagesToImages` en sí (la única función que sí toca el DOM), las pruebas instalan un
+`global.document` mínimo con sólo lo que la función necesita (`createElement("canvas")` con `getContext` y
+`toBlob`) y lo sacan al terminar cada caso — no es jsdom ni ninguna dependencia nueva, es el mínimo posible
+para no tener que mockear un navegador entero sólo para probar que el reintento sin worker funciona.

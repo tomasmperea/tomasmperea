@@ -177,6 +177,37 @@ function fileKind(file) {
    ============================================================ */
 
 /**
+ * Abre el PDF con pdf.js. Primero intenta con el Web Worker, que es el
+ * camino rápido. Si instanciarlo falla —típico dentro de un iframe con
+ * sandbox restringido, que suele bloquear un Worker de otro origen—
+ * reintenta en el hilo principal (`disableWorker:true`, la opción que
+ * pdf.js expone para ese caso). La caída es automática y silenciosa: la
+ * persona ya está mirando una pantalla de progreso, no un error.
+ *
+ * pdf.js puede fallar tanto lanzando de forma síncrona al pedir el
+ * documento como rechazando la promesa una vez que arrancó el worker;
+ * se cubren los dos casos.
+ *
+ * @param {Object} pdfjsLib
+ * @param {ArrayBuffer} buf
+ * @returns {Promise<Object>} el documento de pdf.js
+ */
+function openPdfDocument(pdfjsLib, buf) {
+  function intentar(extraParams) {
+    var task;
+    try {
+      task = pdfjsLib.getDocument(Object.assign({ data: buf }, extraParams || {}));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+    return task.promise;
+  }
+  return intentar().catch(function () {
+    return intentar({ disableWorker: true });
+  });
+}
+
+/**
  * Renderiza cada página de un PDF a una imagen, con pdf.js. Corre sólo
  * en el navegador: usa document.createElement("canvas") y su contexto 2D.
  *
@@ -210,7 +241,7 @@ function renderPdfPagesToImages(pdfBlob, opts) {
   var mimeType = opts.mimeType || "image/png";
 
   return pdfBlob.arrayBuffer()
-    .then(function (buf) { return pdfjsLib.getDocument({ data: buf }).promise; })
+    .then(function (buf) { return openPdfDocument(pdfjsLib, buf); })
     .then(function (pdf) {
       var paginas = [];
       for (var n = 1; n <= pdf.numPages; n++) paginas.push(n);
@@ -533,9 +564,15 @@ function buildFlightPatch(candidato, existente) {
  * vuelo ya cargado (y con qué se completa), o hay más de un candidato
  * y hace falta preguntar. El criterio es número de vuelo y fecha.
  *
- * Ante la duda, nunca decide: si más de una reserva existente coincide,
- * devuelve "ambiguo" con todos los candidatos para que la interfaz
- * pregunte.
+ * Ante la duda, nunca decide. Eso incluye el caso en que la tarjeta no
+ * trae número de vuelo: sin número no hay certeza, así que si la fecha
+ * coincide con uno o más vuelos ya cargados, el resultado es "ambiguo"
+ * con esos vuelos como candidatos — nunca "nuevo". Un duplicado
+ * silencioso es peor que una pregunta: la persona pierde la confianza
+ * en el importador si ve el mismo vuelo dos veces.
+ *
+ * Sólo es "nuevo" cuando no hay ningún vuelo cargado ese día, o cuando
+ * hay número de vuelo y no coincide con ninguno de los de ese día.
  *
  * @param {Object} candidato    reserva interpretada (de `interpretFiles`)
  * @param {Array}  existentes   reservas que el viaje ya tiene
@@ -552,20 +589,37 @@ function matchFlightReservation(candidato, existentes) {
   var numero = candidato.flightNumber;
   var fecha = dateOnly(candidato.start);
 
-  if (!numero || !fecha) {
+  if (!fecha) {
     return {
       resultado: "nuevo",
-      motivo: !numero
-        ? "La tarjeta no trae número de vuelo: no hay con qué comparar, se carga como reserva nueva."
-        : "No se pudo determinar la fecha del vuelo: se carga como reserva nueva.",
+      motivo: "No se pudo determinar la fecha del vuelo: no hay con qué comparar, se carga como reserva nueva.",
       candidato: candidato
     };
   }
 
-  var vuelosExistentes = existentes.filter(function (it) { return it && it.type === "flight"; });
-  var candidatos = vuelosExistentes.filter(function (it) {
-    return sameFlightNumber(it.flightNumber, numero) && sameFlightDate(it.start, fecha);
+  var vuelosEseDia = existentes.filter(function (it) {
+    return it && it.type === "flight" && sameFlightDate(it.start, fecha);
   });
+
+  if (!numero) {
+    if (!vuelosEseDia.length) {
+      return {
+        resultado: "nuevo",
+        motivo: "La tarjeta no trae número de vuelo, pero no hay ningún vuelo cargado ese día: se carga como reserva nueva.",
+        candidato: candidato
+      };
+    }
+    return {
+      resultado: "ambiguo",
+      motivo: "La tarjeta no trae número de vuelo y hay " + vuelosEseDia.length +
+        (vuelosEseDia.length === 1 ? " vuelo cargado" : " vuelos cargados") +
+        " ese mismo día: sin número no hay forma de distinguir sin adivinar.",
+      candidato: candidato,
+      candidatos: vuelosEseDia
+    };
+  }
+
+  var candidatos = vuelosEseDia.filter(function (it) { return sameFlightNumber(it.flightNumber, numero); });
 
   if (!candidatos.length) {
     return { resultado: "nuevo", motivo: "Ningún vuelo cargado coincide en número y fecha.", candidato: candidato };
@@ -617,6 +671,7 @@ return {
 
   // VAL-40: PDF a imágenes (única función que toca el DOM)
   renderPdfPagesToImages: renderPdfPagesToImages,
+  openPdfDocument: openPdfDocument,
 
   // VAL-40 / VAL-41: interpretar archivos
   fileKind: fileKind,
