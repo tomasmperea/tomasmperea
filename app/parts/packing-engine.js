@@ -797,8 +797,28 @@ var BASE_RULES = [
 
 /* Completa la clave que falte y fija el orden de presentación. */
 BASE_RULES = BASE_RULES.map(function (r, i) {
-  return Object.assign({}, r, { clave:r.clave || slug(r.nombre), orden:orderOf(r.categoria, i) });
+  return Object.assign({}, r, { clave:r.clave || slug(r.nombre), orden:orderOf(r.categoria, i), critico:!!r.critico });
 });
+
+/**
+ * VAL-43: claves de los ítems que ninguna capa puede sacar automáticamente,
+ * ni siquiera cuando lo propone la capa de destino con IA. Se declaran en
+ * el catálogo (`critico:true` en la regla), no como una lista aparte que
+ * se pueda desincronizar: la documentación de identidad (DNI, pasaporte)
+ * es el piso que no se toca.
+ */
+var CRITICAL_CLAVES = BASE_RULES.reduce(function (m, r) {
+  if (r.critico) m[r.clave] = true;
+  return m;
+}, {});
+
+/** VAL-43: ¿este ítem (por clave o su familia de sinónimos) es intocable? */
+function isCriticalClave(clave) {
+  if (!clave) return false;
+  if (CRITICAL_CLAVES[clave]) return true;
+  var canon = canonicalKey(clave);
+  return Object.keys(CRITICAL_CLAVES).some(function (c) { return canonicalKey(c) === canon; });
+}
 
 /** Orden de presentación: primero la categoría, después la posición dentro de ella. */
 function orderOf(categoria, sub) {
@@ -812,7 +832,7 @@ function orderOf(categoria, sub) {
  */
 function validateRules(rules) {
   rules = rules || BASE_RULES;
-  var problems = [], ids = {}, claves = {};
+  var problems = [], ids = {}, claves = {}, canones = {};
   rules.forEach(function (r) {
     if (!r.id) problems.push("regla sin id: " + JSON.stringify(r));
     if (ids[r.id]) problems.push("id repetido: " + r.id);
@@ -822,6 +842,13 @@ function validateRules(rules) {
     if (!r.nombre) problems.push("regla sin nombre: " + r.id);
     if (CATEGORY_ORDER[r.categoria] === undefined) problems.push("categoría desconocida en " + r.id + ": " + r.categoria);
     if (!r.motivo) problems.push("regla sin motivo: " + r.id);
+    // VAL-45: dos reglas del catálogo no pueden significar lo mismo, ni
+    // siquiera por sinónimo declarado — sería una regla duplicada disfrazada.
+    var canon = canonicalKey(r.clave);
+    if (canones[canon] && canones[canon] !== r.clave) {
+      problems.push("dos reglas apuntan al mismo ítem por sinónimo: \"" + canones[canon] + "\" y \"" + r.clave + "\" (" + r.id + ")");
+    }
+    canones[canon] = r.clave;
   });
   return problems;
 }
@@ -1158,7 +1185,8 @@ function buildPackingList(input) {
 
   aprendido.promover.forEach(function (e, i) {
     // PRECEDENCIA: si una regla base ya lo puso, el origen sigue siendo "regla".
-    if (out[e.clave]) return;
+    // VAL-45: "ya lo puso" no es sólo la clave literal, es la familia de sinónimos.
+    if (out[e.clave] || findCanonicalMatch(out, e.clave)) return;
     out[e.clave] = makeItem({
       clave:e.clave, nombre:e.nombre, categoria:e.categoria || "otros", cantidad:null,
       motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (TRIP_TYPE_LABEL[ctx.tripType] || ctx.tripType).toLowerCase() + ".",
@@ -1183,7 +1211,8 @@ function buildPackingList(input) {
       internacional:ctx.international, internacionalConocido:ctx.internationalKnown,
       internacionalFuente:ctx.internationalSource, internacionalDetalle:ctx.internationalDetail,
       tipoViajeFuente:ctx.tripTypeSource, tipoViajeMotivo:ctx.tripTypeReason,
-      hechos:ctx.facts
+      hechos:ctx.facts,
+      reservas:summarizeReservationsForAI(trip, items)      // VAL-44: lo que ve la capa de IA, sin datos sensibles
     },
     capaInteligente:{ estado:"sin-ajuste", en:null, nota:"Lista base, sin ajuste por destino.", clima:"" },
     aprendizaje:{ muestra:aprendido.muestra, promovidos:aprendido.promover, suprimidos:aprendido.suprimir },
@@ -1203,7 +1232,11 @@ function buildPackingList(input) {
  *   - resucita un ítem descartado (el estado de la lista anterior manda),
  *   - pisa el origen de un ítem ya presente con uno de mayor precedencia,
  *   - pierde lo empacado, su `empacadoEn`, las notas, las cantidades
- *     corregidas a mano ni los ítems propios.
+ *     corregidas a mano ni los ítems propios,
+ *   - duplica un ítem que en la lista anterior tenía otro texto pero
+ *     significa lo mismo (VAL-45: la comparación es por clave canónica,
+ *     no sólo literal — dos generaciones no pueden llamar distinto a lo
+ *     mismo y terminar con dos filas).
  *
  * @param {Object} previous lista guardada
  * @param {Object} fresh    lista recién generada
@@ -1211,14 +1244,25 @@ function buildPackingList(input) {
  */
 function mergeLists(previous, fresh) {
   if (!previous) return fresh;
-  var prev = indexItems(itemsArray(previous));
+  var prevArr = itemsArray(previous);
+  var prev = indexItems(prevArr);
   if (!Object.keys(prev).length) return fresh;
 
-  var merged = {};
+  // VAL-45: además del índice literal, uno por familia canónica, para
+  // encontrar el ítem anterior aunque esta generación lo nombre distinto.
+  var prevPorCanon = {};
+  prevArr.forEach(function (p) {
+    if (!p || !p.clave) return;
+    var c = canonicalKey(p.clave);
+    if (!prevPorCanon[c]) prevPorCanon[c] = p;
+  });
+
+  var merged = {}, usados = {};
 
   itemsArray(fresh).forEach(function (f) {
-    var p = prev[f.clave];
+    var p = prev[f.clave] || prevPorCanon[canonicalKey(f.clave)];
     if (!p) { merged[f.clave] = f; return; }
+    usados[p.clave] = true;
     merged[f.clave] = Object.assign({}, f, {
       // el estado de la persona manda: lo descartado no revive, lo empacado sigue empacado
       estado:ESTADOS.indexOf(p.estado) >= 0 ? p.estado : ESTADO.PENDIENTE,
@@ -1234,12 +1278,19 @@ function mergeLists(previous, fresh) {
     });
   });
 
+  var claveCanonEnMerged = {};
+  Object.keys(merged).forEach(function (k) { claveCanonEnMerged[canonicalKey(k)] = true; });
+
   // Lo que la persona tocó o agregó sobrevive aunque la regla ya no aplique.
   // Incluye los descartados: si desaparecieran, la próxima generación los resucitaría.
   itemsArray(previous).forEach(function (p) {
-    if (merged[p.clave]) return;
+    if (!p || !p.clave) return;
+    if (usados[p.clave] || merged[p.clave]) return;
+    var canon = canonicalKey(p.clave);
+    if (claveCanonEnMerged[canon]) return;    // VAL-45: ya hay un equivalente en la lista fusionada
     if (p.origen === ORIGEN.MANUAL || p.estado !== ESTADO.PENDIENTE) {
       merged[p.clave] = Object.assign({}, p, { retenido:true });
+      claveCanonEnMerged[canon] = true;
     }
   });
 
