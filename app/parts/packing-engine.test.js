@@ -547,25 +547,51 @@ await test("marcar, desmarcar y contar", function () {
   eq(b.conteo.resueltos, 0, "volver a pendiente deshace lo resuelto");
 });
 
-await test("descartar es una decisión resuelta, tan válida como empacar: no sale del total ni se pierde el dato", function () {
-  // Decisión del Product Owner: si descartar restara del total, la persona
-  // dejaría de descartar y marcaría como empacado lo que no va a llevar
-  // sólo para bajar el pendiente. Eso arruina el aprendizaje de VAL-32
-  // (que se alimenta de los descartes) y la confiabilidad de lo empacado.
+await test("descartar saca el ítem del total: deja de ser parte de la valija", function () {
+  // Corregido con el producto en la mano. La regla anterior sumaba el
+  // descartado al total y el contador quedaba raro: descartabas algo y el
+  // "de 42" no bajaba nunca. Si alguien decidió que algo no va, dejó de ser
+  // parte de su valija.
+  // El motivo original de contar el descarte como avance se cumple igual:
+  // descartar sube el porcentaje porque achica lo que falta, en vez de sumar
+  // al numerador. Y el dato del descarte se sigue guardando entero, que es lo
+  // que alimenta el aprendizaje de VAL-32.
   var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
   var ojotaKey = E.slug("Ojotas");
   var d = E.dismissItem(l, ojotaKey);
-  eq(d.conteo.total, l.conteo.total, "el descartado sigue contando en el total");
+  eq(d.conteo.total, l.conteo.total - 1, "el descartado sale del total");
+  eq(d.conteo.totalConDescartados, l.conteo.total, "pero el ítem sigue existiendo");
   eq(d.conteo.descartados, 1, "queda contado como descartado");
   eq(d.conteo.empacados, 0, "descartar no empaca");
-  eq(d.conteo.pendientes, l.conteo.pendientes - 1, "sale de pendientes");
-  eq(d.conteo.resueltos, 1, "descartar es resolver");
-  eq(d.conteo.pct, Math.round(1 / d.conteo.total * 100), "el descarte mueve el porcentaje igual que empacar");
-  eq(item(d, ojotaKey).estado, E.ESTADO.DESCARTADO, "descartar no empaca");
+  eq(d.conteo.pendientes, l.conteo.pendientes - 1, "y sale de pendientes");
+  eq(item(d, ojotaKey).estado, E.ESTADO.DESCARTADO, "conserva su estado propio");
   var vuelta = E.resetItem(d, ojotaKey);
-  eq(vuelta.conteo.total, l.conteo.total, "el total no cambia al volver a pendiente");
-  eq(vuelta.conteo.resueltos, 0, "vuelve a quedar sin resolver");
+  eq(vuelta.conteo.total, l.conteo.total, "vuelve al total al recuperarlo");
+  eq(vuelta.conteo.descartados, 0, "y deja de estar descartado");
   eq(vuelta.conteo.pct, 0, "el porcentaje vuelve a cero");
+});
+
+await test("descartar igual hace avanzar el porcentaje", function () {
+  // Sube porque achica lo que falta, no porque sume al numerador. En una lista
+  // larga un solo descarte se pierde en el redondeo, así que medimos varios.
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var claves = E.itemsArray(l).map(function (i) { return i.clave; });
+  var conUno = E.packItem(l, claves[0]);
+  var antes = conUno.conteo.pct;
+  var conDescartes = conUno;
+  for (var k = 1; k <= 5; k++) conDescartes = E.dismissItem(conDescartes, claves[k]);
+  assert(conDescartes.conteo.pct > antes,
+    "descartar tiene que subir el porcentaje: pasó de " + antes + " a " + conDescartes.conteo.pct);
+  eq(conDescartes.conteo.empacados, 1, "sin inflar lo empacado");
+});
+
+await test("si se descarta todo, la valija queda lista y no en cero", function () {
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  E.itemsArray(l).forEach(function (i) { l = E.dismissItem(l, i.clave); });
+  eq(l.conteo.total, 0, "no queda nada por llevar");
+  eq(l.conteo.pendientes, 0, "ni nada pendiente");
+  eq(l.conteo.pct, 100, "y cuenta como terminada, no como cero");
+  assert(l.conteo.totalConDescartados > 0, "los ítems siguen ahí para poder recuperarlos");
 });
 
 await test("agregar un ítem propio y borrarlo", function () {

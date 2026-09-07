@@ -41,51 +41,50 @@ Fuera: VAL-34 por falta de identidad por visitante y VAL-35 por no estar diseña
 
 ---
 
-## Iteración 2 — Avisar
+## Iteración 2 — Interpretar
 
-**Objetivo:** que el producto te busque en lugar de esperar a que lo abras. Es la iteración de retención.
+**Objetivo:** que cargar un viaje deje de ser trabajo. Es la iteración que decide si la app se usa o se
+abandona.
 
-Necesita infraestructura propia. La app deja de ser autónoma y pasa a tener servidor.
+**Se adelantó por feedback de uso.** El plan original ponía los avisos por correo acá. Después de probar el
+MVP, el PM fue explícito: importar es lo más potente que puede tener la app, y copiar los datos del correo a
+mano es incómodo. Ninguna cantidad de avisos salva a un producto que cuesta llenar, así que la fricción de
+carga va primero.
 
-**Alcance:**
+**Alcance:** VAL-40 a VAL-43 en el backlog.
 
-- **Correos de aviso.** Un proceso diario evalúa las reglas de pendientes de cada viaje y manda un correo solo
-  cuando hay algo nuevo que decir. Nunca un correo vacío.
-- **Cadencia por cercanía.** A 30 días, un resumen semanal de lo que falta. A 7 días, un repaso de documentación
-  y traslados. A 48 horas, el aviso de check-in online. El día anterior, la hoja de ruta completa.
-- **Buzón de reenvío.** Cada usuario recibe una dirección propia del estilo `tomas.a3f9@valija.app`. Reenvía el
-  mail de confirmación de Booking sin abrir la app y la reserva aparece cargada. Es la integración más barata
-  que existe: no depende del permiso de ninguna plataforma y funciona con todas.
-- **Cuentas propias.** Habilita el permiso por viaje en lugar de por valija, que es la limitación principal del
-  MVP.
-- **Sincronización con el calendario.** Exportar el viaje como calendario suscribible, para que los hitos
-  aparezcan en el teléfono sin abrir nada.
+- Importar desde PDF, renderizando las páginas a imagen en el propio navegador.
+- Importar el correo completo y capturas de pantalla, además del texto pegado.
+- Completar un vuelo ya cargado con los datos de la tarjeta de embarque, sin duplicarlo.
+- La lista de equipaje se adapta al destino de verdad: la capa inteligente puede sacar ítems que no
+  corresponden, no solo agregar.
 
-**Stack propuesto:** Next.js sobre Vercel, Postgres con Supabase para datos y autenticación, Resend para los
-correos, un cron diario para el evaluador de reglas, e Inbound Parse para el buzón. Todo elegido por velocidad
-de puesta en marcha, no por escala.
+Sigue sin necesitar servidor. Todo se resuelve en el navegador con la capa de inteligencia que ya existe.
 
-**Pregunta que responde:** ¿vuelven sin que se lo pidamos?
+**Pregunta que responde:** ¿se puede cargar un viaje entero sin tipear?
 
 ---
 
-## Iteración 3 — Interpretar todo
+## Iteración 3 — Avisar
 
-**Objetivo:** que subir cualquier documento de viaje sea suficiente. El usuario deja de tipear.
+**Objetivo:** que el producto te busque en lugar de esperar a que lo abras. Es la iteración de retención, y
+la primera que necesita infraestructura propia.
 
 **Alcance:**
 
-- **Cualquier archivo entra.** PDF del voucher, captura de pantalla, foto del contrato de alquiler, el
-  itinerario en papel. Se interpreta y se archiva junto a la reserva.
-- **Documento original guardado.** Que la tarjeta de embarque siga estando ahí para mostrarla en el mostrador,
-  no solo sus datos extraídos.
-- **Mapas.** Ubicaciones de alojamientos y actividades en un mapa del viaje, con el traslado entre puntos.
-- **Detección de conflictos.** Un check-out a las 10 y un vuelo a las 11 desde un aeropuerto a una hora de
-  distancia es un problema, y el producto debería decirlo.
-- **Primeras integraciones directas.** Las aerolíneas que tengan API abierta para estado de vuelo, empezando
-  por retrasos y cambios de puerta.
+- **Correos de aviso.** Un proceso diario evalúa las reglas de pendientes y manda un correo solo cuando hay
+  algo nuevo que decir. Nunca un correo vacío.
+- **Cadencia por cercanía.** Semanal a 30 días, repaso a 7, check-in a 48 horas, hoja de ruta el día previo.
+- **Buzón de reenvío.** Una dirección propia a la que reenviar la confirmación sin abrir la app. Después de
+  la iteración 2 es el complemento natural: interpretar ya funciona, falta que llegue solo.
+- **Cuentas propias.** Habilitan el permiso por viaje en lugar de por valija, y la vista de quién empacó qué
+  que quedó diseñada y esperando.
+- **Sincronización con el calendario.**
 
-**Pregunta que responde:** ¿podemos eliminar la carga manual por completo?
+**Stack propuesto:** Next.js sobre Vercel, Postgres con Supabase para datos y autenticación, Resend para los
+correos, un cron diario para el evaluador de reglas, e Inbound Parse para el buzón.
+
+**Pregunta que responde:** ¿vuelven sin que se lo pidamos?
 
 ---
 
@@ -95,10 +94,11 @@ de puesta en marcha, no por escala.
 
 **Alcance:**
 
+- Mapas del viaje y detección de conflictos de agenda: un check-out a las 10 y un vuelo a las 11 desde un
+  aeropuerto a una hora es un problema, y el producto debería decirlo.
 - Estado de vuelo en vivo con avisos de retraso y cambio de puerta.
 - Modo sin conexión, porque el momento de mayor necesidad suele ser el de peor señal.
-- Gastos compartidos entre los participantes del viaje.
-- Sugerencias a partir de los huecos del itinerario.
+- Gastos compartidos entre los participantes.
 
 **Pregunta que responde:** ¿es la app que se abre durante el viaje y no solo antes?
 
@@ -112,5 +112,5 @@ Al cierre de cada iteración se mira una sola cosa antes de arrancar la siguient
 |---|---|
 | Iteración 1 | Hay viajes con más de tres reservas cargadas |
 | Iteración 1.5 | Las listas llegan al día del viaje con más de la mitad marcada |
-| Iteración 2 | Los correos se abren y traen gente de vuelta a la app |
-| Iteración 3 | La carga manual baja frente a la automática |
+| Iteración 2 | La carga manual baja frente a la automática |
+| Iteración 3 | Los correos se abren y traen gente de vuelta a la app |

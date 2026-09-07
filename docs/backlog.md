@@ -94,7 +94,62 @@ de dónde salen; no hay links de compra ni recomendación de producto.
 
 ---
 
-## Iteración 2 — Avisar
+## Iteración 2 — Interpretar (reordenada por feedback de uso)
+
+**El orden cambió después de probar el MVP.** El plan original ponía los avisos por correo antes que la
+interpretación de documentos. Al usar la app, el PM fue explícito: *"la función de importar es lo más
+potente que tiene que tener la app"* y *"es incómodo tener que copiar la información del correo de
+confirmación"*.
+
+Eso es información que no teníamos al escribir el roadmap. La carga manual es la fricción que decide si la
+app se usa o se abandona, y ninguna cantidad de avisos por correo salva a un producto que cuesta llenar. Los
+avisos pasan a la iteración 3.
+
+### VAL-40 · Importar desde PDF — P0
+
+Como viajero quiero subir el PDF del voucher o del pasaje y que se cargue solo, sin copiar nada a mano.
+
+- Se acepta un archivo PDF desde el teléfono.
+- Un PDF de varias páginas se interpreta completo, no solo la primera.
+- Cada reserva encontrada se muestra para revisar antes de guardar, como ya hace el importador de texto.
+- Si el PDF es una imagen escaneada sin texto, igual se interpreta.
+- **Nota técnica:** la capa de inteligencia recibe imágenes, no PDFs. Hay que renderizar cada página a
+  imagen dentro del navegador y mandar esas imágenes. Se resuelve sin servidor.
+
+### VAL-41 · Importar el correo completo — P0
+
+Como viajero quiero pasarle el mail de confirmación entero en lugar de copiar campo por campo.
+
+- Se acepta el archivo del correo, además del texto pegado que ya funciona.
+- Se aceptan capturas de pantalla del correo, en PNG y JPG.
+- Se pueden cargar varios archivos juntos y se interpretan como un solo viaje.
+- La app dice qué reconoció de cada archivo, no un resultado global sin detalle.
+
+### VAL-42 · Completar la reserva con la tarjeta de embarque — P0
+
+Como viajero quiero subir la tarjeta de embarque cuando la recibo y que complete los datos que antes no
+existían, sin duplicar el vuelo que ya tenía cargado.
+
+- Puerta, terminal, asiento y hora de embarque salen de la tarjeta de embarque.
+- Esos datos aparecen tarde, cuando el vuelo ya está cargado: la app tiene que reconocer que es el mismo
+  vuelo y completarlo, no crear uno nuevo.
+- El reconocimiento usa número de vuelo y fecha, y ante la duda pregunta en vez de adivinar.
+- La tarjeta de embarque queda guardada y se puede mostrar en el mostrador.
+
+### VAL-43 · La lista de equipaje se adapta de verdad al destino — P1
+
+Como viajero quiero que la lista contemple el clima esperado y las reglas del país al que voy, y que no me
+muestre cosas que no necesito.
+
+- La capa inteligente puede **sacar** ítems de la lista base, no solo agregar. Hoy solo agrega, y por eso
+  aparece "visa o autorización electrónica" en destinos donde no hace falta.
+- Se considera la proyección de clima para las fechas del viaje, no solo la época del año.
+- La sugerencia distingue destinos dentro del mismo país: un pueblo de playa no necesita lo mismo que una
+  capital, aunque estén a dos horas.
+- Todo ítem sacado o agregado por esta capa explica por qué.
+- Un ítem que la capa base marca como crítico (documentación de identidad) nunca se saca automáticamente.
+
+## Iteración 3 — Avisar
 
 ### VAL-10 · Recibir avisos por correo — P0
 Como viajero quiero que me avisen por correo cuando falta algo o se acerca una fecha, sin tener que abrir la
@@ -143,7 +198,7 @@ Como viajero quiero que los hitos del viaje aparezcan en el calendario de mi tel
 
 ---
 
-## Iteración 3 — Interpretar todo
+## Iteración 4 — Acompañar y mapas
 
 ### VAL-20 · Subir cualquier documento — P0
 Como viajero quiero subir el PDF del voucher o la foto del contrato y que se interprete solo.

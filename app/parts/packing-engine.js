@@ -938,15 +938,20 @@ function packingProgress(list) {
   var arr = itemsArray(list);
   var empacados = arr.filter(function (i) { return i.estado === ESTADO.EMPACADO; }).length;
   var descartados = arr.filter(function (i) { return i.estado === ESTADO.DESCARTADO; }).length;
-  var total = arr.length;
-  var resueltos = empacados + descartados;
+  /* Lo descartado sale del total. Si alguien decidió que algo no va, dejó de
+     ser parte de su valija: no tiene que inflar el denominador ni quedar como
+     un pendiente eterno. Descartar igual hace avanzar el porcentaje, porque
+     achica lo que falta. */
+  var total = arr.length - descartados;
+  var pendientes = total - empacados;
   return {
     total:total,
     empacados:empacados,
     descartados:descartados,
-    pendientes:total - resueltos,
-    resueltos:resueltos,
-    pct:total ? Math.round(resueltos / total * 100) : 0
+    pendientes:pendientes,
+    resueltos:empacados,
+    totalConDescartados:arr.length,
+    pct:total ? Math.round(empacados / total * 100) : (arr.length ? 100 : 0)
   };
 }
 

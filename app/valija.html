@@ -1846,15 +1846,20 @@ function packingProgress(list) {
   var arr = itemsArray(list);
   var empacados = arr.filter(function (i) { return i.estado === ESTADO.EMPACADO; }).length;
   var descartados = arr.filter(function (i) { return i.estado === ESTADO.DESCARTADO; }).length;
-  var total = arr.length;
-  var resueltos = empacados + descartados;
+  /* Lo descartado sale del total. Si alguien decidió que algo no va, dejó de
+     ser parte de su valija: no tiene que inflar el denominador ni quedar como
+     un pendiente eterno. Descartar igual hace avanzar el porcentaje, porque
+     achica lo que falta. */
+  var total = arr.length - descartados;
+  var pendientes = total - empacados;
   return {
     total:total,
     empacados:empacados,
     descartados:descartados,
-    pendientes:total - resueltos,
-    resueltos:resueltos,
-    pct:total ? Math.round(resueltos / total * 100) : 0
+    pendientes:pendientes,
+    resueltos:empacados,
+    totalConDescartados:arr.length,
+    pct:total ? Math.round(empacados / total * 100) : (arr.length ? 100 : 0)
   };
 }
 
@@ -2469,8 +2474,8 @@ function renderPackingEntry(trip, list){
   const dd = daysUntil(trip.startDate);
   if(list){
     const c = PackingEngine.packingProgress(list);
-    const pctPack = c.total ? c.empacados/c.total*100 : 0;
-    const pctDrop = c.total ? c.descartados/c.total*100 : 0;
+    const pctPack = c.total ? c.empacados/c.total*100 : 100;
+    const pctDrop = 0;
     if(c.pendientes > 0){
       return `<button class="vj-entry live" id="vjentry">
         <span class="band"></span>
@@ -2756,15 +2761,14 @@ function bindPackingHeader(trip, onInfo){
 
 function pkProgHtml(list){
   const c = PackingEngine.packingProgress(list);
-  const pctPack = c.total ? c.empacados/c.total*100 : 0;
-  const pctDrop = c.total ? c.descartados/c.total*100 : 0;
-  const full = c.total>0 && c.pendientes===0;
+  const pctPack = c.total ? c.empacados/c.total*100 : 100;
+  const full = c.total>0 ? c.pendientes===0 : c.descartados>0;
   const text = full
     ? `<b>${c.empacados}</b> de ${c.total}${c.descartados?` · ${c.descartados} descartados`:""}`
     : `<b>${c.empacados}</b> de ${c.total} · faltan ${c.pendientes}`;
   return `<span class="pk-prog ${full?"full":""}" role="progressbar" aria-valuemin="0" aria-valuemax="${c.total}"
-      aria-valuenow="${c.resueltos}" aria-valuetext="${c.empacados} empacados y ${c.descartados} descartados de ${c.total}">
-    <span class="pk-bar"><i class="p" style="width:${pctPack}%"></i><i class="d" style="width:${pctDrop}%"></i></span>
+      aria-valuenow="${c.empacados}" aria-valuetext="${c.empacados} de ${c.total} empacados${c.descartados?`, ${c.descartados} descartados`:""}">
+    <span class="pk-bar"><i class="p" style="width:${pctPack}%"></i></span>
     <span class="n">${text}</span>
   </span>`;
 }
@@ -2814,7 +2818,7 @@ function pkCategoryHtml(cat, trip, canWrite){
     <button class="pk-cat-hd" aria-expanded="${open}" data-cat="${esc(cat.key)}">
       <span class="pk-cat-ico">${svg(I[icon])}</span>
       <span class="nm">${esc(cat.label)}</span>
-      <span class="cnt">${full?`<span class="chip ok">listo</span>`:`${packed} de ${cat.items.length}`}</span>
+      <span class="cnt">${full?`<span class="chip ok">listo</span>`:`${packed} de ${cat.items.length - dropped}`}</span>
       ${svg(I.chevd,"chev")}
     </button>
     <div class="pk-body-wrap">
