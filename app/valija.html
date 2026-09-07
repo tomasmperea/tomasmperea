@@ -703,7 +703,7 @@ const Store = {
       this.db.collection("trips").onSnapshot(
         snap => {
           const next = new Map();
-          snap.docs.forEach(d => next.set(d.id, {id:d.id, ...d.data}));
+          snap.docs.forEach(d => next.set(d.id, {id:d.id, ...(d.data()||{})}));
           // Confirmado por la nube recién cuando vuelve en un snapshot. Si lo
           // diéramos por confirmado al resolver la escritura, un snapshot
           // anterior todavía en camino borraría el dato de la pantalla.
@@ -729,7 +729,7 @@ const Store = {
     this.itemUnsub = this.db.collection(`trips/${tripId}/items`).onSnapshot(
       snap => {
         const m = new Map();
-        snap.docs.forEach(d => m.set(d.id, {id:d.id, ...d.data}));
+        snap.docs.forEach(d => m.set(d.id, {id:d.id, ...(d.data()||{})}));
         m.forEach((v,k)=> this.pending.delete(`item:${tripId}:${k}`));
         const cur = this.items.get(tripId);
         if(cur) cur.forEach((v,k)=>{ if(this.pending.has(`item:${tripId}:${k}`) && !m.has(k)) m.set(k,v); });
@@ -806,7 +806,7 @@ const Store = {
         // no la borramos de la pantalla mientras la nube no la confirme.
         if(doc && doc.exists) this.pending.delete("packing:"+tripId);
         else if(this.pending.has("packing:"+tripId)) return;
-        this.packing.set(tripId, (doc && doc.exists) ? doc.data : null);
+        this.packing.set(tripId, (doc && doc.exists) ? (doc.data()||null) : null);
         this.saveLocal(); this.emit();
       },
       err => { console.warn("packing",err); this.emit(); }
@@ -850,7 +850,7 @@ const Store = {
       const ids = this.tripList().map(t=>t.id).filter(id=>id!==excludeTripId);
       const docs = await Promise.all(ids.map(id=>
         this.db.doc(`trips/${id}/packing/lista`).get()
-          .then(d=> (d && d.exists) ? d.data : null)
+          .then(d=> (d && d.exists) ? (d.data()||null) : null)
           .catch(()=>null)
       ));
       return docs.filter(Boolean);
@@ -3175,9 +3175,9 @@ function sheetTrip(trip){
   };
   const dl = document.getElementById("deltrip");
   if(dl) dl.onclick = async ()=>{
-    if(dl.dataset.sure!=="1"){ dl.dataset.sure="1"; dl.innerHTML = "Tocá otra vez para confirmar"; return; }
+    dl.disabled = true;
     try{ await Store.delTrip(t.id); closeSheet(); go(""); toast("Viaje eliminado"); }
-    catch(e){ toast(writeErr(e), true); }
+    catch(e){ dl.disabled = false; toast(writeErr(e), true); }
   };
 }
 
@@ -3326,9 +3326,9 @@ function sheetItem(trip, item, prefill){
   };
   const di = document.getElementById("delitem");
   if(di) di.onclick = async ()=>{
-    if(di.dataset.sure!=="1"){ di.dataset.sure="1"; di.innerHTML="Tocá otra vez para confirmar"; return; }
+    di.disabled = true;
     try{ await Store.delItem(trip.id, it.id); closeSheet(); toast("Reserva eliminada"); }
-    catch(e){ toast(writeErr(e), true); }
+    catch(e){ di.disabled = false; toast(writeErr(e), true); }
   };
 }
 
