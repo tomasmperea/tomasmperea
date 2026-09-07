@@ -96,6 +96,15 @@ de dónde salen; no hay links de compra ni recomendación de producto.
 
 ## Iteración 2 — Interpretar (reordenada por feedback de uso)
 
+**Brief completo:** `docs/briefs/interpretar.md`. Dos bloques, en este orden de prioridad:
+
+| Bloque | Qué | Prioridad |
+|---|---|---|
+| A | Importar fotos y PDFs para interpretar reservas (VAL-40 a VAL-42) | **Máxima** |
+| B | La valija razona sobre el viaje completo (VAL-44 a VAL-46, VAL-43) | Alta |
+
+Los avisos por correo y el permiso por viaje bajan a prioridad media y quedan para la iteración 3.
+
 **El orden cambió después de probar el MVP.** El plan original ponía los avisos por correo antes que la
 interpretación de documentos. Al usar la app, el PM fue explícito: *"la función de importar es lo más
 potente que tiene que tener la app"* y *"es incómodo tener que copiar la información del correo de
@@ -167,6 +176,31 @@ sirve para razonar. Nunca códigos de reserva ni datos de contacto.
 pasarle la lista base ya armada y pedirle explícitamente lo que ella no cubre. Si el corte por origen de las
 métricas muestra que los ítems de la capa inteligente aciertan menos que los de las reglas, la decisión es
 subir su umbral o apagarla.
+
+### VAL-45 · Ningún ítem repetido entre capas — P0
+
+Como viajero no quiero ver dos veces lo mismo en mi valija.
+
+Es la regla que hace que las dos capas puedan convivir. Sin esto, sumarle contexto a la capa inteligente
+garantiza duplicados: el modelo va a proponer el adaptador de enchufe que la regla del vuelo internacional ya
+puso.
+
+- Un ítem que ya existe por una regla no se agrega de nuevo por la capa inteligente, ni al revés.
+- La comparación es por clave normalizada, no por texto literal.
+- Va más allá de la coincidencia exacta: "adaptador de enchufe" y "adaptador de corriente" son el mismo ítem.
+- Cuando dos capas proponen lo mismo, gana la de menor precedencia y conserva su origen: primero regla,
+  después historial, después capa inteligente. Un ítem que una regla ya ponía nunca se acredita a la IA,
+  porque falsea la métrica de aciertos por capa.
+- El motor expone una verificación propia: dada una lista, no puede haber dos ítems que signifiquen lo mismo.
+
+### VAL-46 · La lista se actualiza cuando el viaje crece — P0
+
+Como viajero quiero que la valija se ajuste sola a medida que cargo reservas, sin tener que rehacerla.
+
+- Al agregar, editar o borrar una reserva, la app detecta que la lista quedó desactualizada.
+- Los ítems nuevos se marcan como nuevos y dicen qué reserva los motivó.
+- Nunca se pierde lo ya marcado, y un ítem descartado no vuelve por más que el viaje crezca.
+- La actualización se ofrece, no se impone: no puede interrumpir a alguien que está empacando.
 
 ### VAL-43 · La lista de equipaje se adapta de verdad al destino — P0
 
