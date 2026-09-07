@@ -666,11 +666,30 @@ const Store = {
   db:null, ready:false, canWrite:true, mode:"local",
   trips:new Map(), items:new Map(),  // items: tripId -> Map(itemId, item)
   subs:new Set(), itemUnsub:null, watching:null,
+  // Claves de lo que ya guardamos acá y la nube todavía no devolvió.
+  pending:new Set(),
+  // La nube ya contestó al menos una vez. Antes de eso no sabemos si un viaje
+  // existe, así que no damos por perdido lo que todavía no llegó.
+  cloudSynced:false,
+  // Avisa a la interfaz si la sincronización falla. La app lo cablea al arrancar.
+  onSyncError:null,
+  /* La escritura a la nube va por su cuenta: la pantalla ya muestra el dato y
+     el teléfono ya tiene su copia. Esperarla sólo agrega una demora visible
+     con mala señal. Si falla avisamos, pero no deshacemos lo guardado acá. */
+  sync(promesa){
+    Promise.resolve(promesa).catch(e=>{
+      console.warn("sync", e);
+      if(this.onSyncError) this.onSyncError(e);
+    });
+  },
 
   emit(){ this.subs.forEach(f=>{ try{f()}catch(e){console.error(e)} }); },
   on(f){ this.subs.add(f); return ()=>this.subs.delete(f); },
 
   async init(){
+    // Lo último que vimos se pinta ya, sin esperar a la nube. En el teléfono
+    // esa espera es visible y hace parecer que no se guardó nada.
+    this.loadLocal(); this.ready = true; this.emit();
     try{ this.db = await claude.use("db"); }catch(e){ this.db=null; }
     if(this.db){
       this.mode = "cloud";
@@ -683,14 +702,21 @@ const Store = {
       }
       this.db.collection("trips").onSnapshot(
         snap => {
-          this.trips = new Map();
-          snap.docs.forEach(d => this.trips.set(d.id, {id:d.id, ...d.data}));
-          this.ready = true; this.emit();
+          const next = new Map();
+          snap.docs.forEach(d => next.set(d.id, {id:d.id, ...d.data}));
+          // Confirmado por la nube recién cuando vuelve en un snapshot. Si lo
+          // diéramos por confirmado al resolver la escritura, un snapshot
+          // anterior todavía en camino borraría el dato de la pantalla.
+          next.forEach((v,k)=> this.pending.delete("trip:"+k));
+          // Un viaje recién guardado puede no venir todavía en este snapshot.
+          // Lo conservamos hasta que la nube lo confirme, para que no
+          // desaparezca de la pantalla justo después de crearlo.
+          this.trips.forEach((v,k)=>{ if(this.pending.has("trip:"+k) && !next.has(k)) next.set(k,v); });
+          this.trips = next;
+          this.ready = true; this.cloudSynced = true; this.saveLocal(); this.emit();
         },
-        err => { console.warn("trips",err); this.ready=true; this.emit(); }
+        err => { console.warn("trips",err); this.ready=true; this.cloudSynced=true; this.emit(); }
       );
-    } else {
-      this.loadLocal(); this.ready = true; this.emit();
     }
   },
 
@@ -704,7 +730,10 @@ const Store = {
       snap => {
         const m = new Map();
         snap.docs.forEach(d => m.set(d.id, {id:d.id, ...d.data}));
-        this.items.set(tripId, m); this.emit();
+        m.forEach((v,k)=> this.pending.delete(`item:${tripId}:${k}`));
+        const cur = this.items.get(tripId);
+        if(cur) cur.forEach((v,k)=>{ if(this.pending.has(`item:${tripId}:${k}`) && !m.has(k)) m.set(k,v); });
+        this.items.set(tripId, m); this.saveLocal(); this.emit();
       },
       err => console.warn("items",err)
     );
@@ -725,36 +754,39 @@ const Store = {
     const now = new Date().toISOString();
     const doc = {...t, updatedAt:now, createdAt:t.createdAt||now};
     delete doc.id;
+    // Primero acá, para que se vea al instante y quede una copia en el
+    // teléfono. Después la nube.
+    this.trips.set(t.id, {...doc, id:t.id}); this.saveLocal(); this.emit();
     if(this.db){
-      await this.db.doc(`trips/${t.id}`).set(doc);
-    } else {
-      this.trips.set(t.id, {...doc, id:t.id}); this.saveLocal(); this.emit();
+      this.pending.add("trip:"+t.id);
+      this.sync(this.db.doc(`trips/${t.id}`).set(doc));
     }
   },
   async delTrip(id){
+    this.trips.delete(id); this.items.delete(id); this.packing.delete(id);
+    this.saveLocal(); this.emit();
     if(this.db){
       const snap = await this.db.collection(`trips/${id}/items`).get();
       await Promise.all(snap.docs.map(d => this.db.doc(`trips/${id}/items/${d.id}`).delete()));
+      await this.db.doc(`trips/${id}/packing/lista`).delete().catch(()=>{});
       await this.db.doc(`trips/${id}`).delete();
-    } else {
-      this.trips.delete(id); this.items.delete(id); this.saveLocal(); this.emit();
     }
   },
   async saveItem(tripId, it){
     const now = new Date().toISOString();
     const doc = {...it, updatedAt:now, createdAt:it.createdAt||now};
     delete doc.id;
+    if(!this.items.has(tripId)) this.items.set(tripId, new Map());
+    this.items.get(tripId).set(it.id, {...doc, id:it.id});
+    this.saveLocal(); this.emit();
     if(this.db){
-      await this.db.doc(`trips/${tripId}/items/${it.id}`).set(doc);
-    } else {
-      if(!this.items.has(tripId)) this.items.set(tripId, new Map());
-      this.items.get(tripId).set(it.id, {...doc, id:it.id});
-      this.saveLocal(); this.emit();
+      this.pending.add(`item:${tripId}:${it.id}`);
+      this.sync(this.db.doc(`trips/${tripId}/items/${it.id}`).set(doc));
     }
   },
   async delItem(tripId, id){
+    this.items.get(tripId)?.delete(id); this.saveLocal(); this.emit();
     if(this.db){ await this.db.doc(`trips/${tripId}/items/${id}`).delete(); }
-    else { this.items.get(tripId)?.delete(id); this.saveLocal(); this.emit(); }
   },
 
   /* --- valija inteligente: un documento por viaje, trips/{tripId}/packing/lista ---
@@ -769,7 +801,14 @@ const Store = {
     this.packingWatching = tripId;
     if(!tripId || !this.db){ this.emit(); return; }
     this.packingUnsub = this.db.doc(`trips/${tripId}/packing/lista`).onSnapshot(
-      doc => { this.packing.set(tripId, (doc && doc.exists) ? doc.data : null); this.emit(); },
+      doc => {
+        // Una lista recién generada acá puede no venir en este snapshot todavía:
+        // no la borramos de la pantalla mientras la nube no la confirme.
+        if(doc && doc.exists) this.pending.delete("packing:"+tripId);
+        else if(this.pending.has("packing:"+tripId)) return;
+        this.packing.set(tripId, (doc && doc.exists) ? doc.data : null);
+        this.saveLocal(); this.emit();
+      },
       err => { console.warn("packing",err); this.emit(); }
     );
   },
@@ -777,30 +816,30 @@ const Store = {
 
   /** Escritura completa: generar o regenerar la lista entera. */
   async savePacking(tripId, list){
+    this.packing.set(tripId, list); this.saveLocal(); this.emit();
     if(this.db){
-      await this.db.doc(`trips/${tripId}/packing/lista`).set(list);
-    } else {
-      this.packing.set(tripId, list); this.saveLocal(); this.emit();
+      this.pending.add("packing:"+tripId);
+      this.sync(this.db.doc(`trips/${tripId}/packing/lista`).set(list));
     }
   },
   /** Escritura parcial: marcar/editar UN ítem sin reescribir la lista entera.
       `patch` viene armado por PackingEngine.stateUpdatePatch(...) o equivalente,
       con la forma {items:{clave:{...campos}}, actualizadaEn}. */
   async savePackingPatch(tripId, patch){
+    // El mismo merge recursivo que hace la base, aplicado acá primero para que
+    // tildar un ítem se vea en el acto y quede guardado en el teléfono.
+    const cur = this.packing.get(tripId) || {};
+    const merged = {...cur, ...patch};
+    if(patch.items){
+      merged.items = {...(cur.items||{})};
+      Object.keys(patch.items).forEach(k=>{
+        merged.items[k] = {...(merged.items[k]||{}), ...patch.items[k]};
+      });
+    }
+    this.packing.set(tripId, merged); this.saveLocal(); this.emit();
     if(this.db){
-      await this.db.doc(`trips/${tripId}/packing/lista`).update(patch);
-    } else {
-      // La base fusiona objetos anidados en una escritura parcial; acá simulamos
-      // el mismo merge recursivo para que el modo local se comporte igual.
-      const cur = this.packing.get(tripId) || {};
-      const merged = {...cur, ...patch};
-      if(patch.items){
-        merged.items = {...(cur.items||{})};
-        Object.keys(patch.items).forEach(k=>{
-          merged.items[k] = {...(merged.items[k]||{}), ...patch.items[k]};
-        });
-      }
-      this.packing.set(tripId, merged); this.saveLocal(); this.emit();
+      this.pending.add("packing:"+tripId);
+      this.sync(this.db.doc(`trips/${tripId}/packing/lista`).update(patch));
     }
   },
   /** Listas de packing de los OTROS viajes, para el aprendizaje (VAL-32) y el
@@ -2259,16 +2298,25 @@ const $hdr = document.getElementById("hdr");
 const $main = document.getElementById("main");
 const $fab = document.getElementById("fab");
 
+// Con un link compartido el viaje llega desde la nube, no de este dispositivo.
+// Mientras la nube no contestó no sabemos si existe, así que esperamos en vez
+// de rebotar a la lista.
+function tripResuelto(){ return Store.ready && (!Store.db || Store.cloudSynced); }
+function esperando(){
+  $main.innerHTML = `<div class="sk"></div><div class="sk"></div>`;
+  $fab.innerHTML = "";
+}
+
 function render(){
   if(App.view==="trip"){
     const trip = Store.trips.get(App.tripId);
-    if(!trip && Store.ready){ go(""); return; }
-    if(!trip) return;
+    if(!trip && tripResuelto()){ go(""); return; }
+    if(!trip){ esperando(); return; }
     renderTrip(trip);
   } else if(App.view==="packing"){
     const trip = Store.trips.get(App.tripId);
-    if(!trip && Store.ready){ go(""); return; }
-    if(!trip) return;
+    if(!trip && tripResuelto()){ go(""); return; }
+    if(!trip){ esperando(); return; }
     renderPacking(trip);
   } else {
     renderHome();
@@ -3136,7 +3184,9 @@ function sheetTrip(trip){
 function writeErr(e){
   if(e && e.code === "invalid_argument") return "Tenés acceso de sólo lectura a esta valija";
   if(e && e.code === "quota_exceeded") return "La valija llegó a su límite de reservas";
-  return "No se pudo guardar. Probá de nuevo";
+  // Quedó guardado en este teléfono aunque no haya podido sincronizar: decirlo
+  // evita que la persona cargue todo de nuevo pensando que se perdió.
+  return "Guardado en este dispositivo. No se pudo sincronizar todavía";
 }
 
 /* ---------- reserva ---------- */
@@ -3793,6 +3843,7 @@ async function exportPDF(trip){
    ARRANQUE
    ============================================================ */
 readHash();
+Store.onSyncError = e => toast(writeErr(e), true);
 Store.on(render);
 render();
 Store.init().then(()=>{ Store.watch(App.tripId); Store.watchPacking(App.tripId); render(); });
