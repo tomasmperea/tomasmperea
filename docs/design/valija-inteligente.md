@@ -502,24 +502,29 @@ chip "del grupo" y su línea de motivo pasa a ser "Lo empacó {nombre}".
 
 ### 5.6 Cálculo de la barra de progreso (`pk-prog`)
 
-El motor devuelve `conteo:{total, empacados, pendientes, descartados, resueltos, pct}` donde `total`
-**incluye** los descartados, y `pct = resueltos / total` con `resueltos = empacados + descartados`.
+El motor devuelve `conteo:{total, empacados, pendientes, descartados, resueltos, totalConDescartados, pct}`
+donde `total` **excluye** los descartados, `resueltos = empacados` y `pct = empacados / total`, o 100 cuando
+se descartó todo.
 
-La barra se dibuja directamente sobre esos números, sin recalcular denominadores:
+La barra es de un solo tramo, sobre lo que realmente queda por llevar:
 
 ```js
-const pctPack = conteo.total ? conteo.empacados  / conteo.total * 100 : 0;
-const pctDrop = conteo.total ? conteo.descartados / conteo.total * 100 : 0;
+const pctPack = conteo.total ? conteo.empacados / conteo.total * 100 : 100;
 // conteo.pct sirve tal cual para el porcentaje de avance
 ```
 
-El texto de la interfaz muestra los números crudos: `empacados de total` y `faltan pendientes`.
+El texto de la interfaz muestra los números crudos: `empacados de total` y `faltan pendientes`, con los
+descartados mencionados aparte.
 
-**Por qué el descarte cuenta como progreso.** Es una decisión del PO, tomada durante la iteración. Si
-descartar no mueve la barra, la persona deja de descartar y empieza a marcar como empacado cosas que no
-piensa llevar, sólo para sacarse el pendiente de encima. Ahí se pierden dos cosas: el descarte, que es el
-único insumo del aprendizaje de VAL-32, y la confianza en lo que la lista dice que está guardado. El
-porcentaje mide cuánto falta decidir, no cuánto hay dentro del bolso.
+**Por qué el descarte sale del total.** Es una corrección hecha con el producto en la mano, sobre una
+decisión anterior de este mismo documento. La regla original sumaba el descartado al total, y el contador
+quedaba trabado: descartabas algo y el "de 42" no bajaba nunca. Si alguien decidió que algo no va, dejó de
+ser parte de su valija.
+
+El motivo que había detrás de la regla anterior sigue cumpliéndose. Descartar tiene que hacer avanzar el
+progreso, porque si no la persona deja de descartar y marca como empacado lo que no piensa llevar, y ahí se
+pierden el insumo del aprendizaje y la confianza en lo que dice estar guardado. Con la regla nueva descartar
+igual sube el porcentaje, pero achicando lo que falta en vez de sumar al numerador.
 
 ### 5.7 Sheets nuevas
 Usan `openSheet(title, bodyHtml, footHtml)` tal como ya existe (línea ~1085), sin cambios a esa función:

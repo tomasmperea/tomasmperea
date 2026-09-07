@@ -1835,9 +1835,18 @@ function itemList(list, opts) {
  * tan resuelta como empacar. Por eso entra en `resueltos` y en el `pct`,
  * y por eso `total` incluye los descartados en vez de restarlos.
  *
- *     resueltos = empacados + descartados
- *     total     = todos los ítems, descartados incluidos
- *     pct       = resueltos / total
+ * Corregido con el producto en la mano: sumar el descartado al total dejaba el
+ * contador trabado, porque descartabas algo y el "de 42" no bajaba nunca. Lo
+ * descartado sale del total: dejó de ser parte de la valija. El motivo de
+ * arriba se cumple igual, porque descartar sube el porcentaje al achicar lo
+ * que falta, en vez de sumar al numerador.
+ *
+ *     total     = todos los ítems MENOS los descartados
+ *     resueltos = empacados
+ *     pct       = empacados / total    (100 si se descartó todo)
+ *
+ * `totalConDescartados` conserva el total crudo, para la barra y para poder
+ * recuperar lo descartado.
  *
  * @param {Object} list
  * @returns {{total:number, empacados:number, descartados:number, pendientes:number, resueltos:number, pct:number}}

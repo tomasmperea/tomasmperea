@@ -234,6 +234,11 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .imp-file .meta{font-family:var(--f-mono);font-size:11px;color:var(--ink-2);display:flex;align-items:center;gap:6px;line-height:1.4}
 .imp-file .meta.err{color:var(--crit);font-family:var(--f-body);letter-spacing:0;line-height:1.4}
 .imp-file .meta.ok{color:var(--ok)}
+/* --- C4b. Archivo "vacío": se leyó bien, no había ninguna reserva ahí.
+   El motor es explícito en que esto NO es un error ("no hace falta
+   alarmar por eso"): misma tipografía de frase larga que .err, pero en
+   ink-2, no en crit. Nunca lleva fondo rojo (nunca .imp-file.err). --- */
+.imp-file .meta.info{color:var(--ink-2);font-family:var(--f-body);letter-spacing:0;line-height:1.4}
 .imp-file .meta svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
 .imp-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-3);flex:none}
 .imp-file .rm{flex:none;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;border-radius:9px}
@@ -317,11 +322,12 @@ body.demo{background:var(--ground);padding:0 0 60px}
 <div class="demo-wrap">
 
   <p class="demo-intro">
-    Trece estados del importador, con datos de un viaje real: <b>Río de Janeiro, 20 al 27 de septiembre</b>,
+    Catorce estados del importador, con datos de un viaje real: <b>Río de Janeiro, 20 al 27 de septiembre</b>,
     saliendo desde Buenos Aires. Todo vive adentro de la misma hoja ("Importar reservas"): se eligen archivos,
     se espera, se revisa y se guarda sin cambiar de pantalla. El estado <b>07 es interactivo</b> — elegí a
-    cuál de los dos vuelos corresponde la tarjeta de embarque. El resto es estático a propósito, para poder
-    mirarlos todos juntos.
+    cuál de los dos vuelos corresponde la tarjeta de embarque. El <b>07B</b> es la misma pantalla con el otro
+    disparador posible (sin número de vuelo legible), estático a propósito. El resto también es estático, para
+    poder mirarlos todos juntos.
   </p>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -649,15 +655,17 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
-       05 — Revisión con un archivo que falló
+       05 — Revisión con archivos que no aportaron
        ══════════════════════════════════════════════════════════ -->
   <section id="s5">
     <div class="spec-hd">
-      <span class="n">05 · ERROR PARCIAL</span>
-      <h2>Un archivo que no se pudo leer entre otros que sí</h2>
-      <p>El que falló no invalida al resto: la reserva que sí se entendió queda lista para guardar como
-        siempre, y el problema se explica aparte, con la opción de reintentar ese archivo solo o sacarlo del
-        lote. Nunca se pierde lo que funcionó por lo que no.</p>
+      <span class="n">05 · REVISIÓN CON PROBLEMAS</span>
+      <h2>Un archivo que no se pudo leer no es lo mismo que uno que no tenía nada</h2>
+      <p>El motor separa dos cosas que se sienten parecidas pero no lo son. <b>Vacío</b>: se leyó bien, pero no
+        había ninguna reserva ahí (un comprobante de seguro, una foto de un cartel) — no es un problema,
+        así que no se pinta de rojo ni ofrece "reintentar": reintentar lo mismo da lo mismo. <b>Error</b>: no se
+        pudo procesar (una imagen ilegible, un PDF dañado) — eso sí se marca en rojo y sí vale la pena
+        reintentar. Ninguno de los dos invalida la reserva que sí se entendió.</p>
     </div>
     <div class="frame">
       <div class="sheet">
@@ -665,7 +673,8 @@ body.demo{background:var(--ground);padding:0 0 60px}
         <div class="sheet-bd">
           <div class="notice">
             <span data-i="info"></span>
-            <span class="bd">Encontré 1 reserva en 1 archivo. El otro no lo pude leer.</span>
+            <span class="bd">Encontré 1 reserva en 3 archivos. Los otros dos no aportaron nada — mirá el
+              detalle de cada uno más abajo.</span>
           </div>
 
           <div class="imp-card">
@@ -690,13 +699,21 @@ body.demo{background:var(--ground);padding:0 0 60px}
           </div>
 
           <div class="imp-files">
-            <div class="imp-file err">
+            <div class="imp-file">
               <span class="imp-thumb img" data-i="img"></span>
               <span class="bd">
                 <span class="nm">seguro-assist.jpg</span>
-                <span class="meta err" data-i="info">No pude leer este archivo. Puede estar borrosa, girada, o no tener pinta de reserva de viaje.</span>
+                <span class="meta info" data-i="info">Se leyó bien, pero no encontré ninguna reserva ahí. Puede ser un comprobante que no es de viaje.</span>
               </span>
-              <span class="row-acts"><button class="act">Reintentar</button><button class="rm" aria-label="Sacar seguro-assist.jpg" data-i="x"></button></span>
+              <span class="row-acts"><button class="rm" aria-label="Sacar seguro-assist.jpg" data-i="x"></button></span>
+            </div>
+            <div class="imp-file err">
+              <span class="imp-thumb img" data-i="img"></span>
+              <span class="bd">
+                <span class="nm">voucher-borroso.jpg</span>
+                <span class="meta err" data-i="info">No pude leer esta imagen: se ve completamente oscura. Sacá la foto de nuevo con más luz.</span>
+              </span>
+              <span class="row-acts"><button class="act">Reintentar</button><button class="rm" aria-label="Sacar voucher-borroso.jpg" data-i="x"></button></span>
             </div>
           </div>
         </div>
@@ -816,6 +833,61 @@ body.demo{background:var(--ground);padding:0 0 60px}
   </section>
 
   <!-- ══════════════════════════════════════════════════════════
+       07B — Tarjeta de embarque: duda SIN número de vuelo
+       Este disparador es el que más se repite en la práctica: no hace
+       falta que dos vuelos compartan número, alcanza con que la
+       tarjeta no traiga uno legible y ese día haya más de un vuelo
+       cargado (una conexión, un viaje con varios tramos el mismo día).
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s7b">
+    <div class="spec-hd">
+      <span class="n">07B · TARJETA DE EMBARQUE — CASO 2, SEGUNDA FORMA</span>
+      <h2>Duda sin número de vuelo: el disparador que más aparece</h2>
+      <p>Acá el margen de la tarjeta está cortado justo donde iba el número de vuelo, así que no hay nada que
+        comparar. El motor no puede resolver por fecha sola porque este viaje tiene dos tramos el mismo 20 de
+        septiembre — la conexión por São Paulo — así que cae en <code>"ambiguo"</code> igual que el caso 07,
+        aunque acá ninguno de los dos vuelos comparte número. La pantalla es la misma exacta (mismo componente,
+        mismo <code>.imp-choice</code>): sólo cambia qué dato dice el aviso que sí se pudo leer.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice warn">
+            <span data-i="info"></span>
+            <span class="bd">No pude leer el número de vuelo en esta tarjeta — el margen está cortado justo
+              ahí. Sólo el asiento se ve: <b>3C</b>. Tenés dos vuelos cargados el 20 de septiembre, así que la
+              fecha sola no alcanza para decidir. ¿A cuál corresponde?</span>
+          </div>
+
+          <div class="imp-choice">
+            <button type="button" aria-pressed="false" data-c="a">
+              <span class="radio"></span>
+              <span class="info"><span class="t">Buenos Aires → São Paulo</span>
+                <span class="s">Tramo 1 (conexión) · sale 20 sep 06:40</span></span>
+            </button>
+            <button type="button" aria-pressed="false" data-c="b">
+              <span class="radio"></span>
+              <span class="info"><span class="t">São Paulo → Río de Janeiro</span>
+                <span class="s">Tramo 2 (conexión) · sale 20 sep 11:15</span></span>
+            </button>
+            <div class="sep">o</div>
+            <button type="button" aria-pressed="false" data-c="n">
+              <span class="radio"></span>
+              <span class="info"><span class="t">Ninguno de los dos</span>
+                <span class="s">Es un vuelo nuevo, no lo tenía cargado</span></span>
+            </button>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary" disabled>Elegí una opción</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
        08 — Tarjeta de embarque: no encuentra ninguno
        ══════════════════════════════════════════════════════════ -->
   <section id="s8">
@@ -908,20 +980,21 @@ body.demo{background:var(--ground);padding:0 0 60px}
        ══════════════════════════════════════════════════════════ -->
   <section id="s10">
     <div class="spec-hd">
-      <span class="n">10 · ERROR — TOTAL</span>
-      <h2>Ninguno de los archivos se pudo leer</h2>
-      <p>Puede ser un problema momentáneo de conexión, o que ninguno tenga pinta de reserva de viaje. Cada
-        archivo mantiene su propio motivo — no un error genérico — y la carga manual queda a un toque, para
-        que la noche apurada en el aeropuerto no dependa de que esto funcione.</p>
+      <span class="n">10 · SIN NADA QUE GUARDAR — TOTAL</span>
+      <h2>De los tres archivos, no salió ninguna reserva</h2>
+      <p>Un mismo cero final puede venir de motivos distintos por archivo, y eso se conserva: acá uno de los
+        tres realmente no se pudo procesar (rojo, vale la pena reintentar) y los otros dos se leyeron bien pero
+        no tenían nada adentro (neutro, no es un problema — reintentarlos no cambiaría nada). La carga manual
+        queda a un toque, para que la noche apurada en el aeropuerto no dependa de que esto funcione.</p>
     </div>
     <div class="frame">
       <div class="sheet">
         <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
         <div class="sheet-bd">
           <div class="empty">
-            <h3>No pude leer ninguno de los 3 archivos</h3>
-            <p>Puede ser un problema momentáneo, o que ninguno tenga pinta de reserva de viaje. El detalle de
-              cada uno está abajo.</p>
+            <h3>No conseguí ninguna reserva de estos 3 archivos</h3>
+            <p>Uno no se pudo leer y los otros dos se leyeron bien pero no tenían pinta de reserva de viaje. El
+              detalle de cada uno está abajo.</p>
           </div>
           <div class="imp-files">
             <div class="imp-file err">
@@ -929,21 +1002,21 @@ body.demo{background:var(--ground);padding:0 0 60px}
               <span class="bd"><span class="nm">voucher-gol.pdf</span>
                 <span class="meta err" data-i="info">No pude leer el PDF. Probá exportándolo de nuevo desde el mail.</span></span>
             </div>
-            <div class="imp-file err">
+            <div class="imp-file">
               <span class="imp-thumb img" data-i="img"></span>
               <span class="bd"><span class="nm">confirmacion-ibis.jpg</span>
-                <span class="meta err" data-i="info">La imagen se ve borrosa.</span></span>
+                <span class="meta info" data-i="info">Se leyó bien, pero no encontré ninguna reserva. Puede ser un comprobante que no es de viaje.</span></span>
             </div>
-            <div class="imp-file err">
+            <div class="imp-file">
               <span class="imp-thumb img" data-i="img"></span>
               <span class="bd"><span class="nm">contrato-localiza.jpg</span>
-                <span class="meta err" data-i="info">No encontré ninguna reserva ahí.</span></span>
+                <span class="meta info" data-i="info">Se leyó bien, pero no encontré ninguna reserva. Puede ser una foto borrosa o un documento que no es de viaje.</span></span>
             </div>
           </div>
         </div>
         <div class="sheet-ft">
           <button class="btn ghost">Cargar a mano</button>
-          <button class="btn primary">Reintentar todo</button>
+          <button class="btn primary">Reintentar 1 archivo</button>
         </div>
       </div>
     </div>
