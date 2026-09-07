@@ -1,7 +1,9 @@
 /* ============================================================
    VALIJA · MOTOR DE SUGERENCIA DE EQUIPAJE
-   Épica VAL-30. JavaScript puro: no toca el DOM, no pide red,
-   no depende de nada. Recibe datos y devuelve datos.
+   Épica VAL-30..VAL-33 (iteración 1) y VAL-43..VAL-46 (iteración 2,
+   bloque B: "la valija razona sobre el viaje"). JavaScript puro:
+   no toca el DOM, no pide red, no depende de nada. Recibe datos y
+   devuelve datos.
 
    El motor es híbrido y tiene tres capas:
 
@@ -15,11 +17,38 @@
      CAPA 2 · ajuste por destino con IA      (enrichWithDestination)
        Agrega ítems específicos del lugar y la época, cada uno con
        su justificación. Puede fallar: la lista base sirve igual.
+       Desde VAL-44 también VE las reservas del viaje (resumidas y
+       sin datos sensibles, ver `summarizeReservationsForAI`) y
+       puede razonar sobre combinaciones puntuales: una escala
+       larga, un check-in de madrugada, un alojamiento sin
+       lavandería en un viaje largo, una actividad con equipo
+       propio. Desde VAL-43 también puede proponer SACAR ítems que
+       no apliquen a ese destino puntual (VAL-43), con un piso que
+       el código hace cumplir: un ítem marcado `critico:true` en
+       BASE_RULES (la documentación de identidad) no se saca nunca
+       por esta vía, aunque el modelo lo sugiera.
 
      CAPA 3 · aprendizaje del historial      (learnFromHistory)
        VAL-32. Un ítem agregado a mano en dos viajes del mismo tipo
        pasa a sugerirse. Un ítem descartado dos veces en el mismo
        tipo deja de sugerirse.
+
+   Ningún ítem se repite entre capas (VAL-45): la comparación es por
+   clave normalizada Y por sinónimo declarado (`SYNONYM_GROUPS`,
+   `canonicalKey`). Cuando dos capas proponen lo mismo, se acredita
+   siempre a la de menor precedencia: regla < historial < destino <
+   manual (`ORIGEN_PRECEDENCIA`). `verifyNoDuplicateItems(list)` es
+   la verificación exportada que confirma que una lista no tiene dos
+   ítems que signifiquen lo mismo.
+
+   La lista se actualiza cuando el viaje crece (VAL-46,
+   `planListUpdate` / `planListUpdateAsync`): dada una lista ya
+   generada y las reservas actuales, dicen si quedó desactualizada
+   y qué ítems nuevos corresponden, cada uno con la reserva que lo
+   motivó. Lo empacado sigue empacado, lo descartado nunca vuelve, y
+   los ítems nuevos quedan marcados `nuevo:true` para que la interfaz
+   los distinga (se limpia con `clearNewFlags`). Nunca se aplica
+   sola: se ofrece, y quien integra decide cuándo mostrarla.
 
    ============================================================
    MODELO DE DATOS DE UNA LISTA GUARDADA
@@ -98,11 +127,15 @@
 
    PRECEDENCIA DEL ORIGEN
    Un ítem puede venir de más de una capa. Se acredita SIEMPRE a la capa
-   de menor precedencia: regla < destino < historial < manual. Si una
-   regla base ya lo ponía, el origen es "regla" aunque el historial
-   también lo promoviera. Acreditarle al historial lo que una regla ya
-   ponía haría que la métrica de aprendizaje mida mejor de lo que es.
-   Ver ORIGEN_PRECEDENCIA y lowestOrigin().
+   de menor precedencia: regla < historial < destino < manual (VAL-45).
+   Si una regla base ya lo ponía, el origen es "regla" aunque el
+   historial o la capa de destino también lo propusieran. Acreditarle a
+   una capa más sofisticada lo que una más básica ya ponía haría que la
+   métrica de aciertos por capa mida mejor de lo que es. Ver
+   ORIGEN_PRECEDENCIA y lowestOrigin(). La comparación para decidir si
+   "ya lo ponía" no es sólo por clave literal: pasa por `canonicalKey()`,
+   así "adaptador de enchufe" y "adaptador de corriente" cuentan como el
+   mismo ítem aunque el texto sea distinto.
 
    GARANTÍAS AL REGENERAR (mergeLists)
    1. Un ítem descartado nunca vuelve a estado pendiente.
@@ -167,8 +200,11 @@ var ORIGEN = { REGLA:"regla", DESTINO:"destino", HISTORIAL:"historial", MANUAL:"
 /**
  * Precedencia del origen: gana el número más chico, es decir la capa
  * más básica. Si una regla ya ponía el ítem, se acredita a la regla.
+ * VAL-45: primero regla, después historial, después la capa de destino
+ * con IA. Un ítem propio (manual) sólo se acredita a la persona cuando
+ * ninguna otra capa lo cubre.
  */
-var ORIGEN_PRECEDENCIA = { regla:0, destino:1, historial:2, manual:3 };
+var ORIGEN_PRECEDENCIA = { regla:0, historial:1, destino:2, manual:3 };
 
 /** Categorías, en el orden en que se muestran. */
 var CATEGORIES = [
@@ -234,6 +270,137 @@ function slug(label) {
     .filter(Boolean)
     .map(singularizeWord)
     .join("-");
+}
+
+/* ============================================================
+   VAL-45 · SINÓNIMOS Y CLAVE CANÓNICA
+   Dos ítems pueden significar lo mismo sin ser el mismo texto:
+   "adaptador de enchufe" y "adaptador de corriente" son un solo
+   ítem. Los sinónimos se declaran como datos acá, no como
+   condicionales sueltos en el motor.
+
+   Cada grupo es una familia de ítems equivalentes:
+     canon    el nombre "de referencia" de la familia (de acá sale
+              la clave canónica, con el mismo slug() que usa todo
+              el motor)
+     palabras frases que, normalizadas con slug(), son ese ítem
+     patron   (opcional) expresión regular para familias abiertas,
+              donde enumerar cada variante es imposible: el tipo de
+              enchufe cambia de país en país ("adaptador tipo F",
+              "adaptador tipo C"...). Se usa sólo cuando la lista
+              cerrada de `palabras` no alcanza, y a propósito con un
+              patrón acotado (tiene que hablar de enchufe/corriente/
+              toma/tipo de clavija) para no capturar de más un
+              "adaptador HDMI" o un "adaptador de lente".
+
+   ¿Hasta dónde llega esto? Hasta donde el diccionario declara.
+   No hay comparación semántica ni embeddings: dos ítems que
+   signifiquen lo mismo con palabras que no están acá (o con errores
+   de tipeo) no se detectan. Es una limitación conocida, documentada
+   en docs/design/packing-engine.md.
+   ============================================================ */
+var SYNONYM_GROUPS = [
+  { canon:"Adaptador de enchufe",
+    palabras:["Adaptador de enchufe","Adaptador de corriente","Adaptador universal","Adaptador universal de enchufe","Adaptador de viaje","Enchufe universal","Adaptador de toma corriente"],
+    patron:/^adaptador\b.*(enchufe|corriente|toma|clavija|universal|viaje|tipo\s+[a-n]\b)/ },
+  { canon:"Celular y cargador",
+    palabras:["Celular y cargador","Cargador de celular","Cargador de teléfono","Cargador para el celular","Cargador de celular y cable"] },
+  { canon:"Protector solar",
+    palabras:["Protector solar","Bloqueador solar","Crema solar","Filtro solar","Pantalla solar"] },
+  { canon:"Repelente de mosquitos",
+    palabras:["Repelente de mosquitos","Repelente de insectos","Repelente"] },
+  { canon:"Batería portátil",
+    palabras:["Batería portátil","Power bank","Cargador portátil","Batería externa","Batería de respaldo"] },
+  { canon:"Botiquín básico",
+    palabras:["Botiquín básico","Botiquín de primeros auxilios","Kit de primeros auxilios","Botiquín"] },
+  { canon:"Gorra o sombrero",
+    palabras:["Gorra o sombrero","Gorra","Sombrero","Gorro para el sol"] },
+  { canon:"Toallón de playa",
+    palabras:["Toallón de playa","Toalla de playa","Toalla para la playa"] },
+  { canon:"Seguro de viaje",
+    palabras:["Seguro de viaje","Seguro médico de viaje","Seguro de asistencia al viajero","Asistencia al viajero"] },
+  { canon:"Efectivo en moneda local",
+    palabras:["Efectivo en moneda local","Dinero en efectivo","Efectivo del destino","Moneda local"] },
+  { canon:"Copias de las reservas",
+    palabras:["Copias de las reservas","Copia de las reservas","Reservas impresas","Impresión de las reservas"] },
+  { canon:"Linterna frontal",
+    palabras:["Linterna frontal","Linterna","Frontal"] },
+  { canon:"Botas o zapatillas de trekking",
+    palabras:["Botas o zapatillas de trekking","Botas de trekking","Zapatillas de trekking","Calzado de montaña"] },
+  { canon:"Campera impermeable",
+    palabras:["Campera impermeable","Campera de lluvia","Piloto","Rompevientos impermeable"] },
+  { canon:"Primera capa térmica",
+    palabras:["Primera capa térmica","Ropa térmica","Térmica","Capa base térmica"] },
+  { canon:"Muda formal",
+    palabras:["Muda formal","Ropa formal","Vestimenta formal"] },
+  { canon:"Notebook y cargador",
+    palabras:["Notebook y cargador","Laptop y cargador","Computadora portátil y cargador"] },
+  { canon:"Ojotas",
+    palabras:["Ojotas","Sandalias","Chinelas","Chancletas"] },
+  { canon:"Malla",
+    palabras:["Malla","Traje de baño","Bikini","Vestido de baño"] },
+  { canon:"Botella reutilizable",
+    palabras:["Botella reutilizable","Botella de agua","Cantimplora"] }
+];
+
+/** clave canónica -> mapa de búsqueda exacta, armado una sola vez. */
+var SYNONYM_MAP = SYNONYM_GROUPS.reduce(function (map, g) {
+  var canon = slug(g.canon);
+  (g.palabras || []).forEach(function (w) { map[slug(w)] = canon; });
+  map[canon] = canon;
+  return map;
+}, {});
+
+/**
+ * La clave "de familia" de un ítem: dos ítems son el mismo si tienen
+ * la misma clave canónica, aunque el texto original sea distinto.
+ * @param {string} clave ya normalizada con slug()
+ * @returns {string}
+ */
+function canonicalKey(clave) {
+  if (!clave) return clave;
+  if (SYNONYM_MAP[clave]) return SYNONYM_MAP[clave];
+  for (var i = 0; i < SYNONYM_GROUPS.length; i++) {
+    var g = SYNONYM_GROUPS[i];
+    if (g.patron && g.patron.test(clave)) return slug(g.canon);
+  }
+  return clave;
+}
+
+/**
+ * Busca, entre las claves de un objeto de ítems, una que signifique lo
+ * mismo que `clave` (misma familia canónica). No exige coincidencia
+ * literal.
+ * @param {Object} itemsObj objeto indexado por clave
+ * @param {string} clave clave (o su canónica) a buscar
+ * @returns {string|null} la clave existente que coincide, o null
+ */
+function findCanonicalMatch(itemsObj, clave) {
+  var canon = canonicalKey(clave);
+  var keys = Object.keys(itemsObj || {});
+  for (var i = 0; i < keys.length; i++) {
+    if (canonicalKey(keys[i]) === canon) return keys[i];
+  }
+  return null;
+}
+
+/**
+ * VAL-45: la verificación exportada. Dada una lista, confirma que no
+ * hay dos ítems que signifiquen lo mismo (misma clave canónica).
+ * @param {Object} list
+ * @returns {{ok:boolean, duplicados:Array<{canon:string, claves:string[]}>}}
+ */
+function verifyNoDuplicateItems(list) {
+  var porCanon = {};
+  itemsArray(list).forEach(function (i) {
+    if (!i || !i.clave) return;
+    var canon = canonicalKey(i.clave);
+    (porCanon[canon] = porCanon[canon] || []).push(i.clave);
+  });
+  var duplicados = Object.keys(porCanon)
+    .filter(function (c) { return uniq(porCanon[c]).length > 1; })
+    .map(function (c) { return { canon:c, claves:uniq(porCanon[c]) }; });
+  return { ok:duplicados.length === 0, duplicados:duplicados };
 }
 
 function parseDay(s) {
@@ -431,10 +598,10 @@ var FACTS = {
 var BASE_RULES = [
 
   /* ---------- DOCUMENTACIÓN ---------- */
-  { id:"doc.dni", nombre:"DNI", categoria:"documentacion",
+  { id:"doc.dni", nombre:"DNI", categoria:"documentacion", critico:true,
     motivo:"Siempre, aunque el viaje sea en auto y a cien kilómetros." },
 
-  { id:"doc.pasaporte", nombre:"Pasaporte", categoria:"documentacion",
+  { id:"doc.pasaporte", nombre:"Pasaporte", categoria:"documentacion", critico:true,
     when:{ international:true },
     motivo:"Viaje internacional. Revisá que la vigencia cubra seis meses después de la vuelta." },
 
