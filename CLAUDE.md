@@ -37,6 +37,10 @@ para destacados. Verde, ámbar y rojo semánticos, separados del acento. Todos l
 CSS declaradas en `:root`, nunca literales. Cada token se redefine para tema oscuro en dos bloques: por
 preferencia del sistema y por elección explícita del usuario.
 
+El botón de la cabecera cicla entre automático, claro y oscuro, y la elección se guarda en el dispositivo.
+Automático no estampa atributo y sigue al sistema. Cualquier color nuevo tiene que existir en los tres
+bloques o va a fallar en uno de los tres estados.
+
 **Tipografía.** Bricolage Grotesque para títulos, Public Sans para texto, DM Mono para datos: códigos IATA,
 horarios, códigos de reserva y cantidades.
 
