@@ -12,7 +12,8 @@
   · Bloque D: andamiaje del muestrario. NO se copia a la app.
 
   Ningún color es literal. Ningún token nuevo. Todo sale de :root.
-  El dato de ejemplo es un viaje a Río de Janeiro, 20 al 27 de septiembre.
+  El dato de ejemplo es un viaje a Río de Janeiro, 20 al 27 de septiembre,
+  saliendo desde Buenos Aires.
   ============================================================
 -->
 
@@ -185,6 +186,7 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .mono{font-family:var(--f-mono)}
 .muted{color:var(--ink-2)}
 .tiny{font-size:11.5px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .toast{background:var(--ink);color:var(--ground);padding:11px 16px;border-radius:11px;font-size:13.5px;font-weight:500;box-shadow:var(--shadow-lift);max-width:calc(var(--shell) - 40px);text-align:center;margin:0 auto}
 
@@ -199,8 +201,15 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .chip.src{display:inline-flex;align-items:center;gap:4px}
 .chip.src svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-/* --- C2. Selector "pegar el texto en cambio": un <details> nativo, sin
-   JS. Menos foco robado que un botón que abre un campo con animación. --- */
+/* --- C2. Botón de origen del archivo: mismo aspecto que .tp button, pero
+   es un <label> que activa un <input type=file> vecino (un <button> no
+   puede contener un campo interactivo adentro). --- */
+.tp label.tpbtn{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:all .14s}
+.tp label.tpbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tp label.tpbtn:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* --- C3. "Pegar el texto en cambio": un <details> nativo, sin JS.
+   Menos foco robado que un botón que dispara una animación. --- */
 .imp-more{border:0}
 .imp-more summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2);list-style:none;display:flex;align-items:center;gap:7px;padding:2px 0}
 .imp-more summary::-webkit-details-marker{display:none}
@@ -209,8 +218,8 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .imp-more[open] summary{margin-bottom:10px}
 .imp-more summary:hover{color:var(--ink)}
 
-/* --- C3. La cola / el progreso de lectura: una lista de archivos.
-   Mismo componente para "elegido, listo para mandar" y para "leyendo",
+/* --- C4. La cola / el progreso de lectura: una lista de archivos.
+   Mismo componente para "elegido, listo para mandar" y para "leyendo":
    sólo cambia lo que va a la derecha de cada fila. --- */
 .imp-files{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
 .imp-file{display:flex;align-items:center;gap:10px;padding:10px 8px 10px 12px;border-bottom:1px solid var(--line-2)}
@@ -231,12 +240,13 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .imp-file .rm:hover{background:var(--surface-2);color:var(--ink-2)}
 .imp-file .rm svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .imp-file .act{flex:none;font-size:12px;font-weight:700;color:var(--accent);background:none;border:0;cursor:pointer;text-decoration:underline;white-space:nowrap;padding:6px 0 6px 6px}
+.imp-file .row-acts{display:flex;align-items:center;flex:none}
 
-/* --- C4. Tarjeta de revisión: una reserva encontrada, editable.
+/* --- C5. Tarjeta de revisión: una reserva encontrada, editable.
    El título y los campos son inputs de verdad: corregir es escribir
    encima, no un paso aparte. --- */
 .imp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
-.imp-card-hd{display:flex;align-items:flex-start;gap:10px;padding:12px 6px 4px 13px}
+.imp-card-hd{display:flex;align-items:flex-start;gap:10px;padding:12px 6px 10px 13px}
 .imp-card-hd .ttl{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:1px}
 .imp-title{border:0;background:none;padding:0;font-family:var(--f-display);font-weight:700;font-size:15.5px;color:var(--ink);width:100%;letter-spacing:-.005em}
 .imp-title:focus{outline:none;box-shadow:inset 0 -2px 0 var(--accent)}
@@ -244,19 +254,20 @@ main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
 .imp-discard{flex:none;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;border-radius:9px;margin-top:-2px}
 .imp-discard:hover{background:var(--crit-soft);color:var(--crit)}
 .imp-discard svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.imp-card-bd{padding:11px 13px 13px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:9px;margin-top:8px}
-.imp-note{font-size:12px;color:var(--ink-2);line-height:1.45;padding:0 13px 12px}
+.imp-card-bd{padding:0 13px 13px;border-top:1px solid var(--line-2);margin-top:2px;padding-top:11px;display:flex;flex-direction:column;gap:9px}
+.imp-note{font-size:12px;color:var(--ink-2);line-height:1.45;padding:0 13px 12px;margin:0}
 
-/* --- C5. Tarjeta de embarque: caso de coincidencia con el vuelo cargado.
+/* --- C6. Tarjeta de embarque: caso de coincidencia con el vuelo cargado.
    "Ya tenías esto" en gris (surface-2), lo nuevo que trae la tarjeta
    resaltado en acento: la mirada va directo a lo que va a cambiar. --- */
 .imp-existing{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-2);border-radius:11px}
-.imp-existing .pass-icon{width:30px;height:30px}
+.imp-existing .pass-icon{width:30px;height:30px;flex:none}
 .imp-existing .pass-title{font-size:14px}
+.imp-existing .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .imp-diff{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:9px 12px}
 .imp-diff .field .v{display:inline-block;background:var(--accent-soft);color:var(--accent);padding:2px 7px;border-radius:6px;font-weight:500}
 
-/* --- C6. Duda entre dos vuelos: lista de opciones tipo radio, más una
+/* --- C7. Duda entre dos vuelos: lista de opciones tipo radio, más una
    salida explícita para "ninguno de los dos". Nunca adivina. --- */
 .imp-choice{display:flex;flex-direction:column;gap:8px}
 .imp-choice button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;cursor:pointer}
@@ -307,10 +318,10 @@ body.demo{background:var(--ground);padding:0 0 60px}
 
   <p class="demo-intro">
     Trece estados del importador, con datos de un viaje real: <b>Río de Janeiro, 20 al 27 de septiembre</b>,
-    saliendo desde Buenos Aires. Todo vive adentro de la misma hoja ("Importar reservas"): elegís archivos,
-    esperás, revisás y guardás sin cambiar de pantalla. El estado <b>07 es interactivo</b> (elegí a cuál de
-    los dos vuelos corresponde la tarjeta de embarque). El resto es estático a propósito, para poder mirarlos
-    todos juntos.
+    saliendo desde Buenos Aires. Todo vive adentro de la misma hoja ("Importar reservas"): se eligen archivos,
+    se espera, se revisa y se guarda sin cambiar de pantalla. El estado <b>07 es interactivo</b> — elegí a
+    cuál de los dos vuelos corresponde la tarjeta de embarque. El resto es estático a propósito, para poder
+    mirarlos todos juntos.
   </p>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -322,7 +333,7 @@ body.demo{background:var(--ground);padding:0 0 60px}
       <h2>El botón "Importar" sigue donde está</h2>
       <p>No es parte de este trabajo: sigue siendo el botón con la chispa, al pie de la pantalla del viaje.
         Lo que cambia es todo lo que pasa después de tocarlo. Cuando no hay permiso de edición, hoy se
-        deshabilita (estado 12 documenta qué pasa si igual se llega a la hoja).</p>
+        deshabilita ahí mismo (estado 12 documenta qué mostrar si de todos modos se llega a la hoja).</p>
     </div>
     <div class="frame">
       <header class="hdr">
@@ -348,21 +359,708 @@ body.demo{background:var(--ground);padding:0 0 60px}
     <div class="spec-hd">
       <span class="n">01 · ELEGIR</span>
       <h2>Elegir los archivos</h2>
-      <p>Tres botones, tres formas de llegar al mismo lugar: sacar la foto ahí mismo, elegir de las fotos
-        que ya tenés, o ir a buscar un archivo (el PDF que mandó la aerolínea). Los tres aceptan elegir
-        varios a la vez y se pueden combinar entre sí. Pegar texto sigue existiendo, pero un paso más abajo:
-        ya no es el único camino.</p>
+      <p>Tres botones para el mismo destino: sacar la foto ahí mismo, elegir de las fotos que ya tenés, o ir
+        a buscar un archivo (el PDF que mandó la aerolínea). Los tres aceptan elegir varios a la vez y se
+        pueden combinar entre sí en una misma carga. Pegar texto sigue existiendo, un paso más abajo: ya no
+        es el único camino, es el que queda para cuando no hay ni foto ni PDF a mano.</p>
     </div>
     <div class="frame">
       <div class="sheet">
         <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
         <div class="sheet-bd">
-          <div class="notice">${'' /* placeholder removed below */}</div>
+          <div class="notice">
+            <span data-i="spark"></span>
+            <span class="bd">Sacale una foto al voucher, subí la captura del mail o el PDF del pasaje. Te
+              muestro lo que encuentro antes de guardar nada.</span>
+          </div>
+
+          <div class="f">
+            <label>Cómo lo cargás</label>
+            <div class="tp tp3">
+              <label class="tpbtn" for="f_cam_01"><span data-i="cam"></span> Sacar foto <span class="n">con la cámara</span></label>
+              <input id="f_cam_01" type="file" accept="image/*" capture="environment" class="sr">
+              <label class="tpbtn" for="f_gal_01"><span data-i="gallery"></span> Galería <span class="n">fotos y capturas</span></label>
+              <input id="f_gal_01" type="file" accept="image/*" multiple class="sr">
+              <label class="tpbtn" for="f_doc_01"><span data-i="doc"></span> Archivo <span class="n">PDF o imagen</span></label>
+              <input id="f_doc_01" type="file" accept="application/pdf,image/*" multiple class="sr">
+            </div>
+            <span class="hint">Podés elegir varios a la vez, y combinar fotos con PDF en la misma carga.</span>
+          </div>
+
+          <details class="imp-more">
+            <summary>Pegar el texto en cambio</summary>
+            <div class="f">
+              <label for="im_text_01">Texto de la confirmación</label>
+              <textarea id="im_text_01" class="mono" placeholder="Tu reserva está confirmada&#10;Vuelo G3 1234 · EZE → GIG&#10;20 de septiembre, 06:40&#10;Código: K7QXPL"></textarea>
+              <span class="hint">Podés pegar varias reservas juntas. Las separo yo.</span>
+            </div>
+          </details>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary" disabled data-i-before="spark">Interpretar</button>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- ══════════════════════════════════════════════════════════
+       02 — La cola, antes de interpretar
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s2">
+    <div class="spec-hd">
+      <span class="n">02 · LA COLA</span>
+      <h2>Antes de interpretar</h2>
+      <p>Cada archivo elegido entra a una lista, sin importar por qué botón entró: se puede seguir sumando
+        con los tres botones de arriba, o sacar cualquiera con la cruz. Un archivo que pesa de más se marca
+        ahí mismo, con el motivo, y no entra en la cuenta del botón de abajo — no hace falta adivinar por qué
+        el número no cierra con lo que se ve en pantalla.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="f">
+            <label>Cómo lo cargás</label>
+            <div class="tp tp3">
+              <label class="tpbtn" for="f_cam_02"><span data-i="cam"></span> Sacar foto <span class="n">con la cámara</span></label>
+              <input id="f_cam_02" type="file" accept="image/*" capture="environment" class="sr">
+              <label class="tpbtn" for="f_gal_02"><span data-i="gallery"></span> Galería <span class="n">fotos y capturas</span></label>
+              <input id="f_gal_02" type="file" accept="image/*" multiple class="sr">
+              <label class="tpbtn" for="f_doc_02"><span data-i="doc"></span> Archivo <span class="n">PDF o imagen</span></label>
+              <input id="f_doc_02" type="file" accept="application/pdf,image/*" multiple class="sr">
+            </div>
+          </div>
+
+          <div class="f">
+            <label>Vas a interpretar</label>
+            <div class="imp-files">
+              <div class="imp-file">
+                <span class="imp-thumb pdf" data-i="doc"></span>
+                <span class="bd"><span class="nm">voucher-gol.pdf</span><span class="meta">2 páginas · 640&nbsp;KB</span></span>
+                <button class="rm" aria-label="Sacar voucher-gol.pdf" data-i="x"></button>
+              </div>
+              <div class="imp-file">
+                <span class="imp-thumb img" data-i="img"></span>
+                <span class="bd"><span class="nm">confirmacion-ibis.jpg</span><span class="meta">1,1&nbsp;MB</span></span>
+                <button class="rm" aria-label="Sacar confirmacion-ibis.jpg" data-i="x"></button>
+              </div>
+              <div class="imp-file">
+                <span class="imp-thumb img" data-i="img"></span>
+                <span class="bd"><span class="nm">contrato-localiza.jpg</span><span class="meta">2,4&nbsp;MB</span></span>
+                <button class="rm" aria-label="Sacar contrato-localiza.jpg" data-i="x"></button>
+              </div>
+              <div class="imp-file err">
+                <span class="imp-thumb img" data-i="img"></span>
+                <span class="bd">
+                  <span class="nm">seguro-viaje.heic</span>
+                  <span class="meta err" data-i="info">Pesa 34&nbsp;MB, más de lo que puedo leer (máx.&nbsp;15&nbsp;MB). Elegí otro archivo o sacá la foto de nuevo con menos calidad.</span>
+                </span>
+                <button class="rm" aria-label="Sacar seguro-viaje.heic" data-i="x"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary" data-i-before="spark">Interpretar 3 archivos</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       03 — Leyendo
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s3">
+    <div class="spec-hd">
+      <span class="n">03 · LEYENDO</span>
+      <h2>Mientras interpreta, archivo por archivo</h2>
+      <p>Nunca un spinner ciego: cada fila cuenta su propio progreso, y las que ya terminaron dicen cuánto
+        encontraron. Si se hace largo (fotos con poca luz, PDF pesados), un aviso lo reconoce después de un
+        rato y ofrece seguir con lo que ya está, sin perder lo que sí se pudo leer.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice"><span class="spin"></span><span class="bd">Leyendo 3 archivos…</span></div>
+
+          <div class="imp-files">
+            <div class="imp-file">
+              <span class="imp-thumb pdf" data-i="doc"></span>
+              <span class="bd"><span class="nm">voucher-gol.pdf</span><span class="meta ok" data-i="check2">Listo · 2 reservas encontradas</span></span>
+            </div>
+            <div class="imp-file">
+              <span class="imp-thumb img" data-i="img"></span>
+              <span class="bd"><span class="nm">confirmacion-ibis.jpg</span><span class="meta"><span class="spin"></span> Leyendo…</span></span>
+            </div>
+            <div class="imp-file">
+              <span class="imp-thumb img" data-i="img"></span>
+              <span class="bd"><span class="nm">contrato-localiza.jpg</span><span class="meta"><span class="imp-dot"></span> En cola</span></span>
+            </div>
+          </div>
+
+          <div class="notice warn">
+            <span data-i="info"></span>
+            <span class="bd">Che, esto está tardando más de lo normal. Las fotos con poca luz y los PDF
+              pesados tardan más en leerse.
+              <button class="act">Quedarme con lo que ya está listo</button></span>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost block">Cancelar todo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       04 — Revisión: reservas encontradas
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s4">
+    <div class="spec-hd">
+      <span class="n">04 · REVISIÓN</span>
+      <h2>Lo que encontró, antes de guardar</h2>
+      <p>Cada reserva es una tarjeta con campos de verdad: corregir un dato mal leído es escribir encima, no
+        un paso aparte. El chip de abajo del título dice de qué archivo salió — y de qué página, cuando un
+        mismo PDF trae varias reservas (acá el voucher trae ida y vuelta). La cruz saca una tarjeta del lote
+        sin tocar las demás.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice">
+            <span data-i="info"></span>
+            <span class="bd">Encontré 4 reservas en 3 archivos. Revisá los datos y corregí lo que haga falta
+              antes de guardar.</span>
+          </div>
+
+          <div class="stack">
+            <!-- vuelo ida -->
+            <div class="imp-card">
+              <div class="imp-card-hd">
+                <span class="pass-icon" data-i="flight"></span>
+                <span class="ttl">
+                  <input class="imp-title" value="Buenos Aires → Río de Janeiro">
+                  <span class="imp-src"><span class="chip accent">Vuelo</span>
+                    <span class="chip src" data-i="doc">voucher-gol.pdf · pág. 1</span></span>
+                </span>
+                <button class="imp-discard" aria-label="Descartar esta reserva" data-i="x"></button>
+              </div>
+              <div class="imp-card-bd">
+                <div class="f2">
+                  <div class="f"><label>Aerolínea</label><input value="GOL"></div>
+                  <div class="f"><label>Nº de vuelo</label><input class="mono" value="G3 1234"></div>
+                </div>
+                <div class="f2">
+                  <div class="f"><label>Origen</label><input class="mono" value="EZE"></div>
+                  <div class="f"><label>Destino</label><input class="mono" value="GIG"></div>
+                </div>
+                <div class="f2">
+                  <div class="f"><label>Sale</label><input type="datetime-local" value="2026-09-20T06:40"></div>
+                  <div class="f"><label>Llega</label><input type="datetime-local" value="2026-09-20T08:55"></div>
+                </div>
+                <div class="f"><label>Código de reserva</label><input class="mono" value="K7QXPL"></div>
+              </div>
+            </div>
+
+            <!-- vuelo vuelta -->
+            <div class="imp-card">
+              <div class="imp-card-hd">
+                <span class="pass-icon" data-i="flight"></span>
+                <span class="ttl">
+                  <input class="imp-title" value="Río de Janeiro → Buenos Aires">
+                  <span class="imp-src"><span class="chip accent">Vuelo</span>
+                    <span class="chip src" data-i="doc">voucher-gol.pdf · pág. 2</span></span>
+                </span>
+                <button class="imp-discard" aria-label="Descartar esta reserva" data-i="x"></button>
+              </div>
+              <div class="imp-card-bd">
+                <div class="f2">
+                  <div class="f"><label>Aerolínea</label><input value="GOL"></div>
+                  <div class="f"><label>Nº de vuelo</label><input class="mono" value="G3 1234"></div>
+                </div>
+                <div class="f2">
+                  <div class="f"><label>Origen</label><input class="mono" value="GIG"></div>
+                  <div class="f"><label>Destino</label><input class="mono" value="EZE"></div>
+                </div>
+                <div class="f2">
+                  <div class="f"><label>Sale</label><input type="datetime-local" value="2026-09-27T21:10"></div>
+                  <div class="f"><label>Llega</label><input type="datetime-local" value="2026-09-27T23:25"></div>
+                </div>
+                <div class="f"><label>Código de reserva</label><input class="mono" value="K7QXPL"></div>
+              </div>
+            </div>
+
+            <!-- alojamiento -->
+            <div class="imp-card">
+              <div class="imp-card-hd">
+                <span class="pass-icon stay" data-i="stay"></span>
+                <span class="ttl">
+                  <input class="imp-title" value="Ibis Copacabana">
+                  <span class="imp-src"><span class="chip accent">Alojamiento</span>
+                    <span class="chip src" data-i="img">confirmacion-ibis.jpg</span></span>
+                </span>
+                <button class="imp-discard" aria-label="Descartar esta reserva" data-i="x"></button>
+              </div>
+              <div class="imp-card-bd">
+                <div class="f"><label>Dirección</label><input value="Av. Nossa Senhora de Copacabana 1417, Río de Janeiro"></div>
+                <div class="f2">
+                  <div class="f"><label>Check-in</label><input type="datetime-local" value="2026-09-20T15:00"></div>
+                  <div class="f"><label>Check-out</label><input type="datetime-local" value="2026-09-27T11:00"></div>
+                </div>
+                <div class="f"><label>Código de reserva</label><input class="mono" value="IBS4471"></div>
+              </div>
+            </div>
+
+            <!-- auto -->
+            <div class="imp-card">
+              <div class="imp-card-hd">
+                <span class="pass-icon car" data-i="car"></span>
+                <span class="ttl">
+                  <input class="imp-title" value="Localiza — Aeropuerto Galeão">
+                  <span class="imp-src"><span class="chip accent">Auto</span>
+                    <span class="chip src" data-i="img">contrato-localiza.jpg</span></span>
+                </span>
+                <button class="imp-discard" aria-label="Descartar esta reserva" data-i="x"></button>
+              </div>
+              <div class="imp-card-bd">
+                <div class="f"><label>Lugar de retiro</label><input value="Aeropuerto Internacional Galeão, Río de Janeiro"></div>
+                <div class="f2">
+                  <div class="f"><label>Retiro</label><input type="datetime-local" value="2026-09-20T10:00"></div>
+                  <div class="f"><label>Devolución</label><input type="datetime-local" value="2026-09-27T18:00"></div>
+                </div>
+                <div class="f"><label>Código de reserva</label><input class="mono" value="LOC88213"></div>
+              </div>
+            </div>
+          </div>
+
+          <p class="tiny muted" style="margin:0">Costo, teléfono y notas se completan después, abriendo la
+            reserva ya guardada. Acá sólo lo que la lectura automática suele errar: fechas, rutas y códigos.</p>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary" data-i-before="spark">Guardar 4 reservas</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       05 — Revisión con un archivo que falló
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s5">
+    <div class="spec-hd">
+      <span class="n">05 · ERROR PARCIAL</span>
+      <h2>Un archivo que no se pudo leer entre otros que sí</h2>
+      <p>El que falló no invalida al resto: la reserva que sí se entendió queda lista para guardar como
+        siempre, y el problema se explica aparte, con la opción de reintentar ese archivo solo o sacarlo del
+        lote. Nunca se pierde lo que funcionó por lo que no.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice">
+            <span data-i="info"></span>
+            <span class="bd">Encontré 1 reserva en 1 archivo. El otro no lo pude leer.</span>
+          </div>
+
+          <div class="imp-card">
+            <div class="imp-card-hd">
+              <span class="pass-icon" data-i="transfer"></span>
+              <span class="ttl">
+                <input class="imp-title" value="Traslado al hotel">
+                <span class="imp-src"><span class="chip accent">Traslado</span>
+                  <span class="chip src" data-i="img">traslado-aeropuerto.jpg</span></span>
+              </span>
+              <button class="imp-discard" aria-label="Descartar esta reserva" data-i="x"></button>
+            </div>
+            <div class="imp-card-bd">
+              <div class="f"><label>Proveedor</label><input value="Transfer Rio"></div>
+              <div class="f2">
+                <div class="f"><label>Desde</label><input value="Aeropuerto Galeão"></div>
+                <div class="f"><label>Hasta</label><input value="Ibis Copacabana"></div>
+              </div>
+              <div class="f"><label>Fecha y hora</label><input type="datetime-local" value="2026-09-20T09:30"></div>
+              <div class="f"><label>Código de reserva</label><input class="mono" placeholder="No lo encontré"></div>
+            </div>
+          </div>
+
+          <div class="imp-files">
+            <div class="imp-file err">
+              <span class="imp-thumb img" data-i="img"></span>
+              <span class="bd">
+                <span class="nm">seguro-assist.jpg</span>
+                <span class="meta err" data-i="info">No pude leer este archivo. Puede estar borrosa, girada, o no tener pinta de reserva de viaje.</span>
+              </span>
+              <span class="row-acts"><button class="act">Reintentar</button><button class="rm" aria-label="Sacar seguro-assist.jpg" data-i="x"></button></span>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary" data-i-before="spark">Guardar 1 reserva</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       06 — Tarjeta de embarque: coincide con certeza
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s6">
+    <div class="spec-hd">
+      <span class="n">06 · TARJETA DE EMBARQUE — CASO 1</span>
+      <h2>Coincide con certeza: completa, no duplica</h2>
+      <p>Puerta, terminal, asiento y hora de embarque llegan tarde, cuando el vuelo ya está cargado. Acá el
+        número de vuelo y la fecha de la tarjeta coinciden con un solo vuelo guardado, así que la app ofrece
+        completarlo directamente. Lo que ya existía se ve en gris; lo que trae la tarjeta se resalta.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="imp-card">
+            <div class="imp-card-hd">
+              <span class="pass-icon" data-i="flight"></span>
+              <span class="ttl">
+                <span style="font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em">Vuelo G3 1234, 27 de septiembre</span>
+                <span class="imp-src"><span class="chip accent">Tarjeta de embarque</span>
+                  <span class="chip src" data-i="img">tarjeta-embarque-vuelta.jpg</span></span>
+              </span>
+              <button class="imp-discard" aria-label="Descartar" data-i="x"></button>
+            </div>
+            <div class="imp-card-bd">
+              <div class="f">
+                <label>Ya tenías cargado</label>
+                <div class="imp-existing">
+                  <span class="pass-icon" data-i="flight"></span>
+                  <span class="info">
+                    <span class="pass-title">Río de Janeiro → Buenos Aires</span>
+                    <span class="pass-when">GOL G3 1234 · sale 27 sep 21:10</span>
+                  </span>
+                </div>
+              </div>
+              <div class="f">
+                <label>Se completa con</label>
+                <div class="imp-diff">
+                  <div class="field"><span class="k">Puerta</span><span class="v">B12</span></div>
+                  <div class="field"><span class="k">Terminal</span><span class="v">2</span></div>
+                  <div class="field"><span class="k">Asiento</span><span class="v">14C</span></div>
+                  <div class="field"><span class="k">Embarque</span><span class="v">20:40</span></div>
+                </div>
+              </div>
+              <p class="tiny muted" style="margin:0">Coincide por número de vuelo y fecha con el vuelo que ya
+                tenías cargado.</p>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cargar como nuevo</button>
+          <button class="btn primary" data-i-before="check2">Completar vuelo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       07 — Tarjeta de embarque: duda entre dos vuelos · INTERACTIVO
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s7">
+    <div class="spec-hd">
+      <span class="n">07 · TARJETA DE EMBARQUE — CASO 2 · INTERACTIVO</span>
+      <h2>Duda entre dos vuelos: pregunta, no adivina</h2>
+      <p>El reflejo de la foto tapó la fecha y la ruta; sólo se leyó el número de vuelo y el asiento. Ese
+        número lo usan los dos tramos del viaje (ida y vuelta, mismo número — algo común en las low cost),
+        así que la app no puede decidir sola. Probá: tocá una opción y el botón de guardar se habilita recién
+        ahí, con la acción que corresponde a lo que elegiste.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice warn">
+            <span data-i="info"></span>
+            <span class="bd">El reflejo de la foto tapó la fecha y la ruta. Sólo pude leer el vuelo
+              <b>G3 1234</b> y el asiento <b>16A</b> — y tenés dos vuelos con ese número. ¿A cuál corresponde?</span>
+          </div>
+
+          <div class="imp-choice" id="choice7">
+            <button type="button" aria-pressed="false" data-c="a">
+              <span class="radio"></span>
+              <span class="info"><span class="t">Buenos Aires → Río de Janeiro</span>
+                <span class="s">GOL G3 1234 · sale 20 sep 06:40</span></span>
+            </button>
+            <button type="button" aria-pressed="false" data-c="b">
+              <span class="radio"></span>
+              <span class="info"><span class="t">Río de Janeiro → Buenos Aires</span>
+                <span class="s">GOL G3 1234 · sale 27 sep 21:10</span></span>
+            </button>
+            <div class="sep">o</div>
+            <button type="button" aria-pressed="false" data-c="n">
+              <span class="radio"></span>
+              <span class="info"><span class="t">Ninguno de los dos</span>
+                <span class="s">Es un vuelo nuevo, no lo tenía cargado</span></span>
+            </button>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary" id="save7" disabled>Elegí una opción</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       08 — Tarjeta de embarque: no encuentra ninguno
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s8">
+    <div class="spec-hd">
+      <span class="n">08 · TARJETA DE EMBARQUE — CASO 3</span>
+      <h2>No encuentra ninguno: se trata como nuevo</h2>
+      <p>Ni el número de vuelo ni la fecha coinciden con nada guardado en este viaje — acá es una conexión
+        Córdoba–Buenos Aires que nunca se había cargado. En vez de descartarla en silencio, se ofrece como
+        una reserva nueva, con un aviso corto de por qué no se completó nada.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice">
+            <span data-i="info"></span>
+            <span class="bd">No tenías este vuelo cargado. Lo agrego como una reserva nueva.</span>
+          </div>
+
+          <div class="imp-card">
+            <div class="imp-card-hd">
+              <span class="pass-icon" data-i="flight"></span>
+              <span class="ttl">
+                <input class="imp-title" value="Córdoba → Buenos Aires">
+                <span class="imp-src"><span class="chip accent">Tarjeta de embarque</span>
+                  <span class="chip src" data-i="img">tarjeta-embarque-cordoba.jpg</span></span>
+              </span>
+              <button class="imp-discard" aria-label="Descartar esta reserva" data-i="x"></button>
+            </div>
+            <div class="imp-card-bd">
+              <div class="f2">
+                <div class="f"><label>Aerolínea</label><input value="Aerolíneas Argentinas"></div>
+                <div class="f"><label>Nº de vuelo</label><input class="mono" value="AR 1450"></div>
+              </div>
+              <div class="f2">
+                <div class="f"><label>Origen</label><input class="mono" value="COR"></div>
+                <div class="f"><label>Destino</label><input class="mono" value="AEP"></div>
+              </div>
+              <div class="f2">
+                <div class="f"><label>Sale</label><input type="datetime-local" value="2026-09-19T20:15"></div>
+                <div class="f"><label>Llega</label><input type="datetime-local" value="2026-09-19T21:35"></div>
+              </div>
+              <div class="f2">
+                <div class="f"><label>Asiento</label><input class="mono" value="12F"></div>
+                <div class="f"><label>Código de reserva</label><input class="mono" placeholder="No lo encontré"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Descartar</button>
+          <button class="btn primary">Guardar vuelo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       09 — Guardado
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s9">
+    <div class="spec-hd">
+      <span class="n">09 · GUARDADO</span>
+      <h2>El aviso cierra el círculo</h2>
+      <p>Cuando hubo una tarjeta de embarque de por medio, el mensaje lo dice explícito — no un genérico
+        "listo". Es la diferencia entre confiar en que completó el vuelo correcto y tener que ir a
+        comprobarlo.</p>
+    </div>
+    <div class="frame">
+      <header class="hdr">
+        <div class="hdr-row">
+          <button class="iconbtn" aria-label="Volver" data-i="back"></button>
+          <div class="brand"><h1 style="font-size:19px">Río de Janeiro</h1><span class="tag">20 – 27 sep</span></div>
+          <button class="iconbtn" aria-label="Compartir" data-i="share"></button>
+        </div>
+      </header>
+      <main style="padding-bottom:20px;gap:10px">
+        <div class="notice ok">
+          <span data-i="check2"></span>
+          <span class="bd">Guardado. Agregué 4 reservas y completé el vuelo de vuelta con los datos de la
+            tarjeta de embarque.</span>
+        </div>
+        <div class="toast">4 reservas agregadas · vuelo de vuelta completado</div>
+      </main>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       10 — Ninguno se pudo leer
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s10">
+    <div class="spec-hd">
+      <span class="n">10 · ERROR — TOTAL</span>
+      <h2>Ninguno de los archivos se pudo leer</h2>
+      <p>Puede ser un problema momentáneo de conexión, o que ninguno tenga pinta de reserva de viaje. Cada
+        archivo mantiene su propio motivo — no un error genérico — y la carga manual queda a un toque, para
+        que la noche apurada en el aeropuerto no dependa de que esto funcione.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="empty">
+            <h3>No pude leer ninguno de los 3 archivos</h3>
+            <p>Puede ser un problema momentáneo, o que ninguno tenga pinta de reserva de viaje. El detalle de
+              cada uno está abajo.</p>
+          </div>
+          <div class="imp-files">
+            <div class="imp-file err">
+              <span class="imp-thumb pdf" data-i="doc"></span>
+              <span class="bd"><span class="nm">voucher-gol.pdf</span>
+                <span class="meta err" data-i="info">No pude leer el PDF. Probá exportándolo de nuevo desde el mail.</span></span>
+            </div>
+            <div class="imp-file err">
+              <span class="imp-thumb img" data-i="img"></span>
+              <span class="bd"><span class="nm">confirmacion-ibis.jpg</span>
+                <span class="meta err" data-i="info">La imagen se ve borrosa.</span></span>
+            </div>
+            <div class="imp-file err">
+              <span class="imp-thumb img" data-i="img"></span>
+              <span class="bd"><span class="nm">contrato-localiza.jpg</span>
+                <span class="meta err" data-i="info">No encontré ninguna reserva ahí.</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cargar a mano</button>
+          <button class="btn primary">Reintentar todo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       11 — La capa inteligente no está disponible
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s11">
+    <div class="spec-hd">
+      <span class="n">11 · ERROR — SIN CAPA INTELIGENTE</span>
+      <h2>La lectura automática no está disponible</h2>
+      <p>Mismo patrón que ya usa la app hoy para el texto pegado, ahora aplicado a todo el importador: si la
+        lectura automática no está, no se ofrece un picker que no va a andar. La carga manual sigue estando,
+        un botón más allá.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice warn">
+            <span data-i="info"></span>
+            <span class="bd">La lectura automática no está disponible en esta vista. Cargá la reserva a mano
+              desde <b>Agregar</b>.</span>
+          </div>
+        </div>
+        <div class="sheet-ft"><button class="btn block">Cerrar</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       12 — Sólo lectura
+       ══════════════════════════════════════════════════════════ -->
+  <section id="s12">
+    <div class="spec-hd">
+      <span class="n">12 · SÓLO LECTURA</span>
+      <h2>Sin permiso de edición</h2>
+      <p>Quien mira el viaje sin permiso de edición no debería llegar hasta acá: el botón "Importar" ya
+        aparece deshabilitado en la pantalla del viaje (estado 00). Esta pantalla es la red por si igual se
+        entra — un link viejo, una carrera al cargar el permiso al abrir la app.</p>
+    </div>
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd"><h2>Importar reservas</h2><button class="iconbtn" aria-label="Cerrar" data-i="x"></button></div>
+        <div class="sheet-bd">
+          <div class="notice">
+            <span data-i="info"></span>
+            <span class="bd"><span class="chip soon">sólo lectura</span><br><br>
+              Quien mira este viaje sin permiso de edición no puede importar reservas. Pedile a quien te
+              compartió el link que te dé permiso para cargar.</span>
+          </div>
+        </div>
+        <div class="sheet-ft"><button class="btn block">Cerrar</button></div>
+      </div>
+    </div>
+  </section>
+
 </div>
+
+<script>
+"use strict";
+
+/* ---------- iconos ---------- */
+const I = {
+  /* ya existen en valija.html */
+  back:'<path d="M15 19l-7-7 7-7"/>',
+  x:'<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  spark:'<path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/>',
+  plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4"/><path d="M15.4 6.5l-6.8 4"/>',
+  check2:'<circle cx="12" cy="12" r="9"/><path d="M8 12.2l2.8 2.8L16 9.5"/>',
+  doc:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/>',
+  cam:'<path d="M3 8h3l2-2h8l2 2h3v11H3z"/><circle cx="12" cy="12.5" r="3.2"/>',
+  flight:'<path d="M17.8 19.8 16 14l4-4a2 2 0 0 0-2.8-2.8l-4 4-5.8-1.8a1 1 0 0 0-1 .3L5 11.2a.6.6 0 0 0 .2 1l4.3 2 2 4.3a.6.6 0 0 0 1 .2l1.5-1.5a1 1 0 0 0 .3-1z"/>',
+  stay:'<path d="M3 20V9l9-5 9 5v11"/><path d="M3 14h18"/><path d="M9 20v-5h6v5"/>',
+  car:'<path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><rect x="3" y="10" width="18" height="7" rx="2"/><path d="M5.5 10 7 5.5A2 2 0 0 1 8.9 4h6.2A2 2 0 0 1 17 5.5L18.5 10"/><path d="M6.5 13.5h2"/><path d="M15.5 13.5h2"/>',
+  transfer:'<path d="M4 7h12l-3-3"/><path d="M20 17H8l3 3"/>',
+
+  /* NUEVOS — tres botones de origen del archivo y su badge en la cola */
+  gallery:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M3 16.5l3.2-3.2a1.6 1.6 0 0 1 2.3 0L13 17.5"/><circle cx="8.2" cy="11" r="1.3"/><path d="M8 7V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1.2"/>',
+  img:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 17l4.5-4.5a1.8 1.8 0 0 1 2.5 0L15 16.5"/><path d="M13 15l1.8-1.8a1.8 1.8 0 0 1 2.5 0L20 16"/>'
+};
+const svg = (p, cls) => `<svg viewBox="0 0 24 24"${cls?` class="${cls}"`:""}>${p}</svg>`;
+
+function paintIcons(root){
+  (root||document).querySelectorAll("[data-i]").forEach(el=>{
+    const k = el.dataset.i; delete el.dataset.i;
+    if(!I[k]) return;
+    el.insertAdjacentHTML("afterbegin", svg(I[k]));
+  });
+  (root||document).querySelectorAll("[data-i-before]").forEach(el=>{
+    const k = el.dataset.iBefore; delete el.dataset.iBefore;
+    if(I[k]) el.insertAdjacentHTML("afterbegin", svg(I[k]));
+  });
+}
+
+/* ---------- tema ---------- */
+document.getElementById("themes").addEventListener("click", e=>{
+  const b = e.target.closest("[data-th]"); if(!b) return;
+  document.querySelectorAll("#themes [data-th]").forEach(x=>x.setAttribute("aria-selected", x===b));
+  if(b.dataset.th==="auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", b.dataset.th);
+});
+
+/* ---------- 07: elegir a cuál de los dos vuelos corresponde ---------- */
+const choice7 = document.getElementById("choice7");
+const save7 = document.getElementById("save7");
+choice7.addEventListener("click", e=>{
+  const b = e.target.closest("[data-c]"); if(!b) return;
+  choice7.querySelectorAll("[data-c]").forEach(x=> x.setAttribute("aria-pressed", x===b));
+  save7.disabled = false;
+  save7.textContent = b.dataset.c==="n" ? "Guardar como vuelo nuevo" : "Completar vuelo";
+});
+
+paintIcons();
+</script>
 </body>
 </content>

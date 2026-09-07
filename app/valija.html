@@ -3188,7 +3188,8 @@ function sheetTrip(trip){
       <span class="hint">Se usa en la etiqueta de la valija y en el PDF.</span></div>
     <div class="f2">
       <div class="f"><label for="t_from">Salida</label><input id="t_from" type="date" value="${esc(dayKey(t.startDate))}"></div>
-      <div class="f"><label for="t_to">Regreso</label><input id="t_to" type="date" value="${esc(dayKey(t.endDate))}"></div>
+      <div class="f"><label for="t_to">Regreso</label><input id="t_to" type="date" value="${esc(dayKey(t.endDate))}"
+        ${t.startDate?`min="${esc(addDays(t.startDate,1))}"`:""}></div>
     </div>
     <div class="f"><label for="t_people">Quiénes viajan</label>
       <input id="t_people" value="${esc(t.travelers||"")}" placeholder="Tomás, Ana y Juli" autocomplete="off"></div>
@@ -3201,11 +3202,19 @@ function sheetTrip(trip){
   `);
 
   document.getElementById("cancel").onclick = closeSheet;
+  // Elegir la salida limita el calendario de regreso ahí mismo: es mejor que el
+  // día inválido no se pueda elegir, a explicar después por qué no sirve.
+  const fIni = document.getElementById("t_from"), fFin = document.getElementById("t_to");
+  if(fIni && fFin) fIni.onchange = ()=>{
+    if(!fIni.value){ fFin.removeAttribute("min"); return; }
+    fFin.min = addDays(fIni.value, 1);
+    if(fFin.value && fFin.value <= fIni.value) fFin.value = "";
+  };
   document.getElementById("save").onclick = async ()=>{
     const name = val("t_name");
     if(!name){ toast("Poné un nombre al viaje", true); return; }
     const from = val("t_from"), to = val("t_to");
-    if(from && to && to < from){ toast("El regreso no puede ser antes de la salida", true); return; }
+    if(from && to && to <= from){ toast("El regreso tiene que ser después de la salida", true); return; }
     try{
       await Store.saveTrip({...t, name, destination:val("t_dest"),
         startDate:from, endDate:to, travelers:val("t_people"), notes:val("t_notes"), sample:t.sample||false});

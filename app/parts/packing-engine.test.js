@@ -532,6 +532,238 @@ await test("generatePackingList corre las tres capas y respeta la lista anterior
     "cada ítem tiene que declarar su origen y tienen que convivir los tres: " + Object.keys(origenes).join(", "));
 });
 
+group("VAL-44 · la capa inteligente ve el viaje completo");
+
+await test("el resumen de reservas nunca manda datos sensibles, y sí tipo, fechas, ciudades y notas", function () {
+  var items = [
+    { type:"flight", from:"EZE", to:"MAD", start:"2026-10-05T22:00", end:"2026-10-06T14:00", confirmation:"XKD9P2", notes:"Vuelo directo" },
+    { type:"stay", start:"2026-10-06T15:00", end:"2026-10-12T11:00", address:"Calle Atocha 123, Madrid", phone:"+34 91 555 1234", confirmation:"HBK821", notes:"El depto no tiene lavarropas" },
+    { type:"car", start:"2026-10-12T10:00", end:"2026-10-15T10:00", address:"Aeropuerto de Madrid T4", confirmation:"RNT44", notes:"" }
+  ];
+  var resumen = E.summarizeReservationsForAI({ id:"tr" }, items);
+  var texto = JSON.stringify(resumen);
+  assert(texto.indexOf("XKD9P2") < 0 && texto.indexOf("HBK821") < 0 && texto.indexOf("RNT44") < 0, "no puede aparecer ningún código de reserva");
+  assert(texto.indexOf("555 1234") < 0 && texto.indexOf("+34") < 0, "no puede aparecer el teléfono");
+  assert(texto.indexOf("Atocha") < 0 && texto.indexOf("T4") < 0, "no puede aparecer la dirección exacta");
+  var vuelo = resumen.filter(function (r) { return r.tipo === "vuelo"; })[0];
+  eq(vuelo.origen, "EZE", "ciudad de origen"); eq(vuelo.destino, "MAD", "ciudad de destino");
+  var alojamiento = resumen.filter(function (r) { return r.tipo === "alojamiento"; })[0];
+  assert(/lavarropas/i.test(alojamiento.notas), "las notas sí viajan: son las que permiten razonar sobre el alojamiento");
+});
+
+await test("detecta una escala larga entre dos vuelos consecutivos", function () {
+  var items = [
+    { type:"flight", from:"EZE", to:"LIM", start:"2026-03-01T08:00", end:"2026-03-01T11:00" },
+    { type:"flight", from:"LIM", to:"CUN", start:"2026-03-01T19:00", end:"2026-03-01T23:00" }
+  ];
+  var resumen = E.summarizeReservationsForAI({}, items);
+  var escala = resumen.filter(function (r) { return r.tipo === "escala"; })[0];
+  assert(escala, "no detectó la escala");
+  eq(escala.ciudad, "LIM", "ciudad de la escala");
+  assert(escala.duracionHoras >= 7.5 && escala.duracionHoras <= 8.5, "la escala tiene que medir ~8 horas: " + escala.duracionHoras);
+});
+
+await test("las notas se sanitizan: no dejan pasar secuencias que parecen teléfono", function () {
+  var items = [{ type:"stay", start:"2026-01-01T12:00", end:"2026-01-03T10:00", notes:"Avisar al llegar al +54 11 4444-5555 antes de las 20" }];
+  var resumen = E.summarizeReservationsForAI({}, items);
+  assert(resumen[0].notas.indexOf("4444-5555") < 0, "el teléfono no puede sobrevivir en las notas");
+  assert(/dato omitido/i.test(resumen[0].notas), "queda una marca de que se omitió algo");
+});
+
+await test("el prompt de destino incluye el resumen de reservas y pide citar el dato concreto", function () {
+  var l = E.buildPackingList({
+    trip:{ id:"tf", name:"Sudamérica", destination:"Cancún", startDate:"2026-03-01", endDate:"2026-03-10" },
+    items:[
+      { type:"flight", from:"EZE", to:"LIM", start:"2026-03-01T08:00", end:"2026-03-01T11:00" },
+      { type:"flight", from:"LIM", to:"CUN", start:"2026-03-01T19:00", end:"2026-03-01T23:00" }
+    ], now:AT()
+  });
+  var p = E.destinationPrompt(l);
+  assert(p.indexOf("LIM") >= 0, "el prompt tiene que traer la escala");
+  assert(/dato concreto/i.test(p), "el prompt tiene que pedir citar el dato concreto del viaje");
+  assert(p.indexOf("\"quitar\"") >= 0, "el prompt tiene que ofrecer sacar ítems (VAL-43)");
+});
+
+group("VAL-45 · ningún ítem repetido entre capas");
+
+await test("canonicalKey reconoce los sinónimos declarados", function () {
+  eq(E.canonicalKey(E.slug("Adaptador de enchufe")), E.canonicalKey(E.slug("Adaptador de corriente")), "mismo ítem, misma familia");
+  eq(E.canonicalKey(E.slug("Protector solar")), E.canonicalKey(E.slug("Bloqueador solar")), "protector y bloqueador solar son lo mismo");
+  assert(E.canonicalKey(E.slug("Remeras")) !== E.canonicalKey(E.slug("Pantalones")), "ítems distintos no se mezclan");
+});
+
+await test("verifyNoDuplicateItems detecta dos ítems que significan lo mismo", function () {
+  var lista = { items:{
+    "adaptador-de-enchufe":{ clave:"adaptador-de-enchufe", nombre:"Adaptador de enchufe" },
+    "adaptador-de-corriente":{ clave:"adaptador-de-corriente", nombre:"Adaptador de corriente" },
+    "remera":{ clave:"remera", nombre:"Remeras" }
+  } };
+  var v = E.verifyNoDuplicateItems(lista);
+  eq(v.ok, false, "tiene que detectar el duplicado");
+  eq(v.duplicados.length, 1, "un solo grupo duplicado");
+  eq(v.duplicados[0].claves.length, 2, "las dos claves del mismo ítem");
+});
+
+await test("cualquier lista que arma el motor pasa la verificación de no-duplicados", function () {
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  eq(E.verifyNoDuplicateItems(l).ok, true, "el motor no puede generar duplicados por sinónimo");
+});
+
+await test("el historial no promueve un sinónimo de lo que la regla ya puso", function () {
+  // Florianópolis es internacional: la regla de vuelo internacional ya pone "Adaptador de enchufe".
+  var history = [
+    listaHistorial("playa", [manualItem("Adaptador de corriente", "electronica")]),
+    listaHistorial("playa", [manualItem("Adaptador de corriente", "electronica")])
+  ];
+  var sinHistorial = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", history:history, now:AT() });
+  eq(count(l), count(sinHistorial), "no suma un ítem nuevo: ya estaba, por sinónimo");
+  eq(l.items[E.slug("Adaptador de enchufe")].origen, E.ORIGEN.REGLA, "sigue acreditado a la regla, no al historial");
+});
+
+await test("agregar a mano un sinónimo de un ítem que ya existe no lo duplica", function () {
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() }); // internacional: ya tiene el adaptador
+  var con = E.addManualItem(l, { nombre:"Adaptador de corriente", categoria:"electronica" });
+  eq(count(con), count(l), "no agrega un ítem nuevo");
+  eq(con.items[E.slug("Adaptador de enchufe")].origen, E.ORIGEN.REGLA, "el origen no cambia por el intento de agregarlo a mano");
+});
+
+await test("regenerar no deja dos ítems cuando la lista anterior guardó el mismo ítem con otro nombre", function () {
+  var v1 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  // Simula una lista guardada por una versión anterior del motor (o de la capa de
+  // IA con otra frase), con el adaptador guardado bajo otro nombre y ya empacado.
+  var itemsAnteriores = Object.assign({}, v1.items);
+  var adaptadorOriginal = itemsAnteriores[E.slug("Adaptador de enchufe")];
+  delete itemsAnteriores[E.slug("Adaptador de enchufe")];
+  itemsAnteriores[E.slug("Adaptador de corriente")] = Object.assign({}, adaptadorOriginal, {
+    clave:E.slug("Adaptador de corriente"), nombre:"Adaptador de corriente",
+    estado:E.ESTADO.EMPACADO, empacadoEn:AT()
+  });
+  var anterior = Object.assign({}, v1, { items:itemsAnteriores });
+
+  var v2 = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", previous:anterior, now:"2026-09-06T12:00:00.000Z" });
+  assert(!item(v2, E.slug("Adaptador de corriente")), "el nombre viejo no puede sobrevivir junto al nuevo");
+  eq(item(v2, E.slug("Adaptador de enchufe")).estado, E.ESTADO.EMPACADO, "el estado empacado se conserva aunque cambie el nombre");
+  eq(E.verifyNoDuplicateItems(v2).ok, true, "la lista fusionada no queda con duplicados");
+});
+
+group("VAL-43 · la capa inteligente puede sacar ítems, con un piso que no se toca");
+
+await test("propone sacar un ítem que no aplica, con su motivo, sin aplicarlo sola", async function () {
+  var l = E.buildPackingList({
+    trip:{ id:"tg", name:"Uruguay", destination:"Punta del Este, Uruguay", startDate:"2026-01-05", endDate:"2026-01-12" },
+    now:AT()
+  });
+  hasItem(l, E.slug("Visa o autorización electrónica"), "internacional, la regla siempre la pone:");
+  var out = await E.enrichWithDestination(l, async function () {
+    return { items:[], quitar:[{ nombre:"Visa o autorización electrónica", motivo:"Uruguay no le pide visa a pasaportes argentinos." }] };
+  }, { now:AT() });
+  eq(out.capaInteligente.estado, "ok", "hubo un ajuste, aunque sea sólo de sacar");
+  var visa = item(out, E.slug("Visa o autorización electrónica"));
+  assert(visa, "la sugerencia no borra el ítem: sigue en la lista para que la persona decida");
+  eq(visa.estado, E.ESTADO.PENDIENTE, "nada se descarta sola: se ofrece, no se impone");
+  assert(visa.sugerenciaQuitar && /Uruguay/.test(visa.sugerenciaQuitar.motivo), "trae el motivo de la IA: " + JSON.stringify(visa.sugerenciaQuitar));
+});
+
+await test("piso: nunca se puede sacar documentación de identidad, aunque la IA lo pida", async function () {
+  var l = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() }); // internacional: tiene pasaporte
+  var out = await E.enrichWithDestination(l, async function () {
+    return { items:[], quitar:[
+      { nombre:"DNI", motivo:"no hace falta" },
+      { nombre:"Pasaporte", motivo:"no hace falta en este destino" }
+    ] };
+  }, { now:AT() });
+  assert(!out.items.dni.sugerenciaQuitar, "el DNI nunca lleva sugerencia de sacar");
+  assert(!out.items.pasaporte.sugerenciaQuitar, "el pasaporte nunca lleva sugerencia de sacar");
+  eq(out.capaInteligente.estado, "vacio", "sin nada válido para proponer, la capa queda vacía");
+});
+
+await test("la sugerencia de sacar no puede apuntar a un ítem que la persona agregó a mano", async function () {
+  var base = E.buildPackingList({ trip:viajePlaya(), tipoViaje:"playa", now:AT() });
+  var conManual = E.addManualItem(base, { nombre:"Libro de Saer", categoria:"otros" });
+  var out = await E.enrichWithDestination(conManual, async function () {
+    return { items:[], quitar:[{ nombre:"Libro de Saer", motivo:"no hace falta un libro" }] };
+  }, { now:AT() });
+  assert(!out.items[E.slug("Libro de Saer")].sugerenciaQuitar, "un ítem propio no se toca por esta vía");
+});
+
+await test("clearRemovalSuggestion rechaza la propuesta sin tocar el ítem", async function () {
+  var l = E.buildPackingList({
+    trip:{ id:"th", name:"Uruguay", destination:"Colonia, Uruguay", startDate:"2026-02-01", endDate:"2026-02-05" }, now:AT()
+  });
+  var out = await E.enrichWithDestination(l, async function () {
+    return { items:[], quitar:[{ nombre:"Visa o autorización electrónica", motivo:"no la piden" }] };
+  }, { now:AT() });
+  var claveVisa = E.slug("Visa o autorización electrónica");
+  assert(out.items[claveVisa].sugerenciaQuitar, "arranca con la sugerencia puesta");
+  var limpio = E.clearRemovalSuggestion(out, claveVisa);
+  assert(!limpio.items[claveVisa].sugerenciaQuitar, "se limpia la propuesta");
+  eq(limpio.items[claveVisa].estado, E.ESTADO.PENDIENTE, "el ítem sigue estando, intacto");
+});
+
+group("VAL-46 · la lista se actualiza cuando el viaje crece");
+
+await test("agregar una reserva de auto detecta la lista desactualizada y dice qué reserva la motivó", function () {
+  var trip = { id:"ti", name:"Ruta 40", destination:"Mendoza", startDate:"2026-03-01", endDate:"2026-03-08" };
+  var lista = E.buildPackingList({ trip:trip, now:AT() });
+  noItem(lista, E.slug("Licencia de conducir"), "todavía sin auto:");
+
+  var items = [{ type:"car", provider:"Hertz", title:"Auto en Mendoza" }];
+  var plan = E.planListUpdate({ list:lista, trip:trip, items:items, now:"2026-09-06T12:00:00.000Z" });
+
+  eq(plan.desactualizada, true, "tiene que detectar que quedó vieja");
+  var lic = plan.nuevos.filter(function (n) { return n.clave === E.slug("Licencia de conducir"); })[0];
+  assert(lic, "falta el ítem nuevo de la licencia");
+  assert(lic.reserva && /auto/i.test(lic.reserva), "tiene que nombrar la reserva que lo motivó: " + JSON.stringify(lic.reserva));
+  assert(plan.listaPropuesta.items[E.slug("Licencia de conducir")].nuevo === true, "el ítem queda marcado como nuevo");
+});
+
+await test("sin cambios en las reservas, la lista sigue al día", function () {
+  var trip = viajePlaya();
+  var lista = E.buildPackingList({ trip:trip, tipoViaje:"playa", now:AT() });
+  var plan = E.planListUpdate({ list:lista, trip:trip, items:[], tipoViaje:"playa", now:AT() });
+  eq(plan.desactualizada, false, "nada cambió");
+  eq(plan.nuevos.length, 0, "no hay ítems nuevos que proponer");
+});
+
+await test("lo empacado sigue empacado y un descartado nunca vuelve, aunque el viaje crezca", function () {
+  var trip = { id:"tj", name:"Ruta 40", destination:"Mendoza", startDate:"2026-03-01", endDate:"2026-03-08" };
+  var base = E.buildPackingList({ trip:trip, now:AT() });
+  var marcada = E.packItem(base, "dni");
+  marcada = E.dismissItem(marcada, E.slug("Botiquín básico"));
+
+  var items = [{ type:"car", provider:"Hertz" }];
+  var plan = E.planListUpdate({ list:marcada, trip:trip, items:items, now:"2026-09-06T12:00:00.000Z" });
+
+  eq(plan.listaPropuesta.items.dni.estado, E.ESTADO.EMPACADO, "lo empacado sigue empacado");
+  eq(plan.listaPropuesta.items[E.slug("Botiquín básico")].estado, E.ESTADO.DESCARTADO, "lo descartado sigue descartado");
+  assert(!plan.listaPropuesta.items[E.slug("Botiquín básico")].nuevo, "un descartado no se marca como nuevo");
+  var clavesNuevas = plan.nuevos.map(function (n) { return n.clave; });
+  assert(clavesNuevas.indexOf(E.slug("Botiquín básico")) < 0, "el descartado no vuelve a proponerse aunque el viaje crezca");
+});
+
+await test("clearNewFlags saca la marca de nuevo una vez que la persona la vio", function () {
+  var trip = { id:"tk", name:"Ruta 40", destination:"Mendoza", startDate:"2026-03-01", endDate:"2026-03-08" };
+  var lista = E.buildPackingList({ trip:trip, now:AT() });
+  var plan = E.planListUpdate({ list:lista, trip:trip, items:[{ type:"car" }], now:"2026-09-06T12:00:00.000Z" });
+  assert(E.itemsArray(plan.listaPropuesta).some(function (i) { return i.nuevo; }), "la propuesta tiene que traer algo marcado nuevo");
+  var limpio = E.clearNewFlags(plan.listaPropuesta);
+  var quedanNuevos = E.itemsArray(limpio).some(function (i) { return i.nuevo; });
+  assert(!quedanNuevos, "no puede quedar ningún ítem marcado como nuevo");
+});
+
+await test("planListUpdateAsync también detecta lo que agrega la capa de IA", async function () {
+  var trip = { id:"tl", name:"Perú", destination:"Cusco, Perú", startDate:"2026-05-01", endDate:"2026-05-10" };
+  var lista = E.buildPackingList({ trip:trip, now:AT() });
+  var plan = await E.planListUpdateAsync({
+    list:lista, trip:trip, items:[], now:"2026-09-06T12:00:00.000Z",
+    ask:async function () { return { items:[{ nombre:"Pastillas para el soroche", motivo:"Cusco está a más de 3000 metros de altura." }] }; }
+  });
+  eq(plan.desactualizada, true, "lo que agrega la IA también cuenta como actualización");
+  var soroche = plan.nuevos.filter(function (n) { return n.clave === E.slug("Pastillas para el soroche"); })[0];
+  assert(soroche, "tiene que incluir lo que encontró la capa de IA");
+});
+
 group("Estado de la lista (VAL-31)");
 
 await test("marcar, desmarcar y contar", function () {

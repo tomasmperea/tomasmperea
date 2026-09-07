@@ -215,6 +215,62 @@ muestre cosas que no necesito.
 - Todo ítem sacado o agregado por esta capa explica por qué.
 - Un ítem que la capa base marca como crítico (documentación de identidad) nunca se saca automáticamente.
 
+---
+
+## Hallazgos de la validación del MVP
+
+Salen de usar la app y de los comentarios dejados sobre la versión publicada. No forman una iteración: se
+reparten según prioridad.
+
+### VAL-50 · El generador de PDF no siempre carga — bug, no prioritario
+
+Al exportar el resumen aparece "No se pudo cargar el generador de PDF" y no se genera nada.
+
+La app arma el PDF con una librería que trae de un repositorio público en el momento de usarla. Si esa
+descarga falla, por señal, por bloqueo de red o porque el repositorio no responde, la función queda muerta.
+El aviso además no dice qué hacer.
+
+- El aviso explica que es un problema de conexión y sugiere reintentar, en lugar de sonar a error interno.
+- Se reintenta la carga antes de darse por vencido.
+- Se evalúa dejar de depender de una descarga en el momento del uso.
+
+**Por qué importa más de lo que parece.** VAL-40, la interpretación de PDFs, que es la prioridad máxima de
+la iteración 2, trae su librería del mismo repositorio y por el mismo camino. Este bug es la primera
+evidencia real de que esa descarga puede fallar en un teléfono. Conviene resolver los dos juntos.
+
+### VAL-51 · Pedir la hora solo donde hace falta — P2
+
+Como viajero no quiero cargar la hora cuando no aporta nada.
+
+Hoy todos los campos de fecha piden también la hora. En un vuelo la hora es el dato central. En una
+actividad, una nota o una idea suelta, es fricción pura.
+
+- El campo de fecha por defecto pide solo la fecha.
+- La hora se pide donde es parte del dato: salida y llegada de un vuelo, check-in y check-out, retiro y
+  devolución del auto.
+- Donde no se pide por defecto, se puede agregar si la persona quiere.
+
+### VAL-52 · Los pendientes llevan a resolverlos — P1
+
+Como viajero quiero que el panel de pendientes funcione como una campana de notificaciones: que tocar un
+aviso me lleve directo a resolverlo.
+
+Hoy los pendientes que nacen de una reserva ya cargada la abren, pero los que hablan del viaje entero no
+llevan a ningún lado. "Falta el vuelo de vuelta" te informa y te deja solo.
+
+- Tocar un pendiente abre la acción que lo resuelve, con lo que se pueda precargado.
+- "Falta el vuelo de vuelta" abre el alta de un vuelo con el origen y el destino invertidos y la fecha de
+  regreso puesta.
+- "Noches sin alojamiento" abre el alta de alojamiento con esas fechas.
+- "Check-in abierto" abre la reserva del vuelo en el campo del asiento.
+- Un pendiente que no tiene acción clara sigue siendo informativo, sin botón que no lleve a nada.
+
+### VAL-53 · El regreso no puede ser antes ni el mismo día que la salida — ENTREGADO ✅
+
+- El calendario de regreso no deja elegir una fecha anterior ni igual a la salida.
+- Elegir la salida ajusta el límite del regreso en el momento, y descarta un regreso que quedó inválido.
+- Si igual se fuerza, el mensaje dice qué pasa y no guarda.
+
 ## Iteración 3 — Avisar
 
 ### VAL-10 · Recibir avisos por correo — P0
