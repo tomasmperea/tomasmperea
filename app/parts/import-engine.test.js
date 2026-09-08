@@ -197,6 +197,57 @@ await test("un ítem inventa un campo que no es string: se ignora ese campo, no 
   eq(out[0].cost, "", "un número donde se esperaba texto se descarta, no se inventa una conversión");
 });
 
+group("VAL-42/F1 · una tarjeta de embarque sin título ni proveedor no se descarta (estado 07B)");
+
+await test("una tarjeta de embarque sin título/proveedor pero con asiento y fecha sobrevive al saneador", function () {
+  var out = E.parseImportResponse({ items: [
+    { type: "flight", title: "", provider: "", flightNumber: "", seat: "3C",
+      start: "2026-09-20T06:00", end: "", from: "", to: "", confirmation: "",
+      terminal: "", gate: "", boardingTime: "", address: "", phone: "", cost: "",
+      currency: "", notes: "" }
+  ] });
+  eq(out.length, 1, "hay fecha y asiento: no se descarta aunque falten título y proveedor");
+  eq(out[0].seat, "3C");
+  eq(out[0].start, "2026-09-20T06:00");
+});
+
+await test("un vuelo sin título/proveedor y sin ningún dato identificable sí se descarta", function () {
+  var out = E.parseImportResponse({ items: [
+    { type: "flight", title: "", provider: "", flightNumber: "", seat: "",
+      start: "", end: "", from: "", to: "", confirmation: "", terminal: "", gate: "",
+      boardingTime: "", address: "", phone: "", cost: "", currency: "", notes: "" }
+  ] });
+  eq(out.length, 0, "sin título, proveedor, ni ningún dato de vuelo no hay nada para mostrar");
+});
+
+await test("gate y terminal solos (sin número, fecha, ni asiento) también alcanzan para conservar el vuelo", function () {
+  eq(E.parseImportResponse({ items: [{ type: "flight", gate: "C3" }] }).length, 1);
+  eq(E.parseImportResponse({ items: [{ type: "flight", terminal: "2" }] }).length, 1);
+});
+
+await test("un alojamiento sin título ni proveedor se sigue descartando: la excepción es sólo para vuelos", function () {
+  var out = E.parseImportResponse({ items: [
+    { type: "stay", title: "", provider: "", address: "Rua X 123", start: "2026-09-21T12:00" }
+  ] });
+  eq(out.length, 0, "para tipos que no son vuelo, la regla original se mantiene sin excepción");
+});
+
+await test("de punta a punta: esa tarjeta llega hasta matchAgainstExisting y da ambiguo, como pide VAL-42 (estado 07B)", function () {
+  var tarjeta = E.parseImportResponse({ items: [
+    { type: "flight", title: "", provider: "", flightNumber: "", seat: "3C",
+      start: "2026-09-20T06:00", end: "", from: "", to: "", confirmation: "",
+      terminal: "", gate: "", boardingTime: "", address: "", phone: "", cost: "",
+      currency: "", notes: "" }
+  ] })[0];
+  var vueloA = existente({ id: "f1", flightNumber: "G31234", start: "2026-09-20T06:40" });
+  var vueloB = existente({ id: "f2", flightNumber: "G35678", start: "2026-09-20T11:00" });
+  var r = E.matchAgainstExisting(tarjeta, [vueloA, vueloB]);
+  eq(r.resultado, "ambiguo", "antes del arreglo, sanitizeReservation la descartaba y nunca llegaba hasta acá");
+  eq(r.candidatos.length, 2);
+  assert(r.candidatos.some(function (c) { return c.id === "f1"; }));
+  assert(r.candidatos.some(function (c) { return c.id === "f2"; }));
+});
+
 group("interpretFile — un archivo (VAL-40 / VAL-41)");
 
 await test("una foto se interpreta y devuelve la reserva encontrada", async function () {

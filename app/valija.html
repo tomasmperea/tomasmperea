@@ -2682,8 +2682,19 @@ function sanitizeReservation(x) {
   STRING_FIELDS.forEach(function (f) {
     out[f] = typeof x[f] === "string" ? x[f].trim() : "";
   });
-  // Sin título ni proveedor no hay nada que mostrarle a la persona para revisar.
-  if (!out.title && !out.provider) return null;
+  // Sin título ni proveedor no hay nada que mostrarle a la persona para revisar
+  // — EXCEPTO una tarjeta de embarque (VAL-42): ahí el título lo termina
+  // aportando el vuelo ya cargado que se va a completar, no la tarjeta. El
+  // estado 07B del diseño ("el disparador más frecuente") es justamente una
+  // tarjeta sin aerolínea ni ruta legibles, sólo asiento y fecha. Alcanza con
+  // algún dato que sirva para identificar o completar un vuelo: número de
+  // vuelo, fecha de salida, asiento, puerta o terminal. Sin ninguno de esos
+  // tampoco hay nada que mostrar, y se descarta igual.
+  if (!out.title && !out.provider) {
+    if (out.type !== "flight") return null;
+    var tieneDatoDeVuelo = out.flightNumber || out.start || out.seat || out.gate || out.terminal;
+    if (!tieneDatoDeVuelo) return null;
+  }
   return out;
 }
 
@@ -4167,11 +4178,17 @@ function interpretPastedText(text, name, opts){
 /** Campos editables por tipo, en la tarjeta de revisión (04/05/08). Sin
     tabla de tipo (ya se sabe qué tipo es): sólo lo que la lectura automática
     suele errar. Costo, teléfono y notas se completan después, abriendo la
-    reserva ya guardada — mismo criterio que dice el muestrario. */
+    reserva ya guardada — mismo criterio que dice el muestrario.
+    Todo campo que `doSaveReview` guarda tiene que tener acá su propio input:
+    nada se guarda sin que la persona lo haya visto (regla del brief). Por eso
+    "proveedor" también aparece en alojamiento y auto, no sólo en vuelo y
+    traslado, y por eso puerta/terminal/embarque aparecen cuando la reserva
+    salió de una tarjeta de embarque, aunque el muestrario sólo grafique el
+    caso de asiento. */
 function cardFieldsHtml(r, chip){
   const v = x => esc(x||"");
   if(r.type==="flight"){
-    const showSeat = chip === "Tarjeta de embarque";
+    const showBoarding = chip === "Tarjeta de embarque";
     return `
       <div class="f2">
         <div class="f"><label>Aerolínea</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
@@ -4185,14 +4202,20 @@ function cardFieldsHtml(r, chip){
         <div class="f"><label>Sale</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
         <div class="f"><label>Llega</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
       </div>
-      ${showSeat ? `
+      ${showBoarding ? `
       <div class="f2">
         <div class="f"><label>Asiento</label><input data-f="seat" class="mono" value="${v(r.seat)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
         <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
-      </div>` : `
+      </div>
+      <div class="f2">
+        <div class="f"><label>Puerta</label><input data-f="gate" class="mono" value="${v(r.gate)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
+        <div class="f"><label>Terminal</label><input data-f="terminal" class="mono" value="${v(r.terminal)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
+      </div>
+      <div class="f"><label>Hora de embarque</label><input data-f="boardingTime" class="mono" value="${v(r.boardingTime)}" placeholder="No lo encontré"></div>` : `
       <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`}`;
   }
   if(r.type==="stay") return `
+      <div class="f"><label>Alojamiento</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
       <div class="f"><label>Dirección</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
       <div class="f2">
         <div class="f"><label>Check-in</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
@@ -4200,6 +4223,7 @@ function cardFieldsHtml(r, chip){
       </div>
       <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
   if(r.type==="car") return `
+      <div class="f"><label>Rentadora</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
       <div class="f"><label>Lugar de retiro</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
       <div class="f2">
         <div class="f"><label>Retiro</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
@@ -4216,6 +4240,7 @@ function cardFieldsHtml(r, chip){
       <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
   // act / note: sin ejemplo en el muestrario, campos mínimos razonables.
   return `
+      <div class="f"><label>Proveedor</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
       <div class="f2">
         <div class="f"><label>Cuándo</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
         <div class="f"><label>Termina</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
@@ -4269,11 +4294,17 @@ async function sheetImport(trip){
   const callModel = sample ? (prompt, opts) => sample.json(prompt, {...(opts||{}), modelTier:"complex"}) : null;
   if(!callModel){ renderImportNoAi(); return; }
 
-  // Estado de la hoja: nada de esto se guarda hasta que se toca un botón
-  // explícito de guardar/completar (Store nunca se toca antes de eso).
+  // Estado de la hoja: nada de esto toca `Store` hasta el guardado final
+  // (el botón "Guardar" de la pantalla de revisión). Eso incluye las
+  // decisiones de completar un vuelo (`pendingMatches`): se acumulan acá
+  // mientras se resuelve la cola de coincidencias, y recién se escriben
+  // junto con el resto del lote. Cancelar en cualquier punto —incluso
+  // después de haber elegido "Completar vuelo" para alguna tarjeta de
+  // embarque— no deja nada escrito, porque hasta ese momento todo vive
+  // sólo en este objeto.
   const st = {
     queue:[], pastedText:"", sources:[],
-    archivos:[], reviewList:[], matchQueue:[],
+    archivos:[], reviewList:[], matchQueue:[], pendingMatches:[],
     matchDone:0, savedTotal:0, acceptPartial:null
   };
   const tripCtx = ()=> ({name:trip.name, destination:trip.destination, startDate:trip.startDate, endDate:trip.endDate});
@@ -4461,7 +4492,11 @@ async function sheetImport(trip){
   function proceed(){
     if(!alive()) return;
     if(st.matchQueue.length){ renderMatchStep(); return; }
-    if(st.reviewList.length || st.archivos.some(a=>a.estado!=="ok")){ renderReview(); return; }
+    // Un lote sólo de coincidencias de vuelo (sin reservas nuevas ni archivos
+    // con problemas) también pasa por la revisión final: ahí vive el único
+    // botón que de verdad escribe, y el único punto donde cancelar todavía
+    // sirve para no dejar nada aplicado.
+    if(st.reviewList.length || st.pendingMatches.length || st.archivos.some(a=>a.estado!=="ok")){ renderReview(); return; }
     finish();
   }
 
@@ -4570,15 +4605,14 @@ async function sheetImport(trip){
       st.reviewList.push(makeCard(reserva, "Tarjeta de embarque", meta));
       proceed();
     };
-    document.getElementById("im-complete").onclick = async ()=>{
-      const btn = document.getElementById("im-complete");
-      btn.disabled = true;
-      try{
-        await Store.saveItem(trip.id, {...ex, ...match.patch});
-        st.matchDone++;
-        st.matchQueue.shift();
-        proceed();
-      }catch(e){ toast(writeErr(e), true); btn.disabled = false; }
+    document.getElementById("im-complete").onclick = ()=>{
+      // No se escribe acá: la decisión se acumula y se aplica recién con el
+      // guardado final, junto con el resto del lote (ver comentario de `st`
+      // más arriba). Si la persona cancela después de este toque, esto no
+      // queda escrito en ningún lado.
+      st.pendingMatches.push({existente:ex, patch:match.patch});
+      st.matchQueue.shift();
+      proceed();
     };
   }
   function renderMatchAmbiguo(step){
@@ -4616,7 +4650,7 @@ async function sheetImport(trip){
       saveBtn.disabled = false;
       saveBtn.textContent = selected==="n" ? "Guardar como vuelo nuevo" : "Completar vuelo";
     });
-    saveBtn.onclick = async ()=>{
+    saveBtn.onclick = ()=>{
       if(selected===null) return;
       if(selected==="n"){
         st.matchQueue.shift();
@@ -4624,15 +4658,13 @@ async function sheetImport(trip){
         proceed();
         return;
       }
-      saveBtn.disabled = true;
+      // Igual que en "Completar vuelo" del caso sin ambigüedad: se acumula,
+      // no se escribe. El guardado final es el único lugar que toca `Store`.
       const ex = cand[Number(selected)];
       const patch = ImportEngine.buildFlightPatch(reserva, ex);
-      try{
-        await Store.saveItem(trip.id, {...ex, ...patch});
-        st.matchDone++;
-        st.matchQueue.shift();
-        proceed();
-      }catch(e){ toast(writeErr(e), true); saveBtn.disabled = false; }
+      st.pendingMatches.push({existente:ex, patch});
+      st.matchQueue.shift();
+      proceed();
     };
   }
 
@@ -4661,21 +4693,36 @@ async function sheetImport(trip){
       el.querySelectorAll("[data-f]").forEach(inp=>{ c.reserva[inp.dataset.f] = inp.value.trim(); });
     });
   }
+  /** Texto del único botón que de verdad escribe: nombra las dos cosas que
+      puede llegar a hacer (guardar reservas nuevas, completar vuelos por
+      tarjeta de embarque), nunca un "Guardar" genérico que esconda la mitad
+      de lo que va a pasar. */
+  function saveReviewLabel(n, m){
+    if(n && m) return `Guardar ${n} ${n===1?"reserva":"reservas"} y completar ${m} ${m===1?"vuelo":"vuelos"}`;
+    if(m) return `Completar ${m} ${m===1?"vuelo":"vuelos"}`;
+    if(n) return `Guardar ${n} ${n===1?"reserva":"reservas"}`;
+    return "Nada para guardar";
+  }
   function renderReview(){
     if(!alive()) return;
     const cards = st.reviewList;
+    const matches = st.pendingMatches;
     const issues = st.archivos.filter(a=>a.estado!=="ok");
-    const n = cards.length, totalArchivos = st.archivos.length;
-    const noticeTxt = n
-      ? `Encontré ${n} ${n===1?"reserva":"reservas"}${totalArchivos>1?` en ${totalArchivos} archivos`:""}. ${issues.length?"Los que no aportaron nada, mirá el detalle más abajo. ":""}Revisá los datos y corregí lo que haga falta antes de guardar.`
+    const n = cards.length, m = matches.length, totalArchivos = st.archivos.length;
+    const encontrados = [];
+    if(n) encontrados.push(`${n} ${n===1?"reserva":"reservas"}`);
+    if(m) encontrados.push(`${m} ${m===1?"vuelo":"vuelos"} para completar con la tarjeta de embarque`);
+    const noticeTxt = encontrados.length
+      ? `Encontré ${encontrados.join(" y ")}${totalArchivos>1?` en ${totalArchivos} archivos`:""}. ${issues.length?"Los que no aportaron nada, mirá el detalle más abajo. ":""}${n?"Revisá los datos y corregí lo que haga falta antes de guardar.":"Nada de esto se aplicó todavía: se escribe recién al confirmar."}`
       : "Ya no queda ninguna reserva para revisar. Mirá el detalle de los archivos más abajo.";
     const body = `${marker}
       <div class="notice">${svg(I.info)}<span class="bd">${esc(noticeTxt)}</span></div>
       ${n?`<div class="stack">${cards.map(reviewCardHtml).join("")}</div>
         <p class="tiny muted" style="margin:0">Costo, teléfono y notas se completan después, abriendo la reserva ya guardada. Acá sólo lo que la lectura automática suele errar: fechas, rutas y códigos.</p>`:""}
       ${issues.length?issuesListHtml(issues):""}`;
+    const total = n + m;
     const footer = `<button class="btn ghost" id="im-cancel">Cancelar</button>
-      <button class="btn primary" id="im-save" ${n?"":"disabled"}>${svg(I.spark)} ${n?`Guardar ${n} ${n===1?"reserva":"reservas"}`:"Nada para guardar"}</button>`;
+      <button class="btn primary" id="im-save" ${total?"":"disabled"}>${svg(I.spark)} ${saveReviewLabel(n,m)}</button>`;
     openSheet("Importar reservas", body, footer);
     document.getElementById("im-cancel").onclick = closeSheet;
     document.querySelectorAll("[data-discard]").forEach(b=>{
@@ -4686,16 +4733,22 @@ async function sheetImport(trip){
       };
     });
     bindIssuesActions();
-    if(n) document.getElementById("im-save").onclick = doSaveReview;
+    if(total) document.getElementById("im-save").onclick = doSaveReview;
   }
   async function doSaveReview(){
     if(!alive()) return;
     syncReviewInputsToState();
     const cards = st.reviewList.slice();
-    if(!cards.length) return;
+    const matches = st.pendingMatches.slice();
+    if(!cards.length && !matches.length) return;
     const saveBtn = document.getElementById("im-save");
     saveBtn.disabled = true; saveBtn.innerHTML = `<span class="spin"></span> Guardando…`;
     try{
+      // Primero los vuelos que se completan (acumulados desde 06/07/07B, sin
+      // haber tocado `Store` hasta ahora), después las reservas nuevas.
+      for(const pm of matches){
+        await Store.saveItem(trip.id, {...pm.existente, ...pm.patch});
+      }
       for(const c of cards){
         const r = c.reserva;
         const type = TYPES[r.type] ? r.type : "note";
@@ -4712,11 +4765,18 @@ async function sheetImport(trip){
         });
       }
       st.savedTotal += cards.length;
+      st.matchDone += matches.length;
       st.reviewList = [];
+      st.pendingMatches = [];
       finish();
     }catch(e){
+      // Si falla a mitad de camino puede quedar parte del lote ya escrito
+      // (algunos `Store.saveItem` resolvieron antes del que falló) — mismo
+      // comportamiento que ya tenía el guardado de reservas nuevas frente a
+      // un error de red a mitad de lote. Se muestra qué falló para que la
+      // persona reintente sabiendo que puede haber quedado algo aplicado.
       toast(writeErr(e), true);
-      saveBtn.disabled = false; saveBtn.innerHTML = `${svg(I.spark)} Guardar ${cards.length} ${cards.length===1?"reserva":"reservas"}`;
+      saveBtn.disabled = false; saveBtn.innerHTML = `${svg(I.spark)} ${saveReviewLabel(cards.length, matches.length)}`;
     }
   }
 

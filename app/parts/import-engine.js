@@ -348,8 +348,19 @@ function sanitizeReservation(x) {
   STRING_FIELDS.forEach(function (f) {
     out[f] = typeof x[f] === "string" ? x[f].trim() : "";
   });
-  // Sin título ni proveedor no hay nada que mostrarle a la persona para revisar.
-  if (!out.title && !out.provider) return null;
+  // Sin título ni proveedor no hay nada que mostrarle a la persona para revisar
+  // — EXCEPTO una tarjeta de embarque (VAL-42): ahí el título lo termina
+  // aportando el vuelo ya cargado que se va a completar, no la tarjeta. El
+  // estado 07B del diseño ("el disparador más frecuente") es justamente una
+  // tarjeta sin aerolínea ni ruta legibles, sólo asiento y fecha. Alcanza con
+  // algún dato que sirva para identificar o completar un vuelo: número de
+  // vuelo, fecha de salida, asiento, puerta o terminal. Sin ninguno de esos
+  // tampoco hay nada que mostrar, y se descarta igual.
+  if (!out.title && !out.provider) {
+    if (out.type !== "flight") return null;
+    var tieneDatoDeVuelo = out.flightNumber || out.start || out.seat || out.gate || out.terminal;
+    if (!tieneDatoDeVuelo) return null;
+  }
   return out;
 }
 
