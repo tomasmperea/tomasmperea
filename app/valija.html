@@ -566,7 +566,13 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 
 /* C2. Botón de origen del archivo: mismo aspecto que .tp button, pero es un
    <label> que activa un <input type=file> vecino. */
-.tp label.tpbtn{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:all .14s}
+.tp label.tpbtn{position:relative;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:all .14s}
+/* El campo de archivo va invisible pero ENCIMA del botón, ocupándolo entero.
+   Así el toque cae sobre el propio campo: una etiqueta apuntando a un campo
+   escondido fuera de pantalla no abre el selector en varios navegadores de
+   teléfono, y el botón queda muerto. */
+.tp label.tpbtn input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0;z-index:1}
+.tp label.tpbtn:focus-within{outline:2.5px solid var(--accent);outline-offset:2px}
 .tp label.tpbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tp label.tpbtn:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 
@@ -4381,12 +4387,12 @@ async function sheetImport(trip){
       <div class="f">
         <label>Cómo lo cargás</label>
         <div class="tp tp3">
-          <label class="tpbtn" for="im_cam">${svg(I.cam)} Sacar foto <span class="n">con la cámara</span></label>
-          <input id="im_cam" type="file" accept="image/*" capture="environment" class="sr">
-          <label class="tpbtn" for="im_gal">${svg(I.gallery)} Galería <span class="n">fotos y capturas</span></label>
-          <input id="im_gal" type="file" accept="image/*" multiple class="sr">
-          <label class="tpbtn" for="im_doc">${svg(I.doc)} Archivo <span class="n">PDF o imagen</span></label>
-          <input id="im_doc" type="file" accept="application/pdf,image/*" multiple class="sr">
+          <label class="tpbtn">${svg(I.cam)} Sacar foto <span class="n">con la cámara</span>
+            <input id="im_cam" type="file" accept="image/*" capture="environment"></label>
+          <label class="tpbtn">${svg(I.gallery)} Galería <span class="n">fotos y capturas</span>
+            <input id="im_gal" type="file" accept="image/*" multiple></label>
+          <label class="tpbtn">${svg(I.doc)} Archivo <span class="n">PDF o imagen</span>
+            <input id="im_doc" type="file" accept="application/pdf,image/*" multiple></label>
         </div>
         <span class="hint">Podés elegir varios a la vez, y combinar fotos con PDF en la misma carga.</span>
       </div>
