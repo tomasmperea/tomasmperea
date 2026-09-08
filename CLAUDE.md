@@ -69,6 +69,27 @@ Los mensajes de error dicen qué pasó y qué hacer. Nunca piden disculpas ni cu
 Los nombres de campos en la interfaz son los que usa un viajero, no los del modelo de datos. Se dice "código
 de reserva", no "confirmation".
 
+## Cómo se prueba
+
+Dos errores llegaron a la app publicada por probar mal, no por programar mal. Los dos son el mismo patrón:
+una prueba que valida lo que suponemos en vez de lo que pasa.
+
+**Empezá por el gesto, no por el evento.** Si la función se usa tocando un botón, la prueba toca el botón.
+Disparar a mano el evento interno que ese botón debería producir saltea justamente el tramo donde vive el
+bug. Los botones de importar quedaron muertos en el teléfono y ninguna prueba lo vio, porque todas
+disparaban el evento del campo de archivo sin tocar nunca el botón.
+
+Antes de dar por buena una función, preguntá: ¿qué toca la persona, y mi prueba toca eso?
+
+**Un simulador replica el contrato, no lo que creemos.** Cuando algo se prueba contra una pieza de la
+plataforma que no está disponible acá, el simulador se escribe leyendo el contrato, no de memoria. El primero
+que escribimos copió una suposición equivocada sobre cómo se leen los datos, así que las pruebas pasaban
+mientras la app se veía vacía. Queda `app/parts/db-mock.js` como referencia de cómo se hace.
+
+**Lo que no se pudo verificar se dice.** Este entorno bloquea el repositorio de librerías externas, así que
+nada que dependa de esa descarga se puede dar por funcionando. Se declara pendiente de la app publicada, con
+los pasos para comprobarlo.
+
 ## Qué significa terminado
 
 Una entrega está lista cuando cumple los criterios de aceptación del brief de la iteración, funciona en un

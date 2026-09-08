@@ -21,6 +21,17 @@ Después de cubrir los criterios, buscá lo que el brief no dice. Ahí es donde 
 - **Concurrencia.** Dos personas editando el mismo viaje.
 - **Datos sucios.** Fechas al revés, campos con comillas y símbolos, acentos, caracteres que rompen HTML.
 
+## La regla que más importa
+
+**Probá el gesto, no el evento.** Si la función se usa tocando algo, tocá eso. Disparar a mano el evento
+interno que ese control debería producir saltea el tramo donde vive el bug.
+
+Ya pasó: los botones de importar no abrían nada en el teléfono y ninguna prueba lo detectó, porque todas
+disparaban el evento del campo de archivo sin tocar nunca el botón. La función estaba muerta y las pruebas
+en verde.
+
+Antes de dar por probada una función, preguntate qué toca la persona y si tu prueba toca eso.
+
 ## Qué entregás
 
 Un archivo en `docs/qa/` con dos partes:
