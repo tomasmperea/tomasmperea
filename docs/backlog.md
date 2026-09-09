@@ -302,6 +302,23 @@ Como viajero quiero compartir un viaje puntual sin dar acceso al resto de mis vi
 - Resuelve la limitación principal documentada en el PRD.
 - **Depende de:** VAL-13.
 
+### VAL-54 · Lo nuevo de la valija es nuevo para cada uno — P2
+
+Como viajero que comparte un viaje quiero que la marca de "nuevo" en la valija sea mía, y no que se me borre
+porque otro ya la vio.
+
+Hoy `nuevo` es una propiedad del ítem en el documento compartido de la lista. Si una persona recorre la
+valija, las marcas se limpian para todas. Se decidió así al integrar el bloque B de la iteración 2, y es
+aceptable mientras el permiso siga siendo por valija: dos personas empacando en paralelo es raro cuando
+compartir implica dar acceso a todo.
+
+Deja de ser aceptable con VAL-12, que es cuando compartir un viaje puntual se vuelve la forma normal de
+usar la app.
+
+- La marca de ítem nuevo se limpia por persona, no por documento.
+- Necesita identidad por visitante, que hoy la plataforma no da.
+- **Depende de:** VAL-12, VAL-13.
+
 ### VAL-13 · Cuentas y backend — P0
 Como equipo necesitamos identidad propia y un servidor que corra sin la app abierta, para habilitar avisos,
 buzón y permisos.
