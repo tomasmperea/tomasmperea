@@ -541,6 +541,108 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .pk-qty .v{font-family:var(--f-mono);font-size:30px;font-weight:500;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
 
 .chip.own{border-style:dashed;border-color:var(--ink-3);color:var(--ink-3)}
+
+/* ============================================================
+   LA VALIJA RAZONA SOBRE EL VIAJE — componentes nuevos
+   (VAL-44, VAL-45, VAL-46, VAL-43). Copiados del muestrario
+   aprobado app/parts/packing-ui-b.html, Bloque C (CB1 a CB7).
+   Sin tokens nuevos: todo sale de los de :root de arriba.
+   ============================================================ */
+
+/* --- CB1. Un aviso con dos acciones ---
+   El .notice ya soporta una acción (.act). Cuando el mismo aviso tiene
+   que ofrecer dos caminos (ver lo que agrego / no ahora), van en fila:
+   dos objetivos separados, nunca uno adentro del otro. */
+.notice .acts{display:flex;gap:16px;flex-wrap:wrap;margin-top:7px}
+.notice .acts .act{margin-top:0}
+.notice .acts .act.sec{font-weight:600;text-decoration:none;opacity:.85}
+.notice .acts .act.sec:hover{text-decoration:underline}
+.notice b.n{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* --- CB2. El aviso anclado al pie ---
+   Cuando el viaje cambia con la pantalla de la valija ABIERTA, el aviso
+   NO puede entrar arriba: correría la lista bajo el pulgar en medio del
+   tildado. Entra desde abajo, encima del FAB, sin mover un píxel de la
+   lista. Mismo contenido y mismas acciones que arriba. */
+.pk-dock{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);z-index:44;
+  width:calc(100% - 32px);max-width:var(--shell);
+  animation:pkdock .26s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes pkdock{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.pk-dock .notice{box-shadow:var(--shadow-lift);border:1px solid var(--line)}
+
+/* --- CB3. La marca de "ítem nuevo" (nuevo:true) ---
+   Una barra ámbar de 3px al filo izquierdo de la fila, sin alto propio ni
+   layout propio: no empuja nada. Va acompañada de la palabra "nuevo" en
+   la línea de motivo, porque una marca que existe sólo en color no se lee
+   con baja visión al color ni con lector de pantalla.
+   Se limpia con clearNewFlags() cuando la persona las VIO, no cuando las
+   aceptó (ver docs/design/valija-inteligente-b.md, sección 4.3). */
+.pk-row.is-new .pk-slide{box-shadow:inset 3px 0 0 var(--flap)}
+.pk-newtag{font-family:var(--f-mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--warn);font-weight:500;white-space:nowrap}
+.pk-cat-hd .cnt .chip{margin-left:6px}
+
+/* --- CB4. La marca de "te propongo sacarlo" (sugerenciaQuitar) ---
+   La marca va SOBRE el botón que acepta la propuesta: el mismo círculo de
+   descartar que ya existe, teñido. No suma una fila, ni una línea, ni un
+   alto. El texto completo de la propuesta vive en la hoja. */
+.pk-drop{position:relative}
+.pk-drop.sug{color:var(--warn)}
+.pk-drop.sug::before{
+  content:"";position:absolute;top:50%;left:50%;width:30px;height:30px;
+  margin:-15px 0 0 -15px;border-radius:50%;background:var(--flap-soft);
+}
+.pk-drop.sug svg{position:relative}
+.pk-drop.sug:hover{background:none}
+.pk-drop.sug:hover::before{background:var(--flap);opacity:.35}
+
+/* --- CB5. Hoja "Lo que le sumo a la valija" (VAL-46) ---
+   Los ítems nuevos agrupados por la reserva que los motivó. El grupo es
+   la unidad de sentido: se entiende "esto pasó porque cargué el auto",
+   no una lista suelta de cosas. */
+.pk-plan{display:flex;flex-direction:column;gap:12px}
+.pk-plan-g{border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;background:var(--surface)}
+.pk-plan-hd{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;background:var(--surface-2);border-bottom:1px solid var(--line-2);font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.pk-plan-hd b{color:var(--ink);font-weight:600}
+.pk-plan-hd svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-plan-it{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.pk-plan-it:last-child{border-bottom:0}
+.pk-plan-it .ic{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-3)}
+.pk-plan-it .ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-plan-it .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pk-plan-it .nm{display:flex;align-items:baseline;gap:9px;font-size:14px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.pk-plan-it .nm .q{flex:none;font-family:var(--f-mono);font-size:12.5px;font-weight:400;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-plan-it .r{font-size:11.5px;color:var(--ink-2);line-height:1.4}
+
+/* --- CB6. Hoja "Lo que capaz no necesitás" (VAL-43) ---
+   Una tarjeta por propuesta, cada una con sus dos salidas del mismo peso
+   visual: sacarlo o dejarlo. Ninguna es la opción por defecto, porque la
+   app no sabe cuál es la correcta. Se resuelven de a una. */
+.pk-prop{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);overflow:hidden}
+.pk-prop-bd{padding:12px 12px 0}
+.pk-prop-bd .nm{font-size:14.5px;font-weight:600;line-height:1.3;margin-bottom:3px;overflow-wrap:anywhere}
+.pk-prop-bd .r{font-size:12.5px;color:var(--ink-2);line-height:1.45}
+.pk-prop-bd .was{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pk-prop-ft{display:flex;gap:8px;padding:11px 12px 12px}
+.pk-prop-ft .btn{flex:1}
+.pk-prop.done{background:var(--surface-2);border-style:dashed}
+.pk-prop.done .pk-prop-bd{padding:11px 12px}
+.pk-prop.done .pk-prop-bd .nm{font-size:13.5px;font-weight:500;color:var(--ink-3);margin:0}
+.pk-prop.done .pk-prop-bd .r{font-family:var(--f-mono);font-size:11px;letter-spacing:.05em;color:var(--ink-3);margin-top:3px}
+
+/* --- CB7. La propuesta de sacar, dentro de la hoja del ítem (estado 11) ---
+   Mismo contenido que la tarjeta de la hoja de propuestas, para quien
+   llega por la fila en vez de por el aviso. Va arriba de todo: es lo
+   nuevo que hay que decidir sobre ese ítem. */
+.pk-sug{border-radius:12px;background:var(--flap-soft);color:var(--warn);padding:11px 12px;display:flex;flex-direction:column;gap:9px}
+.pk-sug .hd{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45}
+.pk-sug .hd svg{width:15px;height:15px;flex:none;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-sug .hd b{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:500;margin-bottom:3px}
+.pk-sug .ft{display:flex;gap:8px}
+.pk-sug .ft .btn{flex:1}
+
 .spin{
   width:15px;height:15px;border:2px solid currentColor;border-top-color:transparent;
   border-radius:50%;animation:sp .7s linear infinite;
@@ -659,6 +761,10 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
   </main>
 </div>
 <div id="fab"></div>
+<!-- Aviso anclado al pie (estado 16). Vive fuera de #fab y con aria-live fijo
+     desde la carga: una región viva creada junto con su contenido no se
+     anuncia. Ver docs/design/valija-inteligente-b.md § 9, punto 3. -->
+<div id="pkdock" aria-live="polite"></div>
 <div id="modal"></div>
 <div id="toast"></div>
 
@@ -1137,16 +1243,25 @@ function routeCodes(trip, items){
 
 /* ============================================================
    VALIJA INTELIGENTE — MOTOR DE SUGERENCIA DE EQUIPAJE
-   Épica VAL-30..33. Embebido tal cual desde app/parts/packing-engine.js
-   (45 pruebas en verde, node app/parts/packing-engine.test.js), sin el
-   envoltorio UMD/module.exports que sólo servía para correrlo con node:
-   acá vive directo como PackingEngine dentro del script de la app.
+   Épica VAL-30..VAL-33 (iteración 1) y VAL-43..VAL-46 (iteración 2,
+   bloque B: "la valija razona sobre el viaje completo").
+   Embebido tal cual desde app/parts/packing-engine.js (66 pruebas en
+   verde, node app/parts/packing-engine.test.js), sin el envoltorio UMD
+   que sólo servía para correrlo con node: acá vive directo como
+   PackingEngine dentro del script de la app.
 
    Tres capas, siempre en este orden:
      1. reglas locales determinísticas (BASE_RULES) — sin conexión, siempre.
      2. ajuste por destino con IA (enrichWithDestination) — puede fallar,
-        la lista base sirve igual.
+        la lista base sirve igual. Desde VAL-44 ve el resumen seguro de
+        las reservas del viaje; desde VAL-43 puede proponer SACAR ítems
+        (nunca los saca sola, y nunca toca los críticos).
      3. aprendizaje del historial (learnFromHistory) — sin red, sin IA.
+
+   VAL-45: ningún ítem repetido entre capas, por clave canónica
+   (canonicalKey / SYNONYM_GROUPS).
+   VAL-46: planListUpdate / planListUpdateAsync detectan que la lista
+   quedó vieja cuando el viaje crece, y clearNewFlags limpia la marca.
 
    El modelo de datos completo (un documento por viaje, ítems indexados
    por clave, tres estados, precedencia de origen) está documentado en
@@ -1182,8 +1297,11 @@ var ORIGEN = { REGLA:"regla", DESTINO:"destino", HISTORIAL:"historial", MANUAL:"
 /**
  * Precedencia del origen: gana el número más chico, es decir la capa
  * más básica. Si una regla ya ponía el ítem, se acredita a la regla.
+ * VAL-45: primero regla, después historial, después la capa de destino
+ * con IA. Un ítem propio (manual) sólo se acredita a la persona cuando
+ * ninguna otra capa lo cubre.
  */
-var ORIGEN_PRECEDENCIA = { regla:0, destino:1, historial:2, manual:3 };
+var ORIGEN_PRECEDENCIA = { regla:0, historial:1, destino:2, manual:3 };
 
 /** Categorías, en el orden en que se muestran. */
 var CATEGORIES = [
@@ -1249,6 +1367,139 @@ function slug(label) {
     .filter(Boolean)
     .map(singularizeWord)
     .join("-");
+}
+
+/* ============================================================
+   VAL-45 · SINÓNIMOS Y CLAVE CANÓNICA
+   Dos ítems pueden significar lo mismo sin ser el mismo texto:
+   "adaptador de enchufe" y "adaptador de corriente" son un solo
+   ítem. Los sinónimos se declaran como datos acá, no como
+   condicionales sueltos en el motor.
+
+   Cada grupo es una familia de ítems equivalentes:
+     canon    el nombre "de referencia" de la familia (de acá sale
+              la clave canónica, con el mismo slug() que usa todo
+              el motor)
+     palabras frases que, normalizadas con slug(), son ese ítem
+     patron   (opcional) expresión regular para familias abiertas,
+              donde enumerar cada variante es imposible: el tipo de
+              enchufe cambia de país en país ("adaptador tipo F",
+              "adaptador tipo C"...). Se usa sólo cuando la lista
+              cerrada de `palabras` no alcanza, y a propósito con un
+              patrón acotado (tiene que hablar de enchufe/corriente/
+              toma/tipo de clavija) para no capturar de más un
+              "adaptador HDMI" o un "adaptador de lente".
+
+   ¿Hasta dónde llega esto? Hasta donde el diccionario declara.
+   No hay comparación semántica ni embeddings: dos ítems que
+   signifiquen lo mismo con palabras que no están acá (o con errores
+   de tipeo) no se detectan. Es una limitación conocida, documentada
+   en docs/design/packing-engine.md.
+   ============================================================ */
+var SYNONYM_GROUPS = [
+  { canon:"Adaptador de enchufe",
+    palabras:["Adaptador de enchufe","Adaptador de corriente","Adaptador universal","Adaptador universal de enchufe","Adaptador de viaje","Enchufe universal","Adaptador de toma corriente"],
+    // patron trabaja sobre la CLAVE ya normalizada (slug: minúsculas, con
+    // guiones en vez de espacios), no sobre el texto original.
+    patron:/^adaptador-.*(enchufe|corriente|toma|clavija|universal|viaje|tipo-[a-n]\b)/ },
+  { canon:"Celular y cargador",
+    palabras:["Celular y cargador","Cargador de celular","Cargador de teléfono","Cargador para el celular","Cargador de celular y cable"] },
+  { canon:"Protector solar",
+    palabras:["Protector solar","Bloqueador solar","Crema solar","Filtro solar","Pantalla solar"] },
+  { canon:"Repelente de mosquitos",
+    palabras:["Repelente de mosquitos","Repelente de insectos","Repelente"] },
+  { canon:"Batería portátil",
+    palabras:["Batería portátil","Power bank","Cargador portátil","Batería externa","Batería de respaldo"] },
+  { canon:"Botiquín básico",
+    palabras:["Botiquín básico","Botiquín de primeros auxilios","Kit de primeros auxilios","Botiquín"] },
+  { canon:"Gorra o sombrero",
+    palabras:["Gorra o sombrero","Gorra","Sombrero","Gorro para el sol"] },
+  { canon:"Toallón de playa",
+    palabras:["Toallón de playa","Toalla de playa","Toalla para la playa"] },
+  { canon:"Seguro de viaje",
+    palabras:["Seguro de viaje","Seguro médico de viaje","Seguro de asistencia al viajero","Asistencia al viajero"] },
+  { canon:"Efectivo en moneda local",
+    palabras:["Efectivo en moneda local","Dinero en efectivo","Efectivo del destino","Moneda local"] },
+  { canon:"Copias de las reservas",
+    palabras:["Copias de las reservas","Copia de las reservas","Reservas impresas","Impresión de las reservas"] },
+  { canon:"Linterna frontal",
+    palabras:["Linterna frontal","Linterna","Frontal"] },
+  { canon:"Botas o zapatillas de trekking",
+    palabras:["Botas o zapatillas de trekking","Botas de trekking","Zapatillas de trekking","Calzado de montaña"] },
+  { canon:"Campera impermeable",
+    palabras:["Campera impermeable","Campera de lluvia","Piloto","Rompevientos impermeable"] },
+  { canon:"Primera capa térmica",
+    palabras:["Primera capa térmica","Ropa térmica","Térmica","Capa base térmica"] },
+  { canon:"Muda formal",
+    palabras:["Muda formal","Ropa formal","Vestimenta formal"] },
+  { canon:"Notebook y cargador",
+    palabras:["Notebook y cargador","Laptop y cargador","Computadora portátil y cargador"] },
+  { canon:"Ojotas",
+    palabras:["Ojotas","Sandalias","Chinelas","Chancletas"] },
+  { canon:"Malla",
+    palabras:["Malla","Traje de baño","Bikini","Vestido de baño"] },
+  { canon:"Botella reutilizable",
+    palabras:["Botella reutilizable","Botella de agua","Cantimplora"] }
+];
+
+/** clave canónica -> mapa de búsqueda exacta, armado una sola vez. */
+var SYNONYM_MAP = SYNONYM_GROUPS.reduce(function (map, g) {
+  var canon = slug(g.canon);
+  (g.palabras || []).forEach(function (w) { map[slug(w)] = canon; });
+  map[canon] = canon;
+  return map;
+}, {});
+
+/**
+ * La clave "de familia" de un ítem: dos ítems son el mismo si tienen
+ * la misma clave canónica, aunque el texto original sea distinto.
+ * @param {string} clave ya normalizada con slug()
+ * @returns {string}
+ */
+function canonicalKey(clave) {
+  if (!clave) return clave;
+  if (SYNONYM_MAP[clave]) return SYNONYM_MAP[clave];
+  for (var i = 0; i < SYNONYM_GROUPS.length; i++) {
+    var g = SYNONYM_GROUPS[i];
+    if (g.patron && g.patron.test(clave)) return slug(g.canon);
+  }
+  return clave;
+}
+
+/**
+ * Busca, entre las claves de un objeto de ítems, una que signifique lo
+ * mismo que `clave` (misma familia canónica). No exige coincidencia
+ * literal.
+ * @param {Object} itemsObj objeto indexado por clave
+ * @param {string} clave clave (o su canónica) a buscar
+ * @returns {string|null} la clave existente que coincide, o null
+ */
+function findCanonicalMatch(itemsObj, clave) {
+  var canon = canonicalKey(clave);
+  var keys = Object.keys(itemsObj || {});
+  for (var i = 0; i < keys.length; i++) {
+    if (canonicalKey(keys[i]) === canon) return keys[i];
+  }
+  return null;
+}
+
+/**
+ * VAL-45: la verificación exportada. Dada una lista, confirma que no
+ * hay dos ítems que signifiquen lo mismo (misma clave canónica).
+ * @param {Object} list
+ * @returns {{ok:boolean, duplicados:Array<{canon:string, claves:string[]}>}}
+ */
+function verifyNoDuplicateItems(list) {
+  var porCanon = {};
+  itemsArray(list).forEach(function (i) {
+    if (!i || !i.clave) return;
+    var canon = canonicalKey(i.clave);
+    (porCanon[canon] = porCanon[canon] || []).push(i.clave);
+  });
+  var duplicados = Object.keys(porCanon)
+    .filter(function (c) { return uniq(porCanon[c]).length > 1; })
+    .map(function (c) { return { canon:c, claves:uniq(porCanon[c]) }; });
+  return { ok:duplicados.length === 0, duplicados:duplicados };
 }
 
 function parseDay(s) {
@@ -1446,10 +1697,10 @@ var FACTS = {
 var BASE_RULES = [
 
   /* ---------- DOCUMENTACIÓN ---------- */
-  { id:"doc.dni", nombre:"DNI", categoria:"documentacion",
+  { id:"doc.dni", nombre:"DNI", categoria:"documentacion", critico:true,
     motivo:"Siempre, aunque el viaje sea en auto y a cien kilómetros." },
 
-  { id:"doc.pasaporte", nombre:"Pasaporte", categoria:"documentacion",
+  { id:"doc.pasaporte", nombre:"Pasaporte", categoria:"documentacion", critico:true,
     when:{ international:true },
     motivo:"Viaje internacional. Revisá que la vigencia cubra seis meses después de la vuelta." },
 
@@ -1645,8 +1896,28 @@ var BASE_RULES = [
 
 /* Completa la clave que falte y fija el orden de presentación. */
 BASE_RULES = BASE_RULES.map(function (r, i) {
-  return Object.assign({}, r, { clave:r.clave || slug(r.nombre), orden:orderOf(r.categoria, i) });
+  return Object.assign({}, r, { clave:r.clave || slug(r.nombre), orden:orderOf(r.categoria, i), critico:!!r.critico });
 });
+
+/**
+ * VAL-43: claves de los ítems que ninguna capa puede sacar automáticamente,
+ * ni siquiera cuando lo propone la capa de destino con IA. Se declaran en
+ * el catálogo (`critico:true` en la regla), no como una lista aparte que
+ * se pueda desincronizar: la documentación de identidad (DNI, pasaporte)
+ * es el piso que no se toca.
+ */
+var CRITICAL_CLAVES = BASE_RULES.reduce(function (m, r) {
+  if (r.critico) m[r.clave] = true;
+  return m;
+}, {});
+
+/** VAL-43: ¿este ítem (por clave o su familia de sinónimos) es intocable? */
+function isCriticalClave(clave) {
+  if (!clave) return false;
+  if (CRITICAL_CLAVES[clave]) return true;
+  var canon = canonicalKey(clave);
+  return Object.keys(CRITICAL_CLAVES).some(function (c) { return canonicalKey(c) === canon; });
+}
 
 /** Orden de presentación: primero la categoría, después la posición dentro de ella. */
 function orderOf(categoria, sub) {
@@ -1660,7 +1931,7 @@ function orderOf(categoria, sub) {
  */
 function validateRules(rules) {
   rules = rules || BASE_RULES;
-  var problems = [], ids = {}, claves = {};
+  var problems = [], ids = {}, claves = {}, canones = {};
   rules.forEach(function (r) {
     if (!r.id) problems.push("regla sin id: " + JSON.stringify(r));
     if (ids[r.id]) problems.push("id repetido: " + r.id);
@@ -1670,6 +1941,13 @@ function validateRules(rules) {
     if (!r.nombre) problems.push("regla sin nombre: " + r.id);
     if (CATEGORY_ORDER[r.categoria] === undefined) problems.push("categoría desconocida en " + r.id + ": " + r.categoria);
     if (!r.motivo) problems.push("regla sin motivo: " + r.id);
+    // VAL-45: dos reglas del catálogo no pueden significar lo mismo, ni
+    // siquiera por sinónimo declarado — sería una regla duplicada disfrazada.
+    var canon = canonicalKey(r.clave);
+    if (canones[canon] && canones[canon] !== r.clave) {
+      problems.push("dos reglas apuntan al mismo ítem por sinónimo: \"" + canones[canon] + "\" y \"" + r.clave + "\" (" + r.id + ")");
+    }
+    canones[canon] = r.clave;
   });
   return problems;
 }
@@ -1780,10 +2058,7 @@ function tripContext(trip, items, opts) {
 
 /* ============================================================
    TIPO DE VIAJE SUGERIDO
-   VAL-30: el tipo se propone según palabras clave del destino, las
-   notas del viaje y la duración. NO compara este viaje contra otros
-   viajes guardados: eso es lo que hace learnFromHistory (capa 3),
-   sobre los ÍTEMS, no sobre el tipo.
+   VAL-30: el tipo se propone según el destino y la duración.
    ============================================================ */
 
 var TYPE_HINTS = [
@@ -1796,7 +2071,6 @@ var TYPE_HINTS = [
 
 /**
  * Propone un tipo de viaje mirando el destino, las reservas y la duración.
- * Mira SÓLO este viaje (palabras clave y días); no compara con otros viajes.
  * @param {Object} trip
  * @param {Array} items
  * @param {Object} [ctx] contexto ya armado, para no recalcularlo
@@ -1938,6 +2212,14 @@ function itemList(list, opts) {
  * tan resuelta como empacar. Por eso entra en `resueltos` y en el `pct`,
  * y por eso `total` incluye los descartados en vez de restarlos.
  *
+ * Decisión de producto (no es un detalle de implementación): si descartar
+ * no mueve el progreso, la persona deja de descartar y en cambio marca como
+ * empacado lo que no va a llevar, sólo para sacarse el pendiente de encima.
+ * Ahí se pierden dos cosas a la vez: el dato de descarte, que es el único
+ * insumo del aprendizaje de VAL-32, y la confiabilidad de lo que dice estar
+ * empacado. La fórmula tiene que premiar la conducta que se quiere: descartar
+ * lo que no corresponde es tan válido como empacar lo que sí.
+ *
  * Corregido con el producto en la mano: sumar el descartado al total dejaba el
  * contador trabado, porque descartabas algo y el "de 42" no bajaba nunca. Lo
  * descartado sale del total: dejó de ser parte de la valija. El motivo de
@@ -2011,7 +2293,8 @@ function buildPackingList(input) {
 
   aprendido.promover.forEach(function (e, i) {
     // PRECEDENCIA: si una regla base ya lo puso, el origen sigue siendo "regla".
-    if (out[e.clave]) return;
+    // VAL-45: "ya lo puso" no es sólo la clave literal, es la familia de sinónimos.
+    if (out[e.clave] || findCanonicalMatch(out, e.clave)) return;
     out[e.clave] = makeItem({
       clave:e.clave, nombre:e.nombre, categoria:e.categoria || "otros", cantidad:null,
       motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (TRIP_TYPE_LABEL[ctx.tripType] || ctx.tripType).toLowerCase() + ".",
@@ -2036,7 +2319,8 @@ function buildPackingList(input) {
       internacional:ctx.international, internacionalConocido:ctx.internationalKnown,
       internacionalFuente:ctx.internationalSource, internacionalDetalle:ctx.internationalDetail,
       tipoViajeFuente:ctx.tripTypeSource, tipoViajeMotivo:ctx.tripTypeReason,
-      hechos:ctx.facts
+      hechos:ctx.facts,
+      reservas:summarizeReservationsForAI(trip, items)      // VAL-44: lo que ve la capa de IA, sin datos sensibles
     },
     capaInteligente:{ estado:"sin-ajuste", en:null, nota:"Lista base, sin ajuste por destino.", clima:"" },
     aprendizaje:{ muestra:aprendido.muestra, promovidos:aprendido.promover, suprimidos:aprendido.suprimir },
@@ -2056,7 +2340,11 @@ function buildPackingList(input) {
  *   - resucita un ítem descartado (el estado de la lista anterior manda),
  *   - pisa el origen de un ítem ya presente con uno de mayor precedencia,
  *   - pierde lo empacado, su `empacadoEn`, las notas, las cantidades
- *     corregidas a mano ni los ítems propios.
+ *     corregidas a mano ni los ítems propios,
+ *   - duplica un ítem que en la lista anterior tenía otro texto pero
+ *     significa lo mismo (VAL-45: la comparación es por clave canónica,
+ *     no sólo literal — dos generaciones no pueden llamar distinto a lo
+ *     mismo y terminar con dos filas).
  *
  * @param {Object} previous lista guardada
  * @param {Object} fresh    lista recién generada
@@ -2064,14 +2352,25 @@ function buildPackingList(input) {
  */
 function mergeLists(previous, fresh) {
   if (!previous) return fresh;
-  var prev = indexItems(itemsArray(previous));
+  var prevArr = itemsArray(previous);
+  var prev = indexItems(prevArr);
   if (!Object.keys(prev).length) return fresh;
 
-  var merged = {};
+  // VAL-45: además del índice literal, uno por familia canónica, para
+  // encontrar el ítem anterior aunque esta generación lo nombre distinto.
+  var prevPorCanon = {};
+  prevArr.forEach(function (p) {
+    if (!p || !p.clave) return;
+    var c = canonicalKey(p.clave);
+    if (!prevPorCanon[c]) prevPorCanon[c] = p;
+  });
+
+  var merged = {}, usados = {};
 
   itemsArray(fresh).forEach(function (f) {
-    var p = prev[f.clave];
+    var p = prev[f.clave] || prevPorCanon[canonicalKey(f.clave)];
     if (!p) { merged[f.clave] = f; return; }
+    usados[p.clave] = true;
     merged[f.clave] = Object.assign({}, f, {
       // el estado de la persona manda: lo descartado no revive, lo empacado sigue empacado
       estado:ESTADOS.indexOf(p.estado) >= 0 ? p.estado : ESTADO.PENDIENTE,
@@ -2087,12 +2386,19 @@ function mergeLists(previous, fresh) {
     });
   });
 
+  var claveCanonEnMerged = {};
+  Object.keys(merged).forEach(function (k) { claveCanonEnMerged[canonicalKey(k)] = true; });
+
   // Lo que la persona tocó o agregó sobrevive aunque la regla ya no aplique.
   // Incluye los descartados: si desaparecieran, la próxima generación los resucitaría.
   itemsArray(previous).forEach(function (p) {
-    if (merged[p.clave]) return;
+    if (!p || !p.clave) return;
+    if (usados[p.clave] || merged[p.clave]) return;
+    var canon = canonicalKey(p.clave);
+    if (claveCanonEnMerged[canon]) return;    // VAL-45: ya hay un equivalente en la lista fusionada
     if (p.origen === ORIGEN.MANUAL || p.estado !== ESTADO.PENDIENTE) {
       merged[p.clave] = Object.assign({}, p, { retenido:true });
+      claveCanonEnMerged[canon] = true;
     }
   });
 
@@ -2105,7 +2411,95 @@ function mergeLists(previous, fresh) {
 }
 
 /* ============================================================
-   CAPA 2 · AJUSTE POR DESTINO CON IA  (VAL-33)
+   VAL-44 · RESUMEN SEGURO DE RESERVAS PARA LA CAPA DE IA
+   Lo que se manda a la capa de destino nunca puede ser el objeto de
+   la reserva tal cual: tiene código de reserva, teléfono y dirección
+   exacta. Esta función arma el resumen que SÍ se puede mandar: tipo,
+   fechas, ciudades, duración y notas. Nada más. Se computa una vez
+   (en buildPackingList) y queda en `list.base.reservas`, así
+   `destinationPrompt` no necesita las reservas completas para armar
+   el prompt — sólo puede ver lo que ya pasó por este filtro.
+   ============================================================ */
+
+/** Sale de una nota libre cualquier secuencia larga de dígitos, por si alguien
+ *  pegó un teléfono en el campo de notas. Defensa en profundidad, no la única. */
+var DIGIT_RUN_RE = /(\+?\d[\d\s\-().]{5,}\d)/g;
+function sanitizeNotesForAI(text) {
+  var t = String(text == null ? "" : text).trim();
+  if (!t) return "";
+  return t.replace(DIGIT_RUN_RE, "[dato omitido]").slice(0, 240);
+}
+
+function hoursBetween(a, b) {
+  var da = Date.parse(a), db = Date.parse(b);
+  if (isNaN(da) || isNaN(db)) return null;
+  return (db - da) / 3600000;
+}
+
+/**
+ * VAL-44: arma el resumen seguro de reservas que ve la capa de IA.
+ * NUNCA incluye `confirmation`, `phone` ni `address`: esos campos ni
+ * se leen acá. Sólo tipo, fechas, ciudades (código de vuelo, no
+ * dirección) y notas, que es lo que sirve para decidir qué llevar.
+ * @param {Object} trip
+ * @param {Array} items reservas completas del viaje
+ * @returns {Array<Object>} resumen, listo para ir en el prompt
+ */
+function summarizeReservationsForAI(trip, items) {
+  items = (items || []).filter(Boolean);
+  var out = [];
+
+  var flights = items.filter(function (i) { return i && i.type === "flight"; })
+    .slice()
+    .sort(function (a, b) { return String(a.start || "").localeCompare(String(b.start || "")); });
+
+  flights.forEach(function (f) {
+    out.push({
+      tipo:"vuelo", desde:f.start || "", hasta:f.end || "",
+      origen:String(f.from || "").trim().toUpperCase(),
+      destino:String(f.to || "").trim().toUpperCase(),
+      notas:sanitizeNotesForAI(f.notes)
+    });
+  });
+
+  // Escala: dos vuelos consecutivos donde el primero llega adonde sale el
+  // segundo, con una espera real en el medio. Es justo el dato puntual que
+  // ninguna regla podía anticipar (VAL-44).
+  for (var i = 0; i < flights.length - 1; i++) {
+    var a = flights[i], b = flights[i + 1];
+    if (!a.to || !b.from || String(a.to).toUpperCase() !== String(b.from).toUpperCase()) continue;
+    var horas = hoursBetween(a.end, b.start);
+    if (horas == null || horas <= 0) continue;
+    out.push({ tipo:"escala", ciudad:String(a.to).toUpperCase(), duracionHoras:Math.round(horas * 10) / 10 });
+  }
+
+  items.filter(function (i) { return i && i.type === "stay"; }).forEach(function (s) {
+    var noches = daysBetweenInclusive(s.start, s.end);
+    out.push({
+      tipo:"alojamiento", desde:s.start || "", hasta:s.end || "",
+      noches:noches != null ? Math.max(0, noches - 1) : null,
+      notas:sanitizeNotesForAI(s.notes)
+    });
+  });
+
+  items.filter(function (i) { return i && i.type === "car"; }).forEach(function (c) {
+    var dias = daysBetweenInclusive(c.start, c.end);
+    out.push({ tipo:"auto", desde:c.start || "", hasta:c.end || "", dias:dias, notas:sanitizeNotesForAI(c.notes) });
+  });
+
+  items.filter(function (i) { return i && i.type === "act"; }).forEach(function (a) {
+    out.push({
+      tipo:"actividad", fecha:a.start || "",
+      titulo:String(a.title || "").trim().slice(0, 80),
+      notas:sanitizeNotesForAI(a.notes)
+    });
+  });
+
+  return out;
+}
+
+/* ============================================================
+   CAPA 2 · AJUSTE POR DESTINO CON IA  (VAL-33, ampliada en VAL-44 y VAL-43)
    El módulo no llama a claude.use. Recibe una función asíncrona
    `ask(prompt) -> objeto` y la app le pasa la implementación
    (en la app: sample.json). Así se prueba con node.
@@ -2114,6 +2508,10 @@ function mergeLists(previous, fresh) {
 /**
  * Arma el prompt de la capa de destino.
  * Lleva instrucción explícita de no inventar: antes una lista corta que un dato falso.
+ * Desde VAL-44 incluye el resumen seguro de reservas (`list.base.reservas`,
+ * armado por `summarizeReservationsForAI`), así el modelo puede razonar
+ * sobre combinaciones puntuales del viaje y no sólo sobre el destino.
+ * Desde VAL-43 también puede proponer sacar ítems que no apliquen.
  * @param {Object} list lista base ya generada
  * @returns {string}
  */
@@ -2121,6 +2519,10 @@ function destinationPrompt(list) {
   var b = (list && list.base) || {};
   var yaHay = itemsArray(list).map(function (i) { return i.nombre; }).join(", ");
   var tipo = TRIP_TYPE_LABEL[list.tipoViaje] || list.tipoViaje || "mixto";
+  var reservas = b.reservas || [];
+  var lineasReservas = reservas.length
+    ? reservas.map(function (r) { return "  - " + JSON.stringify(r); }).join("\n")
+    : "  (todavía no hay reservas cargadas)";
 
   return [
     "Sos parte de una app de viajes y ajustás una lista de equipaje al destino. Devolvés SOLO JSON.",
@@ -2132,60 +2534,123 @@ function destinationPrompt(list) {
     "- Tipo de viaje: " + tipo,
     "- " + (b.internacional ? "Es un viaje internacional." : "Es un viaje dentro del país."),
     "",
+    "Reservas del viaje (resumen seguro: nunca incluye código de reserva, teléfono ni dirección exacta):",
+    lineasReservas,
+    "",
     "La lista base ya incluye: " + (yaHay || "nada"),
     "",
-    "Agregá hasta " + MAX_AI_ITEMS + " ítems que sean específicos de ESE destino en ESA época del año y que",
-    "no estén ya en la lista base. Por ejemplo el tipo de enchufe del país, la amplitud térmica de la zona",
-    "en ese mes, la temporada de lluvias, la altura, o un requisito de ingreso conocido.",
+    "Agregá hasta " + MAX_AI_ITEMS + " ítems que sean específicos de ESE destino en ESA época del año, o de",
+    "una combinación puntual de ESTE viaje que ninguna regla genérica podría anticipar: una escala larga,",
+    "un check-in de madrugada, un alojamiento sin lavandería en un viaje largo, una actividad que pide",
+    "equipo propio. También sirve el tipo de enchufe del país, la amplitud térmica de la zona en ese mes,",
+    "la temporada de lluvias, la altura, o un requisito de ingreso conocido. Ningún ítem que agregues puede",
+    "estar ya en la lista base.",
+    "",
+    "Cuando el motivo venga de una reserva puntual, citá el dato concreto: \"tu escala en Lima es de ocho",
+    "horas\", no \"las escalas largas cansan\". Una generalidad sin el dato del viaje no sirve.",
+    "",
+    "También podés proponer SACAR ítems de \"La lista base ya incluye\" que no apliquen a este destino",
+    "puntual (por ejemplo, no hace falta visa si el país no la pide). Usá el nombre EXACTO tal como aparece",
+    "arriba. Nunca pongas documentación de identidad (DNI, pasaporte) en \"quitar\": no tiene ningún efecto,",
+    "el sistema la conserva siempre pase lo que pase acá.",
     "",
     "Devolvé este JSON exacto:",
-    '{"items":[{"nombre":"nombre corto del ítem","categoria":"documentacion|ropa|calzado|higiene|electronica|salud|destino","cantidad":numero o null,"motivo":"por qué, en una frase, mencionando el dato del destino"}],"clima":"una frase sobre el clima esperado, o vacío"}',
+    '{"items":[{"nombre":"nombre corto del ítem","categoria":"documentacion|ropa|calzado|higiene|electronica|salud|destino","cantidad":numero o null,"motivo":"por qué, en una frase, mencionando el dato del destino o de la reserva"}],"quitar":[{"nombre":"nombre EXACTO tal como aparece en la lista base","motivo":"por qué no aplica a este destino puntual"}],"clima":"una frase sobre el clima esperado, o vacío"}',
     "",
     "Reglas que no se rompen:",
-    "1. Si no estás seguro de un dato del destino, NO lo incluyas. Es preferible una lista más corta que un dato inventado.",
+    "1. Si no estás seguro de un dato del destino o de la reserva, NO lo incluyas. Es preferible una lista más corta que un dato inventado.",
     "2. Nunca inventes tipos de enchufe, temperaturas, requisitos de visa, nombres de lugares ni precios. Si no lo sabés con certeza, omitilo.",
-    '3. Si no tenés nada seguro para agregar, devolvé {"items":[],"clima":""}.',
-    "4. Cada ítem lleva su motivo. Un ítem sin motivo no sirve: no lo incluyas.",
+    '3. Si no tenés nada seguro para agregar ni para sacar, devolvé {"items":[],"quitar":[],"clima":""}.',
+    "4. Cada ítem y cada sugerencia de \"quitar\" lleva su motivo. Sin motivo, no sirve: no lo incluyas.",
     "5. Nada de marcas, links ni recomendaciones de compra.",
-    "6. Escribí en español rioplatense, de vos, en frases cortas."
+    "6. Escribí en español rioplatense, de vos, en frases cortas.",
+    "7. \"quitar\" nunca lleva documentación de identidad, aunque te parezca que sobra."
   ].join("\n");
 }
 
 /**
  * Valida y normaliza lo que devolvió la IA. Descarta todo lo que no cumple.
+ *
+ * VAL-45: un ítem que la IA propone no entra si ya existe en la lista, ni
+ * literal ni por sinónimo (`canonicalKey`) — así nunca se acredita a la IA
+ * lo que una regla o el historial ya pusieron.
+ *
+ * VAL-43: `quitar` sólo puede apuntar a un ítem que existe en la lista, que
+ * no sea propio de la persona (`origen:"manual"`, eso no lo toca nadie más
+ * que ella) y que no esté marcado crítico (`isCriticalClave`) — el piso de
+ * la documentación de identidad se hace cumplir acá, no sólo en el prompt.
+ *
  * @param {Object|string} raw respuesta cruda
  * @param {Object} list lista base, para no duplicar ni resucitar lo suprimido
- * @returns {{items:Array, clima:string}}
+ * @returns {{items:Array, quitar:Array, clima:string}}
  */
 function parseDestinationItems(raw, list) {
   var data = raw;
   if (typeof data === "string") { try { data = JSON.parse(data); } catch (e) { data = null; } }
-  if (!data || !Array.isArray(data.items)) return { items:[], clima:"" };
+  if (!data || typeof data !== "object") return { items:[], quitar:[], clima:"" };
 
-  var have = indexItems(itemsArray(list));
+  var haveOriginal = indexItems(itemsArray(list));
+  var haveCanonOriginal = {};
+  Object.keys(haveOriginal).forEach(function (k) { haveCanonOriginal[canonicalKey(k)] = k; });
+
   var suprimidos = {};
   ((list && list.aprendizaje && list.aprendizaje.suprimidos) || []).forEach(function (e) { suprimidos[e.clave] = true; });
 
-  var out = [];
-  data.items.forEach(function (x) {
-    if (out.length >= MAX_AI_ITEMS) return;
-    if (!x || typeof x !== "object") return;
-    var nombre = String(x.nombre || x.label || "").trim();
-    var motivo = String(x.motivo || x.reason || "").trim();
-    if (!nombre || !motivo) return;                 // sin motivo no entra: VAL-33 lo exige
-    var clave = slug(nombre);
-    if (!clave || have[clave] || suprimidos[clave]) return;
-    var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
-    var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0) ? Math.round(x.cantidad) : null;
-    have[clave] = true;
-    out.push({ clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad, motivo:motivo });
-  });
+  // copia mutable: se va completando con lo que la propia IA agrega en esta
+  // pasada, para que dos ítems de la misma respuesta tampoco se dupliquen entre sí
+  var have = Object.assign({}, haveOriginal);
+  var haveCanon = Object.assign({}, haveCanonOriginal);
 
-  return { items:out, clima:typeof data.clima === "string" ? data.clima.trim() : "" };
+  var items = [];
+  if (Array.isArray(data.items)) {
+    data.items.forEach(function (x) {
+      if (items.length >= MAX_AI_ITEMS) return;
+      if (!x || typeof x !== "object") return;
+      var nombre = String(x.nombre || x.label || "").trim();
+      var motivo = String(x.motivo || x.reason || "").trim();
+      if (!nombre || !motivo) return;                 // sin motivo no entra: VAL-33 lo exige
+      var clave = slug(nombre);
+      if (!clave || suprimidos[clave]) return;
+      var canon = canonicalKey(clave);
+      if (have[clave] || haveCanon[canon]) return;     // VAL-45: ya está, literal o por sinónimo
+      var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
+      var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0) ? Math.round(x.cantidad) : null;
+      have[clave] = true; haveCanon[canon] = clave;
+      items.push({ clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad, motivo:motivo });
+    });
+  }
+
+  var quitar = [];
+  if (Array.isArray(data.quitar)) {
+    var vistos = {};
+    data.quitar.forEach(function (x) {
+      if (!x || typeof x !== "object") return;
+      var nombre = String(x.nombre || x.clave || x.label || "").trim();
+      var motivo = String(x.motivo || x.reason || "").trim();
+      if (!nombre || !motivo) return;
+      var clave = slug(nombre);
+      if (!clave) return;
+      var target = haveOriginal[clave] ? clave : haveCanonOriginal[canonicalKey(clave)];
+      if (!target || vistos[target]) return;
+      if (isCriticalClave(target)) return;                          // VAL-43: piso que no se toca, en código
+      var actual = haveOriginal[target];
+      if (!actual || actual.origen === ORIGEN.MANUAL || actual.estado === ESTADO.DESCARTADO) return;
+      vistos[target] = true;
+      quitar.push({ clave:target, motivo:motivo });
+    });
+  }
+
+  return { items:items, quitar:quitar, clima:typeof data.clima === "string" ? data.clima.trim() : "" };
 }
 
 /**
  * CAPA 2. Nunca lanza: si la IA falla, devuelve la lista base con el aviso puesto.
+ *
+ * Además de agregar ítems (VAL-33/VAL-44), puede sugerir sacarlos (VAL-43):
+ * no los elimina ni los descarta sola — nada se guarda sin revisar — deja la
+ * propuesta en `item.sugerenciaQuitar:{motivo,en}` para que la persona decida.
+ * Aceptarla es un `dismissItem` común; rechazarla, `clearRemovalSuggestion`.
+ *
  * @param {Object} list lista base
  * @param {Function} ask función asíncrona (prompt) => objeto o string JSON
  * @param {Object} [opts] {now}
@@ -2217,8 +2682,8 @@ function enrichWithDestination(list, ask, opts) {
     .then(function () { return ask(destinationPrompt(list), { list:list, base:list.base }); })
     .then(function (raw) {
       var parsed = parseDestinationItems(raw, list);
-      if (!parsed.items.length) {
-        return conCapa("vacio", "El modelo no agregó nada específico del destino.",
+      if (!parsed.items.length && !parsed.quitar.length) {
+        return conCapa("vacio", "El modelo no encontró ajustes específicos para este destino.",
                        parsed.clima ? { clima:parsed.clima } : null);
       }
       var items = Object.assign({}, list.items);
@@ -2229,8 +2694,17 @@ function enrichWithDestination(list, ask, opts) {
           orden:orderOf(x.categoria, 800 + i)
         }, at);
       });
-      var out = conCapa("ok",
-        "Ajustada al destino: " + parsed.items.length + (parsed.items.length === 1 ? " ítem agregado." : " ítems agregados."),
+      parsed.quitar.forEach(function (q) {
+        var actual = items[q.clave];
+        if (!actual) return;
+        items[q.clave] = Object.assign({}, actual, { sugerenciaQuitar:{ motivo:q.motivo, en:at } });
+      });
+
+      var notaPartes = [];
+      if (parsed.items.length) notaPartes.push(parsed.items.length + (parsed.items.length === 1 ? " ítem agregado" : " ítems agregados"));
+      if (parsed.quitar.length) notaPartes.push(parsed.quitar.length + (parsed.quitar.length === 1 ? " sugerencia para sacar" : " sugerencias para sacar"));
+
+      var out = conCapa("ok", "Ajustada al destino: " + notaPartes.join(", ") + ".",
         { items:items, clima:parsed.clima || "" });
       out.conteo = packingProgress(out);
       return out;
@@ -2240,18 +2714,44 @@ function enrichWithDestination(list, ask, opts) {
     });
 }
 
+/**
+ * VAL-43: la persona rechaza la sugerencia de sacar un ítem. El ítem sigue
+ * en la lista, tal como estaba; sólo se borra la propuesta para que la
+ * interfaz deje de mostrarla. Aceptarla, en cambio, es un `dismissItem`
+ * común — no hace falta una función especial para eso.
+ * @param {Object} list
+ * @param {string} clave
+ * @returns {Object} lista nueva
+ */
+function clearRemovalSuggestion(list, clave) {
+  return replaceItem(list, clave, function (i) {
+    if (!i.sugerenciaQuitar) return i;
+    var out = Object.assign({}, i);
+    delete out.sugerenciaQuitar;
+    return out;
+  });
+}
+
 /* ============================================================
    ENTRADA PRINCIPAL — las tres capas
    ============================================================ */
 
 /**
  * Genera la lista completa. Nunca lanza por culpa de la IA.
+ *
  * @param {Object}   input
+ * @param {Object}   input.trip        viaje
+ * @param {Array}    [input.items]     reservas del viaje
+ * @param {string}   [input.tipoViaje] tipo elegido; si falta se sugiere
+ * @param {Array}    [input.history]   listas de viajes anteriores
+ * @param {Object}   [input.previous]  lista guardada de este viaje (regeneración)
+ * @param {Function} [input.ask]       async (prompt) => objeto; en la app, sample.json
+ * @param {string}   [input.now]       timestamp ISO fijo, para pruebas
  * @returns {Promise<Object>} documento de lista listo para guardar
  */
 function generatePackingList(input) {
   input = input || {};
-  var base = buildPackingList(Object.assign({}, input, { previous: null }));
+  var base = buildPackingList(Object.assign({}, input, { previous:null }));
   if (typeof input.ask !== "function") {
     return Promise.resolve(input.previous ? mergeLists(input.previous, base) : base);
   }
@@ -2277,6 +2777,9 @@ function replaceItem(list, clave, fn) {
 
 /**
  * Cambia el estado de un ítem. Tres estados: pendiente, empacado, descartado.
+ * `empacadoEn` se sella al pasar a empacado y se limpia al salir, para que
+ * analítica no lea como empacado algo que la persona después desmarcó.
+ *
  * @param {Object} list
  * @param {string} clave clave normalizada del ítem
  * @param {string} estado uno de ESTADO
@@ -2303,7 +2806,10 @@ function resetItem(list, clave, opts)   { return setItemState(list, clave, ESTAD
 
 /**
  * El parche parcial para marcar UN ítem en la base sin reescribir la lista.
+ * La base hace merge recursivo de objetos, así que esto toca sólo esa rama:
+ *
  *   db.doc(`trips/${tripId}/packing/lista`).update(stateUpdatePatch(clave, "empacado"))
+ *
  * @param {string} clave
  * @param {string} estado uno de ESTADO
  * @param {Object} [opts] {now}
@@ -2330,6 +2836,10 @@ function setQty(list, clave, cantidad, opts) {
 
 /**
  * Agrega un ítem propio. Es lo que después aprende el historial.
+ * Si el ítem ya existía, no lo duplica: lo vuelve a pendiente y NO le cambia
+ * el origen, porque la precedencia dice que gana la capa más básica.
+ * VAL-45: "ya existía" incluye un sinónimo declarado (`canonicalKey`), no
+ * sólo el mismo texto — así tampoco se duplica a mano lo que ya puso otra capa.
  * @returns {Object} lista nueva
  */
 function addManualItem(list, fields, opts) {
@@ -2339,7 +2849,8 @@ function addManualItem(list, fields, opts) {
   if (!nombre) return list;
   var clave = slug(nombre);
   if (!clave) return list;
-  if ((list.items || {})[clave]) return setItemState(list, clave, ESTADO.PENDIENTE, { now:at });
+  var existente = (list.items || {})[clave] ? clave : findCanonicalMatch(list.items, clave);
+  if (existente) return setItemState(list, existente, ESTADO.PENDIENTE, { now:at });
 
   var categoria = CATEGORY_ORDER[fields.categoria] !== undefined ? fields.categoria : "otros";
   var it = makeItem({
@@ -2380,16 +2891,227 @@ function groupByCategory(list, opts) {
 }
 
 /* ============================================================
+   VAL-46 · LA LISTA SE ACTUALIZA CUANDO EL VIAJE CRECE
+   No escribe nada sola: `planListUpdate` sólo dice qué cambió y por
+   qué, y la app decide cuándo ofrecerlo. Lo empacado sigue empacado,
+   lo descartado nunca vuelve (las mismas garantías de `mergeLists`,
+   que es lo que arma el plan por dentro) y cada ítem nuevo declara
+   qué reserva lo motivó.
+   ============================================================ */
+
+/** Para cada hecho de FACTS, la reserva puntual que lo hizo verdadero
+ *  (la primera que matchea), para poder citarla al explicar un ítem nuevo. */
+function findFactSource(name, ctx) {
+  var items = (ctx && ctx.items) || [];
+  function texto(i) { return norm([i && i.title, i && i.notes, i && i.provider].filter(Boolean).join(" ")); }
+  switch (name) {
+    case "hasFlight":        return items.filter(function (i) { return i && i.type === "flight"; })[0] || null;
+    case "hasRentalCar":     return items.filter(function (i) { return i && i.type === "car"; })[0] || null;
+    case "hasStay":          return items.filter(function (i) { return i && i.type === "stay"; })[0] || null;
+    case "hasInternationalFlight":
+      return ctx.international ? (items.filter(function (i) { return i && i.type === "flight"; })[0] || null) : null;
+    case "hasTrekking":      return items.filter(function (i) { return i && TREK_RE.test(texto(i)); })[0] || null;
+    case "hasWaterActivity": return items.filter(function (i) { return i && WATER_RE.test(texto(i)); })[0] || null;
+    case "hasWorkActivity":  return items.filter(function (i) { return i && WORK_RE.test(texto(i)); })[0] || null;
+    case "hasSnow":          return items.filter(function (i) { return i && SNOW_RE.test(texto(i)); })[0] || null;
+    default: return null;
+  }
+}
+
+/** Recorre una condición declarativa y junta los nombres de hechos que pide en positivo
+ *  (`facts`, `anyFacts`). `notFacts` queda afuera a propósito: la ausencia de un hecho
+ *  no es una reserva que "motive" nada. */
+function collectFactNames(cond) {
+  var out = [];
+  (function walk(c) {
+    if (c == null || typeof c === "function") return;
+    if (Array.isArray(c)) { c.forEach(walk); return; }
+    if (c.facts) out.push.apply(out, c.facts);
+    if (c.anyFacts) out.push.apply(out, c.anyFacts);
+    if (c.all) c.all.forEach(walk);
+    if (c.any) c.any.forEach(walk);
+  })(cond);
+  return out;
+}
+
+/**
+ * Describe una reserva en un texto corto para citarla como motivo de un
+ * ítem nuevo. Esto no sale nunca hacia la capa de IA (esa restricción es de
+ * `summarizeReservationsForAI`); es sólo para que la persona entienda por
+ * qué apareció el ítem, así que puede usar cualquier dato de la reserva.
+ * @param {Object} it
+ * @returns {string|null}
+ */
+function describeReservation(it) {
+  if (!it) return null;
+  var LABEL = { flight:"el vuelo", stay:"el alojamiento", car:"el auto", act:"la actividad" };
+  var base = LABEL[it.type] || "la reserva";
+  if (it.type === "flight" && (it.from || it.to)) base += " " + [it.from, it.to].filter(Boolean).join(" – ");
+  else if (it.type === "act" && it.title) base += " \"" + String(it.title).trim() + "\"";
+  else if ((it.type === "stay" || it.type === "car") && it.provider) base += " (" + String(it.provider).trim() + ")";
+  return base;
+}
+
+/**
+ * Por qué apareció un ítem nuevo, citando la reserva puntual si se puede
+ * rastrear una regla-hecho-reserva; si no, el motivo genérico de la regla.
+ * @param {Object} it   ítem nuevo, ya armado
+ * @param {Object} ctx  contexto del viaje (de tripContext)
+ * @returns {{texto:string, reserva:string|null}}
+ */
+function explainNewItem(it, ctx) {
+  if (it.origen === ORIGEN.HISTORIAL) return { texto:it.motivo, reserva:null };
+  var rule = BASE_RULES.filter(function (r) { return r.id === it.regla; })[0];
+  if (rule && rule.when) {
+    var nombres = collectFactNames(rule.when);
+    for (var i = 0; i < nombres.length; i++) {
+      var src = findFactSource(nombres[i], ctx);
+      if (src) return { texto:it.motivo, reserva:describeReservation(src) };
+    }
+  }
+  return { texto:it.motivo, reserva:null };
+}
+
+/**
+ * VAL-46: compara la lista ya guardada contra las reservas ACTUALES del
+ * viaje (capas 1 + 3, sin IA — sincrónica a propósito) y arma el plan de
+ * qué cambió. No toca `list`: devuelve un plan que la app ofrece aplicar.
+ *
+ * Garantías, iguales a las de `mergeLists` porque se apoya en ella:
+ *   - lo empacado sigue empacado, lo descartado sigue descartado,
+ *   - un ítem descartado nunca vuelve, aunque el viaje crezca,
+ *   - cada ítem nuevo queda marcado `nuevo:true` y dice qué reserva lo motivó.
+ *
+ * @param {Object}  input
+ * @param {Object}  input.list        lista ya guardada
+ * @param {Object}  input.trip
+ * @param {Array}   [input.items]     reservas ACTUALES del viaje
+ * @param {string}  [input.tipoViaje]
+ * @param {Array}   [input.history]
+ * @param {string}  [input.now]
+ * @returns {{desactualizada:boolean, nuevos:Array, motivo:string, listaPropuesta:Object|null}}
+ */
+function planListUpdate(input) {
+  input = input || {};
+  var list = input.list;
+  if (!list) return { desactualizada:false, nuevos:[], motivo:"No hay una lista previa para comparar.", listaPropuesta:null };
+
+  var at = input.now || nowISO();
+  var trip = input.trip || {};
+  var items = input.items || [];
+  var freshBase = buildPackingList({
+    trip:trip, items:items, tipoViaje:input.tipoViaje, history:input.history, now:at
+  });
+  var merged = mergeLists(list, freshBase);
+  var ctx = tripContext(trip, items, { tipoViaje:input.tipoViaje });
+
+  var yaHabia = {};
+  itemsArray(list).forEach(function (i) { if (i && i.clave) yaHabia[canonicalKey(i.clave)] = true; });
+
+  var nuevos = [];
+  var itemsConFlag = Object.assign({}, merged.items);
+  itemsArray(merged).forEach(function (it) {
+    if (yaHabia[canonicalKey(it.clave)]) return;         // ya estaba, activo o descartado: no es nuevo
+    var explicacion = explainNewItem(it, ctx);
+    itemsConFlag[it.clave] = Object.assign({}, it, { nuevo:true });
+    nuevos.push({
+      clave:it.clave, nombre:it.nombre, categoria:it.categoria,
+      motivo:explicacion.texto, reserva:explicacion.reserva, origen:it.origen
+    });
+  });
+
+  var desactualizada = nuevos.length > 0;
+  var listaPropuesta = Object.assign({}, merged, { items:itemsConFlag });
+
+  return {
+    desactualizada:desactualizada,
+    nuevos:nuevos,
+    motivo:desactualizada
+      ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
+      : "La lista sigue al día con lo que cargaste.",
+    listaPropuesta:listaPropuesta
+  };
+}
+
+/**
+ * Igual que `planListUpdate`, pero además corre la capa de IA (VAL-44) sobre
+ * la lista propuesta, así los ítems nuevos por combinaciones puntuales del
+ * viaje (una escala que recién apareció, un alojamiento sin lavandería)
+ * también entran en el plan. Nunca lanza por culpa de la IA: si `ask` falla
+ * o no está, el plan sale igual con capas 1 + 3.
+ * @param {Object} input mismos campos que planListUpdate, más `ask`
+ * @returns {Promise<Object>} mismo shape que planListUpdate
+ */
+function planListUpdateAsync(input) {
+  input = input || {};
+  var base = planListUpdate(input);
+  if (!base.listaPropuesta || typeof input.ask !== "function") return Promise.resolve(base);
+
+  return enrichWithDestination(base.listaPropuesta, input.ask, { now:input.now }).then(function (enriched) {
+    var yaHabia = {};
+    itemsArray(base.listaPropuesta).forEach(function (i) { if (i && i.clave) yaHabia[canonicalKey(i.clave)] = true; });
+
+    var nuevosIA = [];
+    var itemsConFlag = Object.assign({}, enriched.items);
+    itemsArray(enriched).forEach(function (it) {
+      if (it.origen !== ORIGEN.DESTINO) return;
+      if (yaHabia[canonicalKey(it.clave)]) return;
+      itemsConFlag[it.clave] = Object.assign({}, it, { nuevo:true });
+      nuevosIA.push({ clave:it.clave, nombre:it.nombre, categoria:it.categoria, motivo:it.motivo, reserva:null, origen:it.origen });
+    });
+
+    var nuevos = base.nuevos.concat(nuevosIA);
+    var desactualizada = nuevos.length > 0;
+    return {
+      desactualizada:desactualizada,
+      nuevos:nuevos,
+      motivo:desactualizada
+        ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
+        : "La lista sigue al día con lo que cargaste.",
+      listaPropuesta:Object.assign({}, enriched, { items:itemsConFlag })
+    };
+  });
+}
+
+/**
+ * Saca el flag `nuevo` de todos los ítems: la persona ya vio la actualización.
+ * Se llama después de mostrar la lista propuesta de `planListUpdate`, cuando
+ * la persona la revisó (no antes: "nada se guarda sin revisar").
+ * @param {Object} list
+ * @returns {Object} lista nueva
+ */
+function clearNewFlags(list) {
+  if (!list) return list;
+  var cambio = false;
+  var items = {};
+  Object.keys(list.items || {}).forEach(function (k) {
+    var it = list.items[k];
+    if (it && it.nuevo) {
+      cambio = true;
+      var copia = Object.assign({}, it);
+      delete copia.nuevo;
+      items[k] = copia;
+    } else {
+      items[k] = it;
+    }
+  });
+  return cambio ? Object.assign({}, list, { items:items }) : list;
+}
+
+/* ============================================================
    EXPORTA
    ============================================================ */
 return {
+  // catálogos y constantes
   VERSION:VERSION, DEFAULT_DAYS:DEFAULT_DAYS,
   ESTADO:ESTADO, ESTADOS:ESTADOS, ORIGEN:ORIGEN, ORIGEN_PRECEDENCIA:ORIGEN_PRECEDENCIA,
   HISTORY_PROMOTE_AT:HISTORY_PROMOTE_AT, HISTORY_SUPPRESS_AT:HISTORY_SUPPRESS_AT,
   MAX_AI_ITEMS:MAX_AI_ITEMS,
   CATEGORIES:CATEGORIES, TRIP_TYPES:TRIP_TYPES, BASE_RULES:BASE_RULES, FACTS:FACTS,
   AR_IATA:AR_IATA, AR_HINTS:AR_HINTS, FOREIGN_HINTS:FOREIGN_HINTS, TYPE_HINTS:TYPE_HINTS,
+  SYNONYM_GROUPS:SYNONYM_GROUPS, CRITICAL_CLAVES:CRITICAL_CLAVES,
 
+  // motor
   generatePackingList:generatePackingList,
   buildPackingList:buildPackingList,
   enrichWithDestination:enrichWithDestination,
@@ -2399,17 +3121,29 @@ return {
   tripContext:tripContext,
   deduceInternational:deduceInternational,
 
+  // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,
   parseDestinationItems:parseDestinationItems,
+  summarizeReservationsForAI:summarizeReservationsForAI,
+  clearRemovalSuggestion:clearRemovalSuggestion,
 
+  // VAL-46: la lista se actualiza cuando el viaje crece
+  planListUpdate:planListUpdate,
+  planListUpdateAsync:planListUpdateAsync,
+  clearNewFlags:clearNewFlags,
+
+  // estado de la lista (VAL-31)
   setItemState:setItemState, packItem:packItem, dismissItem:dismissItem, resetItem:resetItem,
   stateUpdatePatch:stateUpdatePatch, setQty:setQty,
   addManualItem:addManualItem, removeManualItem:removeManualItem,
   packingProgress:packingProgress, itemList:itemList, groupByCategory:groupByCategory,
 
+  // utilidades y control de calidad
   slug:slug, normalizeTripType:normalizeTripType, daysBetweenInclusive:daysBetweenInclusive,
   matchesCondition:matchesCondition, computeQty:computeQty, validateRules:validateRules,
-  lowestOrigin:lowestOrigin, itemsArray:itemsArray
+  lowestOrigin:lowestOrigin, itemsArray:itemsArray,
+  canonicalKey:canonicalKey, findCanonicalMatch:findCanonicalMatch,
+  verifyNoDuplicateItems:verifyNoDuplicateItems, isCriticalClave:isCriticalClave
 };
 })();
 
@@ -3047,7 +3781,17 @@ return {
 /* ============================================================
    ROUTER
    ============================================================ */
-const App = { view:"home", tripId:null, tab:"plan" };
+const App = {
+  view:"home", tripId:null, tab:"plan",
+  /* ---------- VAL-46: el plan de actualización de la valija ----------
+     Memoria, no dato del viaje: si se recarga la app se vuelve a calcular
+     al guardar la próxima reserva. Ver docs/design/valija-inteligente-b.md
+     § 5, puntos 3 y 6. */
+  plan:null,          // lo último que devolvió planListUpdateAsync, si quedó desactualizada
+  planTripId:null,    // de qué viaje es ese plan
+  planDock:false,     // resolvió con la pantalla de la valija ABIERTA -> entra por abajo (estado 16)
+  planApplied:null    // {tripId, byClave:{...}} del plan que se aplicó: de acá sale "cuando agregaste el auto"
+};
 
 function readHash(){
   const h = location.hash.replace(/^#\/?/,"");
@@ -3065,6 +3809,7 @@ window.addEventListener("hashchange", ()=>{ readHash(); Store.watch(App.tripId);
 const $hdr = document.getElementById("hdr");
 const $main = document.getElementById("main");
 const $fab = document.getElementById("fab");
+const $pkdock = document.getElementById("pkdock");
 
 // Con un link compartido el viaje llega desde la nube, no de este dispositivo.
 // Mientras la nube no contestó no sabemos si existe, así que esperamos en vez
@@ -3076,6 +3821,7 @@ function esperando(){
 }
 
 function render(){
+  pkSyncMount();   // montar/desmontar la pantalla de la valija (limpieza de marcas, § 4.3)
   if(App.view==="trip"){
     const trip = Store.trips.get(App.tripId);
     if(!trip && tripResuelto()){ go(""); return; }
@@ -3203,6 +3949,22 @@ function cardTrip(t){
 function renderPackingEntry(trip, list){
   const dd = daysUntil(trip.startDate);
   if(list){
+    // 14 · la lista quedó vieja y todavía no se aplazó: la tira lo dice acá,
+    // que es donde la persona está parada cuando guarda una reserva.
+    // Sin lista guardada no hay nada que actualizar y la tira no cambia.
+    const plan = planOfrecible(trip.id);
+    if(plan){
+      const n = plan.nuevos.length;
+      const r = planReserva(plan);
+      return `<button class="vj-entry live" id="vjentry">
+        <span class="band"></span>
+        <span class="bd">
+          <span class="t">Valija <span class="chip soon">${n} ${n===1?"cosa nueva":"cosas nuevas"}</span></span>
+          <span class="s">${esc(r ? `Agregaste ${r}` : "El viaje cambió")}</span>
+        </span>
+        <span class="go">${svg(I.chev)}</span>
+      </button>`;
+    }
     const c = PackingEngine.packingProgress(list);
     const pctPack = c.total ? c.empacados/c.total*100 : 100;
     const pctDrop = 0;
@@ -3467,12 +4229,239 @@ function viewTodo(trip, alerts){
    generando, si el aviso de "recién ajustado por destino" ya se
    mostró, y el tipo de viaje elegido a mano en el selector.
    ============================================================ */
-let PK = { tripId:null, generating:false, justEnriched:false, openCats:{}, adding:null, pickingType:false, selectedType:null, typeCounts:null };
+function pkEstadoInicial(tripId){
+  return {
+    tripId, generating:false, justEnriched:false, openCats:{}, adding:null,
+    pickingType:false, selectedType:null, typeCounts:null,
+    /* ---------- bloque B: las tres señales nuevas ---------- */
+    applied:false,          // se acaba de aplicar un plan: aviso 18
+    appliedN:0, appliedReserva:null,
+    fresh:false,            // animación .fresh de llegada, una sola vez
+    avisoAplazado:null,     // acuse "Ahora no" (estado 19), de una sola visita
+    hideRemovals:false,     // el aviso 20 se cerró en ESTA visita (§ 4.4)
+    seenNew:new Set(),      // claves de ítems nuevos ya vistos en esta visita
+    visitsSinceApply:0,     // degradación sin IntersectionObserver (§ 4.3)
+    io:null, ioTimers:new Map(), ioOk:(typeof IntersectionObserver === "function")
+  };
+}
+let PK = pkEstadoInicial(null);
 function resetPKIfNeeded(tripId){
   if(PK.tripId !== tripId){
-    PK = { tripId, generating:false, justEnriched:false, openCats:{}, adding:null, pickingType:false, selectedType:null, typeCounts:null };
+    pkStopObserver();
+    PK = pkEstadoInicial(tripId);
   }
 }
+
+/* ============================================================
+   VAL-46 · EL PLAN DE ACTUALIZACIÓN — memoria, aplazamiento y disparo
+   Ver docs/design/valija-inteligente-b.md, § 4.2 y § 5 (puntos 3 y 5).
+   ============================================================ */
+
+/** Firma del plan: qué ítems ofrece, sin importar el orden. */
+function planFirma(plan){
+  return ((plan && plan.nuevos) || []).map(n=>n.clave).sort().join("|");
+}
+
+/* El aplazamiento vive en ESTE dispositivo, nunca en el documento compartido:
+   es una decisión personal, no del viaje, y quien mira sin permiso de edición
+   también tiene que poder sacarse el aviso de encima (§ 4.2). Si localStorage
+   no está disponible, vale para la sesión en memoria y listo. */
+const PK_APLAZADO_MEM = new Map();
+const pkAplazadoKey = tripId => `valija.pk.aplazado.${tripId}`;
+function pkAplazadoDe(tripId){
+  try{
+    const raw = localStorage.getItem(pkAplazadoKey(tripId));
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return PK_APLAZADO_MEM.get(tripId) || null;
+}
+function pkGuardarAplazado(tripId, plan){
+  const dato = { firma:planFirma(plan), en:new Date().toISOString() };
+  PK_APLAZADO_MEM.set(tripId, dato);
+  try{ localStorage.setItem(pkAplazadoKey(tripId), JSON.stringify(dato)); }catch(e){}
+}
+function pkOlvidarAplazado(tripId){
+  PK_APLAZADO_MEM.delete(tripId);
+  try{ localStorage.removeItem(pkAplazadoKey(tripId)); }catch(e){}
+}
+/** ¿Este plan ya se aplazó? Sólo si TODAS sus claves ya estaban en la firma
+    aplazada. Una clave que no estaba vuelve a ofrecerse (§ 4.2, punto 4). */
+function pkPlanAplazado(tripId, plan){
+  const dato = pkAplazadoDe(tripId);
+  if(!dato || !dato.firma) return false;
+  const previas = new Set(String(dato.firma).split("|").filter(Boolean));
+  const claves = ((plan && plan.nuevos) || []).map(n=>n.clave);
+  if(!claves.length) return true;
+  return claves.every(c => previas.has(c));
+}
+
+/** El plan vigente de este viaje, aplazado o no. */
+function planDe(tripId){
+  if(!tripId || App.planTripId !== tripId) return null;
+  const p = App.plan;
+  if(!p || !p.desactualizada || !p.nuevos || !p.nuevos.length || !p.listaPropuesta) return null;
+  return p;
+}
+/** El plan que corresponde ofrecer solo: vigente y sin aplazar. */
+function planOfrecible(tripId){
+  const p = planDe(tripId);
+  return (p && !pkPlanAplazado(tripId, p)) ? p : null;
+}
+/** La reserva más citable del plan, para nombrar la causa. */
+function planReserva(plan){
+  const con = ((plan && plan.nuevos) || []).filter(n=>n.reserva)[0];
+  return con ? con.reserva : null;
+}
+/** Ícono de la reserva a partir de su descripción (describeReservation). */
+function planReservaIcon(txt){
+  const t = String(txt||"").toLowerCase();
+  if(t.startsWith("el vuelo")) return "flight";
+  if(t.startsWith("el alojamiento")) return "stay";
+  if(t.startsWith("el auto")) return "car";
+  if(t.startsWith("la actividad")) return "act";
+  return "note";
+}
+/** El texto del aviso 15/16, con la cantidad en mono. */
+function planAvisoTexto(plan){
+  const n = plan.nuevos.length;
+  const cant = n===1 ? `<b class="n">una</b> cosa` : `<b class="n">${n}</b> cosas`;
+  const r = planReserva(plan);
+  return r
+    ? `Agregaste <b>${esc(r)}</b>. Tengo ${cant} para sumarle a la valija.`
+    : `El viaje cambió y la lista quedó vieja. Tengo ${cant} para sumarle.`;
+}
+
+/** Ítems de la lista con propuesta de sacar todavía sin resolver. */
+function pkPropuestasQuitar(list){
+  return PackingEngine.itemList(list, {includeDismissed:true})
+    .filter(it => it && it.sugerenciaQuitar && it.sugerenciaQuitar.motivo && it.estado !== "descartado");
+}
+/** Ítems marcados como nuevos. */
+function pkItemsNuevos(list){
+  return PackingEngine.itemList(list, {includeDismissed:true}).filter(it => it && it.nuevo);
+}
+
+/* ---------- el disparo (§ 5, punto 3) ----------
+   Se llama después de que la escritura de una reserva resolvió. No en cada
+   tecla: al guardar, editar o borrar. Nunca lanza y nunca bloquea la interfaz:
+   sin capa de IA (claude.use devuelve null) el plan sale igual con las reglas
+   y el historial, que es lo que hace planListUpdate sincrónico. */
+async function checkPackingPlan(trip){
+  if(!trip) return;
+  const list = Store.packingOf(trip.id);
+  if(!list) return;                       // sin lista guardada no hay nada que actualizar
+  let history = [];
+  try{ history = await Store.packingHistory(trip.id); }catch(e){ history = []; }
+  let sample = null;
+  try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
+  const ask = sample ? (prompt)=> sample.json(prompt, { modelTier:"complex" }) : null;
+
+  let plan = null;
+  try{
+    plan = await PackingEngine.planListUpdateAsync({
+      list, trip, items: Store.itemsOf(trip.id),
+      tipoViaje: list.tipoViaje, history, ask
+    });
+  }catch(e){ plan = null; }   // el motor degrada solo; si igual lanzara, la app sigue
+
+  if(!plan || !plan.desactualizada || !plan.nuevos.length){
+    if(App.planTripId === trip.id){ App.plan = null; App.planTripId = null; App.planDock = false; }
+    render();
+    return;
+  }
+  App.plan = plan;
+  App.planTripId = trip.id;
+  // Un plan con una clave que no estaba en la firma aplazada vuelve a ofrecerse:
+  // el acuse de "Ahora no" de esta visita ya no corresponde (§ 4.2, punto 4).
+  if(PK.tripId === trip.id && !pkPlanAplazado(trip.id, plan)) PK.avisoAplazado = null;
+  // Si la valija ya estaba abierta cuando resolvió, el aviso entra por abajo y
+  // no corre la lista bajo el pulgar (estado 16, § 4.1).
+  App.planDock = (App.view === "packing" && App.tripId === trip.id);
+  render();
+}
+
+/* ============================================================
+   MONTAJE Y DESMONTAJE DE LA PANTALLA DE LA VALIJA
+   Es donde se limpian las marcas de "nuevo" (§ 4.3): al SALIR, y sólo
+   si todos los ítems marcados quedaron vistos en esta visita.
+   ============================================================ */
+const PKMount = { tripId:null };
+
+function pkSyncMount(){
+  const destino = (App.view === "packing") ? App.tripId : null;
+  if(PKMount.tripId === destino) return;
+  const saliendo = PKMount.tripId;
+  // Se marca el destino ANTES de desmontar: pkUnmount puede escribir, y esa
+  // escritura emite y vuelve a llamar a render(). Sin esto la reentrada
+  // volvería a intentar el mismo desmontaje.
+  PKMount.tripId = destino;
+  if(saliendo) pkUnmount(saliendo);
+  if(destino) pkMount(destino);
+  else if($pkdock){ $pkdock.dataset.firma = ""; $pkdock.innerHTML = ""; }
+}
+
+function pkMount(tripId){
+  resetPKIfNeeded(tripId);
+  // lo que vale por visita se reinicia acá, aunque el viaje sea el mismo
+  PK.avisoAplazado = null;
+  PK.hideRemovals = false;
+  PK.seenNew = new Set();
+  App.planDock = false;   // al entrar de nuevo, el aviso vuelve a su lugar de arriba
+  const list = Store.packingOf(tripId);
+  if(list && pkItemsNuevos(list).length) PK.visitsSinceApply++;
+}
+
+function pkUnmount(tripId){
+  pkStopObserver();
+  if(!Store.canWrite) return;              // quien mira no escribe (estado 24)
+  const list = Store.packingOf(tripId);
+  if(!list) return;
+  const nuevos = pkItemsNuevos(list);
+  if(!nuevos.length) return;
+  const todosVistos = PK.ioOk
+    ? nuevos.every(it => PK.seenNew.has(it.clave))
+    : (PK.visitsSinceApply >= 2);          // degradación declarada (§ 4.3)
+  if(!todosVistos) return;                 // alguno quedó sin mirar: la marca espera
+  const limpia = PackingEngine.clearNewFlags(list);
+  if(limpia === list) return;
+  // Idempotente: si la escritura falla, los flags quedan y se reintenta al salir de nuevo.
+  Promise.resolve(Store.savePacking(tripId, limpia)).catch(()=>{});
+}
+
+/* Cerrar la pestaña también es salir de la pantalla. */
+window.addEventListener("pagehide", ()=>{ if(PKMount.tripId) pkUnmount(PKMount.tripId); });
+
+/* ---------- "visto" por permanencia en pantalla (§ 4.3) ---------- */
+function pkStopObserver(){
+  if(PK.io){ try{ PK.io.disconnect(); }catch(e){} PK.io = null; }
+  if(PK.ioTimers){ PK.ioTimers.forEach(t=>clearTimeout(t)); PK.ioTimers.clear(); }
+}
+function pkObserveNew(main){
+  pkStopObserver();
+  if(!Store.canWrite || !PK.ioOk) return;
+  const filas = main.querySelectorAll(".pk-row.is-new[data-row]");
+  if(!filas.length) return;
+  const io = new IntersectionObserver(entradas=>{
+    entradas.forEach(en=>{
+      const clave = en.target.dataset.row;
+      if(!clave) return;
+      if(en.isIntersecting){
+        if(PK.ioTimers.has(clave)) return;
+        PK.ioTimers.set(clave, setTimeout(()=>{
+          PK.ioTimers.delete(clave);
+          PK.seenNew.add(clave);
+        }, 600));
+      }else{
+        const t = PK.ioTimers.get(clave);
+        if(t){ clearTimeout(t); PK.ioTimers.delete(clave); }
+      }
+    });
+  }, { threshold:0.6 });
+  filas.forEach(f=> io.observe(f));
+  PK.io = io;
+}
+/** Actuar sobre un ítem o abrir su hoja también es haberlo mirado. */
+function pkMarcarVisto(clave){ if(clave) PK.seenNew.add(clave); }
 
 function packingHeader(trip, list, opts){
   opts = opts || {};
@@ -3510,28 +4499,39 @@ function pkRowHtml(it, trip, canWrite){
   const drop = st === "drop";
   const src = srcChip(it, trip);
   const stateIcon = st==="drop" ? svg(I.dash) : (st==="pack" || canWrite) ? svg(I.check) : "";
-  const why = drop ? "" : `<span class="pk-why"><span class="${src.cls}">${esc(src.tx)}</span>${it.motivo?`<span class="r">${esc(it.motivo)}</span>`:""}</span>`;
+  // 18 · la marca de ítem nuevo: barra ámbar al filo (sin costo de layout) más
+  // la palabra "nuevo" en mono, que es lo que se lee con lector de pantalla.
+  const esNuevo = !!it.nuevo && !drop;
+  const nuevoTag = esNuevo ? `<span class="pk-newtag">nuevo</span>` : "";
+  // 20 · la propuesta de sacar: la ÚNICA marca es el círculo de descartar
+  // teñido. La fila no crece ni una línea y el motivo original queda intacto.
+  const sug = (!drop && it.sugerenciaQuitar && it.sugerenciaQuitar.motivo) ? it.sugerenciaQuitar : null;
+  const cls = `pk-row${esNuevo?" is-new":""}${(esNuevo && PK.fresh)?" fresh":""}`;
+  const why = drop ? "" : `<span class="pk-why">${nuevoTag}<span class="${src.cls}">${esc(src.tx)}</span>${it.motivo?`<span class="r">${esc(it.motivo)}</span>`:""}</span>`;
   const nm = `<span class="pk-nm"><span class="t">${esc(it.nombre)}</span>${it.cantidad?`<span class="q">×${esc(it.cantidad)}</span>`:""}</span>`;
 
   if(!canWrite){
-    return `<div class="pk-row" data-st="${st}">
+    // Sin permiso no hay botón de descartar, así que la propuesta de sacar no
+    // tiene dónde marcarse: se lee entera en la hoja del ítem (estado 24).
+    return `<div class="${cls}" data-st="${st}">
       <span class="pk-slide">
         <span class="pk-mark" style="cursor:default"><span class="pk-state">${stateIcon}</span></span>
         <span class="pk-txt" style="cursor:default;padding-right:14px">${nm}${why}</span>
       </span>
     </div>`;
   }
-  return `<div class="pk-row" data-st="${st}" data-row="${esc(it.clave)}">
+  const dropLabel = `Descartar ${it.nombre}.${sug?` Te propongo sacarlo: ${sug.motivo}`:""}`;
+  return `<div class="${cls}" data-st="${st}" data-row="${esc(it.clave)}">
     <span class="pk-swipe">${svg(I.ban)} Descartar</span>
     <span class="pk-slide">
       <button class="pk-mark" data-mark="${esc(it.clave)}"
-              aria-label="${esc(it.nombre)}: ${esc(it.estado)}. ${drop?"Volver a la lista":"Marcar como empacado"}">
+              aria-label="${esNuevo?"Nuevo. ":""}${esc(it.nombre)}: ${esc(it.estado)}. ${drop?"Volver a la lista":"Marcar como empacado"}">
         <span class="pk-state">${stateIcon}</span>
       </button>
       <button class="pk-txt" data-detail="${esc(it.clave)}">${nm}${why}</button>
       ${drop
         ? `<button class="pk-back" data-mark="${esc(it.clave)}">volver</button>`
-        : `<button class="pk-drop" data-dropbtn="${esc(it.clave)}" aria-label="Descartar ${esc(it.nombre)}">${svg(I.ban)}</button>`}
+        : `<button class="pk-drop${sug?" sug":""}" data-dropbtn="${esc(it.clave)}" aria-label="${esc(dropLabel)}">${svg(I.ban)}</button>`}
     </span>
   </div>`;
 }
@@ -3541,15 +4541,22 @@ function pkCategoryHtml(cat, trip, canWrite){
   const packed = cat.items.filter(i=>i.estado==="empacado").length;
   const dropped = cat.items.filter(i=>i.estado==="descartado").length;
   const full = cat.items.length>0 && pend===0;
+  const nuevos = cat.items.filter(i=>i.nuevo && i.estado!=="descartado").length;
   // Una categoría sin pendientes se pliega sola, salvo que tenga algo
   // descartado: ahí sigue habiendo algo que mirar (el botón "volver").
-  const open = PK.openCats[cat.key] !== undefined ? PK.openCats[cat.key] : (!full || dropped>0);
+  // Una categoría con ítems nuevos se abre sola: una fila adentro de una
+  // categoría plegada nunca entra en la ventana visible y su marca no se
+  // limpiaría jamás (§ 4.3). Si la persona la pliega a mano, manda ella.
+  const open = PK.openCats[cat.key] !== undefined ? PK.openCats[cat.key] : (nuevos>0 || !full || dropped>0);
   const icon = CAT_ICON[cat.key] || "doc";
+  // El chip es el localizador grueso: sin él, tres filas ámbar en cuarenta
+  // ítems se encuentran scrolleando a ciegas. Se ve también plegada.
+  const chipNuevos = nuevos ? ` <span class="chip soon">${nuevos} ${nuevos===1?"nuevo":"nuevos"}</span>` : "";
   return `<div class="pk-cat ${full?"full":""}" data-open="${open}">
     <button class="pk-cat-hd" aria-expanded="${open}" data-cat="${esc(cat.key)}">
       <span class="pk-cat-ico">${svg(I[icon])}</span>
       <span class="nm">${esc(cat.label)}</span>
-      <span class="cnt">${full?`<span class="chip ok">listo</span>`:`${packed} de ${cat.items.length - dropped}`}</span>
+      <span class="cnt">${full?`<span class="chip ok">listo</span>`:`${packed} de ${cat.items.length - dropped}`}${chipNuevos}</span>
       ${svg(I.chevd,"chev")}
     </button>
     <div class="pk-body-wrap">
@@ -3626,13 +4633,18 @@ function bindPackingRows(main, trip, list, canWrite){
   main.querySelectorAll("[data-mark]").forEach(b=> b.onclick = ()=>{
     const clave = b.dataset.mark, it = list.items[clave]; if(!it) return;
     delete PK.openCats[it.categoria];
+    pkMarcarVisto(clave);   // actuar sobre un ítem es la prueba más fuerte de haberlo mirado
     const next = it.estado === "pendiente" ? "empacado" : "pendiente";
     applyItemState(trip, list, clave, next);
   });
   main.querySelectorAll("[data-dropbtn]").forEach(b=> b.onclick = ()=>{
     const clave = b.dataset.dropbtn, it = list.items[clave]; if(!it) return;
     delete PK.openCats[it.categoria];
-    applyItemState(trip, list, clave, "descartado");
+    pkMarcarVisto(clave);
+    // El círculo teñido ES la aceptación de la propuesta: descartar y borrar la
+    // sugerencia van en la MISMA escritura (§ 4.4).
+    if(it.sugerenciaQuitar) aceptarQuitar(trip, clave);
+    else applyItemState(trip, list, clave, "descartado");
   });
   main.querySelectorAll("[data-detail]").forEach(b=> b.onclick = ()=>{
     sheetPackingItem(trip, list, b.dataset.detail);
@@ -3677,8 +4689,14 @@ function bindPackingRows(main, trip, list, canWrite){
       const clave = row.dataset.row, it = list.items[clave];
       const localDx = dx; x0 = null; dx = 0;
       if(!it) return;
-      if(localDx < -70){ delete PK.openCats[it.categoria]; applyItemState(trip, list, clave, "descartado"); }
-      else if(localDx > 70){ delete PK.openCats[it.categoria]; applyItemState(trip, list, clave, it.estado==="empacado" ? "pendiente" : "empacado"); }
+      if(localDx < -70){
+        delete PK.openCats[it.categoria]; pkMarcarVisto(clave);
+        // deslizar a la izquierda es el mismo descarte que el círculo: si hay
+        // propuesta, también la resuelve en la misma escritura (§ 4.4)
+        if(it.sugerenciaQuitar) aceptarQuitar(trip, clave);
+        else applyItemState(trip, list, clave, "descartado");
+      }
+      else if(localDx > 70){ delete PK.openCats[it.categoria]; pkMarcarVisto(clave); applyItemState(trip, list, clave, it.estado==="empacado" ? "pendiente" : "empacado"); }
     };
     row.addEventListener("pointerup", end);
     row.addEventListener("pointercancel", end);
@@ -3796,8 +4814,6 @@ function renderTypeSelector(trip, list){
 function renderPackingBoard(trip, list){
   const canWrite = Store.canWrite;
   const generating = PK.generating;
-  const c = PackingEngine.packingProgress(list);
-  const complete = c.total>0 && c.pendientes===0;
   const cap = list.capaInteligente || {};
 
   const degradedChip = (!generating && (cap.estado==="no-disponible" || cap.estado==="error"))
@@ -3808,29 +4824,18 @@ function renderPackingBoard(trip, list){
   bindPackingHeader(trip, ()=> sheetPackingInfo(trip, list));
 
   const destino = trip.destination || "tu destino";
-  let notices = "";
-  if(generating){
-    notices += `<div class="notice"><span class="spin"></span><span class="bd">Buscando lo específico de ${esc(destino)}…</span></div>`;
-  } else {
-    // Se muestra hasta que se cierra a mano o hasta la próxima acción sobre
-    // un ítem (marcar/descartar): no se apaga sola en el primer re-render,
-    // porque guardar dispara más de un render seguido (local y en la nube).
-    if(PK.justEnriched && cap.estado==="ok"){
-      notices += `<div class="notice ok">${svg(I.spark)}<span class="bd">${esc(cap.nota||"Ajusté la lista al destino.")}</span>
-        <button class="x" aria-label="Cerrar" id="pk-closefresh">${svg(I.x)}</button></div>`;
-    }
-    if(cap.estado==="no-disponible" || cap.estado==="error"){
-      notices += `<div class="notice warn">${svg(I.info)}<span class="bd">Armé la lista con las reglas de siempre. No pude ajustarla a ${esc(destino)}, así que puede faltarte algo del lugar.
-        ${canWrite?`<button class="act" id="pk-retry">Probar de nuevo</button>`:""}</span></div>`;
-    }
-    if(complete){
-      const typeLbl = (TYPE_LABEL[list.tipoViaje]||"").toLowerCase();
-      notices += `<div class="notice ok">${svg(I.check2)}<span class="bd">Valija lista.${c.descartados?` Los ${c.descartados} que descartaste ya quedaron anotados para tu próximo viaje${typeLbl?` de ${typeLbl}`:""}.`:""}</span></div>`;
-    }
-    if(!canWrite){
-      notices += `<div class="notice">${svg(I.info)}<span class="bd">Estás viendo la valija de este viaje. Para marcar lo tuyo necesitás permiso de edición.</span></div>`;
-    }
-  }
+
+  // 15/16 · el plan pendiente. Si resolvió con la pantalla ya abierta entra por
+  // abajo (dock) y no corre la lista bajo el pulgar; si no, arriba de la lista.
+  const planPend = canWrite ? planOfrecible(trip.id) : planDe(trip.id);
+  const planDock = (canWrite && planPend && App.planDock) ? planPend : null;
+  const planArriba = planDock ? null : planPend;
+
+  // 25 · un solo aviso arriba de la lista, siempre. La regla vive en una sola
+  // función para que no se rompa sola cuando aparezca el sexto aviso.
+  const notices = generating
+    ? `<div class="notice"><span class="spin"></span><span class="bd">Buscando lo específico de ${esc(destino)}…</span></div>`
+    : packingNotice(trip, list, planArriba);
 
   const grouped = PackingEngine.groupByCategory(list, {includeDismissed:true});
   const groups = grouped.map(g=> pkCategoryHtml(g, trip, canWrite));
@@ -3860,12 +4865,132 @@ function renderPackingBoard(trip, list){
     $fab.innerHTML = "";
   }
 
+  pkRenderDock(trip, planDock);
+
   bindPackingRows($main, trip, list, canWrite);
+  bindPackingNotice($main, trip, list);
+  bindPackingNotice($pkdock, trip, list);
+  pkObserveNew($main);
 
   const closeFresh = document.getElementById("pk-closefresh");
-  if(closeFresh) closeFresh.onclick = ()=> render();
+  if(closeFresh) closeFresh.onclick = ()=>{ PK.justEnriched = false; render(); };
   const retry = document.getElementById("pk-retry");
   if(retry) retry.onclick = ()=> runGenerate(trip, list.tipoViaje, list);
+}
+
+/* ---------- 25 · UN SOLO AVISO ARRIBA DE LA LISTA ----------
+   Devuelve el HTML del PRIMER aviso que aplique, en este orden:
+     1 · sin ajuste por destino (08)      — habla de toda la lista
+     2 · la lista quedó vieja (15) o el acuse de aplazada (19)
+     3 · sumé N cosas (18)                — confirmación de lo recién aplicado
+     3b· ajusté la lista al destino (07)  — la misma familia que el 3
+     4 · hay N que capaz no necesitás (20)
+     5 · valija lista (09)
+     6 · sólo lectura, cuando no queda nada más que decir
+   Lo que no se muestra no se pierde: la hoja 12 lista siempre todo lo
+   pendiente, y las marcas en las filas son independientes del aviso. */
+function packingNotice(trip, list, plan){
+  const canWrite = Store.canWrite;
+  const cap = list.capaInteligente || {};
+  const c = PackingEngine.packingProgress(list);
+  const destino = trip.destination || "tu destino";
+  const quitar = pkPropuestasQuitar(list);
+  const nq = quitar.length;
+  const verQuitarSec = nq
+    ? `<button class="act sec" data-pk="verquitar">Y hay <b class="n">${nq}</b> que capaz no necesitás. Verlas</button>`
+    : "";
+
+  // 1 · sin ajuste por destino
+  if(cap.estado==="no-disponible" || cap.estado==="error"){
+    return `<div class="notice warn">${svg(I.info)}<span class="bd">Armé la lista con las reglas de siempre. No pude ajustarla a ${esc(destino)}, así que puede faltarte algo del lugar.
+      ${canWrite?`<button class="act" id="pk-retry">Probar de nuevo</button>`:""}</span></div>`;
+  }
+
+  // 19 · acuse de "Ahora no", de una sola visita. No queda badge ni insistencia.
+  if(PK.avisoAplazado && canWrite && !plan){
+    const p = PK.avisoAplazado;
+    const n = p.nuevos.length;
+    const r = planReserva(p);
+    return `<div class="notice">${svg(I.info)}<span class="bd">Listo, no toco nada. ${n===1?`La <b class="n">una</b> cosa`:`Las <b class="n">${n}</b> cosas`}${r?` ${esc(pkDeReserva(r))}`:""} quedan guardadas en <b>De dónde sale esta lista</b>, arriba a la derecha, por si después las querés.
+      <span class="acts"><button class="act" data-pk="verplan">Verlas igual</button></span></span></div>`;
+  }
+
+  // 2 · la lista quedó vieja (15), o su variante sin acciones (24)
+  if(plan){
+    const n = plan.nuevos.length;
+    if(!canWrite){
+      return `<div class="notice">${svg(I.info)}<span class="bd">Estás viendo la valija de este viaje. Quedó vieja: el viaje cambió después de que se armó, y hay <b class="n">${n}</b> ${n===1?"cosa":"cosas"} sin sumar. Las puede sumar quien tenga permiso de edición.</span></div>`;
+    }
+    return `<div class="notice">${svg(I.spark)}<span class="bd">${planAvisoTexto(plan)}
+      <span class="acts">
+        <button class="act" data-pk="verplan">Ver qué agrego</button>
+        <button class="act sec" data-pk="ahorano">Ahora no</button>
+      </span></span></div>`;
+  }
+
+  // 3 · sumé N cosas (18). Cerrar la confirmación ES confirmar (§ 4.3).
+  if(PK.applied && canWrite && pkItemsNuevos(list).length){
+    const n = PK.appliedN;
+    return `<div class="notice ok">${svg(I.check2)}<span class="bd">Sumé <b class="n">${n}</b> ${n===1?"cosa":"cosas"}${PK.appliedReserva?` por <b>${esc(PK.appliedReserva)}</b>`:""}. Quedan marcadas hasta que las mires.
+      <span class="acts"><button class="act sec" data-pk="vistas">Listo, ya las vi</button>${verQuitarSec}</span></span>
+      <button class="x" aria-label="Cerrar" data-pk="vistas">${svg(I.x)}</button></div>`;
+  }
+
+  // 3b · ajusté la lista al destino (07). Único texto existente que cambia:
+  // cuando la misma pasada además propuso sacar, suma la segunda acción.
+  if(PK.justEnriched && cap.estado==="ok"){
+    return `<div class="notice ok">${svg(I.spark)}<span class="bd">${esc(cap.nota||"Ajusté la lista al destino.")}
+      ${verQuitarSec?`<span class="acts">${verQuitarSec}</span>`:""}</span>
+      <button class="x" aria-label="Cerrar" id="pk-closefresh">${svg(I.x)}</button></div>`;
+  }
+
+  // 4 · hay N que capaz no necesitás (20). Se cierra por visita, no para
+  // siempre: es un localizador, y las marcas siguen en las filas.
+  if(nq && !PK.hideRemovals){
+    return `<div class="notice warn">${svg(I.ban)}<span class="bd">Hay <b class="n">${nq}</b> ${nq===1?"cosa":"cosas"} de la lista que capaz no necesitás en ${esc(destino)}.
+      <button class="act" data-pk="verquitar">Ver ${nq===1?"cuál":"cuáles"}</button></span>
+      <button class="x" aria-label="Cerrar" data-pk="cerrarquitar">${svg(I.x)}</button></div>`;
+  }
+
+  // 5 · valija lista (09)
+  if(c.total>0 && c.pendientes===0){
+    const typeLbl = (TYPE_LABEL[list.tipoViaje]||"").toLowerCase();
+    return `<div class="notice ok">${svg(I.check2)}<span class="bd">Valija lista.${c.descartados?` Los ${c.descartados} que descartaste ya quedaron anotados para tu próximo viaje${typeLbl?` de ${typeLbl}`:""}.`:""}</span></div>`;
+  }
+
+  // 6 · sólo lectura
+  if(!canWrite){
+    return `<div class="notice">${svg(I.info)}<span class="bd">Estás viendo la valija de este viaje. Para marcar lo tuyo necesitás permiso de edición.</span></div>`;
+  }
+  return "";
+}
+
+/* ---------- 16 · el aviso anclado al pie ----------
+   Sólo se reescribe cuando cambia de verdad: #pkdock es la región viva y
+   volver a pintarla en cada render la haría anunciarse una y otra vez. */
+function pkRenderDock(trip, plan){
+  const firma = plan ? `${trip.id}|${planFirma(plan)}` : "";
+  if($pkdock.dataset.firma === firma) return;
+  $pkdock.dataset.firma = firma;
+  $pkdock.innerHTML = plan ? `<div class="pk-dock"><div class="notice">${svg(I.spark)}<span class="bd">${planAvisoTexto(plan)}
+    <span class="acts">
+      <button class="act" data-pk="verplan">Ver qué agrego</button>
+      <button class="act sec" data-pk="ahorano">Ahora no</button>
+    </span></span></div></div>` : "";
+}
+
+/* ---------- las acciones de los avisos, en cualquiera de sus dos anclajes ---------- */
+function bindPackingNotice(root, trip, list){
+  if(!root) return;
+  root.querySelectorAll("[data-pk]").forEach(b=> b.onclick = ()=>{
+    const a = b.dataset.pk;
+    const plan = planDe(trip.id) || PK.avisoAplazado;
+    if(a==="verplan"){ if(plan) sheetPackingPlan(trip, plan); return; }
+    if(a==="ahorano"){ if(plan) aplazarPlan(trip, plan); return; }
+    if(a==="vistas"){ pkDarPorVistas(trip); return; }
+    if(a==="verquitar"){ sheetPackingRemovals(trip); return; }
+    if(a==="cerrarquitar"){ PK.hideRemovals = true; render(); return; }
+  });
 }
 
 /* ---------- despachador de estados ---------- */
@@ -3874,8 +4999,8 @@ function renderPacking(trip){
   const list = Store.packingOf(trip.id);
   const hasDates = !!(trip.startDate && trip.endDate);
 
-  if(!list && !hasDates && !PK.pickingType){ renderPackingBlocked(trip); return; }
-  if((!list && hasDates) || PK.pickingType){ renderTypeSelector(trip, list); return; }
+  if(!list && !hasDates && !PK.pickingType){ pkRenderDock(trip, null); renderPackingBlocked(trip); return; }
+  if((!list && hasDates) || PK.pickingType){ pkRenderDock(trip, null); renderTypeSelector(trip, list); return; }
   renderPackingBoard(trip, list);
 }
 
@@ -4107,12 +5232,16 @@ function sheetItem(trip, item, prefill){
     try{
       await Store.saveItem(trip.id, it);
       closeSheet(); toast(item?"Reserva actualizada":"Reserva guardada");
+      checkPackingPlan(trip);   // VAL-46: ¿la lista quedó vieja?
     }catch(e){ toast(writeErr(e), true); }
   };
   const di = document.getElementById("delitem");
   if(di) di.onclick = async ()=>{
     di.disabled = true;
-    try{ await Store.delItem(trip.id, it.id); closeSheet(); toast("Reserva eliminada"); }
+    try{
+      await Store.delItem(trip.id, it.id); closeSheet(); toast("Reserva eliminada");
+      checkPackingPlan(trip);
+    }
     catch(e){ di.disabled = false; toast(writeErr(e), true); }
   };
 }
@@ -4797,6 +5926,7 @@ async function sheetImport(trip){
     else if(n) msg = `${n} ${n===1?"reserva agregada":"reservas agregadas"}`;
     else msg = "Listo";
     toast(msg);
+    if(n || m) checkPackingPlan(trip);   // VAL-46: importar también hace crecer el viaje
   }
 
   renderElegir();
@@ -4895,11 +6025,274 @@ function sheetAddPackingItem(trip, list){
   };
 }
 
+/* ============================================================
+   VAL-46 · HOJA "LO QUE LE SUMO A LA VALIJA" (estado 17)
+   Agrupada por la reserva que motivó cada ítem, no por categoría: la
+   pregunta que se está haciendo la persona no es "qué me agregás" sino
+   "por qué me agregás algo ahora". El encabezado es la respuesta.
+   ============================================================ */
+
+/** "el auto (Europcar)" -> "del auto (Europcar)"; "la actividad X" -> "de la actividad X". */
+function pkDeReserva(txt){
+  const t = String(txt||"");
+  return /^el\s/i.test(t) ? ("del " + t.slice(3)) : ("de " + t);
+}
+
+function planGrupos(plan){
+  const grupos = [];
+  const porReserva = new Map();
+  const viajeEntero = [], historial = [];
+  plan.nuevos.forEach(n=>{
+    if(n.reserva){
+      if(!porReserva.has(n.reserva)) porReserva.set(n.reserva, []);
+      porReserva.get(n.reserva).push(n);
+    }else if(n.origen === "historial") historial.push(n);
+    // Los ítems de origen "destino" no traen `reserva` (límite documentado del
+    // motor, § 7 de packing-engine.md): para ellos la cita del dato concreto
+    // está adentro del texto del motivo, que por eso se muestra entero.
+    else viajeEntero.push(n);
+  });
+  porReserva.forEach((its, reserva)=> grupos.push({
+    hd:`Porque agregaste <b>${esc(reserva)}</b>`, ico:planReservaIcon(reserva), its
+  }));
+  if(viajeEntero.length){
+    const r = planReserva(plan);
+    grupos.push({
+      hd: r ? `Mirando el viaje entero, con ${esc(r)} adentro` : "Mirando el viaje entero",
+      ico:"globe", its:viajeEntero
+    });
+  }
+  if(historial.length) grupos.push({ hd:"Porque lo llevaste en viajes parecidos", ico:"spark", its:historial });
+  return grupos;
+}
+
+function sheetPackingPlan(trip, plan){
+  const n = plan.nuevos.length;
+  const items = (plan.listaPropuesta && plan.listaPropuesta.items) || {};
+  const body = `
+    <div class="pk-plan">
+      ${planGrupos(plan).map(g=>`
+        <div class="pk-plan-g">
+          <div class="pk-plan-hd">${svg(I[g.ico] || I.note)}<span>${g.hd}</span></div>
+          ${g.its.map(it=>{
+            const guardado = items[it.clave] || {};
+            return `<div class="pk-plan-it">
+              <span class="ic">${svg(I[CAT_ICON[it.categoria] || "doc"])}</span>
+              <span class="bd">
+                <span class="nm">${esc(it.nombre)}${guardado.cantidad?`<span class="q">×${esc(guardado.cantidad)}</span>`:""}</span>
+                ${it.motivo?`<span class="r">${esc(it.motivo)}</span>`:""}
+              </span>
+            </div>`;
+          }).join("")}
+        </div>`).join("")}
+    </div>
+    <p class="tiny muted" style="margin:0;line-height:1.55">Nada de lo que ya marcaste se toca: lo empacado sigue empacado y lo descartado no vuelve. Si alguna no va, la descartás de la lista con un toque y aprendo para la próxima.</p>`;
+
+  openSheet("Lo que le sumo a la valija", body, Store.canWrite
+    ? `<button class="btn ghost" id="pk-plan-later">Ahora no</button>
+       <button class="btn primary" id="pk-plan-apply">Sumar <span class="mono">${n}</span></button>`
+    : `<button class="btn block" id="cancel">Cerrar</button>`);
+
+  const cancel = document.getElementById("cancel");
+  if(cancel) cancel.onclick = closeSheet;
+  const later = document.getElementById("pk-plan-later");
+  if(later) later.onclick = ()=> aplazarPlan(trip, plan);
+  const apply = document.getElementById("pk-plan-apply");
+  if(apply) apply.onclick = ()=> aplicarPlan(trip, plan);
+}
+
+/** 18 · aplicar: un único set con la lista completa que devuelve el motor. */
+async function aplicarPlan(trip, plan){
+  if(!Store.canWrite) return;
+  const n = plan.nuevos.length;
+  const btn = document.getElementById("pk-plan-apply");
+  if(btn){ btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Sumando…`; }
+  try{
+    await Store.savePacking(trip.id, plan.listaPropuesta);
+  }catch(e){
+    // La hoja NO se cierra: nada se aplicó a medias, el motor devuelve el
+    // documento entero y se guarda de una sola vez.
+    toast("No se pudo guardar. Fijate la conexión y probá de nuevo.", true);
+    if(btn){ btn.disabled = false; btn.innerHTML = `Sumar <span class="mono">${n}</span>`; }
+    return;
+  }
+  // De acá sale la línea "cuando agregaste el auto (Europcar)" de la hoja 23.
+  // Es memoria: si se pierde, la hoja muestra sólo el motivo, que ya está en el ítem.
+  App.planApplied = { tripId:trip.id, byClave:{} };
+  plan.nuevos.forEach(x=>{ App.planApplied.byClave[x.clave] = x; });
+  App.plan = null; App.planTripId = null; App.planDock = false;
+  pkOlvidarAplazado(trip.id);
+  if(PK.tripId === trip.id){
+    PK.applied = true; PK.appliedN = n; PK.appliedReserva = planReserva(plan);
+    PK.avisoAplazado = null;
+    PK.fresh = true;                 // la animación de llegada, una sola vez
+    PK.visitsSinceApply = 1;
+    PK.seenNew = new Set();
+    setTimeout(()=>{ if(PK.tripId === trip.id) PK.fresh = false; }, 2700);
+  }
+  closeSheet();
+  render();
+}
+
+/** 19 · aplazar: no descarta el plan, lo saca de la vista. Queda en la hoja 12. */
+function aplazarPlan(trip, plan){
+  pkGuardarAplazado(trip.id, plan);
+  if(PK.tripId === trip.id) PK.avisoAplazado = plan;
+  App.planDock = false;
+  closeSheet();
+  render();
+}
+
+/** "Listo, ya las vi" y cerrar la confirmación: cerrarla ES confirmar (§ 4.3). */
+async function pkDarPorVistas(trip){
+  PK.applied = false;
+  const list = Store.packingOf(trip.id);
+  if(Store.canWrite && list){
+    const limpia = PackingEngine.clearNewFlags(list);
+    if(limpia !== list){
+      PK.seenNew = new Set();
+      try{ await Store.savePacking(trip.id, limpia); }
+      catch(e){ toast("No se pudo guardar. Fijate la conexión y probá de nuevo.", true); }
+    }
+  }
+  render();
+}
+
+/* ============================================================
+   VAL-43 · HOJA "LO QUE CAPAZ NO NECESITÁS" (estado 21)
+   Se resuelven de a una y en cualquier orden. Aceptar es el descarte de
+   siempre; rechazar borra sólo la propuesta. Las dos escrituras de
+   aceptar van juntas (§ 4.4).
+   ============================================================ */
+
+/** Aceptar: dismissItem + clearRemovalSuggestion, SIEMPRE en la misma escritura. */
+async function aceptarQuitar(trip, clave){
+  if(!Store.canWrite) return false;
+  const list = Store.packingOf(trip.id);
+  if(!list || !list.items || !list.items[clave]) return false;
+  PK.justEnriched = false;
+  let l = PackingEngine.dismissItem(list, clave);
+  l = PackingEngine.clearRemovalSuggestion(l, clave);
+  try{ await Store.savePacking(trip.id, l); return true; }
+  catch(e){ toast("No se pudo guardar. Fijate la conexión y probá de nuevo.", true); return false; }
+}
+/** Rechazar: sólo clearRemovalSuggestion. El ítem no se toca. */
+async function rechazarQuitar(trip, clave){
+  if(!Store.canWrite) return false;
+  const list = Store.packingOf(trip.id);
+  if(!list || !list.items || !list.items[clave]) return false;
+  const l = PackingEngine.clearRemovalSuggestion(list, clave);
+  try{ await Store.savePacking(trip.id, l); return true; }
+  catch(e){ toast("No se pudo guardar. Fijate la conexión y probá de nuevo.", true); return false; }
+}
+
+function sheetPackingRemovals(trip){
+  const canWrite = Store.canWrite;
+  const lista = Store.packingOf(trip.id);
+  // Se congela lo que hace falta mostrar: al resolver una, `sugerenciaQuitar`
+  // desaparece del documento y la tarjeta tiene que seguir en pantalla.
+  const props = (lista ? pkPropuestasQuitar(lista) : []).map(it=>({
+    clave:it.clave, nombre:it.nombre, categoria:it.categoria,
+    motivo:it.sugerenciaQuitar.motivo, origen:it.origen
+  }));
+  const estado = {};   // clave -> null | "out" | "keep"
+  props.forEach(p=> estado[p.clave] = null);
+
+  const catLabel = k => (PackingEngine.CATEGORIES.filter(c=>c.key===k)[0] || {}).label || k;
+
+  function cuerpo(){
+    const abiertas = props.filter(p=> estado[p.clave] === null);
+    if(!props.length || !abiertas.length){
+      const n = props.length;
+      return `<div class="empty" style="padding:22px 6px">
+        <h3>No queda ninguna</h3>
+        <p>${n ? `Resolviste ${n===1?"la que había":`las ${n}`}. Lo que sacaste sigue en la lista, tachado, y lo podés recuperar con el botón <span class="mono">volver</span>.`
+               : "No hay ninguna propuesta de sacar en esta lista."}</p>
+      </div>`;
+    }
+    return `
+      <p class="tiny muted" style="margin:0;line-height:1.55">Miré el destino, las fechas y lo que cargaste del viaje. ${abiertas.length===1?`Esta <b class="mono">1</b> capaz no te hace falta`:`Estas <b class="mono">${abiertas.length}</b> capaz no te hacen falta`}. Ninguna se saca sola.</p>
+      ${props.map(p=> estado[p.clave] === null ? `
+        <div class="pk-prop">
+          <div class="pk-prop-bd">
+            <div class="nm">${esc(p.nombre)}</div>
+            <div class="r">${esc(p.motivo)}</div>
+            <div class="was"><span class="chip">${esc(catLabel(p.categoria))}</span><span class="${srcChip(p, trip).cls}">${esc(srcChip(p, trip).tx)}</span></div>
+          </div>
+          ${canWrite ? `<div class="pk-prop-ft">
+            <button class="btn sm" data-keep="${esc(p.clave)}">Dejarlo, lo llevo</button>
+            <button class="btn sm primary" data-out="${esc(p.clave)}">Sacarlo</button>
+          </div>` : `<div style="height:12px"></div>`}
+        </div>` : `
+        <div class="pk-prop done">
+          <div class="pk-prop-bd">
+            <div class="nm">${esc(p.nombre)}</div>
+            <div class="r">${estado[p.clave]==="out" ? "lo sacaste · queda descartado en la lista" : "lo dejaste · no te lo vuelvo a proponer"}</div>
+          </div>
+        </div>`).join("")}`;
+  }
+
+  function pintar(){
+    const bd = document.getElementById("pk-prop-bd");
+    const ft = $modal.querySelector(".sheet-ft");
+    if(!bd) return;
+    bd.innerHTML = cuerpo();
+    const quedan = props.filter(p=> estado[p.clave] === null).length;
+    // No se cierra sola: cerrar una hoja bajo el dedo es el gesto que hace
+    // tocar sin querer lo que hay detrás.
+    if(ft) ft.innerHTML = quedan
+      ? `<button class="btn block" id="pk-prop-close">Cerrar</button>`
+      : `<button class="btn primary block" id="pk-prop-close">Volver a la lista</button>`;
+    const close = document.getElementById("pk-prop-close");
+    if(close) close.onclick = closeSheet;
+    if(!canWrite) return;
+    bd.querySelectorAll("[data-out]").forEach(b=> b.onclick = async ()=>{
+      const clave = b.dataset.out;
+      b.disabled = true;
+      pkMarcarVisto(clave);
+      const ok = await aceptarQuitar(trip, clave);
+      if(ok) estado[clave] = "out"; else b.disabled = false;
+      pintar(); render();
+    });
+    bd.querySelectorAll("[data-keep]").forEach(b=> b.onclick = async ()=>{
+      const clave = b.dataset.keep;
+      b.disabled = true;
+      pkMarcarVisto(clave);
+      const ok = await rechazarQuitar(trip, clave);
+      if(ok) estado[clave] = "keep"; else b.disabled = false;
+      pintar(); render();
+    });
+  }
+
+  // aria-live en el cuerpo: resolver una anuncia el cambio sin mover el foco.
+  openSheet("Lo que capaz no necesitás",
+    `<div id="pk-prop-bd" aria-live="polite" style="display:flex;flex-direction:column;gap:13px"></div>`,
+    `<button class="btn block" id="pk-prop-close">Cerrar</button>`);
+  pintar();
+}
+
 /* ---------- valija: detalle de un ítem (estado 11) ---------- */
 function sheetPackingItem(trip, list, clave){
   const it = list.items[clave]; if(!it) return;
   const canWrite = Store.canWrite;
   const src = srcChip(it, trip);
+
+  // Abrir la hoja de un ítem nuevo cuenta como haberlo visto (§ 4.3).
+  if(it.nuevo) pkMarcarVisto(clave);
+
+  // 22 · la propuesta de sacar, arriba de todo: es lo único nuevo que hay para
+  // decidir sobre este ítem. Lo de abajo ya estaba la última vez que se abrió.
+  const sug = (it.sugerenciaQuitar && it.sugerenciaQuitar.motivo && it.estado!=="descartado")
+    ? it.sugerenciaQuitar : null;
+  const sugHtml = sug ? `
+    <div class="pk-sug">
+      <span class="hd">${svg(I.ban)}
+        <span><b>Te propongo sacarlo</b>${esc(sug.motivo)}</span></span>
+      ${canWrite ? `<span class="ft">
+        <button class="btn sm" id="pk-sug-keep">Dejarlo, lo llevo</button>
+        <button class="btn sm primary" id="pk-sug-out">Sacarlo</button>
+      </span>` : ""}
+    </div>` : "";
 
   const stateHtml = `
     <div class="f">
@@ -4923,22 +6316,57 @@ function sheetPackingItem(trip, list, clave){
       </div>
     </div>` : "";
 
+  // 23 · un ítem nuevo dice cuándo llegó y por qué. La reserva sale del plan
+  // que se aplicó, guardado en memoria; si se perdió, queda sólo el motivo.
+  const desdePlan = (App.planApplied && App.planApplied.tripId === trip.id)
+    ? App.planApplied.byClave[clave] : null;
+  const llegada = (it.nuevo && it.agregadoEn) ? (()=> {
+    const d = parseDT(it.agregadoEn);
+    const cuando = d ? `el ${d.getDate()} de ${MESL[d.getMonth()]}` : "hace poco";
+    const causa = (desdePlan && desdePlan.reserva) ? `, cuando agregaste <b>${esc(desdePlan.reserva)}</b>` : "";
+    return `<p class="tiny muted" style="margin:6px 0 0;font-size:12.5px;line-height:1.45">Se sumó a la lista ${esc(cuando)}${causa}.</p>`;
+  })() : "";
+
   const originHtml = `
     <hr class="hr">
     <div class="f">
       <label>De dónde sale</label>
       <div class="chips" style="margin:2px 0 4px"><span class="${src.cls}">${esc(src.tx)}</span></div>
       <p style="margin:0;font-size:13.5px;line-height:1.5">${esc(it.motivo || "Sin motivo declarado.")}</p>
+      ${llegada}
     </div>`;
 
   let qty = it.cantidad;
   let estado = it.estado;
 
-  openSheet(it.nombre, stateHtml + qtyHtml + originHtml,
+  openSheet(it.nombre, sugHtml + stateHtml + qtyHtml + originHtml,
     canWrite ? `<button class="btn ghost" id="cancel">Cancelar</button><button class="btn primary" id="save">Guardar</button>`
              : `<button class="btn block" id="cancel">Cerrar</button>`);
 
+  // La palabra "nuevo" al lado del título. Se inserta por DOM para no tocar
+  // openSheet(), que escapa el título a propósito.
+  if(it.nuevo){
+    const h2 = $modal.querySelector(".sheet-hd h2");
+    if(h2) h2.insertAdjacentHTML("afterend", `<span class="pk-newtag">nuevo</span>`);
+  }
+
   document.getElementById("cancel").onclick = closeSheet;
+
+  const sugKeep = document.getElementById("pk-sug-keep");
+  if(sugKeep) sugKeep.onclick = async ()=>{
+    sugKeep.disabled = true;
+    const ok = await rechazarQuitar(trip, clave);
+    if(!ok){ sugKeep.disabled = false; return; }
+    closeSheet(); render(); toast("Listo, no te lo vuelvo a proponer");
+  };
+  const sugOut = document.getElementById("pk-sug-out");
+  if(sugOut) sugOut.onclick = async ()=>{
+    sugOut.disabled = true;
+    const ok = await aceptarQuitar(trip, clave);
+    if(!ok){ sugOut.disabled = false; return; }
+    closeSheet(); render(); toast("Descartado. Lo recuperás con el botón volver");
+  };
+
   if(!canWrite) return;
 
   document.querySelectorAll(".pk-states [data-s]").forEach(b=>{
@@ -4980,7 +6408,31 @@ function sheetPackingInfo(trip, list){
   const d = parseDT(b.desde);
   const destMes = [b.destino, d?MESL[d.getMonth()]:null].filter(Boolean).join(" · ") || "sin destino";
 
-  openSheet("De dónde sale esta lista", `
+  // 19 · el rastro permanente de lo que se aplazó. Es el único lugar donde nada
+  // se esconde, y está a dos toques desde cualquier estado de la valija.
+  const planPend = planDe(trip.id);
+  const nPend = planPend ? planPend.nuevos.length : 0;
+  const rPend = planPend ? planReserva(planPend) : null;
+  const novedadesHtml = planPend ? `
+    <div class="stack" style="gap:7px">
+      <div class="sec-head"><span class="eyebrow">Novedades sin sumar</span></div>
+      <p class="tiny muted" style="margin:0;line-height:1.55"><b class="mono">${nPend}</b> ${nPend===1?"cosa que apareció":"cosas que aparecieron"}${rPend?` cuando agregaste ${esc(rPend)}`:" cuando cambió el viaje"}.</p>
+      <div><button class="btn sm" id="pk-info-plan">Ver qué agrego</button></div>
+    </div>
+    <hr class="hr">` : "";
+
+  // 20 · lo mismo para las propuestas de sacar: siempre alcanzables acá,
+  // aunque el aviso que las explica no se esté mostrando.
+  const nQuitar = pkPropuestasQuitar(list).length;
+  const quitarHtml = nQuitar ? `
+    <div class="stack" style="gap:7px">
+      <div class="sec-head"><span class="eyebrow">Cosas que capaz no necesitás</span></div>
+      <p class="tiny muted" style="margin:0;line-height:1.55"><b class="mono">${nQuitar}</b> ${nQuitar===1?"propuesta sin resolver":"propuestas sin resolver"}. Ninguna se saca sola.</p>
+      <div><button class="btn sm" id="pk-info-quitar">Ver ${nQuitar===1?"cuál":"cuáles"}</button></div>
+    </div>
+    <hr class="hr">` : "";
+
+  openSheet("De dónde sale esta lista", novedadesHtml + quitarHtml + `
     <p style="margin:0;font-size:13.5px;line-height:1.55">Miro cuatro cosas de este viaje:</p>
     <div class="pk-inputs">
       <span class="chip accent">${esc(typeLbl)}</span>
@@ -5015,6 +6467,11 @@ function sheetPackingInfo(trip, list){
     <button class="btn" id="pk-changetype">Cambiar el tipo</button>
     <button class="btn" id="pk-redo">Rehacer la lista</button>
   ` : `<button class="btn block" id="cancel">Cerrar</button>`);
+
+  const verPlan = document.getElementById("pk-info-plan");
+  if(verPlan) verPlan.onclick = ()=>{ const p = planDe(trip.id); if(p) sheetPackingPlan(trip, p); };
+  const verQuitar = document.getElementById("pk-info-quitar");
+  if(verQuitar) verQuitar.onclick = ()=> sheetPackingRemovals(trip);
 
   if(Store.canWrite){
     document.getElementById("pk-changetype").onclick = ()=>{ closeSheet(); PK.pickingType = true; render(); };
