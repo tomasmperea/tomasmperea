@@ -1,0 +1,1266 @@
+<title>Valija que razona sobre el viaje — componentes (bloque B)</title>
+
+<!--
+  ============================================================
+  VALIJA QUE RAZONA SOBRE EL VIAJE — bloque B de la iteración 2
+  VAL-44 · VAL-45 · VAL-46 · VAL-43
+  Entrega de diseño. NO es la app: es el muestrario.
+
+  Se SUMA a app/parts/packing-ui.html (estados 00 a 13), no lo reemplaza.
+  La numeración sigue: acá van del 14 al 25.
+
+  Cómo leerlo
+  · Bloque A: tokens copiados tal cual de app/valija.html. No tocar.
+  · Bloque B: clases ya existentes (de valija.html y de packing-ui.html). No tocar.
+  · Bloque C: CSS NUEVO de esta entrega. Esto es lo único que hay que copiar.
+  · Bloque D: andamiaje del muestrario. NO se copia a la app.
+
+  Ningún color es literal. Ningún token nuevo. Todo sale de :root.
+  ============================================================
+-->
+
+<style>
+/* ============================================================
+   BLOQUE A — TOKENS (copiado de app/valija.html, sin cambios)
+   ============================================================ */
+:root{
+  --ink:#0F1B2E;
+  --ink-2:#54637C;
+  --ink-3:#8695AB;
+  --ground:#EDF0F5;
+  --surface:#FFFFFF;
+  --surface-2:#F5F7FB;
+  --line:#D7DEE9;
+  --line-2:#E7ECF3;
+  --accent:#0B45C4;
+  --accent-soft:#E4EBFC;
+  --accent-ink:#FFFFFF;
+  --flap:#E8A317;
+  --flap-soft:#FBF0D8;
+  --ok:#0B7A5C;
+  --ok-soft:#DDF1EA;
+  --warn:#A96400;
+  --warn-soft:#FBEEDA;
+  --crit:#BE3227;
+  --crit-soft:#FBE4E1;
+  --shadow:0 1px 2px rgba(15,27,46,.06), 0 8px 24px -12px rgba(15,27,46,.18);
+  --shadow-lift:0 2px 4px rgba(15,27,46,.08), 0 18px 40px -18px rgba(15,27,46,.30);
+
+  --f-display:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+
+  --r-s:8px; --r-m:14px; --r-l:20px;
+  --shell:460px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E9EEF7;
+    --ink-2:#9FAFC6;
+    --ink-3:#6F7F97;
+    --ground:#080D17;
+    --surface:#121B2B;
+    --surface-2:#182234;
+    --line:#26334A;
+    --line-2:#1E2A3E;
+    --accent:#6E9BFF;
+    --accent-soft:#1A2748;
+    --accent-ink:#08122A;
+    --flap:#FFC24D;
+    --flap-soft:#2E2413;
+    --ok:#4FCFA5;
+    --ok-soft:#102E26;
+    --warn:#E9A93C;
+    --warn-soft:#2E2413;
+    --crit:#FF8A7A;
+    --crit-soft:#331A18;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E9EEF7; --ink-2:#9FAFC6; --ink-3:#6F7F97;
+  --ground:#080D17; --surface:#121B2B; --surface-2:#182234;
+  --line:#26334A; --line-2:#1E2A3E;
+  --accent:#6E9BFF; --accent-soft:#1A2748; --accent-ink:#08122A;
+  --flap:#FFC24D; --flap-soft:#2E2413;
+  --ok:#4FCFA5; --ok-soft:#102E26;
+  --warn:#E9A93C; --warn-soft:#2E2413;
+  --crit:#FF8A7A; --crit-soft:#331A18;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+/* ============================================================
+   BLOQUE B — CLASES YA EXISTENTES que uso
+   (de app/valija.html y del bloque C de app/parts/packing-ui.html)
+   Copiadas sin cambios. No hay nada que integrar de acá.
+   ============================================================ */
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--f-body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+.hdr{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--line);padding:14px 16px 12px}
+.hdr-row{display:flex;align-items:center;gap:10px;min-height:34px}
+.brand{display:flex;align-items:baseline;gap:8px;flex:1;min-width:0}
+.brand h1{font-family:var(--f-display);font-weight:800;font-size:26px;letter-spacing:-.02em;margin:0;line-height:1}
+.brand .tag{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.hdr-sub{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-2);margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.iconbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);width:34px;height:34px;border-radius:10px;display:grid;place-items:center;cursor:pointer;flex:none;transition:background .15s,border-color .15s}
+.iconbtn:hover{background:var(--surface-2);border-color:var(--ink-3)}
+.iconbtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+main{flex:1;padding:16px 16px 108px;display:flex;flex-direction:column;gap:14px}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.05em;padding:3px 7px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line-2);white-space:nowrap}
+.chip.soon{background:var(--flap-soft);color:var(--warn);border-color:transparent;font-weight:500}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.accent{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:11px 14px;border-radius:11px;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,border-color .15s,transform .1s}
+.btn:hover{background:var(--surface-2);border-color:var(--ink-3)}
+.btn:active{transform:scale(.985)}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
+.btn.block{width:100%}
+.btn.sm{padding:8px 11px;font-size:13px;border-radius:9px}
+.fab{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:45;display:flex;gap:9px;max-width:var(--shell);width:calc(100% - 32px)}
+.fab .btn{box-shadow:var(--shadow-lift)}
+
+.empty{text-align:center;padding:34px 20px;background:var(--surface);border:1px dashed var(--line);border-radius:var(--r-l);display:flex;flex-direction:column;gap:9px;align-items:center}
+.empty h3{font-family:var(--f-display);font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em}
+.empty p{margin:0;color:var(--ink-2);font-size:13.5px;max-width:34ch;line-height:1.5}
+
+.scrim{position:fixed;inset:0;background:rgba(15,27,46,.55);z-index:80;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--surface);width:100%;max-width:var(--shell);border-radius:var(--r-l) var(--r-l) 0 0;max-height:92vh;display:flex;flex-direction:column;animation:rise .24s cubic-bezier(.2,.8,.3,1);box-shadow:0 -10px 50px rgba(0,0,0,.28)}
+@keyframes rise{from{transform:translateY(26px);opacity:.4}to{transform:none;opacity:1}}
+.sheet-hd{padding:14px 16px 11px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex:none}
+.sheet-hd h2{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0;flex:1;letter-spacing:-.01em}
+.sheet-bd{padding:15px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:13px}
+.sheet-ft{padding:12px 16px 14px;border-top:1px solid var(--line);display:flex;gap:9px;flex:none}
+.sheet-ft .btn{flex:1}
+
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.f .hint{font-size:11.5px;color:var(--ink-3);line-height:1.4}
+
+.notice{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;line-height:1.45}
+.notice.warn{background:var(--flap-soft);color:var(--warn)}
+.notice.ok{background:var(--ok-soft);color:var(--ok)}
+.notice svg{width:15px;height:15px;flex:none;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.notice .bd{flex:1;min-width:0}
+.notice .act{background:none;border:0;padding:0;margin-top:6px;color:inherit;font:inherit;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;display:block}
+.notice .x{background:none;border:0;color:inherit;opacity:.7;cursor:pointer;padding:0;flex:none;line-height:1}
+.notice .x svg{margin:0}
+.hr{height:1px;background:var(--line);border:0;margin:2px 0}
+.mono{font-family:var(--f-mono)}
+.muted{color:var(--ink-2)}
+.tiny{font-size:11.5px}
+
+/* tira de entrada a la valija */
+.vj-entry{display:flex;align-items:stretch;width:100%;text-align:left;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
+.vj-entry:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.vj-entry .band{width:8px;flex:none;background:var(--ink-3)}
+.vj-entry.due .band{background:var(--flap)}
+.vj-entry.live .band{background:var(--accent)}
+.vj-entry.done .band{background:var(--ok)}
+.vj-entry .bd{flex:1;min-width:0;padding:12px 4px 12px 13px;display:flex;flex-direction:column;gap:6px}
+.vj-entry .t{display:flex;align-items:baseline;gap:8px;font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em;line-height:1.2}
+.vj-entry .s{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+.vj-entry .go{flex:none;display:grid;place-items:center;padding:0 12px;color:var(--ink-3)}
+.vj-entry .go svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* progreso */
+.pk-prog{display:flex;align-items:center;gap:9px;width:100%}
+.pk-bar{flex:1;min-width:56px;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden;display:flex}
+.pk-bar i{display:block;height:100%;transition:width .35s ease}
+.pk-bar i.p{background:var(--ok)}
+.pk-bar i.d{background:var(--ink-3);opacity:.5}
+.pk-prog .n{flex:none;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.pk-prog .n b{font-weight:500;color:var(--ink)}
+
+/* categorías */
+.pk-cat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
+.pk-cat-hd{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:none;border:0;cursor:pointer;text-align:left}
+.pk-cat-hd:hover{background:var(--surface-2)}
+.pk-cat-ico{width:28px;height:28px;border-radius:8px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-2)}
+.pk-cat-ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-cat-hd .nm{flex:1;min-width:0;font-family:var(--f-display);font-weight:700;font-size:14.5px;letter-spacing:-.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pk-cat-hd .cnt{flex:none;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-cat-hd .chev{flex:none;width:16px;height:16px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
+.pk-cat[data-open="false"] .chev{transform:rotate(-90deg)}
+.pk-cat[data-open="false"] .pk-body-wrap{display:none}
+.pk-body-wrap{border-top:1px solid var(--line-2)}
+
+/* filas */
+.pk-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line-2);position:relative;background:var(--surface)}
+.pk-row:last-child{border-bottom:0}
+.pk-slide{display:flex;flex:1;min-width:0;position:relative;background:var(--surface);transition:transform .18s ease}
+.pk-mark{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;cursor:pointer;padding:0}
+.pk-state{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--ink-3);display:grid;place-items:center;color:transparent;background:transparent;transition:background .14s,border-color .14s,color .14s}
+.pk-state svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pk-mark:hover .pk-state{border-color:var(--ok)}
+.pk-txt{flex:1;min-width:0;background:none;border:0;text-align:left;cursor:pointer;padding:10px 4px 10px 0;display:flex;flex-direction:column;gap:3px}
+.pk-txt:hover .pk-nm .t{color:var(--accent)}
+.pk-nm{display:flex;align-items:baseline;gap:10px}
+.pk-nm .t{flex:1;min-width:0;font-size:14.5px;font-weight:600;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+.pk-nm .q{flex:none;font-family:var(--f-mono);font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-why{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.pk-why .r{font-size:11.5px;color:var(--ink-2);line-height:1.35}
+.pk-drop{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;padding:0}
+.pk-drop svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-drop:hover{background:var(--surface-2);color:var(--ink-2)}
+.pk-row[data-st="pack"] .pk-mark .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-row[data-st="pack"] .pk-nm .t{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1.5px}
+.pk-row[data-st="pack"] .pk-nm .q{color:var(--ink-3)}
+.pk-row[data-st="pack"] .pk-why{opacity:.5}
+.pk-row[data-st="drop"]{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-slide{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-state{border-style:dashed;color:var(--ink-3);background:transparent}
+.pk-row[data-st="drop"] .pk-txt{padding-top:7px;padding-bottom:7px}
+.pk-row[data-st="drop"] .pk-nm .t{font-weight:500;font-size:13.5px;color:var(--ink-3)}
+.pk-row[data-st="drop"] .pk-nm .q{display:none}
+.pk-row[data-st="drop"] .pk-why{display:none}
+.pk-back{flex:none;align-self:center;margin-right:8px;background:none;border:0;color:var(--ink-3);cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.05em;padding:7px 8px;border-radius:6px;white-space:nowrap}
+.pk-back:hover{background:var(--accent-soft);color:var(--accent)}
+@keyframes pkin{from{background:var(--flap-soft)}to{background:var(--surface)}}
+.pk-row.fresh .pk-slide{animation:pkin 2.6s ease 1}
+
+/* estados del ítem en la hoja de detalle */
+.pk-states{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pk-states button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-2);transition:all .14s}
+.pk-states button .pk-state{pointer-events:none}
+.pk-states button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pk-states button[aria-pressed="true"] .pk-state{border-color:currentColor;color:currentColor}
+.pk-states button[data-s="pack"][aria-pressed="true"] .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-states button[data-s="drop"] .pk-state{border-style:dashed}
+
+
+/* ============================================================
+   BLOQUE C — CSS NUEVO DE ESTA ENTREGA
+   Esto es lo que hay que agregar a app/valija.html.
+   Sin tokens nuevos: todo sale de los de arriba.
+   ============================================================ */
+
+/* --- CB1. Un aviso con dos acciones ---
+   El .notice ya soporta una acción (.act). Cuando el mismo aviso tiene
+   que ofrecer dos caminos (ver lo que agrego / no ahora), van en fila:
+   dos objetivos separados, nunca uno adentro del otro. */
+.notice .acts{display:flex;gap:16px;flex-wrap:wrap;margin-top:7px}
+.notice .acts .act{margin-top:0}
+.notice .acts .act.sec{font-weight:600;text-decoration:none;opacity:.85}
+.notice .acts .act.sec:hover{text-decoration:underline}
+.notice b.n{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* --- CB2. El aviso anclado al pie ---
+   Cuando el viaje cambia con la pantalla de la valija ABIERTA, el aviso
+   NO puede entrar arriba: correría la lista bajo el pulgar en medio del
+   tildado. Entra desde abajo, encima del FAB, sin mover un píxel de la
+   lista. Mismo contenido y mismas acciones que arriba. */
+.pk-dock{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);z-index:44;
+  width:calc(100% - 32px);max-width:var(--shell);
+  animation:pkdock .26s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes pkdock{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.pk-dock .notice{box-shadow:var(--shadow-lift);border:1px solid var(--line)}
+
+/* --- CB3. La marca de "ítem nuevo" (nuevo:true) ---
+   Una barra ámbar de 3px al filo izquierdo de la fila, sin alto propio ni
+   layout propio: no empuja nada. Va acompañada de la palabra "nuevo" en
+   la línea de motivo, porque una marca que existe sólo en color no se lee
+   con baja visión al color ni con lector de pantalla.
+   Se limpia con clearNewFlags() cuando la persona las VIO, no cuando las
+   aceptó (ver la especificación, sección 4.3). */
+.pk-row.is-new .pk-slide{box-shadow:inset 3px 0 0 var(--flap)}
+.pk-newtag{font-family:var(--f-mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--warn);font-weight:500;white-space:nowrap}
+.pk-cat-hd .cnt .chip{margin-left:6px}
+
+/* --- CB4. La marca de "te propongo sacarlo" (sugerenciaQuitar) ---
+   La marca va SOBRE el botón que acepta la propuesta: el mismo círculo de
+   descartar que ya existe, teñido. No suma una fila, ni una línea, ni un
+   alto. El texto completo de la propuesta vive en la hoja. */
+.pk-drop{position:relative}
+.pk-drop.sug{color:var(--warn)}
+.pk-drop.sug::before{
+  content:"";position:absolute;top:50%;left:50%;width:30px;height:30px;
+  margin:-15px 0 0 -15px;border-radius:50%;background:var(--flap-soft);
+}
+.pk-drop.sug svg{position:relative}
+.pk-drop.sug:hover{background:none}
+.pk-drop.sug:hover::before{background:var(--flap);opacity:.35}
+
+/* --- CB5. Hoja "Lo que le sumo a la valija" (VAL-46) ---
+   Los ítems nuevos agrupados por la reserva que los motivó. El grupo es
+   la unidad de sentido: se entiende "esto pasó porque cargué el auto",
+   no una lista suelta de cosas. */
+.pk-plan{display:flex;flex-direction:column;gap:12px}
+.pk-plan-g{border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;background:var(--surface)}
+.pk-plan-hd{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;background:var(--surface-2);border-bottom:1px solid var(--line-2);font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.pk-plan-hd b{color:var(--ink);font-weight:600}
+.pk-plan-hd svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-plan-it{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.pk-plan-it:last-child{border-bottom:0}
+.pk-plan-it .ic{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-3)}
+.pk-plan-it .ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-plan-it .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pk-plan-it .nm{display:flex;align-items:baseline;gap:9px;font-size:14px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.pk-plan-it .nm .q{flex:none;font-family:var(--f-mono);font-size:12.5px;font-weight:400;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-plan-it .r{font-size:11.5px;color:var(--ink-2);line-height:1.4}
+
+/* --- CB6. Hoja "Lo que capaz no necesitás" (VAL-43) ---
+   Una tarjeta por propuesta, cada una con sus dos salidas del mismo peso
+   visual: sacarlo o dejarlo. Ninguna es la opción por defecto, porque la
+   app no sabe cuál es la correcta. Se resuelven de a una. */
+.pk-prop{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);overflow:hidden}
+.pk-prop-bd{padding:12px 12px 0}
+.pk-prop-bd .nm{font-size:14.5px;font-weight:600;line-height:1.3;margin-bottom:3px;overflow-wrap:anywhere}
+.pk-prop-bd .r{font-size:12.5px;color:var(--ink-2);line-height:1.45}
+.pk-prop-bd .was{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pk-prop-ft{display:flex;gap:8px;padding:11px 12px 12px}
+.pk-prop-ft .btn{flex:1}
+.pk-prop.done{background:var(--surface-2);border-style:dashed}
+.pk-prop.done .pk-prop-bd{padding:11px 12px}
+.pk-prop.done .pk-prop-bd .nm{font-size:13.5px;font-weight:500;color:var(--ink-3);margin:0}
+.pk-prop.done .pk-prop-bd .r{font-family:var(--f-mono);font-size:11px;letter-spacing:.05em;color:var(--ink-3);margin-top:3px}
+
+/* --- CB7. La propuesta de sacar, dentro de la hoja del ítem (estado 11) ---
+   Mismo contenido que la tarjeta de la hoja de propuestas, para quien
+   llega por la fila en vez de por el aviso. Va arriba de todo: es lo
+   nuevo que hay que decidir sobre ese ítem. */
+.pk-sug{border-radius:12px;background:var(--flap-soft);color:var(--warn);padding:11px 12px;display:flex;flex-direction:column;gap:9px}
+.pk-sug .hd{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45}
+.pk-sug .hd svg{width:15px;height:15px;flex:none;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-sug .hd b{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:500;margin-bottom:3px}
+.pk-sug .ft{display:flex;gap:8px}
+.pk-sug .ft .btn{flex:1}
+
+
+/* ============================================================
+   BLOQUE D — ANDAMIAJE DEL MUESTRARIO. No se copia a la app.
+   ============================================================ */
+body.demo{background:var(--ground);padding:0 0 60px}
+.demo-top{position:sticky;top:0;z-index:90;background:var(--surface);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.demo-top b{font-family:var(--f-display);font-size:15px;letter-spacing:-.01em}
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;color:var(--ink-2);padding:8px 6px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.demo-top .seg{margin-left:auto;width:190px}
+.demo-wrap{max-width:520px;margin:0 auto;padding:20px 16px 0;display:flex;flex-direction:column;gap:34px}
+.demo-intro{font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.spec-hd{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.spec-hd .n{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;color:var(--ink-3)}
+.spec-hd h2{font-family:var(--f-display);font-weight:700;font-size:19px;margin:0;letter-spacing:-.015em}
+.spec-hd p{margin:0;font-size:13px;color:var(--ink-2);line-height:1.5}
+.frame{background:var(--ground);border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;box-shadow:var(--shadow);position:relative}
+.frame .hdr{position:static}
+.frame main{padding:14px;min-height:120px}
+.frame .fab{position:static;transform:none;width:auto;margin:0 14px 14px;padding:0;z-index:auto}
+.frame .pk-dock{position:static;transform:none;width:auto;margin:0 14px 14px;animation:none}
+.frame .scrim{position:absolute;z-index:70}
+.frame .sheet{border-radius:0;box-shadow:none;max-width:none;max-height:100%}
+.demo-note{font-size:12px;color:var(--ink-3);line-height:1.5;margin:8px 2px 0}
+.demo-note code{font-family:var(--f-mono);font-size:11px;color:var(--ink-2)}
+.demo-bar{display:flex;gap:8px;align-items:center;margin:10px 0 0;flex-wrap:wrap}
+</style>
+
+<body class="demo">
+
+<div class="demo-top">
+  <b>La valija razona sobre el viaje</b>
+  <span class="tiny muted">bloque B · estados 14 a 25</span>
+  <div class="seg" role="tablist" id="themes">
+    <button role="tab" aria-selected="true" data-th="auto">Auto</button>
+    <button role="tab" aria-selected="false" data-th="light">Claro</button>
+    <button role="tab" aria-selected="false" data-th="dark">Oscuro</button>
+  </div>
+</div>
+
+<div class="demo-wrap">
+
+  <p class="demo-intro">
+    Sigue el mismo viaje del muestrario anterior: <b>Madrid, 12 al 18 de octubre, 6 días, tipo Ciudad</b>,
+    con la lista ya armada y a medio tildar. Acá pasa una sola cosa nueva: <b>se agrega un auto alquilado
+    (Europcar)</b> y la lista queda vieja. Los estados <b>15 a 19</b> son un solo flujo interactivo, y el
+    <b>21</b> también. El resto es estático a propósito, para poder mirarlos juntos.
+  </p>
+
+  <!-- ══════════════════════════════════════════════════════════
+       14 — La tira de entrada avisa
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s14">
+    <div class="spec-hd">
+      <span class="n">14 · UBICACIÓN DEL AVISO</span>
+      <h2>La primera señal está donde estás parado</h2>
+      <p>Cuando la reserva se guarda, la persona está en la pantalla del viaje, no en la valija. Ahí no hay
+        nada que interrumpir: la tira de entrada, que ya existe, suma una quinta variante. Es el único
+        aviso que se muestra solo; a partir de acá siempre lo pide la persona.</p>
+    </div>
+
+    <div class="frame">
+      <main style="gap:12px">
+        <button class="vj-entry live">
+          <span class="band"></span>
+          <span class="bd">
+            <span class="t">Valija <span class="chip soon">3 cosas nuevas</span></span>
+            <span class="s">Agregaste el auto (Europcar)</span>
+          </span>
+          <span class="go" data-i="chev"></span>
+        </button>
+
+        <p class="demo-note">La variante <code>live</code> de siempre, con el chip y el subtítulo cambiados.
+          La banda sigue azul: la valija está en curso, no pasó nada malo. Si la lista todavía no se armó,
+          no hay nada que actualizar y la tira no cambia.</p>
+      </main>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       15 a 19 — El flujo de la actualización. INTERACTIVO
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s15">
+    <div class="spec-hd">
+      <span class="n">15 · 17 · 18 · 19 — INTERACTIVO</span>
+      <h2>Se ofrece, no se impone</h2>
+      <p>Probá el flujo entero: <b>Ver qué agrego</b> abre la hoja con lo que va a entrar, agrupado por la
+        reserva que lo motivó; <b>Sumar 3</b> aplica y marca los ítems nuevos; <b>Ahora no</b> lo aplaza sin
+        perderlo. Nada se guarda hasta que lo toques vos.</p>
+    </div>
+
+    <div class="frame" id="flow">
+      <header class="hdr">
+        <div class="hdr-row">
+          <button class="iconbtn" aria-label="Volver" data-i="back"></button>
+          <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">Madrid · Ciudad</span></div>
+          <button class="iconbtn" aria-label="De dónde sale esta lista" data-i="info"></button>
+        </div>
+        <div class="hdr-sub">
+          <span class="pk-prog" id="flow-prog" role="progressbar" aria-valuemin="0">
+            <span class="pk-bar"><i class="p"></i><i class="d"></i></span>
+            <span class="n"></span>
+          </span>
+        </div>
+      </header>
+      <main id="flow-main"></main>
+      <div class="fab">
+        <button class="btn primary block" data-i-before="plus">Agregar ítem</button>
+      </div>
+      <div id="flow-sheet"></div>
+    </div>
+
+    <div class="demo-bar">
+      <button class="btn sm ghost" id="flow-reset" data-i-before="back">Volver al principio</button>
+      <span class="tiny muted" id="flow-state"></span>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       16 — El aviso al pie
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s16">
+    <div class="spec-hd">
+      <span class="n">16 · EL AVISO QUE NO INTERRUMPE</span>
+      <h2>Si el cambio llega con la valija abierta</h2>
+      <p>Alguien más del viaje carga el auto mientras vos estás tildando. El mismo aviso no puede entrar
+        arriba: correría la lista bajo el pulgar en medio del gesto. Entra desde abajo, encima del botón de
+        agregar, y no mueve un solo píxel de lo que estás mirando.</p>
+    </div>
+
+    <div class="frame">
+      <main style="padding-bottom:0">
+        <div class="pk-cat" data-open="true">
+          <button class="pk-cat-hd" aria-expanded="true">
+            <span class="pk-cat-ico" data-i="shirt"></span>
+            <span class="nm">Ropa</span><span class="cnt">2 de 5</span>
+            <span class="chev" data-i="chevd"></span>
+          </button>
+          <div class="pk-body-wrap">
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Campera liviana</span></span>
+                  <span class="pk-why"><span class="chip soon">por Madrid</span>
+                    <span class="r">De noche baja a 11° en octubre</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Pantalones</span><span class="q">×2</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">1 cada 3 días</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </main>
+      <div class="pk-dock">
+        <div class="notice">
+          <span data-i="spark"></span>
+          <span class="bd">Ana agregó <b>el auto (Europcar)</b>. Tengo <b class="n">3</b> cosas para sumarle
+            a la valija.
+            <span class="acts">
+              <button class="act">Ver qué agrego</button>
+              <button class="act sec">Ahora no</button>
+            </span></span>
+        </div>
+      </div>
+      <div class="fab">
+        <button class="btn primary block" data-i-before="plus">Agregar ítem</button>
+      </div>
+    </div>
+    <p class="demo-note">Mismo texto, mismas dos acciones, misma hoja. Lo único que cambia es de dónde entra.
+      En la app va <code>position:fixed</code> arriba del FAB; acá está en flujo para poder verlo.</p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       20 — La propuesta de sacar, en la lista
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s20">
+    <div class="spec-hd">
+      <span class="n">20 · PROPONER SACAR (VAL-43)</span>
+      <h2>El ítem se queda donde está</h2>
+      <p>Dos ítems tienen <code>sugerenciaQuitar</code>. Los dos siguen en su categoría, en su estado, con
+        su motivo original intacto. La única marca es el círculo de descartar teñido de ámbar: la marca vive
+        sobre el botón que acepta la propuesta. El texto completo está en la hoja, no en la fila.</p>
+    </div>
+
+    <div class="frame">
+      <main>
+        <div class="notice warn">
+          <span data-i="ban"></span>
+          <span class="bd">Hay <b class="n">2</b> cosas de la lista que capaz no necesitás en Madrid.
+            <button class="act">Ver cuáles</button></span>
+          <button class="x" aria-label="Cerrar" data-i="x"></button>
+        </div>
+
+        <div class="pk-cat" data-open="true">
+          <button class="pk-cat-hd" aria-expanded="true">
+            <span class="pk-cat-ico" data-i="doc"></span>
+            <span class="nm">Documentación</span><span class="cnt">1 de 4</span>
+            <span class="chev" data-i="chevd"></span>
+          </button>
+          <div class="pk-body-wrap">
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Pasaporte</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Vuelo internacional</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">DNI</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Segundo documento, por si perdés el pasaporte</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Visa o autorización electrónica</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Fijate si tu pasaporte necesita visa o permiso electrónico</span></span>
+                </span>
+                <button class="pk-drop sug"
+                      aria-label="Descartar Visa o autorización electrónica. Te propongo sacarlo: con pasaporte argentino no necesitás visa para España."
+                      data-i="ban"></button>
+              </span>
+            </div>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Copias de las reservas</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Siguen sirviendo con el celular sin batería</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pk-cat" data-open="true">
+          <button class="pk-cat-hd" aria-expanded="true">
+            <span class="pk-cat-ico" data-i="drop"></span>
+            <span class="nm">Higiene</span><span class="cnt">1 de 3</span>
+            <span class="chev" data-i="chevd"></span>
+          </button>
+          <div class="pk-body-wrap">
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Secador de pelo</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Estadía de más de 3 días</span></span>
+                </span>
+                <button class="pk-drop sug"
+                      aria-label="Descartar Secador de pelo. Te propongo sacarlo: el apart de Malasaña dice tener secador en el baño."
+                      data-i="ban"></button>
+              </span>
+            </div>
+            <div class="pk-row" data-st="pack">
+              <span class="pk-slide">
+                <span class="pk-mark"><span class="pk-state" data-i="check"></span></span>
+                <span class="pk-txt">
+                  <span class="pk-nm"><span class="t">Cepillo y pasta de dientes</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span></span>
+                </span>
+                <span class="pk-drop" data-i="ban"></span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <p class="demo-note">El DNI y el Pasaporte están en la misma categoría y no tienen marca: la
+      documentación de identidad no se propone sacar nunca. El motor ya lo garantiza en código
+      (<code>CRITICAL_CLAVES</code>), la interfaz no depende de acordárselo.</p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       21 — Hoja de propuestas de sacar. INTERACTIVO
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s21">
+    <div class="spec-hd">
+      <span class="n">21 · HOJA — INTERACTIVO</span>
+      <h2>Lo que capaz no necesitás</h2>
+      <p>Se resuelven de a una y en cualquier orden. <b>Sacarlo</b> es el descarte de siempre (el ítem queda
+        descartado, recuperable, y alimenta el aprendizaje). <b>Dejarlo</b> borra la propuesta y no vuelve.
+        Los dos botones pesan igual: la app no sabe cuál es la respuesta correcta.</p>
+    </div>
+
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd">
+          <h2>Lo que capaz no necesitás</h2>
+          <button class="iconbtn" aria-label="Cerrar" data-i="x"></button>
+        </div>
+        <div class="sheet-bd" id="prop-bd" aria-live="polite"></div>
+        <div class="sheet-ft" id="prop-ft"></div>
+      </div>
+    </div>
+    <div class="demo-bar">
+      <button class="btn sm ghost" id="prop-reset" data-i-before="back">Volver al principio</button>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       22 — La propuesta dentro de la hoja del ítem
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s22">
+    <div class="spec-hd">
+      <span class="n">22 · HOJA DEL ÍTEM (11 EXTENDIDO)</span>
+      <h2>El otro camino a la misma decisión</h2>
+      <p>Quien toca la fila en vez del aviso llega igual a la propuesta, completa y con las dos salidas. Va
+        arriba de todo porque es lo único nuevo que hay para decidir sobre ese ítem. Debajo sigue la hoja
+        del estado 11 tal cual está.</p>
+    </div>
+
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd">
+          <h2>Visa o autorización electrónica</h2>
+          <button class="iconbtn" aria-label="Cerrar" data-i="x"></button>
+        </div>
+        <div class="sheet-bd">
+          <div class="pk-sug">
+            <span class="hd">
+              <span data-i="ban"></span>
+              <span><b>Te propongo sacarlo</b>Con pasaporte argentino no necesitás visa para España: entrás
+                con el pasaporte por hasta 90 días.</span>
+            </span>
+            <span class="ft">
+              <button class="btn sm">Dejarlo, lo llevo</button>
+              <button class="btn sm primary">Sacarlo</button>
+            </span>
+          </div>
+
+          <div class="f">
+            <label>Estado</label>
+            <div class="pk-states">
+              <button type="button" aria-pressed="true" data-s="pend">
+                <span class="pk-state"></span> Pendiente</button>
+              <button type="button" aria-pressed="false" data-s="pack">
+                <span class="pk-state" data-i="check"></span> Empacado</button>
+              <button type="button" aria-pressed="false" data-s="drop">
+                <span class="pk-state" data-i="dash"></span> Descartado</button>
+            </div>
+            <span class="hint">Descartar no es lo mismo que dejarlo pendiente: me dice que este ítem no va.
+              Si lo descartás en dos viajes de ciudad, dejo de sugerírtelo.</span>
+          </div>
+
+          <hr class="hr">
+
+          <div class="f">
+            <label>De dónde sale</label>
+            <div class="chips" style="margin:2px 0 4px"><span class="chip">lista base</span></div>
+            <p style="margin:0;font-size:13.5px;line-height:1.5">Regla de siempre para viaje internacional:
+              fijate si tu pasaporte necesita visa o permiso electrónico para este destino.</p>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+    <p class="demo-note">La sección "De dónde sale" no cambia: la propuesta de sacar no borra ni contradice
+      la explicación de por qué el ítem está. Las dos cosas son ciertas y la persona necesita las dos para
+      decidir.</p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       23 — Un ítem nuevo, en la hoja del ítem
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s23">
+    <div class="spec-hd">
+      <span class="n">23 · UN ÍTEM NUEVO, EN SU HOJA</span>
+      <h2>Cuándo llegó y por qué</h2>
+      <p>Si el ítem entró por una actualización, "De dónde sale" lo dice y nombra la reserva. Abrir la hoja
+        cuenta como haberlo visto: al salir de la pantalla, ese ítem ya no está esperando ser mirado.</p>
+    </div>
+
+    <div class="frame">
+      <div class="sheet">
+        <div class="sheet-hd">
+          <h2>Licencia de conducir</h2>
+          <span class="pk-newtag">nuevo</span>
+          <button class="iconbtn" aria-label="Cerrar" data-i="x"></button>
+        </div>
+        <div class="sheet-bd">
+          <div class="f">
+            <label>Estado</label>
+            <div class="pk-states">
+              <button type="button" aria-pressed="true" data-s="pend">
+                <span class="pk-state"></span> Pendiente</button>
+              <button type="button" aria-pressed="false" data-s="pack">
+                <span class="pk-state" data-i="check"></span> Empacado</button>
+              <button type="button" aria-pressed="false" data-s="drop">
+                <span class="pk-state" data-i="dash"></span> Descartado</button>
+            </div>
+          </div>
+
+          <hr class="hr">
+
+          <div class="f">
+            <label>De dónde sale</label>
+            <div class="chips" style="margin:2px 0 4px"><span class="chip">lista base</span></div>
+            <p style="margin:0;font-size:13.5px;line-height:1.5">Tenés un auto alquilado en el viaje.</p>
+            <p style="margin:6px 0 0;font-size:12.5px;line-height:1.45" class="muted">Se sumó a la lista el
+              8 de octubre, cuando agregaste <b>el auto (Europcar)</b>.</p>
+          </div>
+        </div>
+        <div class="sheet-ft">
+          <button class="btn ghost">Cancelar</button>
+          <button class="btn primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       24 — Sólo lectura
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s24">
+    <div class="spec-hd">
+      <span class="n">24 · SÓLO LECTURA</span>
+      <h2>Ver las tres señales sin poder tocarlas</h2>
+      <p>Quien mira sin permiso de edición se entera igual de que la lista quedó vieja —es información que
+        cambia cuánto confiar en lo que está viendo— pero no hay ningún botón que no vaya a responder. Los
+        ítems nuevos siguen marcados: limpiar la marca es una escritura, y acá no se escribe nada.</p>
+    </div>
+
+    <div class="frame">
+      <header class="hdr">
+        <div class="hdr-row">
+          <button class="iconbtn" aria-label="Volver" data-i="back"></button>
+          <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">Madrid · Ciudad</span></div>
+          <button class="iconbtn" aria-label="De dónde sale esta lista" data-i="info"></button>
+        </div>
+        <div class="hdr-sub">
+          <span class="pk-prog" role="progressbar" aria-valuemin="0" aria-valuemax="32" aria-valuenow="12"
+                aria-valuetext="12 empacados de 32">
+            <span class="pk-bar"><i class="p" style="width:37.5%"></i><i class="d" style="width:6%"></i></span>
+            <span class="n"><b>12</b> de 32</span>
+          </span>
+          <span class="chip">sólo lectura</span>
+        </div>
+      </header>
+      <main>
+        <div class="notice">
+          <span data-i="info"></span>
+          <span class="bd">Estás viendo la valija de este viaje. Quedó vieja: el viaje cambió después de que
+            se armó, y hay <b class="n">3</b> cosas sin sumar. Las puede sumar quien tenga permiso de
+            edición.</span>
+        </div>
+
+        <div class="pk-cat" data-open="true">
+          <div class="pk-cat-hd">
+            <span class="pk-cat-ico" data-i="doc"></span>
+            <span class="nm">Documentación</span>
+            <span class="cnt">1 de 5 <span class="chip soon">2 nuevos</span></span>
+            <span class="chev" data-i="chevd"></span>
+          </div>
+          <div class="pk-body-wrap">
+            <div class="pk-row is-new" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark" style="cursor:default"><span class="pk-state"></span></span>
+                <span class="pk-txt" style="cursor:default;padding-right:14px">
+                  <span class="pk-nm"><span class="t">Licencia de conducir</span></span>
+                  <span class="pk-why"><span class="pk-newtag">nuevo</span>
+                    <span class="chip">lista base</span>
+                    <span class="r">Tenés un auto alquilado en el viaje</span></span>
+                </span>
+              </span>
+            </div>
+            <div class="pk-row" data-st="pend">
+              <span class="pk-slide">
+                <span class="pk-mark" style="cursor:default"><span class="pk-state"></span></span>
+                <span class="pk-txt" style="cursor:default;padding-right:14px">
+                  <span class="pk-nm"><span class="t">Visa o autorización electrónica</span></span>
+                  <span class="pk-why"><span class="chip">lista base</span>
+                    <span class="r">Fijate si tu pasaporte necesita visa o permiso electrónico</span></span>
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <p class="demo-note">La Visa tiene <code>sugerenciaQuitar</code> y acá no se marca de ninguna manera: la
+      marca vive sobre el botón de descartar, y en sólo lectura ese botón no existe. La propuesta se lee
+      entera en la hoja del ítem, sin los dos botones de resolverla.</p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       25 — La regla de prioridad
+       ══════════════════════════════════════════════════════════ -->
+  <section class="spec" id="s25">
+    <div class="spec-hd">
+      <span class="n">25 · UN SOLO AVISO A LA VEZ</span>
+      <h2>Lo que no se muestra, no se pierde</h2>
+      <p>Cinco avisos distintos pueden aplicar al mismo tiempo sobre esta pantalla. Arriba de la lista se
+        muestra <b>uno solo</b>, el de más arriba en esta lista. Todo lo demás queda a un toque, en la hoja
+        de "De dónde sale esta lista", que es el único lugar donde nada se esconde.</p>
+    </div>
+
+    <div class="frame">
+      <main style="gap:10px">
+        <div class="notice warn">
+          <span data-i="info"></span>
+          <span class="bd"><b>1 ·</b> Armé la lista con las reglas de siempre. No pude ajustarla a Madrid en
+            octubre, así que puede faltarte algo del lugar.
+            <button class="act">Probar de nuevo</button></span>
+        </div>
+        <div class="notice">
+          <span data-i="spark"></span>
+          <span class="bd"><b>2 ·</b> Agregaste <b>el auto (Europcar)</b>. Tengo <b class="n">3</b> cosas
+            para sumarle a la valija.
+            <span class="acts">
+              <button class="act">Ver qué agrego</button>
+              <button class="act sec">Ahora no</button>
+            </span></span>
+        </div>
+        <div class="notice ok">
+          <span data-i="check2"></span>
+          <span class="bd"><b>3 ·</b> Sumé <b class="n">3</b> cosas por el auto (Europcar). Quedan marcadas
+            hasta que las mires.
+            <span class="acts">
+              <button class="act">Ver la primera</button>
+              <button class="act sec">Listo, ya las vi</button>
+            </span></span>
+          <button class="x" aria-label="Cerrar" data-i="x"></button>
+        </div>
+        <div class="notice warn">
+          <span data-i="ban"></span>
+          <span class="bd"><b>4 ·</b> Hay <b class="n">2</b> cosas de la lista que capaz no necesitás en
+            Madrid.
+            <button class="act">Ver cuáles</button></span>
+          <button class="x" aria-label="Cerrar" data-i="x"></button>
+        </div>
+        <div class="notice ok">
+          <span data-i="check2"></span>
+          <span class="bd"><b>5 ·</b> Valija lista. Los 3 que descartaste ya quedaron anotados para tu
+            próximo viaje de ciudad.</span>
+        </div>
+      </main>
+    </div>
+    <p class="demo-note">El número no se muestra en la app: está acá sólo para leer el orden. El aviso 1 va
+      primero porque habla de toda la lista; el 2 antes que el 3 porque una novedad sin decidir pesa más que
+      una confirmación de algo ya hecho.</p>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+/* ---------- iconos ---------- */
+const I = {
+  back:'<path d="M15 19l-7-7 7-7"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  x:'<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+  plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+  spark:'<path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/>',
+  check:'<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>',
+  dash:'<path d="M6 12h12"/>',
+  ban:'<circle cx="12" cy="12" r="8.2"/><path d="M6.2 6.2l11.6 11.6"/>',
+  chev:'<path d="M9 5l7 7-7 7"/>',
+  chevd:'<path d="M6 9.5l6 6 6-6"/>',
+  check2:'<circle cx="12" cy="12" r="9"/><path d="M8 12.2l2.8 2.8L16 9.5"/>',
+  car:'<path d="M4.5 16.5v2.2h3v-2.2"/><path d="M16.5 16.5v2.2h3v-2.2"/><path d="M3.2 16.5v-4l1.9-4.4a2 2 0 0 1 1.8-1.2h10.2a2 2 0 0 1 1.8 1.2l1.9 4.4v4z"/><path d="M6.5 13.4h.01"/><path d="M17.5 13.4h.01"/>',
+  doc:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/>',
+  shirt:'<path d="M8.5 3 12 5.6 15.5 3 20 5.6l-2 4.2-2-1.1V21H8V8.7l-2 1.1L4 5.6z"/>',
+  drop:'<path d="M12 3.2s6 6.2 6 10a6 6 0 0 1-12 0c0-3.8 6-10 6-10z"/>',
+  plug:'<path d="M9 3v5"/><path d="M15 3v5"/><path d="M6 8h12v2.6a6 6 0 0 1-12 0z"/><path d="M12 16.6V21"/>'
+};
+const svg = (p, cls) => `<svg viewBox="0 0 24 24"${cls?` class="${cls}"`:""}>${p}</svg>`;
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function paintIcons(root){
+  (root||document).querySelectorAll("[data-i]").forEach(el=>{
+    const k = el.dataset.i; delete el.dataset.i;
+    if(!I[k]) return;
+    if(el.classList.contains("chev")) el.outerHTML = svg(I[k],"chev");
+    else el.insertAdjacentHTML("afterbegin", svg(I[k]));
+  });
+  (root||document).querySelectorAll("[data-i-before]").forEach(el=>{
+    const k = el.dataset.iBefore; delete el.dataset.iBefore;
+    if(I[k]) el.insertAdjacentHTML("afterbegin", svg(I[k]));
+  });
+}
+
+/* ---------- tema ---------- */
+document.getElementById("themes").addEventListener("click", e=>{
+  const b = e.target.closest("[data-th]"); if(!b) return;
+  document.querySelectorAll("#themes [data-th]").forEach(x=>x.setAttribute("aria-selected", x===b));
+  if(b.dataset.th==="auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", b.dataset.th);
+});
+
+/* ============================================================
+   ESTADOS 15 · 17 · 18 · 19 — el flujo de la actualización.
+   Simula lo que devuelve planListUpdateAsync() y lo que hace la
+   app con eso. La lógica de verdad la construye el motor.
+   ============================================================ */
+const CATS = [
+  {id:"doc",  nm:"Documentación", ico:"doc"},
+  {id:"elec", nm:"Electrónica",   ico:"plug"},
+  {id:"dest", nm:"Específicos de Madrid", ico:"globe"}
+];
+
+/* la lista guardada, a medio tildar */
+const BASE = [
+  {c:"doc",  n:"Pasaporte", src:"base", why:"Vuelo internacional", st:"pack"},
+  {c:"doc",  n:"DNI", src:"base", why:"Segundo documento, por si perdés el pasaporte", st:"pend"},
+  {c:"doc",  n:"Tarjetas de débito y crédito", src:"base", why:"Guardadas en dos lugares distintos", st:"pack"},
+  {c:"elec", n:"Cargador del teléfono", src:"base", st:"pack"},
+  {c:"elec", n:"Adaptador de enchufe tipo F", q:2, src:"dest",
+   why:"España usa clavija redonda tipo F: la tuya no entra", st:"pend"},
+  {c:"dest", n:"Tarjeta Multi del metro", src:"dest",
+   why:"El metro no vende boletos sueltos: se carga en una tarjeta", st:"pend"}
+];
+
+/* plan.nuevos, tal como lo devuelve el motor: clave, nombre, categoria,
+   motivo, reserva (o null), origen */
+const NUEVOS = [
+  {c:"doc", n:"Licencia de conducir", src:"base",
+   why:"Tenés un auto alquilado en el viaje.", reserva:"el auto (Europcar)"},
+  {c:"doc", n:"Licencia de conducir internacional", src:"base",
+   why:"Auto alquilado en el exterior: muchos países la piden junto con la nacional.",
+   reserva:"el auto (Europcar)"},
+  {c:"dest", n:"Chaleco reflectante", src:"dest",
+   why:"En España es obligatorio tenerlo en el auto. Confirmá que el alquiler lo incluya.",
+   reserva:null}
+];
+
+const SRC = {
+  base:{cls:"chip",        tx:"lista base"},
+  hist:{cls:"chip accent", tx:"tus viajes"},
+  dest:{cls:"chip soon",   tx:"por Madrid"}
+};
+
+let FLOW = null;
+function flowReset(){
+  FLOW = {
+    fase:"offer",          // offer | applied | postponed
+    sheet:false,
+    items:BASE.map((x,i)=>({id:"b"+i, q:null, why:"", nuevo:false, ...x})),
+    vistos:new Set(),
+    limpio:false
+  };
+  renderFlow();
+}
+
+function flowApply(){
+  NUEVOS.forEach((x,i)=> FLOW.items.push({id:"n"+i, q:null, why:"", ...x, st:"pend", nuevo:true}));
+  FLOW.fase = "applied"; FLOW.sheet = false; FLOW.fresh = true;
+  renderFlow();
+  setTimeout(()=>{ if(FLOW){ FLOW.fresh=false; } }, 2700);
+}
+
+function flowRow(it){
+  return `<div class="pk-row${it.nuevo&&!FLOW.limpio?" is-new":""}${it.nuevo&&FLOW.fresh?" fresh":""}"
+       data-st="${it.st}" data-row="${it.id}">
+    <span class="pk-slide">
+      <button class="pk-mark" data-mark="${it.id}"
+              aria-label="${it.nuevo&&!FLOW.limpio?"Nuevo. ":""}${esc(it.n)}. Marcar como empacado">
+        <span class="pk-state">${svg(I.check)}</span>
+      </button>
+      <button class="pk-txt" data-see="${it.id}">
+        <span class="pk-nm"><span class="t">${esc(it.n)}</span>${it.q?`<span class="q">×${it.q}</span>`:""}</span>
+        <span class="pk-why">
+          ${it.nuevo&&!FLOW.limpio?`<span class="pk-newtag">nuevo</span>`:""}
+          <span class="${SRC[it.src].cls}">${SRC[it.src].tx}</span>
+          ${it.why?`<span class="r">${esc(it.why)}</span>`:""}
+        </span>
+      </button>
+      <button class="pk-drop" data-drop="${it.id}" aria-label="Descartar ${esc(it.n)}">${svg(I.ban)}</button>
+    </span>
+  </div>`;
+}
+
+function flowNotice(){
+  if(FLOW.fase==="offer") return `
+    <div class="notice">
+      ${svg(I.spark)}
+      <span class="bd">Agregaste <b>el auto (Europcar)</b>. Tengo <b class="n">3</b> cosas para sumarle a la
+        valija.
+        <span class="acts">
+          <button class="act" data-act="open">Ver qué agrego</button>
+          <button class="act sec" data-act="later">Ahora no</button>
+        </span></span>
+    </div>`;
+  if(FLOW.fase==="applied" && !FLOW.limpio) return `
+    <div class="notice ok">
+      ${svg(I.check2)}
+      <span class="bd">Sumé <b class="n">3</b> cosas por <b>el auto (Europcar)</b>. Quedan marcadas hasta
+        que las mires.
+        <span class="acts"><button class="act sec" data-act="seen">Listo, ya las vi</button></span></span>
+      <button class="x" aria-label="Cerrar" data-act="close">${svg(I.x)}</button>
+    </div>`;
+  if(FLOW.fase==="postponed") return `
+    <div class="notice">
+      ${svg(I.info)}
+      <span class="bd">Listo, no toco nada. Las <b class="n">3</b> cosas del auto quedan guardadas en
+        <b>De dónde sale esta lista</b>, arriba a la derecha, por si después las querés.
+        <span class="acts"><button class="act" data-act="open">Verlas igual</button></span></span>
+    </div>`;
+  return "";
+}
+
+function flowSheet(){
+  if(!FLOW.sheet) return "";
+  const grupos = [
+    {hd:`Porque agregaste <b>el auto (Europcar)</b>`, ico:"car",
+     its:NUEVOS.filter(x=>x.reserva)},
+    {hd:`Mirando el viaje entero, con el auto adentro`, ico:"globe",
+     its:NUEVOS.filter(x=>!x.reserva)}
+  ].filter(g=>g.its.length);
+
+  return `<div class="scrim" data-act="close-sheet">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Lo que le sumo a la valija">
+      <div class="sheet-hd">
+        <h2>Lo que le sumo a la valija</h2>
+        <button class="iconbtn" aria-label="Cerrar" data-act="close-sheet">${svg(I.x)}</button>
+      </div>
+      <div class="sheet-bd">
+        <div class="pk-plan">
+          ${grupos.map(g=>`
+            <div class="pk-plan-g">
+              <div class="pk-plan-hd">${svg(I[g.ico])}<span>${g.hd}</span></div>
+              ${g.its.map(it=>`
+                <div class="pk-plan-it">
+                  <span class="ic">${svg(I[CATS.find(c=>c.id===it.c).ico])}</span>
+                  <span class="bd">
+                    <span class="nm">${esc(it.n)}${it.q?`<span class="q">×${it.q}</span>`:""}</span>
+                    <span class="r">${esc(it.why)}</span>
+                  </span>
+                </div>`).join("")}
+            </div>`).join("")}
+        </div>
+        <p class="tiny muted" style="margin:0">Nada de lo que ya marcaste se toca: lo empacado sigue
+          empacado y lo descartado no vuelve. Si alguna de estas tres no va, la descartás de la lista con un
+          toque y aprendo para la próxima.</p>
+      </div>
+      <div class="sheet-ft">
+        <button class="btn ghost" data-act="later">Ahora no</button>
+        <button class="btn primary" data-act="apply">Sumar <span class="mono">3</span></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderFlow(){
+  const items = FLOW.items;
+  const pack = items.filter(i=>i.st==="pack").length;
+  const drop = items.filter(i=>i.st==="drop").length;
+  const tot  = items.length - drop;
+  const pend = tot - pack;
+
+  const prog = document.getElementById("flow-prog");
+  prog.querySelector("i.p").style.width = (tot? pack/tot*100 : 100) + "%";
+  prog.querySelector("i.d").style.width = "0%";
+  prog.querySelector(".n").innerHTML = `<b>${pack}</b> de ${tot} · faltan ${pend}`;
+  prog.setAttribute("aria-valuemax", tot);
+  prog.setAttribute("aria-valuenow", pack);
+  prog.setAttribute("aria-valuetext", `${pack} empacados de ${tot}`);
+
+  let html = flowNotice();
+  CATS.forEach(cat=>{
+    const list = items.filter(i=>i.c===cat.id);
+    if(!list.length) return;
+    const nuevos = list.filter(i=>i.nuevo && !FLOW.limpio).length;
+    const d = list.filter(i=>i.st==="pack").length;
+    html += `<div class="pk-cat" data-open="true">
+      <button class="pk-cat-hd" aria-expanded="true" data-cat="${cat.id}">
+        <span class="pk-cat-ico">${svg(I[cat.ico])}</span>
+        <span class="nm">${esc(cat.nm)}</span>
+        <span class="cnt">${d} de ${list.length}${nuevos?` <span class="chip soon">${nuevos} nuevo${nuevos>1?"s":""}</span>`:""}</span>
+        ${svg(I.chevd,"chev")}
+      </button>
+      <div class="pk-body-wrap">${list.map(flowRow).join("")}</div>
+    </div>`;
+  });
+
+  document.getElementById("flow-main").innerHTML = html;
+  document.getElementById("flow-sheet").innerHTML = flowSheet();
+  document.getElementById("flow-state").textContent = {
+    offer:"Estado 15 · el aviso al entrar",
+    applied:FLOW.limpio ? "Estado 18 · las marcas ya se limpiaron" : "Estado 18 · aplicada, ítems marcados",
+    postponed:"Estado 19 · aplazada"
+  }[FLOW.fase] + (FLOW.sheet ? " → estado 17 · la hoja" : "");
+  bindFlow();
+}
+
+function bindFlow(){
+  const root = document.getElementById("flow");
+  root.querySelectorAll("[data-act]").forEach(b=> b.onclick = e=>{
+    if(b.dataset.act==="close-sheet" && e.target!==b && !b.classList.contains("iconbtn")) return;
+    const a = b.dataset.act;
+    if(a==="open"){ FLOW.sheet = true; }
+    else if(a==="later"){ FLOW.fase = "postponed"; FLOW.sheet = false; }
+    else if(a==="close-sheet"){ FLOW.sheet = false; }
+    else if(a==="apply"){ return flowApply(); }
+    else if(a==="seen" || a==="close"){ FLOW.limpio = true; FLOW.fase = "applied"; }
+    renderFlow();
+  });
+  root.querySelectorAll("[data-mark]").forEach(b=> b.onclick = ()=>{
+    const it = FLOW.items.find(x=>x.id===b.dataset.mark);
+    it.st = it.st==="pack" ? "pend" : "pack";
+    renderFlow();
+  });
+  root.querySelectorAll("[data-drop]").forEach(b=> b.onclick = ()=>{
+    const it = FLOW.items.find(x=>x.id===b.dataset.drop);
+    it.st = "drop"; renderFlow();
+  });
+  root.querySelectorAll("[data-see]").forEach(b=> b.onclick = ()=>{
+    const it = FLOW.items.find(x=>x.id===b.dataset.see);
+    alert(`Acá se abre la hoja del ítem (estado 22 o 23).\n\n${it.n}\n${it.why||"—"}`
+        + (it.nuevo ? `\n\nSe sumó cuando agregaste el auto (Europcar).` : ""));
+  });
+}
+document.getElementById("flow-reset").onclick = flowReset;
+
+/* ============================================================
+   ESTADO 21 — la hoja de propuestas de sacar. INTERACTIVO
+   ============================================================ */
+const PROPS = [
+  {id:"visa", n:"Visa o autorización electrónica", cat:"Documentación",
+   why:"Con pasaporte argentino no necesitás visa para España: entrás con el pasaporte por hasta 90 días.",
+   st:null},
+  {id:"secador", n:"Secador de pelo", cat:"Higiene",
+   why:"El apart de Malasaña dice tener secador en el baño. Ocupa media valija.",
+   st:null}
+];
+let PST = null;
+function propReset(){ PST = PROPS.map(p=>({...p})); renderProps(); }
+
+function renderProps(){
+  const abiertas = PST.filter(p=>p.st===null).length;
+  const bd = document.getElementById("prop-bd");
+  const ft = document.getElementById("prop-ft");
+
+  if(!abiertas && PST.every(p=>p.st!==null)){
+    bd.innerHTML = `<div class="empty">
+        <h3>No queda ninguna</h3>
+        <p>Resolviste las dos. Lo que sacaste sigue en la lista, tachado, y lo podés recuperar con el
+          botón <span class="mono">volver</span>.</p>
+      </div>`;
+    ft.innerHTML = `<button class="btn primary">Volver a la lista</button>`;
+    paintIcons(bd);
+    return;
+  }
+
+  bd.innerHTML = `
+    <p class="tiny muted" style="margin:0">Miré el destino, las fechas y lo que cargaste del viaje.
+      Estas <b class="mono">${abiertas}</b> capaz no te hacen falta. Ninguna se saca sola.</p>
+    ${PST.map(p=> p.st===null ? `
+      <div class="pk-prop">
+        <div class="pk-prop-bd">
+          <div class="nm">${esc(p.n)}</div>
+          <div class="r">${esc(p.why)}</div>
+          <div class="was"><span class="chip">${esc(p.cat)}</span><span class="chip">lista base</span></div>
+        </div>
+        <div class="pk-prop-ft">
+          <button class="btn sm" data-keep="${p.id}">Dejarlo, lo llevo</button>
+          <button class="btn sm primary" data-out="${p.id}">Sacarlo</button>
+        </div>
+      </div>` : `
+      <div class="pk-prop done">
+        <div class="pk-prop-bd">
+          <div class="nm">${esc(p.n)}</div>
+          <div class="r">${p.st==="out" ? "lo sacaste · queda descartado en la lista"
+                                        : "lo dejaste · no te lo vuelvo a proponer"}</div>
+        </div>
+      </div>`).join("")}`;
+
+  ft.innerHTML = `<button class="btn ghost">Cerrar</button>`;
+
+  bd.querySelectorAll("[data-out]").forEach(b=> b.onclick = ()=>{
+    PST.find(p=>p.id===b.dataset.out).st = "out"; renderProps();
+  });
+  bd.querySelectorAll("[data-keep]").forEach(b=> b.onclick = ()=>{
+    PST.find(p=>p.id===b.dataset.keep).st = "keep"; renderProps();
+  });
+}
+document.getElementById("prop-reset").onclick = propReset;
+
+paintIcons();
+flowReset();
+propReset();
+</script>
