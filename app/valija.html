@@ -4350,6 +4350,7 @@ async function checkPackingPlan(trip){
   if(!trip) return;
   const list = Store.packingOf(trip.id);
   if(!list) return;                       // sin lista guardada no hay nada que actualizar
+  PK_RECALC_HECHO.delete(trip.id);        // este cálculo es mejor que el de entrada: vale de nuevo
   let history = [];
   try{ history = await Store.packingHistory(trip.id); }catch(e){ history = []; }
   let sample = null;
@@ -4378,6 +4379,49 @@ async function checkPackingPlan(trip){
   // no corre la lista bajo el pulgar (estado 16, § 4.1).
   App.planDock = (App.view === "packing" && App.tripId === trip.id);
   render();
+}
+
+/* ---------- recálculo al ENTRAR a la pantalla de la valija ----------
+   `App.plan` es memoria: al recargar la app se pierde, y sin esto la lista
+   sigue vieja y no lo dice ni la tira ni el aviso. El caso normal no es raro:
+   cerrar la app y volver al día siguiente, que es justo cuando alguien abre
+   la valija.
+
+   Acá va `planListUpdate` SINCRÓNICO, no el async: capas 1 y 3, sin modelo,
+   sin red y sin poder fallar. La llamada al modelo se paga una sola vez, al
+   guardar la reserva, que es donde vale.
+
+   Lo único asíncrono es leer el historial, y no es opcional: `learnFromHistory`
+   es lo que arma `aprendizaje.suprimidos`. Reconstruir la base sin historial
+   volvería a proponer justo lo que la persona ya descartó dos veces. Si esa
+   lectura falla, no se recalcula nada: es preferible no ofrecer a ofrecer mal.
+
+   El aviso entra ARRIBA de la lista (estado 15), no por el dock: recién se
+   entró a la pantalla y no hay ningún gesto en curso que proteger. */
+const PK_RECALC_HECHO = new Set();
+
+function recalcularPlanAlEntrar(tripId){
+  if(PK_RECALC_HECHO.has(tripId)) return;      // ya se miró en esta sesión
+  if(planDe(tripId)) return;                   // ya hay un plan en memoria, más fresco
+  const trip = Store.trips.get(tripId);
+  const list = Store.packingOf(tripId);
+  if(!trip || !list) return;
+  PK_RECALC_HECHO.add(tripId);
+  Store.packingHistory(tripId).then(history=>{
+    let plan;
+    try{
+      plan = PackingEngine.planListUpdate({
+        list, trip, items: Store.itemsOf(tripId),
+        tipoViaje: list.tipoViaje, history
+      });
+    }catch(e){ return; }                       // planListUpdate no lanza; por las dudas
+    if(!plan || !plan.desactualizada || !plan.nuevos.length) return;
+    if(planDe(tripId)) return;                 // llegó uno mejor mientras leíamos el historial
+    App.plan = plan;
+    App.planTripId = tripId;
+    App.planDock = false;
+    render();
+  }).catch(()=>{ PK_RECALC_HECHO.delete(tripId); });
 }
 
 /* ============================================================
@@ -4880,13 +4924,24 @@ function renderPackingBoard(trip, list){
 
 /* ---------- 25 · UN SOLO AVISO ARRIBA DE LA LISTA ----------
    Devuelve el HTML del PRIMER aviso que aplique, en este orden:
-     1 · sin ajuste por destino (08)      — habla de toda la lista
-     2 · la lista quedó vieja (15) o el acuse de aplazada (19)
+     1 · la lista quedó vieja (15/24) o el acuse de aplazada (19)
+     2 · sin ajuste por destino (08)
      3 · sumé N cosas (18)                — confirmación de lo recién aplicado
      3b· ajusté la lista al destino (07)  — la misma familia que el 3
      4 · hay N que capaz no necesitás (20)
      5 · valija lista (09)
      6 · sólo lectura, cuando no queda nada más que decir
+
+   El plan va PRIMERO, invirtiendo el orden de la tabla del diseño. El motivo:
+   `capaInteligente.estado` vive en el documento guardado, así que el aviso
+   degradado no se va nunca hasta que se regenere la lista. Siendo permanente
+   y estático, bloquearía para siempre a un aviso puntual y accionable. Entre
+   "no pude ajustar la lista al destino" —una advertencia sobre la calidad de
+   algo que ya está— y "el viaje cambió y tengo tres cosas para sumarte" —una
+   acción concreta con fecha— gana la segunda. El costo, asumido: "Probar de
+   nuevo" queda un toque más lejos mientras haya un plan sin resolver, y
+   vuelve apenas se aplica o se toca "Ahora no", que además es persistente.
+
    Lo que no se muestra no se pierde: la hoja 12 lista siempre todo lo
    pendiente, y las marcas en las filas son independientes del aviso. */
 function packingNotice(trip, list, plan){
@@ -4900,22 +4955,7 @@ function packingNotice(trip, list, plan){
     ? `<button class="act sec" data-pk="verquitar">Y hay <b class="n">${nq}</b> que capaz no necesitás. Verlas</button>`
     : "";
 
-  // 1 · sin ajuste por destino
-  if(cap.estado==="no-disponible" || cap.estado==="error"){
-    return `<div class="notice warn">${svg(I.info)}<span class="bd">Armé la lista con las reglas de siempre. No pude ajustarla a ${esc(destino)}, así que puede faltarte algo del lugar.
-      ${canWrite?`<button class="act" id="pk-retry">Probar de nuevo</button>`:""}</span></div>`;
-  }
-
-  // 19 · acuse de "Ahora no", de una sola visita. No queda badge ni insistencia.
-  if(PK.avisoAplazado && canWrite && !plan){
-    const p = PK.avisoAplazado;
-    const n = p.nuevos.length;
-    const r = planReserva(p);
-    return `<div class="notice">${svg(I.info)}<span class="bd">Listo, no toco nada. ${n===1?`La <b class="n">una</b> cosa`:`Las <b class="n">${n}</b> cosas`}${r?` ${esc(pkDeReserva(r))}`:""} quedan guardadas en <b>De dónde sale esta lista</b>, arriba a la derecha, por si después las querés.
-      <span class="acts"><button class="act" data-pk="verplan">Verlas igual</button></span></span></div>`;
-  }
-
-  // 2 · la lista quedó vieja (15), o su variante sin acciones (24)
+  // 1 · la lista quedó vieja (15), o su variante sin acciones (24)
   if(plan){
     const n = plan.nuevos.length;
     if(!canWrite){
@@ -4926,6 +4966,23 @@ function packingNotice(trip, list, plan){
         <button class="act" data-pk="verplan">Ver qué agrego</button>
         <button class="act sec" data-pk="ahorano">Ahora no</button>
       </span></span></div>`;
+  }
+
+  // 19 · acuse de "Ahora no", de una sola visita. No queda badge ni insistencia.
+  // Ocupa el mismo lugar que el aviso que reemplaza: es la respuesta al gesto
+  // que la persona acaba de hacer.
+  if(PK.avisoAplazado && canWrite){
+    const p = PK.avisoAplazado;
+    const n = p.nuevos.length;
+    const r = planReserva(p);
+    return `<div class="notice">${svg(I.info)}<span class="bd">Listo, no toco nada. ${n===1?`La <b class="n">una</b> cosa`:`Las <b class="n">${n}</b> cosas`}${r?` ${esc(pkDeReserva(r))}`:""} quedan guardadas en <b>De dónde sale esta lista</b>, arriba a la derecha, por si después las querés.
+      <span class="acts"><button class="act" data-pk="verplan">Verlas igual</button></span></span></div>`;
+  }
+
+  // 2 · sin ajuste por destino
+  if(cap.estado==="no-disponible" || cap.estado==="error"){
+    return `<div class="notice warn">${svg(I.info)}<span class="bd">Armé la lista con las reglas de siempre. No pude ajustarla a ${esc(destino)}, así que puede faltarte algo del lugar.
+      ${canWrite?`<button class="act" id="pk-retry">Probar de nuevo</button>`:""}</span></div>`;
   }
 
   // 3 · sumé N cosas (18). Cerrar la confirmación ES confirmar (§ 4.3).
@@ -5001,6 +5058,10 @@ function renderPacking(trip){
 
   if(!list && !hasDates && !PK.pickingType){ pkRenderDock(trip, null); renderPackingBlocked(trip); return; }
   if((!list && hasDates) || PK.pickingType){ pkRenderDock(trip, null); renderTypeSelector(trip, list); return; }
+  // Acá ya hay viaje y hay lista: es el único punto donde se puede saber si la
+  // lista quedó vieja sin datos a medio llegar. El propio recálculo se cuida de
+  // correr una sola vez por viaje y por sesión.
+  recalcularPlanAlEntrar(trip.id);
   renderPackingBoard(trip, list);
 }
 
