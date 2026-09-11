@@ -666,17 +666,24 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .chip.src{display:inline-flex;align-items:center;gap:4px}
 .chip.src svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-/* C2. Botón de origen del archivo: mismo aspecto que .tp button, pero es un
-   <label> que activa un <input type=file> vecino. */
-.tp label.tpbtn{position:relative;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:all .14s}
-/* El campo de archivo va invisible pero ENCIMA del botón, ocupándolo entero.
-   Así el toque cae sobre el propio campo: una etiqueta apuntando a un campo
-   escondido fuera de pantalla no abre el selector en varios navegadores de
-   teléfono, y el botón queda muerto. */
-.tp label.tpbtn input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0;z-index:1}
-.tp label.tpbtn:focus-within{outline:2.5px solid var(--accent);outline-offset:2px}
-.tp label.tpbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.tp label.tpbtn:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+/* C2. Botón de origen del archivo. Es un <button> de verdad, y el toque
+   dispara input.click() en el mismo gesto.
+
+   Antes el campo de archivo iba invisible ENCIMA del botón para que el toque
+   cayera sobre el campo. Eso obliga al navegador a acertarle a algo que no se
+   ve, adentro de una hoja modal fija, y en el teléfono no funciona: el botón
+   queda muerto. Llamar a .click() desde el gesto no depende de dónde esté el
+   campo ni de si se ve.
+
+   El campo igual queda RENDERIZADO, con tamaño real y sin recortar: los
+   navegadores de iPhone ignoran el click() sobre un campo con display:none,
+   visibility:hidden o recortado a un píxel. Va transparente y sin recibir
+   toques, para que nunca compita con el botón. */
+.tp button.tpbtn{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:all .14s;font-family:inherit;text-align:center}
+.tp button.tpbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tp button.tpbtn:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.imp-pick{position:relative}
+.imp-pick input[type=file]{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;pointer-events:none;border:0;padding:0;margin:0}
 
 /* C3. "Pegar el texto en cambio": un <details> nativo, sin JS. */
 .imp-more{border:0}
@@ -3789,6 +3796,7 @@ const App = {
      § 5, puntos 3 y 6. */
   plan:null,          // lo último que devolvió planListUpdateAsync, si quedó desactualizada
   planTripId:null,    // de qué viaje es ese plan
+  planDesde:null,     // huella de la lista con la que se calculó: sin esto se puede escribir una foto vieja
   planDock:false,     // resolvió con la pantalla de la valija ABIERTA -> entra por abajo (estado 16)
   planApplied:null    // {tripId, byClave:{...}} del plan que se aplicó: de acá sale "cuando agregaste el auto"
 };
@@ -4341,37 +4349,87 @@ function pkItemsNuevos(list){
   return PackingEngine.itemList(list, {includeDismissed:true}).filter(it => it && it.nuevo);
 }
 
+/* ---------- H1 · de qué lista salió este plan ----------
+   `plan.listaPropuesta` es una FOTO de la lista completa, sacada en el momento
+   en que se calculó el plan. Escribirla más tarde es un `set` que pisa todo lo
+   que pasó en el medio: regenerar, cambiar el tipo de viaje, agregar un ítem
+   propio, o una escritura de otra persona del viaje que llegó por `onSnapshot`.
+
+   Para no escribir nunca una foto vieja, se guarda junto al plan la huella de
+   la lista sobre la que se calculó. Al aplicar, si la lista guardada ya no da
+   esa misma huella, no se escribe la foto: se recalcula (§ aplicarPlan).
+
+   La huella es TOTAL a propósito —serializa el documento entero, con las claves
+   ordenadas para que no dependa del orden en que la base o localStorage las
+   devuelvan—. Una huella hecha a mano con los campos que se nos ocurran hoy es
+   justo el tipo de cosa que se desactualiza cuando el motor sume un campo. */
+function firmaEstable(v){
+  if(v === null || typeof v !== "object") return JSON.stringify(v === undefined ? null : v);
+  if(Array.isArray(v)) return "[" + v.map(firmaEstable).join(",") + "]";
+  return "{" + Object.keys(v).sort()
+    .map(k => JSON.stringify(k) + ":" + firmaEstable(v[k])).join(",") + "}";
+}
+
+/** Deja un plan en memoria, junto con la huella de la lista de la que salió. */
+function recordarPlan(tripId, plan, list){
+  App.plan = plan;
+  App.planTripId = tripId;
+  App.planDesde = firmaEstable(list);
+}
+
+/* Borra el plan en memoria y pide que se vuelva a mirar contra la lista nueva.
+   Se llama desde todo camino que reemplace la lista entera: el aviso tiene que
+   desaparecer, porque lo que ofrecía ya no se corresponde con lo que hay. */
+function invalidarPlan(tripId){
+  if(App.planTripId === tripId){
+    App.plan = null; App.planTripId = null; App.planDesde = null; App.planDock = false;
+  }
+  PK_RECALC_HECHO.delete(tripId);
+  if(PK.tripId === tripId) PK.avisoAplazado = null;
+}
+
 /* ---------- el disparo (§ 5, punto 3) ----------
    Se llama después de que la escritura de una reserva resolvió. No en cada
    tecla: al guardar, editar o borrar. Nunca lanza y nunca bloquea la interfaz:
    sin capa de IA (claude.use devuelve null) el plan sale igual con las reglas
    y el historial, que es lo que hace planListUpdate sincrónico. */
+/** Calcula el plan contra UNA lista puntual, con capa de IA si la hay.
+    Devuelve el plan, o `null` si no se pudo calcular con confianza. */
+async function recalcularPlanContra(trip, list){
+  if(!trip || !list) return null;
+  let history;
+  // Si el historial no se puede leer, no se calcula: `learnFromHistory` es lo
+  // que arma `aprendizaje.suprimidos`, y sin eso se volvería a ofrecer justo lo
+  // que la persona ya descartó dos veces. Mejor no ofrecer que ofrecer mal.
+  try{ history = await Store.packingHistory(trip.id); }catch(e){ return null; }
+  let sample = null;
+  try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
+  const ask = sample ? (prompt)=> sample.json(prompt, { modelTier:"complex" }) : null;
+  try{
+    return await PackingEngine.planListUpdateAsync({
+      list, trip, items: Store.itemsOf(trip.id),
+      tipoViaje: list.tipoViaje, history, ask
+    });
+  }catch(e){ return null; }   // el motor degrada solo; si igual lanzara, la app sigue
+}
+
 async function checkPackingPlan(trip){
   if(!trip) return;
   const list = Store.packingOf(trip.id);
   if(!list) return;                       // sin lista guardada no hay nada que actualizar
   PK_RECALC_HECHO.delete(trip.id);        // este cálculo es mejor que el de entrada: vale de nuevo
-  let history = [];
-  try{ history = await Store.packingHistory(trip.id); }catch(e){ history = []; }
-  let sample = null;
-  try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
-  const ask = sample ? (prompt)=> sample.json(prompt, { modelTier:"complex" }) : null;
 
-  let plan = null;
-  try{
-    plan = await PackingEngine.planListUpdateAsync({
-      list, trip, items: Store.itemsOf(trip.id),
-      tipoViaje: list.tipoViaje, history, ask
-    });
-  }catch(e){ plan = null; }   // el motor degrada solo; si igual lanzara, la app sigue
+  const plan = await recalcularPlanContra(trip, list);
+  if(plan === null) return;               // no se pudo calcular: se deja todo como estaba
 
-  if(!plan || !plan.desactualizada || !plan.nuevos.length){
-    if(App.planTripId === trip.id){ App.plan = null; App.planTripId = null; App.planDock = false; }
+  if(!plan.desactualizada || !plan.nuevos.length){
+    if(App.planTripId === trip.id){ App.plan = null; App.planTripId = null; App.planDesde = null; App.planDock = false; }
     render();
     return;
   }
-  App.plan = plan;
-  App.planTripId = trip.id;
+  // La huella es la de `list`: la lista con la que se calculó, no la que haya
+  // ahora. Entre medio pasaron dos `await` y la lista pudo cambiar.
+  recordarPlan(trip.id, plan, list);
   // Un plan con una clave que no estaba en la firma aplazada vuelve a ofrecerse:
   // el acuse de "Ahora no" de esta visita ya no corresponde (§ 4.2, punto 4).
   if(PK.tripId === trip.id && !pkPlanAplazado(trip.id, plan)) PK.avisoAplazado = null;
@@ -4417,8 +4475,15 @@ function recalcularPlanAlEntrar(tripId){
     }catch(e){ return; }                       // planListUpdate no lanza; por las dudas
     if(!plan || !plan.desactualizada || !plan.nuevos.length) return;
     if(planDe(tripId)) return;                 // llegó uno mejor mientras leíamos el historial
-    App.plan = plan;
-    App.planTripId = tripId;
+    if(Store.packingOf(tripId) !== list){
+      // La lista cambió mientras leíamos el historial: este plan salió de una
+      // foto que ya no existe y no se ofrece. Se suelta la marca para que el
+      // próximo render lo vuelva a intentar contra la lista buena; si no, el
+      // recálculo se perdería para toda la sesión.
+      PK_RECALC_HECHO.delete(tripId);
+      return;
+    }
+    recordarPlan(tripId, plan, list);
     App.planDock = false;
     render();
   }).catch(()=>{ PK_RECALC_HECHO.delete(tripId); });
@@ -4483,25 +4548,36 @@ function pkStopObserver(){
 function pkObserveNew(main){
   pkStopObserver();
   if(!Store.canWrite || !PK.ioOk) return;
-  const filas = main.querySelectorAll(".pk-row.is-new[data-row]");
-  if(!filas.length) return;
+  // Dos cosas cuentan como "lo vio":
+  //   · la fila del ítem nuevo, cuando la categoría está abierta;
+  //   · el encabezado de una categoría PLEGADA con su chip "N nuevos", que es
+  //     lo único que se puede ver de esos ítems sin abrirla. Ver que hay dos
+  //     cosas nuevas en Documentación y elegir no abrirla es información
+  //     recibida y una decisión tomada; tratarla como "todavía no se enteró"
+  //     es no escuchar (§ 4.3).
+  const objetivos = main.querySelectorAll(".pk-row.is-new[data-row], .pk-cat-hd[data-newclaves]");
+  if(!objetivos.length) return;
+  const clavesDe = el => el.dataset.newclaves
+    ? el.dataset.newclaves.split(" ").filter(Boolean)
+    : (el.dataset.row ? [el.dataset.row] : []);
   const io = new IntersectionObserver(entradas=>{
     entradas.forEach(en=>{
-      const clave = en.target.dataset.row;
-      if(!clave) return;
+      const claves = clavesDe(en.target);
+      if(!claves.length) return;
+      const id = claves.join(" ");
       if(en.isIntersecting){
-        if(PK.ioTimers.has(clave)) return;
-        PK.ioTimers.set(clave, setTimeout(()=>{
-          PK.ioTimers.delete(clave);
-          PK.seenNew.add(clave);
+        if(PK.ioTimers.has(id)) return;
+        PK.ioTimers.set(id, setTimeout(()=>{
+          PK.ioTimers.delete(id);
+          claves.forEach(c=> PK.seenNew.add(c));
         }, 600));
       }else{
-        const t = PK.ioTimers.get(clave);
-        if(t){ clearTimeout(t); PK.ioTimers.delete(clave); }
+        const t = PK.ioTimers.get(id);
+        if(t){ clearTimeout(t); PK.ioTimers.delete(id); }
       }
     });
   }, { threshold:0.6 });
-  filas.forEach(f=> io.observe(f));
+  objetivos.forEach(el=> io.observe(el));
   PK.io = io;
 }
 /** Actuar sobre un ítem o abrir su hoja también es haberlo mirado. */
@@ -4588,16 +4664,25 @@ function pkCategoryHtml(cat, trip, canWrite){
   const nuevos = cat.items.filter(i=>i.nuevo && i.estado!=="descartado").length;
   // Una categoría sin pendientes se pliega sola, salvo que tenga algo
   // descartado: ahí sigue habiendo algo que mirar (el botón "volver").
-  // Una categoría con ítems nuevos se abre sola: una fila adentro de una
-  // categoría plegada nunca entra en la ventana visible y su marca no se
-  // limpiaría jamás (§ 4.3). Si la persona la pliega a mano, manda ella.
+  // Una categoría con ítems nuevos se abre sola, PERO si la persona la plegó a
+  // mano manda ella: reabrirla porque el sistema decidió que tiene que mirar
+  // algo es exactamente lo que hace que una app se sienta impertinente.
+  // El agujero que eso deja —una fila plegada nunca entra en la ventana visible
+  // y su marca no se limpiaría jamás— lo cierra el chip: si el "N nuevos" del
+  // encabezado estuvo a la vista, los ítems de adentro cuentan como vistos
+  // (§ 4.3, ver pkObserveNew).
   const open = PK.openCats[cat.key] !== undefined ? PK.openCats[cat.key] : (nuevos>0 || !full || dropped>0);
   const icon = CAT_ICON[cat.key] || "doc";
   // El chip es el localizador grueso: sin él, tres filas ámbar en cuarenta
   // ítems se encuentran scrolleando a ciegas. Se ve también plegada.
   const chipNuevos = nuevos ? ` <span class="chip soon">${nuevos} ${nuevos===1?"nuevo":"nuevos"}</span>` : "";
+  // Claves de los ítems nuevos que quedan tapados con la categoría plegada:
+  // son los que el chip representa, y los que se dan por vistos con él.
+  const tapadas = (!open && nuevos)
+    ? cat.items.filter(i=>i.nuevo && i.estado!=="descartado").map(i=>i.clave).join(" ")
+    : "";
   return `<div class="pk-cat ${full?"full":""}" data-open="${open}">
-    <button class="pk-cat-hd" aria-expanded="${open}" data-cat="${esc(cat.key)}">
+    <button class="pk-cat-hd" aria-expanded="${open}" data-cat="${esc(cat.key)}"${tapadas?` data-newclaves="${esc(tapadas)}"`:""}>
       <span class="pk-cat-ico">${svg(I[icon])}</span>
       <span class="nm">${esc(cat.label)}</span>
       <span class="cnt">${full?`<span class="chip ok">listo</span>`:`${packed} de ${cat.items.length - dropped}`}${chipNuevos}</span>
@@ -4617,6 +4702,11 @@ function pkCategoryHtml(cat, trip, canWrite){
 
 /* ---------- generar / regenerar ---------- */
 async function runGenerate(trip, tipoViaje, previous){
+  // Armar, rehacer o cambiar el tipo reemplaza la lista entera: el plan que
+  // hubiera pendiente ofrecía cosas de una lista que ya no existe. Se tira acá
+  // y se recalcula solo contra la lista nueva (H1, capa 1). Los tres caminos
+  // ("Armar la lista", "Rehacer la lista", "Usar este tipo") pasan por acá.
+  invalidarPlan(trip.id);
   const items = Store.itemsOf(trip.id);
   let history = [];
   try{ history = await Store.packingHistory(trip.id); }catch(e){ history = []; }
@@ -4652,6 +4742,9 @@ async function runGenerate(trip, tipoViaje, previous){
   }
   try{ await Store.savePacking(trip.id, final); }
   catch(e){ toast(writeErr(e), true); }
+  // Otra vez al final: entre las dos escrituras se pudo recalcular contra la
+  // lista intermedia. Lo que valga se recalcula contra ESTA, que es la buena.
+  invalidarPlan(trip.id);
   if(PK.tripId === trip.id) render();
 }
 
@@ -5541,9 +5634,36 @@ async function sheetImport(trip){
   }
 
   /* ---------- 01/02: elegir archivos ---------- */
+  /* Si el selector no se abre, la persona se queda sin saber qué pasó y el
+     botón parece roto. No lo podemos preguntar: lo medimos. Abrir el selector
+     le saca el foco a la página en todos los navegadores; si después de tocar
+     el foco nunca se fue y tampoco llegó ningún archivo, no se abrió nada.
+     Entonces lo decimos y ofrecemos la vía que sí funciona siempre. */
+  function avisarSelectorMudo(){
+    const caja = document.getElementById("im-nopick");
+    if(!caja || !caja.hidden) return;
+    caja.hidden = false;
+    caja.innerHTML = `<div class="notice warn">${svg(I.info)}<span class="bd">No se abrió el selector de archivos. Es un problema del navegador, no tuyo, y quiero saberlo: contámelo. Mientras tanto, pegá abajo el texto de la confirmación y lo interpreto igual.</span></div>`;
+    const det = document.querySelector(".imp-more");
+    if(det) det.open = true;
+  }
+
   function wireFileInput(id, forcedKind){
     const input = document.getElementById(id);
     if(!input) return;
+    const boton = document.querySelector(`[data-pick="${id}"]`);
+    if(boton) boton.onclick = ()=>{
+      let seFue = false;
+      const salio = ()=>{ seFue = true; };
+      window.addEventListener("blur", salio, {once:true});
+      document.addEventListener("visibilitychange", salio, {once:true});
+      input.click();
+      setTimeout(()=>{
+        window.removeEventListener("blur", salio);
+        document.removeEventListener("visibilitychange", salio);
+        if(!seFue && !(input.files && input.files.length) && alive()) avisarSelectorMudo();
+      }, 1500);
+    };
     input.onchange = ()=>{
       Array.from(input.files||[]).forEach(file=>{
         const engineKind = ImportEngine.fileKind({name:file.name, mimeType:file.type});
@@ -5576,15 +5696,16 @@ async function sheetImport(trip){
       </div>
       <div class="f">
         <label>Cómo lo cargás</label>
-        <div class="tp tp3">
-          <label class="tpbtn">${svg(I.cam)} Sacar foto <span class="n">con la cámara</span>
-            <input id="im_cam" type="file" accept="image/*" capture="environment"></label>
-          <label class="tpbtn">${svg(I.gallery)} Galería <span class="n">fotos y capturas</span>
-            <input id="im_gal" type="file" accept="image/*" multiple></label>
-          <label class="tpbtn">${svg(I.doc)} Archivo <span class="n">PDF o imagen</span>
-            <input id="im_doc" type="file" accept="application/pdf,image/*" multiple></label>
+        <div class="tp tp3 imp-pick">
+          <button type="button" class="tpbtn" data-pick="im_cam">${svg(I.cam)} Sacar foto <span class="n">con la cámara</span></button>
+          <button type="button" class="tpbtn" data-pick="im_gal">${svg(I.gallery)} Galería <span class="n">fotos y capturas</span></button>
+          <button type="button" class="tpbtn" data-pick="im_doc">${svg(I.doc)} Archivo <span class="n">PDF o imagen</span></button>
+          <input id="im_cam" type="file" accept="image/*" capture="environment">
+          <input id="im_gal" type="file" accept="image/*" multiple>
+          <input id="im_doc" type="file" accept="application/pdf,image/*" multiple>
         </div>
         <span class="hint">Podés elegir varios a la vez, y combinar fotos con PDF en la misma carga.</span>
+        <div id="im-nopick" hidden></div>
       </div>
       ${st.queue.length ? `
       <div class="f">
@@ -6162,29 +6283,87 @@ function sheetPackingPlan(trip, plan){
   if(apply) apply.onclick = ()=> aplicarPlan(trip, plan);
 }
 
-/** 18 · aplicar: un único set con la lista completa que devuelve el motor. */
+/* ---------- 18 · aplicar ----------
+   Un único `set` con la lista completa que devuelve el motor, PERO nunca con
+   la foto vieja (H1). Antes de escribir se revalida contra lo que hay guardado
+   en este instante:
+
+     · la lista da la misma huella que cuando se calculó el plan
+         -> se escribe `plan.listaPropuesta`, que es exactamente lo que se
+            mostró en la hoja, con la capa de IA incluida;
+     · la lista cambió (se rehizo, cambió el tipo, se agregó un ítem propio,
+       escribió otra persona del viaje)
+         -> se recalcula contra la lista de AHORA. Si ofrece los mismos ítems
+            que se mostraron, se escribe la propuesta nueva —que ya contiene
+            todo lo que pasó en el medio—; si ofrece otra cosa, NO se escribe
+            nada y se le muestra el plan actualizado para que decida sobre eso.
+
+   La huella hace el trabajo que no puede hacer una lista de caminos a
+   invalidar: detecta también los cambios que no pasaron por ningún código
+   nuestro, como el snapshot de otra persona del viaje. */
 async function aplicarPlan(trip, plan){
   if(!Store.canWrite) return;
   const n = plan.nuevos.length;
   const btn = document.getElementById("pk-plan-apply");
+  const soltarBoton = ()=>{ if(btn){ btn.disabled = false; btn.innerHTML = `Sumar <span class="mono">${n}</span>`; } };
   if(btn){ btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Sumando…`; }
+
+  const actual = Store.packingOf(trip.id);
+  if(!actual){
+    toast("No encontré la lista de este viaje. Probá de nuevo.", true);
+    soltarBoton(); return;
+  }
+
+  // `aplicado` es el plan que de verdad se escribe: puede no ser el mismo
+  // objeto que se mostró, y de él salen la confirmación y la línea "cuándo
+  // llegó" de la hoja 23, para que digan lo que se guardó y no lo que se vio.
+  let aplicado = null;
+  if(App.planTripId === trip.id && App.planDesde && App.planDesde === firmaEstable(actual)){
+    aplicado = plan;                                 // nada cambió: es la misma lista
+  }else{
+    const fresco = await recalcularPlanContra(trip, actual);
+    if(!fresco){
+      toast("No pude comprobar la lista antes de sumar. Probá de nuevo.", true);
+      soltarBoton(); return;
+    }
+    if(planFirma(fresco) === planFirma(plan) && fresco.listaPropuesta){
+      aplicado = fresco;                             // mismo ofrecimiento, sobre la lista nueva
+    }else{
+      // Nada se escribe. Se le muestra lo que corresponde ahora.
+      if(fresco.desactualizada && fresco.nuevos.length){
+        recordarPlan(trip.id, fresco, actual);
+        App.planDock = false;
+        PK_RECALC_HECHO.add(trip.id);
+        sheetPackingPlan(trip, fresco);
+        toast("La lista cambió mientras tanto. Esto es lo que le sumo ahora.");
+      }else{
+        invalidarPlan(trip.id);
+        PK_RECALC_HECHO.add(trip.id);
+        closeSheet();
+        toast("La lista ya está al día: no quedó nada para sumar.");
+      }
+      render();
+      return;
+    }
+  }
+
   try{
-    await Store.savePacking(trip.id, plan.listaPropuesta);
+    await Store.savePacking(trip.id, aplicado.listaPropuesta);
   }catch(e){
     // La hoja NO se cierra: nada se aplicó a medias, el motor devuelve el
     // documento entero y se guarda de una sola vez.
     toast("No se pudo guardar. Fijate la conexión y probá de nuevo.", true);
-    if(btn){ btn.disabled = false; btn.innerHTML = `Sumar <span class="mono">${n}</span>`; }
+    soltarBoton();
     return;
   }
   // De acá sale la línea "cuando agregaste el auto (Europcar)" de la hoja 23.
   // Es memoria: si se pierde, la hoja muestra sólo el motivo, que ya está en el ítem.
   App.planApplied = { tripId:trip.id, byClave:{} };
-  plan.nuevos.forEach(x=>{ App.planApplied.byClave[x.clave] = x; });
-  App.plan = null; App.planTripId = null; App.planDock = false;
+  aplicado.nuevos.forEach(x=>{ App.planApplied.byClave[x.clave] = x; });
+  App.plan = null; App.planTripId = null; App.planDesde = null; App.planDock = false;
   pkOlvidarAplazado(trip.id);
   if(PK.tripId === trip.id){
-    PK.applied = true; PK.appliedN = n; PK.appliedReserva = planReserva(plan);
+    PK.applied = true; PK.appliedN = aplicado.nuevos.length; PK.appliedReserva = planReserva(aplicado);
     PK.avisoAplazado = null;
     PK.fresh = true;                 // la animación de llegada, una sola vez
     PK.visitsSinceApply = 1;

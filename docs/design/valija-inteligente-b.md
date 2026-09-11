@@ -154,7 +154,8 @@ alguien que ya tildó veinte cosas.
   interior, cero costo de layout) y la palabra **nuevo** en mono, en la línea de motivo, antes del chip de
   origen.
 - Cada categoría que tiene ítems nuevos suma un chip `soon` "2 nuevos" al lado de su contador, **también
-  cuando está plegada**, y se abre sola en la primera visita después de aplicar.
+  cuando está plegada**, y se abre sola — salvo que la persona la haya plegado a mano, que manda ella. En
+  ese caso el chip visible hace de sustituto y da por vistos los ítems que tapa (§ 4.3).
 - Además, y sólo una vez, la animación `.fresh` de 2,6 s que ya existía para la llegada de ítems del ajuste
   por destino.
 
@@ -389,12 +390,15 @@ función.
 **La regla: la marca se limpia cuando la persona las vio, no cuando las aceptó.**
 
 Un ítem nuevo cuenta como **visto** si, durante una visita a la pantalla de la valija, pasa cualquiera de
-estas tres cosas:
+estas cuatro cosas:
 
 - su fila estuvo dentro de la ventana visible por lo menos 600 ms (`IntersectionObserver` con
   `threshold: 0.6`);
 - se lo marcó como empacado o se lo descartó (actuar sobre algo es la prueba más fuerte de haberlo mirado);
-- se abrió su hoja de detalle (estado 23).
+- se abrió su hoja de detalle (estado 23);
+- **su categoría está plegada y el encabezado, con su chip "2 nuevos", estuvo en la ventana visible el mismo
+  tiempo de permanencia.** Ver que hay dos cosas nuevas en Documentación y elegir no abrirla es información
+  recibida y una decisión tomada; tratarla como "todavía no se enteró" es no escuchar.
 
 **`clearNewFlags(list)` corre al salir de la pantalla de la valija** —botón de volver, cambio de hash, o
 `pagehide`— **y solamente si todos los ítems con `nuevo:true` quedaron vistos en esa visita.** Si alguno
@@ -412,9 +416,18 @@ Consecuencias, que son las que hacen que la regla valga la pena:
   en la próxima salida.
 
 **Lo que hace que la regla sea alcanzable, y no una promesa:** las categorías con ítems nuevos **se abren
-solas** en la primera visita después de aplicar. Una fila adentro de una categoría plegada nunca puede
-entrar en la ventana visible, y sin esto los flags no se limpiarían jamás. El chip "2 nuevos" en el
-encabezado de la categoría, que se ve también plegada, es el otro medio camino.
+solas**. Una fila adentro de una categoría plegada nunca puede entrar en la ventana visible, y sin esto los
+flags no se limpiarían jamás.
+
+**Con una excepción, y es deliberada: una categoría que la persona plegó a mano no se reabre sola.** Plegar
+es un gesto explícito; reabrir porque el sistema decidió que tiene que mirar algo es exactamente lo que hace
+que una app se sienta impertinente. El agujero que esa excepción deja lo cierra el chip: **el "2 nuevos" del
+encabezado, que se ve también plegada, deja de ser el otro medio camino y pasa a ser un camino entero.** Si
+ese chip estuvo a la vista el tiempo de permanencia, los ítems que representa cuentan como vistos, y la marca
+se limpia al salir como en cualquier otro caso. Sin esto, plegar una categoría —un gesto tan común como
+plegar la que uno ya terminó— dejaría esas marcas atrapadas para siempre.
+
+Con la categoría abierta el atajo no existe: ahí se cuentan las filas, una por una, como siempre.
 
 **El atajo explícito:** el aviso de confirmación (18) tiene "Listo, ya las vi", que limpia todo en el acto.
 Alguien que ya sabe qué se sumó porque acaba de mirar la hoja no tiene por qué recorrer la lista para que la
@@ -531,9 +544,10 @@ pide `docs/design/valija-inteligente.md`, § 5.
    Las dos, siempre, en la misma escritura. Rechazar es sólo `clearRemovalSuggestion`.
 
 9. **El seguimiento de "visto" y `clearNewFlags`** (§ 4.3). Un `IntersectionObserver` sobre las filas
-   `.is-new` que va llenando un `Set` en memoria, y un `clearNewFlags` + `savePacking` en el punto donde la
-   vista de valija se desmonta (la rama de `render()` que cambia de `App.view`, más un `pagehide`). Con
-   `Store.canWrite === false`, no corre. Sin `IntersectionObserver`, contar visitas.
+   `.is-new` **y sobre el encabezado de las categorías plegadas que tengan ítems nuevos** —que declara en un
+   `data-` las claves que tapa— llenando un `Set` en memoria, y un `clearNewFlags` + `savePacking` en el
+   punto donde la vista de valija se desmonta (la rama de `render()` que cambia de `App.view`, más un
+   `pagehide`). Con `Store.canWrite === false`, no corre. Sin `IntersectionObserver`, contar visitas.
 
 10. **La regla de un solo aviso** (estado 25). En `renderPacking`, una única función `packingNotice(trip,
     list, plan)` que devuelve el HTML del primer aviso que aplique, en el orden de la tabla. Que sea una
