@@ -94,3 +94,35 @@ los pasos para comprobarlo.
 
 Una entrega está lista cuando cumple los criterios de aceptación del brief de la iteración, funciona en un
 teléfono, y funciona igual en tema claro y oscuro.
+
+**Y cuando pasó la auditoría.** Ninguna entrega se publica sin puntaje del rol `auditor`, y menos de 85
+sobre 100 no se publica. La rúbrica está en `docs/auditoria/rubrica.md` y cada auditoría queda escrita en
+`docs/auditoria/`. No hay excepción por urgencia: el arreglo urgente mal verificado ya costó tres
+iteraciones seguidas en el mismo bug.
+
+## La palabra "verificado"
+
+Tiene una sola definición en este proyecto: **probado en el entorno donde la persona lo usa.** Para Valija,
+eso es el Artifact publicado, abierto desde el teléfono.
+
+Todo lo demás son sustitutos, y cada uno tiene una brecha conocida:
+
+| Dónde se probó | Qué NO prueba |
+|---|---|
+| `node` sobre un módulo | Nada del DOM, del visor ni del gesto |
+| Chromium de escritorio con el archivo local | El visor del teléfono, sus permisos y su sandbox |
+| El Artifact publicado, en una computadora | El navegador y el visor del teléfono |
+| El Artifact publicado, en el teléfono | Nada: es el entorno real |
+
+Una entrega puede apoyarse en un sustituto. Lo que no puede hacer es **llamarlo verificado**. Se dice dónde
+se probó, qué queda sin cubrir y cómo comprobarlo. Declarar una brecha nunca es una mala nota; afirmar sin
+respaldo sí.
+
+## Antes de dar algo por resuelto
+
+Tres preguntas, en este orden. Si alguna no tiene respuesta, la entrega no está lista:
+
+1. **¿Qué toca la persona, y mi prueba toca eso?**
+2. **¿Qué otra causa explicaría el mismo síntoma, y qué hice para descartarla?** Dos hipótesis vivas exigen
+   un experimento que las separe antes de tocar código. Si acá no se puede correr, se le pregunta al PM.
+3. **¿Qué estoy afirmando que no comprobé?** Eso va escrito en la entrega, no en la cabeza.
