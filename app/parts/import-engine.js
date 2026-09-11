@@ -5,20 +5,59 @@
    (reconocer un vuelo ya cargado).
 
    JavaScript puro, en el mismo estilo que packing-engine.js: reglas
-   declaradas como datos, funciones puras, sin tocar el DOM. La única
-   excepción documentada es `renderPdfPagesToImages`, aislada a
-   propósito porque necesita canvas.
+   declaradas como datos, funciones puras, sin tocar el DOM. Las dos
+   únicas excepciones documentadas son `renderPdfPagesToImages`
+   (necesita canvas) y `extractPdfText` (necesita pdf.js, que se le
+   inyecta): las dos están aisladas a propósito.
+
+   ============================================================
+   PRIMERO TEXTO, IMÁGENES COMO ÚLTIMO RECURSO   (versión 2)
+   ============================================================
+
+   La versión 1 convertía TODO a imagen antes de mandarlo al modelo.
+   Eso se rompió entero en el teléfono del PM: los tres archivos
+   reales fallaron con `images_unavailable`, el código que la
+   plataforma devuelve cuando la vista no puede mandar imágenes. El
+   contrato (`sample.d.ts` de artifact-capabilities 0.2.41) dice dos
+   cosas que no estábamos usando:
+
+     · `sample.limits()` trae un miembro `images` SÓLO cuando esa
+       vista puede mandar imágenes. Es barato y local: no gasta uso
+       de la persona ni le pregunta nada.
+     · ante `images_unavailable` hay que ocultar "sólo lo que
+       depende de imágenes; las llamadas de texto siguen andando".
+
+   Así que el orden es, para un PDF:
+
+     1. Extraer la capa de texto con pdf.js (`page.getTextContent()`,
+        todas las páginas en orden). Si el texto alcanza
+        (REGLAS_TEXTO_SUFICIENTE), se interpreta COMO TEXTO: sin
+        imágenes y sin preguntar `limits()`.
+     2. Si no hay capa de texto, recién ahí se renderiza a imagen, y
+        sólo si `limits()` reporta `images`. Si no las reporta, error
+        propio ("pdf-escaneado-sin-imagenes"), nunca una llamada al
+        modelo que ya sabemos que va a ser rechazada.
+
+   Y para una foto o una captura no hay alternativa: necesita visión.
+   Sin `images` en `limits()` el archivo falla con
+   "imagenes-no-disponibles" sin intentar la llamada.
+
+   El camino de texto no es sólo un plan B: es MEJOR que la imagen
+   aunque la vista las acepte. Es más barato, más rápido y más exacto,
+   porque un texto extraído no tiene errores de lectura.
+
+   `limits` llega inyectado igual que `callModel` (`opts.limits`): el
+   motor nunca llama a `claude.use`. Y se lee UNA sola vez por corrida
+   de `interpretFiles`, la primera vez que hace falta — nunca antes.
 
    ============================================================
    QUÉ HACE
    ============================================================
 
    1. Recibe archivos (fotos PNG/JPG o PDFs, mezclados) y para cada
-      uno arma las imágenes que hace falta mandarle a la capa
-      inteligente. Una foto es una imagen. Un PDF se renderiza página
-      por página (VAL-40): un PDF de varias páginas o un PDF
-      escaneado sin texto se interpretan igual, porque de cualquier
-      forma se convierten a imagen antes de mandarlos.
+      uno decide CÓMO mandárselo a la capa inteligente: como texto
+      (PDF con capa de texto) o como imágenes (foto, captura, PDF
+      escaneado). Ver arriba.
 
    2. Llama a una función `callModel` que la app inyecta (igual que
       `ask` en packing-engine.js): este módulo no sabe cómo se habla
@@ -34,6 +73,11 @@
       vuelo (con los campos que hay que completar) o si hay más de
       un candidato y hace falta preguntar (VAL-42). Nunca decide en
       el caso ambiguo: devuelve los candidatos.
+
+   5. Le dice a la app, ANTES de dibujar la pantalla, si esta vista
+      acepta imágenes: `getViewCapabilities(limits)`. Con eso la
+      interfaz no ofrece "Sacar foto" ni "Galería" donde no pueden
+      funcionar.
 
    ============================================================
    MODELO DE DATOS DE UNA RESERVA INTERPRETADA
@@ -63,10 +107,11 @@
    {
      archivos: [
        { archivo:"voucher.pdf", estado:"ok|vacio|error",
-         reservas:[...], error:null|{codigo,mensaje}, paginas:3|null }
+         reservas:[...], error:null|{codigo,mensaje},
+         paginas:3|null, modo:"texto|imagenes"|null, caracteres:625|null }
      ],
      reservas: [...],           // todas las reservas de todos los archivos, juntas
-     resumen: { total, ok, vacios, errores, reservas }
+     resumen: { total, ok, vacios, errores, reservas, porTexto, porImagenes }
    }
 
    Tres estados por archivo, no un booleano: "ok" (encontró algo),
@@ -74,6 +119,9 @@
    "error" (no se pudo procesar). Un archivo vacío no es un error: es
    una foto borrosa o un documento que no es una reserva, y no hace
    falta alarmar por eso.
+
+   `modo` dice por qué camino se leyó cada archivo. Sirve para la
+   interfaz ("leído del texto del PDF") y para diagnosticar.
 
    ============================================================
    RESULTADO DE matchFlightReservation(candidato, existentes)
@@ -103,7 +151,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
 "use strict";
 
-var VERSION = 1;
+var VERSION = 2;
 
 /** Tipos de reserva que la app conoce (mismas claves que TYPES en valija.html). */
 var RESERVATION_TYPES = ["flight", "stay", "car", "transfer", "act", "note"];

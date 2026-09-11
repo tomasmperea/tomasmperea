@@ -62,6 +62,52 @@ Como viajero quiero subir la tarjeta de embarque y que complete el vuelo que ya 
 
 ---
 
+## Restricción de plataforma descubierta el 11/09 · CAMBIA EL ALCANCE DEL BLOQUE A
+
+**La vista donde corre la app no acepta imágenes.** El PM probó tres archivos reales
+—dos PDF y una foto— desde Chrome en su teléfono, y los tres fallaron con el mismo
+código del modelo: `images_unavailable`.
+
+El contrato de la plataforma (`sample.d.ts`, contrato 0.2.41) es explícito y lo
+teníamos disponible desde el principio:
+
+> `images_unavailable` — esta vista no puede mandar imágenes (consultá `limits()`
+> primero). Ocultá sólo lo que depende de imágenes; **las llamadas de texto siguen
+> funcionando**.
+
+Existe `sample.limits()`, que avisa de antemano y es gratis. Nunca lo llamamos. El
+importador convierte **todo** a imagen antes de mandarlo, así que sin soporte de
+imágenes no funciona ni un archivo, ni siquiera un PDF con texto perfectamente legible.
+
+### Qué se puede entregar y qué no
+
+| Caso | Estado | Por qué |
+|---|---|---|
+| PDF con capa de texto | **Entregable** | Se extrae el texto en el navegador y se interpreta como texto, sin imágenes |
+| Texto pegado del correo | **Ya funciona** | Nunca dependió de imágenes |
+| PDF escaneado, sin capa de texto | **No entregable hoy** | Es una imagen adentro de un PDF: necesita visión |
+| Foto del voucher, captura de pantalla | **No entregable hoy** | VAL-41: necesita visión |
+| Tarjeta de embarque fotografiada | **No entregable hoy** | VAL-42: es el caso más frecuente y es una foto |
+
+Verificado contra los archivos reales del PM: el voucher de micro tiene 625 caracteres
+de capa de texto con todo lo necesario, y el PDF de Aerolíneas tiene cero.
+
+### La decisión
+
+**El motor pasa a ser primero texto, con imágenes como último recurso.** No es un
+parche por la restricción: es mejor también donde las imágenes funcionan, porque un
+texto extraído es más barato, más rápido y no tiene errores de lectura.
+
+VAL-41 y VAL-42 quedan **bloqueados por plataforma**, no cancelados. Se retoman si la
+vista pasa a aceptar imágenes. Mientras tanto la app tiene que decirlo **antes** de que
+la persona suba el archivo, no después.
+
+**Lo que falta averiguar:** si la falta de soporte de imágenes es de la vista, de la
+cuenta o del contexto en que se abre el artifact. De eso depende si el bloqueo es
+permanente o temporal.
+
+---
+
 ## Bloque B — La valija razona sobre el viaje · PRIORIDAD ALTA
 
 ### VAL-44 · La capa inteligente ve el viaje completo — P0

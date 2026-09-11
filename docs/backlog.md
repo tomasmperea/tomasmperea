@@ -222,6 +222,36 @@ muestre cosas que no necesito.
 Salen de usar la app y de los comentarios dejados sobre la versión publicada. No forman una iteración: se
 reparten según prioridad.
 
+### VAL-55 · Importar sin depender de imágenes — P0, en curso
+
+Como viajero quiero que el PDF del voucher se cargue solo, aunque la app no pueda
+mandarle imágenes al modelo.
+
+Descubierto el 11/09 probando con documentos reales: la vista donde corre la app
+devuelve `images_unavailable`, y el importador convierte **todo** a imagen antes de
+mandarlo. Sin soporte de imágenes no entra ni un archivo. El detalle está en
+`docs/briefs/interpretar.md`, sección "Restricción de plataforma".
+
+- Un PDF con capa de texto se interpreta extrayendo el texto en el navegador, sin
+  imágenes y sin consultar `limits()`.
+- Un PDF sin capa de texto sólo se renderiza a imagen si `limits()` reporta `images`.
+- Sin soporte de imágenes, la app lo dice **antes** de que la persona suba el archivo,
+  y no ofrece cámara ni galería como si funcionaran.
+- Ningún archivo falla con una llamada al modelo que ya sabemos que va a rechazarse.
+
+### VAL-56 · Saber si el bloqueo de imágenes es permanente — P1
+
+Como equipo necesitamos saber si la vista no acepta imágenes por la vista, por la
+cuenta o por el contexto en que se abre el artifact.
+
+De la respuesta depende si VAL-41 (importar fotos y capturas) y VAL-42 (completar con
+la tarjeta de embarque) están **bloqueados por ahora** o **cancelados**. Hoy los dos
+están escritos como entregados en el roadmap y no lo son.
+
+- Se consulta `sample.limits()` desde la app publicada y se registra qué devuelve.
+- Se prueba en más de un contexto: el visor de la aplicación y el navegador.
+- El resultado se escribe en el brief y se corrige el estado de VAL-41 y VAL-42.
+
 ### VAL-50 · El generador de PDF no siempre carga — bug, no prioritario
 
 Al exportar el resumen aparece "No se pudo cargar el generador de PDF" y no se genera nada.
