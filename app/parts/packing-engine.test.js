@@ -584,6 +584,40 @@ await test("el prompt de destino incluye el resumen de reservas y pide citar el 
   assert(p.indexOf("\"quitar\"") >= 0, "el prompt tiene que ofrecer sacar ítems (VAL-43)");
 });
 
+await test("las notas del viaje llegan al prompt de la capa inteligente, saneadas", function () {
+  var l = E.buildPackingList({
+    trip:{ id:"tn", destination:"Arraial do Cabo", startDate:"2026-11-10", endDate:"2026-11-20",
+           notes:"Vamos a bucear dos dias y necesito equipo propio. Dudas al 11 5555 4444 o a plan@viaje.com" },
+    items:[], tipoViaje:"playa", history:[], now:AT()
+  });
+  assert(typeof l.base.notasViaje === "string", "el resumen de las notas del viaje tiene que existir en base");
+  assert(/bucear/i.test(l.base.notasViaje), "lo que escribió la persona en el viaje tiene que sobrevivir");
+  var p = E.destinationPrompt(l);
+  assert(p.indexOf("bucear") >= 0, "el prompt de la capa inteligente tiene que ver las notas del viaje (VAL-44)");
+  assert(p.indexOf("5555 4444") < 0, "las notas del viaje van con el mismo tratamiento de privacidad que las de una reserva");
+  assert(p.indexOf("plan@viaje.com") < 0, "un correo escrito en las notas del viaje tampoco viaja");
+
+  var sinNotas = E.buildPackingList({ trip:{ id:"tn2", destination:"Arraial do Cabo" }, now:AT() });
+  eq(sinNotas.base.notasViaje, "", "sin notas, el campo queda vacío y el prompt no inventa una sección");
+  assert(E.destinationPrompt(sinNotas).indexOf("Notas del viaje") < 0, "sin notas no se agrega la sección al prompt");
+});
+
+await test("las notas se sanitizan: un correo tampoco pasa al modelo", function () {
+  var resumen = E.summarizeReservationsForAI({}, [
+    { type:"stay", start:"2026-01-01T12:00", end:"2026-01-03T10:00", notes:"escribir a hola@hotel.com o al 11 5555 4444" }
+  ]);
+  var notas = resumen[0].notas;
+  assert(notas.indexOf("hola@hotel.com") < 0, "el correo de un tercero no aporta nada para decidir qué llevar: se tapa");
+  assert(notas.indexOf("@") < 0, "no puede quedar ni el resto del correo");
+  assert(notas.indexOf("5555 4444") < 0, "el teléfono se sigue tapando");
+  assert(/^escribir a \[dato omitido\] o al \[dato omitido\]$/.test(notas.trim()),
+    "queda la frase con las dos marcas de omitido y nada más: " + notas);
+  eq(E.sanitizeNotesForAI("Consultas a Reservas+Soporte@Hotel-Arraial.com.br ya mismo"),
+     "Consultas a [dato omitido] ya mismo", "también con mayúsculas, signos y dominio compuesto");
+  eq(E.sanitizeNotesForAI("El desayuno es a las 8 y el check-in 15 hs"),
+     "El desayuno es a las 8 y el check-in 15 hs", "no toca un texto que no tiene datos de contacto");
+});
+
 group("VAL-45 · ningún ítem repetido entre capas");
 
 await test("canonicalKey reconoce los sinónimos declarados", function () {

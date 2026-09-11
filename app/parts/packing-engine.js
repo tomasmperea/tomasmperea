@@ -19,6 +19,8 @@
        su justificación. Puede fallar: la lista base sirve igual.
        Desde VAL-44 también VE las reservas del viaje (resumidas y
        sin datos sensibles, ver `summarizeReservationsForAI`) y
+       las notas del viaje (`base.notasViaje`, saneadas con
+       `sanitizeNotesForAI` igual que las notas de una reserva) y
        puede razonar sobre combinaciones puntuales: una escala
        larga, un check-in de madrugada, un alojamiento sin
        lavandería en un viaje largo, una actividad con equipo
@@ -89,7 +91,9 @@
        internacionalDetalle:"Vuelo con código FLN, fuera del país.",
        tipoViajeFuente:"sugerido",          // elegido|sugerido
        tipoViajeMotivo:"Por \"florianopolis\" en el viaje.",
-       hechos:{ hasFlight:true, hasRentalCar:false, ... }
+       hechos:{ hasFlight:true, hasRentalCar:false, ... },
+       reservas:[ ... ],                    // VAL-44: resumen seguro de las reservas
+       notasViaje:"Vamos a bucear dos días" // VAL-44: notas del viaje, saneadas
      },
 
      capaInteligente:{ estado:"ok", en:"...", nota:"", clima:"" },
@@ -1223,7 +1227,8 @@ function buildPackingList(input) {
       internacionalFuente:ctx.internationalSource, internacionalDetalle:ctx.internationalDetail,
       tipoViajeFuente:ctx.tripTypeSource, tipoViajeMotivo:ctx.tripTypeReason,
       hechos:ctx.facts,
-      reservas:summarizeReservationsForAI(trip, items)      // VAL-44: lo que ve la capa de IA, sin datos sensibles
+      reservas:summarizeReservationsForAI(trip, items),     // VAL-44: lo que ve la capa de IA, sin datos sensibles
+      notasViaje:sanitizeNotesForAI(trip.notes)             // VAL-44: las notas del viaje, con el mismo saneado
     },
     capaInteligente:{ estado:"sin-ajuste", en:null, nota:"Lista base, sin ajuste por destino.", clima:"" },
     aprendizaje:{ muestra:aprendido.muestra, promovidos:aprendido.promover, suprimidos:aprendido.suprimir },
@@ -1324,13 +1329,40 @@ function mergeLists(previous, fresh) {
    el prompt — sólo puede ver lo que ya pasó por este filtro.
    ============================================================ */
 
-/** Sale de una nota libre cualquier secuencia larga de dígitos, por si alguien
- *  pegó un teléfono en el campo de notas. Defensa en profundidad, no la única. */
-var DIGIT_RUN_RE = /(\+?\d[\d\s\-().]{5,}\d)/g;
+/* Formas de dato de contacto que se tapan antes de que una nota libre
+   viaje al modelo. Son datos personales -casi siempre de un tercero- que
+   no aportan nada para decidir qué llevar en la valija, que es el criterio
+   con el que está escrita esta regla. Se declaran como datos: agregar una
+   forma nueva es agregar una entrada, no tocar la función.
+
+   El orden importa: el correo se tapa ANTES que la corrida de dígitos,
+   porque un correo puede tener números adentro y quedaría medio tapado
+   y medio no. */
+var CONTACT_PATTERNS = [
+  /** Correo electrónico. Decisión de producto del Product Owner: el brief
+   *  sólo nombra código de reserva, teléfono y dirección, pero un correo es
+   *  un dato personal de un tercero y no sirve para armar la valija. */
+  { nombre:"correo", re:/[A-Za-z0-9._%+-]+@[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}/g },
+  /** Secuencia larga de dígitos, por si alguien pegó un teléfono. */
+  { nombre:"telefono", re:/(\+?\d[\d\s\-().]{5,}\d)/g }
+];
+
+/**
+ * Saca de una nota libre los datos de contacto antes de mandarla a la capa
+ * de IA, y la recorta. Defensa en profundidad, no la única barrera: el
+ * resumen de reservas ya arma cada objeto campo por campo.
+ * @param {string} text nota tal como la escribió la persona
+ * @returns {string} la nota con cada dato de contacto reemplazado por
+ *   "[dato omitido]", recortada a 240 caracteres
+ */
 function sanitizeNotesForAI(text) {
   var t = String(text == null ? "" : text).trim();
   if (!t) return "";
-  return t.replace(DIGIT_RUN_RE, "[dato omitido]").slice(0, 240);
+  CONTACT_PATTERNS.forEach(function (p) {
+    p.re.lastIndex = 0;                       // las regex son /g y se reusan
+    t = t.replace(p.re, "[dato omitido]");
+  });
+  return t.slice(0, 240);
 }
 
 function hoursBetween(a, b) {
@@ -1427,6 +1459,18 @@ function destinationPrompt(list) {
     ? reservas.map(function (r) { return "  - " + JSON.stringify(r); }).join("\n")
     : "  (todavía no hay reservas cargadas)";
 
+  // VAL-44: las notas del viaje son parte del contexto, no sólo las de cada
+  // reserva. Ahí es donde la persona escribe la actividad que todavía no
+  // reservó ("vamos a bucear dos días"), que es justo lo que ninguna regla
+  // podía anticipar. Llegan ya saneadas desde `buildPackingList`; si la
+  // lista viene de una versión anterior del motor, el bloque no se arma.
+  var notasViaje = String(b.notasViaje || "").trim();
+  var bloqueNotasViaje = notasViaje ? [
+    "",
+    "Notas del viaje (las escribió la persona en el viaje; mismo resumen seguro que las reservas):",
+    "  " + notasViaje
+  ] : [];
+
   return [
     "Sos parte de una app de viajes y ajustás una lista de equipaje al destino. Devolvés SOLO JSON.",
     "",
@@ -1438,7 +1482,8 @@ function destinationPrompt(list) {
     "- " + (b.internacional ? "Es un viaje internacional." : "Es un viaje dentro del país."),
     "",
     "Reservas del viaje (resumen seguro: nunca incluye código de reserva, teléfono ni dirección exacta):",
-    lineasReservas,
+    lineasReservas
+  ].concat(bloqueNotasViaje).concat([
     "",
     "La lista base ya incluye: " + (yaHay || "nada"),
     "",
@@ -1449,8 +1494,9 @@ function destinationPrompt(list) {
     "la temporada de lluvias, la altura, o un requisito de ingreso conocido. Ningún ítem que agregues puede",
     "estar ya en la lista base.",
     "",
-    "Cuando el motivo venga de una reserva puntual, citá el dato concreto: \"tu escala en Lima es de ocho",
-    "horas\", no \"las escalas largas cansan\". Una generalidad sin el dato del viaje no sirve.",
+    "Cuando el motivo venga de una reserva puntual o de las notas del viaje, citá el dato concreto: \"tu",
+    "escala en Lima es de ocho horas\", no \"las escalas largas cansan\". Una generalidad sin el dato del",
+    "viaje no sirve.",
     "",
     "También podés proponer SACAR ítems de \"La lista base ya incluye\" que no apliquen a este destino",
     "puntual (por ejemplo, no hace falta visa si el país no la pide). Usá el nombre EXACTO tal como aparece",
@@ -1468,7 +1514,7 @@ function destinationPrompt(list) {
     "5. Nada de marcas, links ni recomendaciones de compra.",
     "6. Escribí en español rioplatense, de vos, en frases cortas.",
     "7. \"quitar\" nunca lleva documentación de identidad, aunque te parezca que sobra."
-  ].join("\n");
+  ]).join("\n");
 }
 
 /**
@@ -2028,6 +2074,7 @@ return {
   destinationPrompt:destinationPrompt,
   parseDestinationItems:parseDestinationItems,
   summarizeReservationsForAI:summarizeReservationsForAI,
+  sanitizeNotesForAI:sanitizeNotesForAI,
   clearRemovalSuggestion:clearRemovalSuggestion,
 
   // VAL-46: la lista se actualiza cuando el viaje crece

@@ -5,7 +5,7 @@ bloque B: "la valija razona sobre el viaje completo") · **Escribe:** motor de s
 para integrar
 
 Este documento describe `app/parts/packing-engine.js`, probado en `app/parts/packing-engine.test.js`
-(66 casos, `node app/parts/packing-engine.test.js`). El motor es JavaScript puro: no toca el DOM, no pide
+(68 casos, `node app/parts/packing-engine.test.js`). El motor es JavaScript puro: no toca el DOM, no pide
 red, no depende de nada externo. Recibe datos y devuelve datos, para que la lógica pueda mudarse al servidor
 en la iteración 2 sin reescribirse.
 
@@ -29,7 +29,8 @@ El motor es híbrido a propósito: nunca depende por completo de la IA.
 2. **Ajuste por destino con IA** (`enrichWithDestination`, capa 2, VAL-33). Agrega hasta `MAX_AI_ITEMS`
    ítems específicos del lugar y la época (tipo de enchufe, amplitud térmica, temporada de lluvias), cada
    uno con su justificación. Desde esta entrega también:
-   - **ve las reservas del viaje** (VAL-44, resumidas y sin datos sensibles — sección 4), y puede razonar
+   - **ve las reservas del viaje y las notas del viaje** (VAL-44, resumidas y sin datos sensibles —
+     sección 4), y puede razonar
      sobre combinaciones puntuales que ninguna regla anticipó: una escala larga, un alojamiento sin
      lavandería en un viaje largo, una actividad con equipo propio;
    - **puede proponer sacar ítems** que no apliquen a ese destino puntual (VAL-43 — sección 6), nunca
@@ -146,7 +147,8 @@ de lo que hace falta para integrar, con los campos nuevos de esta entrega marcad
     tipoViajeMotivo,
     hechos: { hasFlight, hasRentalCar, hasStay, hasInternationalFlight,
               hasTrekking, hasWaterActivity, hasWorkActivity, hasSnow },
-    reservas: [ /* NUEVO, VAL-44: resumen seguro de reservas, ver sección 4 */ ]
+    reservas: [ /* NUEVO, VAL-44: resumen seguro de reservas, ver sección 4 */ ],
+    notasViaje: ""   /* NUEVO, VAL-44: `trip.notes` saneado con `sanitizeNotesForAI`; "" si no hay */
   },
 
   capaInteligente: { estado, en, nota, clima },   // ver tabla de la sección 1 (ahora 5 estados)
@@ -216,7 +218,10 @@ es lo que hace que el umbral de dos apariciones del historial se cumpla alguna v
 veía ninguna reserva. Todo lo que no estuviera anticipado en una regla de la capa 1 (auto alquilado, vuelo
 internacional, trekking) era invisible para la capa de IA.
 
-**Qué recibe ahora.** `list.base.reservas`, un resumen seguro de las reservas del viaje, armado por
+**Qué recibe ahora.** Dos cosas, las dos calculadas dentro de `buildPackingList` y guardadas en `base`:
+`base.reservas` (el resumen seguro de las reservas) y `base.notasViaje` (las notas del viaje, saneadas).
+
+`base.reservas` es un resumen seguro de las reservas del viaje, armado por
 `summarizeReservationsForAI(trip, items)` y calculado **una sola vez**, dentro de `buildPackingList` — es
 decir, existe siempre que hay una lista, corra o no la capa de IA después. `destinationPrompt(list)` lo
 vuelca al prompt como una línea de JSON por reserva, y le pide al modelo que cite el dato concreto cuando el
@@ -250,19 +255,75 @@ con una prueba explícita ("el resumen de reservas nunca manda datos sensibles, 
 notas"), que arma reservas con `confirmation`, `phone` y `address` bien cargados y confirma con
 `JSON.stringify` que ninguna de esas tres cadenas aparece en el resumen.
 
+**Las notas del viaje también viajan (`base.notasViaje`).** El brief de VAL-44 pide que la capa inteligente
+reciba "actividades y notas del viaje". Las notas de cada reserva viajan dentro de su entrada del resumen;
+las del viaje —`trip.notes`, el campo donde la persona escribe presupuesto, ideas y links sueltos— viajan
+aparte, en `base.notasViaje`, con **el mismo tratamiento de privacidad** que las de una reserva
+(`sanitizeNotesForAI`). `destinationPrompt` las vuelca en un bloque propio, "Notas del viaje", **sólo si no
+están vacías**: una lista sin notas no arma esa sección, y una lista guardada por una versión anterior del
+motor (sin el campo) tampoco — el prompt sigue funcionando igual. Es justo el caso que el brief usa de
+ejemplo: "vamos a bucear dos días y necesito equipo propio" es una actividad que pide equipo propio y que
+ninguna regla de la capa 1 podía anticipar. Las capas 1 y 3 ya leían `trip.notes` (entra en el `textBlob` de
+`tripContext`, de donde salen los hechos y el tipo de viaje sugerido); desde esta corrección, la capa 2
+también.
+
 **Las notas sí viajan, pero saneadas.** El campo `notes` de una reserva es texto libre y es donde alguien
-puede pegar un teléfono a mano sin querer. `sanitizeNotesForAI` reemplaza cualquier secuencia larga de
-dígitos (`DIGIT_RUN_RE`, seis dígitos o más con separadores típicos de teléfono) por `[dato omitido]` y
-recorta el texto a 240 caracteres, antes de que la nota entre al resumen. Es defensa en profundidad, no la
+puede pegar un teléfono a mano sin querer. `sanitizeNotesForAI(texto)` (exportada, para poder probarla suelta) reemplaza por
+`[dato omitido]` cada dato de contacto que reconoce y recorta el texto a 240 caracteres, antes de que la nota
+entre al resumen o al prompt. Los datos de contacto son **datos, no condicionales**: `CONTACT_PATTERNS` es un
+array de `{nombre, re}` y agregar una forma nueva es agregar una entrada. Hoy hay dos, y el orden importa
+(primero el correo, después los dígitos, porque un correo con números adentro quedaría tapado a medias):
+
+| Patrón | Qué tapa |
+|---|---|
+| `correo` | una dirección de correo electrónica completa, con dominio compuesto y signos (`Reservas+Soporte@Hotel-Arraial.com.br`) |
+| `telefono` | una secuencia de seis dígitos o más con los separadores típicos de un teléfono (espacios, guiones, paréntesis, `+`) |
+
+**Por qué se tapa el correo, si el brief no lo nombra.** El brief lista "códigos de reserva, teléfonos y
+direcciones exactas". El correo no está en esa lista literal: taparlo es una decisión de producto tomada por
+el Product Owner, con este criterio — un correo es un dato personal de un tercero y no aporta absolutamente
+nada para decidir qué llevar en la valija, que es el criterio con el que está escrita la regla entera. Es defensa en profundidad, no la
 única barrera: el motivo de fondo por el que las notas sí pueden viajar es que son las que permiten razonar
 sobre el viaje ("el depto no tiene lavarropas"); omitirlas enteras tiraría el dato útil junto con el
 sensible.
 
-**Hasta dónde llega esta sanitización.** `DIGIT_RUN_RE` reconoce secuencias de dígitos con la forma de un
-teléfono (seis o más dígitos seguidos, con espacios, guiones o paréntesis en el medio). No reconoce un
-teléfono escrito en palabras, un email, ni un dato sensible que no sea numérico (un nombre de persona, por
-ejemplo). Sigue siendo responsabilidad de la persona no pegar datos sensibles en un campo de notas libre; el
-motor sólo cubre el caso más común (copiar y pegar un número de teléfono desde un mail de confirmación).
+**Hasta dónde llega esta sanitización — qué sigue pasando entero al modelo.** `CONTACT_PATTERNS` cubre las
+dos formas más comunes de copiar y pegar un contacto desde un mail de confirmación. Fuera de eso, por una
+nota libre todavía pasan sin tocar:
+
+- **Links y URLs.** `https://booking.com/hotel/xyz?token=abc` viaja entero. Un link tipo `wa.me/5491155554444`
+  queda tapado sólo a medias, porque lo que matchea es la corrida de dígitos, no la URL: sale
+  `wa.me/[dato omitido]`.
+- **Usuarios y handles de redes** (`@hotel_arraial`, "IG: hotelarraial"): no tienen forma de correo ni de
+  teléfono, pasan tal cual.
+- **Un teléfono escrito en palabras** ("once cincuenta y cinco...") o partido en pedazos cortos.
+- **Direcciones postales escritas a mano dentro de la nota** ("estamos en Rua das Pedras 45"): el campo
+  `address` de la reserva nunca se lee, pero una dirección tipeada dentro de `notes` sí viaja.
+- **Nombres de personas** y cualquier otro dato sensible no numérico.
+
+Ninguna de esas formas está arreglada en esta entrega: están declaradas acá para que se decidan como
+producto, no para que se descubran en una auditoría. Sigue siendo responsabilidad de la persona no pegar
+datos sensibles en un campo de notas libre; el motor cubre los casos más comunes, no todos.
+
+**Límites conocidos de VAL-44: tres datos que el brief pide y que el motor no manda.** El brief pide que la
+capa inteligente reciba "tramos de vuelo con horarios y escalas, alojamiento con su tipo y sus notas, auto
+con su lugar de retiro, actividades y notas del viaje". Dos de esos datos **no llegan, y no es un olvido**:
+
+1. **El tipo de alojamiento** (hotel, hostel, departamento, casa de familia) **no existe en el modelo de
+   datos.** Una reserva de tipo `stay` tiene `provider` (el nombre del alojamiento), `address`,
+   `confirmation`, fechas y `notes`; no hay ningún campo que diga de qué clase de alojamiento se trata. No se
+   puede mandar lo que no existe. Deducirlo del nombre del proveedor sería adivinar, y adivinar está en
+   contra de la regla del prompt ("antes una lista corta que un dato inventado"). Para cumplir este criterio
+   hace falta primero un campo nuevo en la reserva, que es un cambio de modelo de datos y de la pantalla de
+   carga — fuera del alcance del motor.
+2. **El lugar de retiro del auto es el campo `address`**, el mismo que la app rotula "Lugar de retiro". La
+   regla de privacidad de esta misma historia prohíbe mandar direcciones exactas al modelo, así que mandarlo
+   sería romper una regla del brief para cumplir otra. Lo que sí viaja del auto es el tipo, las fechas de
+   retiro y devolución, los días calculados y las notas. Si en algún momento se decide que el modelo tiene
+   que saber *dónde* se retira el auto, la salida no es mandar la dirección: es mandar sólo la ciudad o el
+   código de aeropuerto, lo que pide un campo nuevo o una extracción que hoy no existe.
+3. **Las notas del viaje** sí llegan desde esta corrección (arriba en esta misma sección). Antes no llegaban:
+   era el tercer dato faltante de la auditoría.
 
 ---
 
@@ -511,7 +572,7 @@ Owner, no corregidos en esta entrega — no se tocó código):**
 
 - El comentario JSDoc que antecede a `packingProgress()` dentro de `packing-engine.js` todavía describe la
   fórmula del punto 2 (`resueltos = empacados + descartados`, `total` incluye los descartados). La
-  implementación real — la que corren las 66 pruebas en verde — es la del punto 3, la que se documenta acá.
+  implementación real — la que corren las 68 pruebas en verde — es la del punto 3, la que se documenta acá.
   Ante cualquier duda, la fuente de verdad es `node app/parts/packing-engine.test.js`, no ese comentario.
 - `docs/design/valija-inteligente.md`, sección 5.6 ("Cálculo de la barra de progreso"), describe la fórmula
   del punto 2 (`conteo.total` incluye descartados, `pct = resueltos/total` con `resueltos = empacados +
@@ -536,8 +597,9 @@ Este módulo no se edita desde acá; esto es la lista de lo que el rol de integr
    de packing de viajes anteriores (`Store.packingOf` de cada viaje, filtrados por los que ya existan);
    `previous` es el documento ya guardado de este viaje, si se está regenerando; `ask` es
    `(prompt) => sample.json(prompt, {modelTier:"complex"})` cuando `claude.use("sample")` resolvió, o
-   `undefined`/`null` si no — el motor ya contempla ese caso. `list.base.reservas` (VAL-44) se calcula solo,
-   adentro; no hay que armar ni pasar nada aparte para eso.
+   `undefined`/`null` si no — el motor ya contempla ese caso. `list.base.reservas` y `list.base.notasViaje` (VAL-44) se
+   calculan solos, adentro; no hay que armar ni pasar nada aparte para eso. `notasViaje` sale de `trip.notes`
+   tal como ya lo maneja `Store`: alcanza con que el viaje que se pasa traiga ese campo.
 
 3. **Guardarla.** Persistir el documento completo con `db.doc('trips/'+tripId+'/packing/lista').set(list)`
    (o el equivalente en `localStorage` si no hay `db`) tras generar o regenerar. Para marcar un solo ítem sin
@@ -575,9 +637,9 @@ No hace falta ninguna dependencia nueva. El módulo entero es JavaScript vainill
 node app/parts/packing-engine.test.js
 ```
 
-66 casos, sin frameworks. Cada caso se declara con `test(nombre, fn)`; `fn` puede ser sincrónica o async (la
+68 casos, sin frameworks. Cada caso se declara con `test(nombre, fn)`; `fn` puede ser sincrónica o async (la
 capa de IA se prueba con funciones `ask` async simuladas, sin red). El arnés imprime cada caso con `ok` o
-`FALLA` y el mensaje del assert que falló, y termina con el resumen y el código de salida: `0` si los 66
+`FALLA` y el mensaje del assert que falló, y termina con el resumen y el código de salida: `0` si los 68
 casos pasan, `1` si falla al menos uno.
 
 Grupos, con su épica:
@@ -588,8 +650,8 @@ Grupos, con su épica:
 - **Historial (VAL-32)** — promoción y supresión.
 - **Regeneración (VAL-30)** — no duplica, no pierde nada.
 - **Capa de destino con IA (VAL-33)** — degradación digna, validación de la respuesta.
-- **VAL-44 · la capa inteligente ve el viaje completo** — resumen seguro de reservas, sanitización de
-  notas, detección de escalas, prompt.
+- **VAL-44 · la capa inteligente ve el viaje completo** — resumen seguro de reservas, notas del viaje en el
+  prompt, sanitización de notas (teléfono y correo), detección de escalas, prompt.
 - **VAL-45 · ningún ítem repetido entre capas** — sinónimos, `canonicalKey`, `verifyNoDuplicateItems`,
   convivencia con historial, manual y regeneración.
 - **VAL-43 · la capa inteligente puede sacar ítems, con un piso que no se toca** — propuesta sin aplicar,
@@ -623,3 +685,24 @@ defectos, que se mantienen vigentes:
 - **La singularización de `slug()` no es gramaticalmente perfecta** (por ejemplo "Cepillo y pasta de
   dientes" → `cepillo-y-pasta-de-dient`). Es heurística a propósito: lo que importa es que sea
   determinística, no que sea gramatical.
+
+---
+
+## 12 · Correcciones de la auditoría del bloque B (VAL-44)
+
+Dos huecos encontrados por la auditoría y corregidos acá, cada uno con su prueba nueva en
+`packing-engine.test.js` (grupo "VAL-44 · la capa inteligente ve el viaje completo"):
+
+1. **Las notas del viaje no llegaban a la capa 2.** `trip.notes` alimentaba las capas 1 y 3 (vía el
+   `textBlob` de `tripContext`) pero se perdía antes del prompt. Ahora se saneia una sola vez en
+   `buildPackingList` y queda en `base.notasViaje`, y `destinationPrompt` la vuelca en un bloque propio
+   cuando no está vacía. Sección 4. Prueba: *"las notas del viaje llegan al prompt de la capa inteligente,
+   saneadas"*.
+2. **Un correo pasaba entero al modelo.** `sanitizeNotesForAI` tapaba corridas de dígitos pero no direcciones
+   de correo. Ahora los patrones de contacto son un array (`CONTACT_PATTERNS`) y el correo es el primero.
+   Decisión de producto del Product Owner, con su motivo escrito en la sección 4. Prueba: *"las notas se
+   sanitizan: un correo tampoco pasa al modelo"*.
+
+**Cambios de contrato de esta corrección** (lo único que quien integra tiene que saber): `base` suma el campo
+`notasViaje` (string, `""` si el viaje no tiene notas) y el módulo exporta `sanitizeNotesForAI(texto)`.
+Ninguna función cambió de firma y ninguna prueba anterior cambió de comportamiento.
