@@ -90,7 +90,33 @@ brief suma si está argumentada y declarada; resta si está escondida.
 2. El auditor puntúa por separado, sin ver la autopuntuación.
 3. Si difieren más de 15 puntos, gana el auditor y la diferencia se anota: es señal
    de que quien entrega no ve su propio punto ciego.
-4. **Menos de 85 no se publica.** No hay excepción por urgencia: un arreglo urgente
-   mal verificado ya costó tres iteraciones.
+4. **Menos de 85 no se da por terminado.** No hay excepción por urgencia: un arreglo
+   urgente mal verificado ya costó tres iteraciones.
+
+## El candado que tenía esta rúbrica, y cómo se abre
+
+La primera versión decía "menos de 85 no se publica". Combinado con una dimensión 1
+que sólo llega a 30 probando en el teléfono, eso era un candado: **no se puede llegar
+a 85 sin publicar, y no se puede publicar sin 85.** Lo destapó la segunda auditoría.
+
+La confusión era tratar publicar como el final del trabajo. No lo es: **publicar es
+cómo se consigue la evidencia de la dimensión 1.** Son dos decisiones distintas:
+
+| Decisión | Qué exige |
+|---|---|
+| **Publicar como candidato** | Todo lo verificable acá, verificado. El único hueco que queda es el entorno real, declarado, con el guion de pruebas para el PM |
+| **Dar la iteración por terminada** | Lo anterior **más** la prueba en el teléfono, con su resultado escrito |
+
+Un candidato se publica diciendo que es un candidato y para qué se publica. Lo que el
+puntaje bajo de la dimensión 1 impide no es publicar: impide **cantar victoria**.
+
+Lo que el veto sigue frenando, sin excepción:
+
+- Que algo se publique sin probar lo que **sí** se podía probar acá.
+- Que una afirmación sin respaldo se reporte como verificada.
+- Que un hallazgo de una auditoría anterior siga abierto sin decisión escrita.
+
+Un candidato con la dimensión 1 en 18 sobre 30 se publica. Uno con 8, no: ése no probó
+lo que tenía a mano.
 
 El resultado de cada auditoría vive en `docs/auditoria/AAAA-MM-DD-<entrega>.md`.

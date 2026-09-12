@@ -123,7 +123,9 @@ tipo dio un resultado numéricamente idéntico al plan viejo y no mostró pérdi
 directamente la garantía que la propia hoja del plan promete por escrito un renglón antes del botón "Sumar":
 *"Nada de lo que ya marcaste se toca"* — cambiar el tipo de viaje sí se toca.
 
-**Gravedad: bloqueante.** Incumple la garantía central de VAL-46 ("nunca se pierde lo ya marcado") en un
+**Gravedad: bloqueante. — RESUELTO el 11/09.** El arreglo es de causa: huella total del documento más invalidación del plan en todo camino que reemplace la lista, lo que cubre además la hipótesis que este reporte dejó viva ("Rehacer la lista"). Reproducido por la auditoría en `docs/auditoria/2026-09-11-bloque-b.md`.
+
+**Gravedad original: bloqueante.** Incumple la garantía central de VAL-46 ("nunca se pierde lo ya marcado") en un
 camino de uso perfectamente normal (entrar, ver el aviso, decidir mirar antes otra cosa de la lista, volver),
 y lo hace de forma silenciosa, con un mensaje que asegura éxito.
 
@@ -131,7 +133,7 @@ y lo hace de forma silenciosa, con un mensaje que asegura éxito.
 
 ### Importante
 
-#### H2 — Una categoría colapsada a mano por la persona no se abre sola cuando le llegan ítems nuevos, aunque la especificación dice explícitamente que tiene que hacerlo
+#### H2 — [RESUELTO el 11/09, a favor del código] Una categoría colapsada a mano por la persona no se abre sola cuando le llegan ítems nuevos, aunque la especificación dice explícitamente que tiene que hacerlo
 
 **Qué pasa.** `docs/design/valija-inteligente-b.md` §4.3 dice, en el mismo párrafo que explica por qué existe
 el mecanismo de "visto": *"las categorías con ítems nuevos se abren solas en la primera visita después de
