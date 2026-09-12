@@ -909,6 +909,115 @@ const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;"
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 
 /* ============================================================
+   EL TIER DEL MODELO — una sola decisión, en un solo lugar
+   ============================================================
+   Las tres llamadas a `sample.json()` pedían `"complex"`. La investigación
+   de docs/investigacion/cuota-de-la-capa-inteligente.md mostró que en una
+   de las tres es desperdicio. El porqué de cada valor está escrito en
+   docs/design/import-engine.md § "El tier del modelo".
+
+     · texto    → "default"  extraer campos de un texto limpio parece
+                             "small JSON", pero lleva INFERENCIA: deducir el
+                             año, partir la ida y vuelta en dos vuelos,
+                             decidir el tipo por contexto, normalizar a ISO.
+                             "quick" no piensa antes, y una fecha mal leída
+                             en un vuelo es peor que dos segundos de espera.
+     · imagenes → "complex"  leer una tarjeta de embarque fotografiada
+                             torcida es percepción difícil, y el contrato
+                             avisa que las imágenes se reenvían en cada
+                             ronda: ahí la calidad le gana al costo.
+     · equipaje → "complex"  el único lugar con razonamiento de verdad:
+                             cruzar una escala de ocho horas con un depto
+                             sin lavarropas y sacar una conclusión.
+
+   La decisión NO la toma cada call site: la toma `tierDeImportacion()` a
+   partir de las opciones que el motor ya manda. Así el camino de imágenes
+   pide el tier alto sin depender de que alguien se acuerde el día que la
+   vista lo habilite. */
+const TIER = { texto:"default", imagenes:"complex", equipaje:"complex" };
+
+/** Qué tier le toca a una llamada de importación, mirando las opciones que
+    manda el motor. El motor pone la clave `images` SÓLO en el camino de
+    imágenes (ver `callModelForSource`), y `modo:"imagenes"` es el segundo
+    testigo por si algún día la opción llega antes que los blobs. Sin
+    opciones —el camino de pegar texto llama con `{}`— es texto. */
+function tierDeImportacion(o){
+  return (o && (o.images || o.modo === "imagenes")) ? TIER.imagenes : TIER.texto;
+}
+
+/* ---------- qué tier contestó DE VERDAD ----------
+   El contrato (0.2.41, `SampleOptions.modelTier`) avisa: «The platform may
+   serve a nearby cheaper tier when the viewer's plan lacks the one asked
+   for — modelTierApplied reports which tier actually answered».
+
+   Ese campo vive en `SampleResult`, o sea en lo que resuelve `sample()`.
+   `sample.json()` «resolves with the reply parsed as one JSON value instead
+   of {text}»: por el camino que usa la app el dato NO llega. Así que se
+   registra el tier PEDIDO, cuánto tardó y cómo salió, y `aplicado:null` con
+   el motivo — en lugar de inventar el dato. Si alguna llamada pasa algún día
+   por `sample()`, `iaRegistrar` acepta `aplicado` y no hay nada más que
+   cambiar.
+
+   Vive en localStorage, igual que el tema y el aplazamiento del plan: es
+   estado del dispositivo para diagnóstico, no datos del viaje, y por eso no
+   pasa por `Store`. Anillo de 30 entradas y nada en la interfaz; se lee con
+   `ValijaTier.log()` o `ValijaTier.resumen()` desde la consola. */
+const IA_LOG_KEY = "valija.iaTier.v1";
+const IA_LOG_MAX = 30;
+const IA_APLICADO_MOTIVO = "sample.json() resuelve el JSON, no SampleResult: modelTierApplied no llega por este camino";
+
+function iaLogLeer(){
+  try{ const v = JSON.parse(localStorage.getItem(IA_LOG_KEY) || "[]"); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+/** Registra una llamada a la capa inteligente. Nunca lanza: si localStorage
+    no está (modo privado, cuota llena), se pierde el registro y nada más. */
+function iaRegistrar(entrada){
+  const linea = Object.assign({ ts:new Date().toISOString(), aplicado:null }, entrada || {});
+  if(linea.aplicado == null) linea.motivo = IA_APLICADO_MOTIVO;
+  try{ localStorage.setItem(IA_LOG_KEY, JSON.stringify(iaLogLeer().concat([linea]).slice(-IA_LOG_MAX))); }catch(e){}
+  try{ console.info("[valija] capa inteligente", linea); }catch(e){}
+  return linea;
+}
+const ahoraMs = () => (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+
+/** Envuelve `sample.json()`: estampa el tier, mide y registra. No cambia lo
+    que la llamada resuelve ni lo que rechaza, así los motores siguen viendo
+    exactamente el mismo contrato que cuando se probaron con node.
+    `extra` sólo puede traer `images`: el contrato ignora los miembros que no
+    conoce, pero los nombra en la consola, y `modo`/`archivo`/`paginas` son
+    nuestros, no suyos. */
+function askJson(sample, tarea, tier, prompt, extra){
+  const opciones = { modelTier: tier };
+  if(extra && extra.images) opciones.images = extra.images;
+  const t0 = ahoraMs();
+  const ms = () => Math.round(ahoraMs() - t0);
+  return sample.json(prompt, opciones).then(
+    v => { iaRegistrar({ tarea, pedido:tier, estado:"ok", ms:ms() }); return v; },
+    e => { iaRegistrar({ tarea, pedido:tier, estado:"error", codigo:(e && e.code) || "desconocido", ms:ms() }); throw e; }
+  );
+}
+
+/** Lo único que sale de acá hacia afuera, para poder decidir con datos sin
+    tocar la interfaz: en la consola del dispositivo, `ValijaTier.resumen()`
+    dice cuántas llamadas hubo por tarea y tier pedido. */
+window.ValijaTier = {
+  log: () => iaLogLeer(),
+  borrar: () => { try{ localStorage.removeItem(IA_LOG_KEY); }catch(e){} },
+  resumen(){
+    const por = {};
+    iaLogLeer().forEach(l => {
+      const k = (l.tarea || "?") + " · pedido:" + (l.pedido || "?") + " · aplicado:" + (l.aplicado || "no se sabe");
+      por[k] = por[k] || { llamadas:0, ok:0, error:0, msProm:0 };
+      const b = por[k];
+      b.llamadas++; b[l.estado === "ok" ? "ok" : "error"]++;
+      b.msProm = Math.round(((b.msProm * (b.llamadas - 1)) + (l.ms || 0)) / b.llamadas);
+    });
+    return por;
+  }
+};
+
+/* ============================================================
    STORE — db compartida si está; localStorage si no.
    ============================================================ */
 const Store = {
@@ -4931,7 +5040,10 @@ async function recalcularPlanContra(trip, list){
   try{ history = await Store.packingHistory(trip.id); }catch(e){ return null; }
   let sample = null;
   try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
-  const ask = sample ? (prompt)=> sample.json(prompt, { modelTier:"complex" }) : null;
+  // "complex" a propósito: acá sí hay razonamiento (ver `TIER`).
+  const ask = (sample && typeof sample.json === "function")
+    ? (prompt)=> askJson(sample, "equipaje-plan", TIER.equipaje, prompt)
+    : null;
   try{
     return await PackingEngine.planListUpdateAsync({
       list, trip, items: Store.itemsOf(trip.id),
@@ -5251,7 +5363,10 @@ async function runGenerate(trip, tipoViaje, previous){
 
   let sample = null;
   try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
-  const ask = sample ? (prompt) => sample.json(prompt, { modelTier:"complex" }) : null;
+  // "complex" a propósito, igual que el plan (ver `TIER`).
+  const ask = (sample && typeof sample.json === "function")
+    ? (prompt) => askJson(sample, "equipaje-destino", TIER.equipaje, prompt)
+    : null;
 
   let enriched;
   try{ enriched = await PackingEngine.enrichWithDestination(base, ask); }
@@ -6205,7 +6320,15 @@ async function sheetImport(trip){
   let sample = null;
   try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
   if(!alive()){ dejarDeEsperar(); return; }
-  const callModel = sample ? (prompt, opts) => sample.json(prompt, {...(opts||{}), modelTier:"complex"}) : null;
+  /* El tier lo decide `tierDeImportacion` con las opciones que manda el
+     motor: texto → "default", imágenes → "complex". No hay nada que
+     recordar el día que la vista habilite las fotos. */
+  const callModel = (sample && typeof sample.json === "function")
+    ? (prompt, opts) => {
+        const tier = tierDeImportacion(opts);
+        return askJson(sample, tier === TIER.imagenes ? "importar-imagen" : "importar-texto", tier, prompt, opts);
+      }
+    : null;
   if(!callModel){ dejarDeEsperar(); renderImportNoAi(); return; }
 
   /* ---------- qué puede ESTA vista, ANTES de dibujar la pantalla ----------

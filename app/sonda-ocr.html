@@ -139,6 +139,10 @@ code{font-family:var(--f-mono);font-size:.92em;background:var(--surface-2);paddi
     <p>Si el reconocedor llegó a cargar, esto lo pone a trabajar sobre una imagen real y mide
       cuánto tarda en tu teléfono. Sacale una foto a cualquier texto impreso, o elegí la captura
       de un correo.</p>
+    <p><strong>Cuánto debería tardar:</strong> el motor y el diccionario bajan una sola vez, unos
+      5 a 15 segundos con buena señal. Reconocer una foto, entre 5 y 20 segundos más. Si un intento
+      pasa de 40 segundos, esta página lo corta y te dice en qué paso se quedó: eso ya es una
+      respuesta, no una espera.</p>
     <button class="btn" id="run" disabled>
       <span id="run-lbl">Esperando los chequeos…</span>
       <input id="file" type="file" accept="image/*">
@@ -367,43 +371,120 @@ const $lbl = document.getElementById("run-lbl");
 
 $btn.onclick = () => { const i = document.getElementById("file"); if(i) i.click(); };
 
+/* De dónde sacar el diccionario del idioma.
+
+   El primer intento del PM se colgó en `loading language traineddata 0%`:
+   el motor bajó y se inicializó, y el diccionario no llegó nunca. Por
+   defecto tesseract.js lo busca en tessdata.projectnaptha.com, que NO está
+   entre los hosts que el visor permite. El motor sí venía del mismo CDN
+   que el script, y por eso ése pasó.
+
+   La librería deja elegir de dónde bajar el diccionario (`langPath`). Si
+   alguna copia vive en un host permitido, la función es viable. Estos son
+   los candidatos; la sonda los prueba en orden y reporta cuál anduvo, sin
+   dar por sentado que alguno exista. */
+const DICCIONARIOS = [
+  { nombre:"por defecto (tessdata.projectnaptha.com)", op:{} },
+  { nombre:"jsdelivr · paquete de datos, comprimido",
+    op:{ langPath:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/spa@1.0.0/4.0.0_fast_int", gzip:true } },
+  { nombre:"jsdelivr · paquete de datos, sin comprimir",
+    op:{ langPath:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/spa@1.0.0/4.0.0_fast_int", gzip:false } },
+  { nombre:"jsdelivr · tessdata suelto",
+    op:{ langPath:"https://cdn.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0", gzip:true } }
+];
+
+const TECHO_MS = 40000;
+
+/** Corta un intento que no contesta. El trabajo puede seguir por detrás:
+    lo que importa es no dejar a la persona esperando sin respuesta. */
+function conTecho(promesa, ms, linea){
+  let cortado = false;
+  return Promise.race([
+    promesa.then(r => { if(!cortado) return { ok:true, r }; return { ok:false, corte:true }; }),
+    new Promise(res => setTimeout(() => { cortado = true; res({ ok:false, corte:true }); }, ms))
+  ]);
+}
+
 document.getElementById("file").onchange = async (ev) => {
   const file = ev.target.files && ev.target.files[0];
   if(!file) return;
   ev.target.value = "";
   $btn.disabled = true;
-  $lbl.innerHTML = '<span class="spin"></span> Reconociendo…';
   $out.hidden = false;
   const linea = t => { $out.textContent += t + "\n"; $out.scrollTop = $out.scrollHeight; };
   $out.textContent = "";
   linea("archivo: " + file.name + "  (" + Math.round(file.size/1024) + " KB)");
-  linea("");
+  linea("el motor y el diccionario bajan una vez; el techo por intento es " + (TECHO_MS/1000) + " s");
 
-  const t0 = marca();
-  try{
-    const r = await window.Tesseract.recognize(file, "spa", {
+  let logrado = null;
+
+  for(const cand of DICCIONARIOS){
+    if(logrado) break;
+    $lbl.innerHTML = '<span class="spin"></span> Probando: ' + cand.nombre;
+    linea("");
+    linea("── diccionario: " + cand.nombre);
+    let ultimoPaso = "(no arrancó)";
+    const t0 = marca();
+    const intento = window.Tesseract.recognize(file, "spa", Object.assign({
       logger: m => {
-        if(m && m.status) linea("  " + m.status + (m.progress != null ? "  " + Math.round(m.progress*100) + "%" : ""));
+        if(m && m.status){
+          ultimoPaso = m.status + (m.progress != null ? " " + Math.round(m.progress*100) + "%" : "");
+          linea("   " + ultimoPaso);
+        }
       }
-    });
+    }, cand.op)).catch(e => { throw e; });
+
+    let res;
+    try{
+      res = await conTecho(intento, TECHO_MS, linea);
+    }catch(e){
+      linea("   ✗ error: " + String(e && e.message || e));
+      linea("   se quedó en: " + ultimoPaso);
+      continue;
+    }
+
     const ms = marca() - t0;
-    const texto = (r && r.data && r.data.text || "").trim();
+    if(!res.ok){
+      linea("   ✗ CORTADO a los " + (ms/1000).toFixed(1) + " s");
+      linea("   se quedó en: " + ultimoPaso);
+      if(/traineddata/i.test(ultimoPaso)){
+        linea("   → el diccionario no baja de ese host: bloqueado por el visor");
+      }
+      continue;
+    }
+
+    const texto = (res.r && res.r.data && res.r.data.text || "").trim();
+    logrado = { cand, ms, texto, conf: res.r && res.r.data ? Math.round(res.r.data.confidence) : null };
+  }
+
+  linea("");
+  if(logrado){
+    linea("═══ FUNCIONA ═══");
+    linea("diccionario que sirvió: " + logrado.cand.nombre);
+    linea("tardó: " + (logrado.ms/1000).toFixed(1) + " s");
+    linea("confianza que declara: " + (logrado.conf != null ? logrado.conf + "%" : "?"));
+    linea("caracteres reconocidos: " + logrado.texto.length);
     linea("");
-    linea("=== TARDÓ " + (ms/1000).toFixed(1) + " s ===");
-    linea("confianza que declara: " + (r && r.data ? Math.round(r.data.confidence) + "%" : "?"));
-    linea("caracteres reconocidos: " + texto.length);
-    linea("");
-    linea(texto || "(no reconoció ningún texto)");
+    linea(logrado.texto || "(no reconoció ningún texto)");
     $lbl.textContent = "Probar con otra foto";
-  }catch(e){
-    const ms = marca() - t0;
+    const v = document.getElementById("verdict");
+    v.classList.remove("no","parcial"); v.classList.add("si");
+    document.getElementById("v-a").textContent = "Sí, se puede";
+    document.getElementById("v-d").textContent = "El reconocimiento corrió en tu teléfono en "
+      + (logrado.ms/1000).toFixed(1) + " segundos, bajando el diccionario de un host permitido.";
+  } else {
+    linea("═══ NO FUNCIONA ═══");
+    linea("Ningún diccionario del idioma pudo bajar. El motor carga, pero sin");
+    linea("diccionario el reconocedor no lee nada, y todas las copias que probé");
+    linea("están en hosts que el visor bloquea.");
     linea("");
-    linea("=== FALLÓ a los " + (ms/1000).toFixed(1) + " s ===");
-    linea(String(e && e.message || e));
-    linea("");
-    linea("Si dice algo de red, de worker o de traineddata, es el bloqueo del visor:");
-    linea("la librería no puede bajar su motor ni el diccionario del idioma.");
-    $lbl.textContent = "Probar de nuevo";
+    linea("Conclusión para el equipo: esta librería no es viable dentro de la app.");
+    $lbl.textContent = "Probar con otra foto";
+    const v = document.getElementById("verdict");
+    v.classList.remove("si","parcial"); v.classList.add("no");
+    document.getElementById("v-a").textContent = "No con esta librería";
+    document.getElementById("v-d").textContent = "El motor carga pero el diccionario del idioma "
+      + "no baja de ningún host permitido. Hace falta otro camino para leer la captura del correo.";
   }
   $btn.disabled = false;
 };
