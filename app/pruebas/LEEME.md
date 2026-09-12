@@ -99,3 +99,19 @@ porque cdnjs está bloqueado. `importar-sin-imagenes.js` e `importar-arranque.js
 inyectan un pdf.js escrito contra la API documentada. Un simulador replica el contrato, no lo
 verifica: que `page.getTextContent()` del pdf.js real devuelva esa forma en un
 teléfono se comprueba con los pasos de `docs/design/import-engine.md` §5.
+
+## Intermitencia conocida
+
+`tier-del-modelo.js` falló **una aserción en una de siete corridas** el 12/09, y en las
+otras seis dio 42 en verde. No se pudo identificar cuál fue: se perdió la salida de esa
+corrida. Queda anotado porque **un arnés que falla una de cada siete no garantiza lo que
+dice garantizar**, y porque descubrirlo de nuevo desde cero cuesta más que leer esto.
+
+Sospecha, sin confirmar: alguna aserción que depende de un tiempo fijo. Este arnés
+convive con esperas reales de la app —el techo de 4 s de `limits()`, el aviso de los
+7 s— y una espera fija se queda corta cuando la máquina está cargada. Es el mismo patrón
+que ya tumbó `valija-bloque-b.js` antes de cortarle la red externa.
+
+**Qué hacer si vuelve a aparecer:** correrlo cinco veces guardando la salida completa de
+cada una (`> /tmp/t$i.txt 2>&1`, no por tubería), y buscar la línea con `FALLA`. Con eso
+se sabe si es una espera fija y se reemplaza por una condición.

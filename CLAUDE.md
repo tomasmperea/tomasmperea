@@ -28,6 +28,11 @@ Nadie edita `app/valija.html` salvo el rol de integración. El trabajo en parale
 como piezas autónomas, y se integra en un paso posterior. Un agente que necesita cambiar algo en
 `valija.html` lo describe en su entrega en lugar de editarlo.
 
+**Y no se commitea el árbol entero mientras alguien más está trabajando.** `git add -A` con un agente a
+medio camino mete su trabajo sin terminar en un commit que habla de otra cosa: ya pasó el 12/09, y el
+historial quedó diciendo que un cambio de configuración del modelo era parte de una sonda de OCR. Mientras
+haya trabajo en curso se agregan los archivos por nombre.
+
 ## Sistema de diseño
 
 Ya está definido en `app/valija.html` y no se reinventa. Se usan los tokens existentes.
