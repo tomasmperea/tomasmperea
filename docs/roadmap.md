@@ -41,7 +41,7 @@ Fuera: VAL-34 por falta de identidad por visitante y VAL-35 por no estar diseña
 
 ---
 
-## Iteración 2 — Interpretar
+## Iteración 2 — Interpretar (entregada, con alcance recortado)
 
 **Objetivo:** que cargar un viaje deje de ser trabajo. Es la iteración que decide si la app se usa o se
 abandona.
@@ -64,11 +64,54 @@ carga va primero.
 
 Sigue sin necesitar servidor. Todo se resuelve en el navegador con la capa de inteligencia que ya existe.
 
+**Entregado:** importar un PDF con capa de texto, que se interpreta extrayendo el texto
+en el navegador y se carga solo. Validado por el PM en su teléfono el 12/09: *"los PDF
+cargan, bien y rápido"*. Más el bloque B completo: la valija razona sobre el viaje
+entero, no repite ítems entre capas, se actualiza cuando el viaje crece y puede proponer
+sacar lo que no corresponde.
+
+**No entregado, y por qué:** la vista donde corre la app no acepta imágenes
+(`images_unavailable`). Eso deja afuera la foto del voucher, la captura del correo, el
+PDF escaneado y la tarjeta de embarque fotografiada, que era el caso más frecuente de
+VAL-42. No están canceladas: la iteración 3 las ataca por un camino que no depende de
+esa capacidad.
+
+**Lo que costó:** cuatro rondas sobre el mismo bug de importar. Las tres primeras
+fallaron por validar en un entorno cómodo y reportar como si fuera el del PM. De ahí
+salió la capa de auditoría (`docs/auditoria/`).
+
 **Pregunta que responde:** ¿se puede cargar un viaje entero sin tipear?
 
 ---
 
-## Iteración 3 — Avisar
+## Iteración 3 — Adjuntar
+
+**Objetivo:** que el documento no se interprete y se tire, sino que quede. Y que la
+captura del correo sirva, porque la mayoría de las confirmaciones no traen PDF.
+
+**Se adelantó por feedback de uso.** El plan ponía los avisos por correo acá. Después de
+probar la importación, el PM fue explícito: muchas confirmaciones llegan por correo sin
+adjunto, y el documento original —la tarjeta de embarque sobre todo— hay que tenerlo a
+mano. Ninguna cantidad de avisos reemplaza eso.
+
+**Alcance:** VAL-57 a VAL-60, especificados en `docs/briefs/adjuntar.md`.
+
+- Leer la captura del correo reconociendo el texto en el propio teléfono, sin depender
+  de la capacidad de imágenes que la plataforma hoy no da.
+- El documento original queda adjunto a la reserva y se puede descargar.
+- La tarjeta de embarque deja de crear un vuelo suelto: se desprende de uno que existe,
+  o se avisa y se ofrece crearlo.
+- Dejar de pedir el modelo más caro para extraer datos de un texto limpio.
+
+**Riesgo que decide la iteración:** la librería de reconocimiento tiene que bajar del
+único CDN permitido, el mismo que ya falló en el teléfono del PM. Si no baja, VAL-57 no
+existe. Es el paso cero, antes de diseñar nada.
+
+**Pregunta que responde:** ¿sirve también cuando la confirmación es sólo un correo?
+
+---
+
+## Iteración 4 — Avisar
 
 **Objetivo:** que el producto te busque en lugar de esperar a que lo abras. Es la iteración de retención, y
 la primera que necesita infraestructura propia.
@@ -91,7 +134,7 @@ correos, un cron diario para el evaluador de reglas, e Inbound Parse para el buz
 
 ---
 
-## Iteración 4 — Acompañar
+## Iteración 5 — Acompañar
 
 **Objetivo:** pasar de organizador a compañero de viaje.
 
@@ -116,4 +159,5 @@ Al cierre de cada iteración se mira una sola cosa antes de arrancar la siguient
 | Iteración 1 | Hay viajes con más de tres reservas cargadas |
 | Iteración 1.5 | Las listas llegan al día del viaje con más de la mitad marcada |
 | Iteración 2 | La carga manual baja frente a la automática |
+| Iteración 3 | Las reservas nacen de una captura, y el documento se abre desde la reserva |
 | Iteración 3 | Los correos se abren y traen gente de vuelta a la app |
