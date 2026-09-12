@@ -1,0 +1,412 @@
+<title>¿Se puede leer una foto?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+
+<style>
+/* Tokens de Valija. No se inventa ninguno: esta sonda es parte del proyecto. */
+:root{
+  --ink:#0F1B2E; --ink-2:#54637C; --ink-3:#8695AB;
+  --ground:#EDF0F5; --surface:#FFFFFF; --surface-2:#F5F7FB;
+  --line:#D7DEE9; --line-2:#E7ECF3;
+  --accent:#0B45C4; --accent-soft:#E4EBFC;
+  --flap:#E8A317; --flap-soft:#FBF0D8;
+  --ok:#0B7A5C; --ok-soft:#DDF1EA;
+  --warn:#A96400;
+  --crit:#BE3227; --crit-soft:#FBE4E1;
+  --shadow:0 1px 2px rgba(15,27,46,.06), 0 8px 24px -12px rgba(15,27,46,.18);
+  --f-display:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E9EEF7; --ink-2:#9FAFC6; --ink-3:#6F7F97;
+    --ground:#080D17; --surface:#121B2B; --surface-2:#182234;
+    --line:#26334A; --line-2:#1E2A3E;
+    --accent:#6E9BFF; --accent-soft:#1A2748;
+    --flap:#FFC24D; --flap-soft:#2E2413;
+    --ok:#4FCFA5; --ok-soft:#102E26;
+    --warn:#E9A93C;
+    --crit:#FF8A7A; --crit-soft:#331A18;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E9EEF7; --ink-2:#9FAFC6; --ink-3:#6F7F97;
+  --ground:#080D17; --surface:#121B2B; --surface-2:#182234;
+  --line:#26334A; --line-2:#1E2A3E;
+  --accent:#6E9BFF; --accent-soft:#1A2748;
+  --flap:#FFC24D; --flap-soft:#2E2413;
+  --ok:#4FCFA5; --ok-soft:#102E26;
+  --warn:#E9A93C;
+  --crit:#FF8A7A; --crit-soft:#331A18;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--f-body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+.wrap{max-width:560px;margin:0 auto;padding-block:22px 60px;padding-left:16px;padding-right:16px;display:flex;flex-direction:column;gap:18px}
+
+header{display:flex;flex-direction:column;gap:8px}
+.eyebrow{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-family:var(--f-display);font-weight:800;font-size:27px;letter-spacing:-.02em;margin:0;line-height:1.1;text-wrap:balance}
+.lede{margin:0;color:var(--ink-2);font-size:14px;max-width:62ch}
+
+/* El veredicto: lo único que hace falta leer si no se quiere el detalle. */
+.verdict{
+  border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  box-shadow:var(--shadow);padding:15px 16px;display:flex;flex-direction:column;gap:7px;
+  border-left:4px solid var(--ink-3);
+}
+.verdict.si{border-left-color:var(--ok)}
+.verdict.no{border-left-color:var(--crit)}
+.verdict.parcial{border-left-color:var(--flap)}
+.verdict .q{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.verdict .a{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;line-height:1.2}
+.verdict .d{font-size:13.5px;color:var(--ink-2);line-height:1.45}
+
+/* Los chequeos: una tira por prueba, con su estado en el margen. */
+.checks{display:flex;flex-direction:column;gap:9px}
+.sec{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-top:6px}
+.chk{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:11px 13px;display:grid;grid-template-columns:auto 1fr;gap:3px 11px;align-items:start;
+}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ink-3);margin-top:6px;grid-row:1/span 3;flex:none}
+.chk.ok   .dot{background:var(--ok)}
+.chk.bad  .dot{background:var(--crit)}
+.chk.warn .dot{background:var(--flap)}
+.chk .nm{font-weight:600;font-size:14px;line-height:1.3}
+.chk .why{font-size:12px;color:var(--ink-3);line-height:1.4}
+.chk .res{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);line-height:1.45;overflow-wrap:anywhere}
+.chk.ok  .res{color:var(--ok)}
+.chk.bad .res{color:var(--crit)}
+.chk.warn .res{color:var(--warn)}
+.ms{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--ink-3);font-size:11.5px}
+
+.step{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:15px 16px;display:flex;flex-direction:column;gap:11px}
+.step h2{font-family:var(--f-display);font-weight:700;font-size:16.5px;margin:0;letter-spacing:-.005em}
+.step p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.btn{
+  border:1px solid var(--accent);background:var(--accent);color:#fff;
+  padding:12px 15px;border-radius:11px;font:inherit;font-weight:600;font-size:14.5px;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  position:relative;
+}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn input[type=file]{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;pointer-events:none}
+.out{
+  font-family:var(--f-mono);font-size:12.5px;background:var(--surface-2);
+  border:1px solid var(--line-2);border-radius:10px;padding:11px;
+  white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow-y:auto;margin:0;
+}
+.spin{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+footer{font-size:12px;color:var(--ink-3);line-height:1.5;border-top:1px solid var(--line);padding-top:14px}
+code{font-family:var(--f-mono);font-size:.92em;background:var(--surface-2);padding:1px 4px;border-radius:4px}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Valija · control previo</span>
+    <h1>¿Se puede leer una foto?</h1>
+    <p class="lede">La app no puede mandarle imágenes al modelo. La salida propuesta es reconocer
+      el texto dentro del teléfono y mandar texto. Esta página comprueba si eso es posible acá,
+      antes de diseñar nada. Corre sola; el último paso necesita una foto tuya.</p>
+  </header>
+
+  <div class="verdict" id="verdict">
+    <span class="q">Veredicto</span>
+    <span class="a" id="v-a"><span class="spin"></span> Probando…</span>
+    <span class="d" id="v-d">Los chequeos automáticos tardan unos segundos.</span>
+  </div>
+
+  <div class="checks" id="checks"></div>
+
+  <div class="step">
+    <h2>Paso final: una foto de verdad</h2>
+    <p>Si el reconocedor llegó a cargar, esto lo pone a trabajar sobre una imagen real y mide
+      cuánto tarda en tu teléfono. Sacale una foto a cualquier texto impreso, o elegí la captura
+      de un correo.</p>
+    <button class="btn" id="run" disabled>
+      <span id="run-lbl">Esperando los chequeos…</span>
+      <input id="file" type="file" accept="image/*">
+    </button>
+    <pre class="out" id="out" hidden></pre>
+  </div>
+
+  <footer>
+    Esta página no guarda nada y no manda tu foto a ningún servidor: el reconocimiento, si
+    funciona, corre en tu teléfono. Los resultados los leo yo para decidir si la función se
+    puede construir.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   SONDA — responde una sola pregunta con evidencia:
+   ¿se puede reconocer texto de una imagen dentro de un artifact?
+
+   El contrato del visor permite cargar SCRIPTS desde unos pocos CDN,
+   pero bloquea todo lo demás de esos mismos hosts: hojas de estilo,
+   imágenes, y —lo que importa acá— las descargas que una librería hace
+   por su cuenta en tiempo de ejecución. Un reconocedor de texto necesita
+   bajar su motor (WebAssembly) y el diccionario del idioma. Si eso está
+   bloqueado, el <script> carga y la librería igual no sirve.
+
+   Por eso la sonda no se conforma con "cargó la librería": la pone a
+   trabajar sobre una imagen real.
+   ============================================================ */
+
+const $checks = document.getElementById("checks");
+const filas = new Map();
+
+function seccion(txt){
+  const d = document.createElement("div");
+  d.className = "sec"; d.textContent = txt;
+  $checks.appendChild(d);
+}
+
+function fila(id, nombre, porque){
+  const el = document.createElement("div");
+  el.className = "chk";
+  el.innerHTML = '<span class="dot"></span>'
+    + '<span class="nm"></span>'
+    + '<span class="why"></span>'
+    + '<span class="res"><span class="spin"></span> probando…</span>';
+  el.querySelector(".nm").textContent = nombre;
+  el.querySelector(".why").textContent = porque;
+  $checks.appendChild(el);
+  filas.set(id, el);
+  return el;
+}
+
+/** estado: "ok" | "bad" | "warn" */
+function resolver(id, estado, texto, ms){
+  const el = filas.get(id); if(!el) return;
+  el.classList.remove("ok","bad","warn");
+  el.classList.add(estado);
+  const res = el.querySelector(".res");
+  res.textContent = texto;
+  if(ms != null){
+    const s = document.createElement("span");
+    s.className = "ms"; s.textContent = "  " + Math.round(ms) + " ms";
+    res.appendChild(s);
+  }
+}
+
+const marca = () => performance.now();
+
+/* ---------- cargar un script y decir si el visor lo dejó ---------- */
+function cargarScript(url, timeoutMs){
+  return new Promise(resolve => {
+    const t0 = marca();
+    const s = document.createElement("script");
+    let listo = false;
+    const cerrar = (ok, detalle) => {
+      if(listo) return; listo = true;
+      resolve({ ok, detalle, ms: marca() - t0 });
+    };
+    s.onload  = () => cerrar(true, "cargó");
+    s.onerror = () => cerrar(false, "bloqueado o inexistente");
+    setTimeout(() => cerrar(false, "no contestó a tiempo"), timeoutMs || 15000);
+    s.src = url;
+    document.head.appendChild(s);
+  });
+}
+
+/* ---------- probar si una descarga que NO es script pasa ---------- */
+function probarDescarga(url){
+  const t0 = marca();
+  return fetch(url, { method:"GET", mode:"cors" })
+    .then(r => ({ ok:r.ok, detalle:"respondió " + r.status, ms: marca() - t0 }))
+    .catch(e => ({ ok:false, detalle:"bloqueada (" + (e && e.name ? e.name : "error") + ")", ms: marca() - t0 }));
+}
+
+/* ============================================================
+   LOS CHEQUEOS
+   ============================================================ */
+
+const CDNJS = "https://cdnjs.cloudflare.com/ajax/libs/";
+
+/* Candidatos de reconocedor. No sé de antemano cuáles existen en el CDN
+   permitido: la sonda prueba y reporta, no adivina. */
+const CANDIDATOS = [
+  { id:"t5",  v:"tesseract.js 5.1.1 (cdnjs)",  url: CDNJS + "tesseract.js/5.1.1/tesseract.min.js" },
+  { id:"t4",  v:"tesseract.js 4.1.1 (cdnjs)",  url: CDNJS + "tesseract.js/4.1.1/tesseract.min.js" },
+  { id:"t2",  v:"tesseract.js 2.1.5 (cdnjs)",  url: CDNJS + "tesseract.js/2.1.5/tesseract.min.js" },
+  { id:"tjd", v:"tesseract.js 5 (jsdelivr)",   url: "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" }
+];
+
+let reconocedorListo = false;
+
+async function correr(){
+  /* --- 1. lo que ya sabemos que la app usa --- */
+  seccion("Lo que la app ya hace hoy");
+
+  fila("pdfjs", "La librería de PDF baja del CDN",
+       "Es la que hace funcionar la importación de PDF hoy. Si falla, ya sabemos que el CDN es frágil en este teléfono.");
+  const pdf = await cargarScript(CDNJS + "pdf.js/3.11.174/pdf.min.js", 20000);
+  resolver("pdfjs", pdf.ok ? "ok" : "bad",
+    pdf.ok ? "baja bien · versión " + ((window.pdfjsLib && window.pdfjsLib.version) || "?")
+           : "NO baja · " + pdf.detalle, pdf.ms);
+
+  fila("imgs", "El modelo acepta imágenes en esta vista",
+       "Si acepta, no hace falta reconocer nada acá: se manda la foto directo. Es la respuesta a VAL-56.");
+  try{
+    const sample = await claude.use("sample");
+    if(!sample){
+      resolver("imgs", "warn", "la capa inteligente no está disponible en esta vista");
+    } else if(typeof sample.limits !== "function"){
+      resolver("imgs", "warn", "esta versión del visor no informa sus límites");
+    } else {
+      const lim = await sample.limits();
+      if(lim && lim.images){
+        resolver("imgs", "ok", "SÍ acepta imágenes · hasta " + lim.images.maxCount
+          + " por pedido, " + Math.round(lim.images.maxInputBytes/1048576) + " MB cada una · "
+          + (lim.images.mediaTypes || []).join(", "));
+      } else {
+        resolver("imgs", "bad", "NO acepta imágenes · prompt máximo "
+          + Math.round((lim && lim.maxPromptBytes || 0)/1024) + " KB de texto");
+      }
+    }
+  }catch(e){
+    resolver("imgs", "warn", "no se pudo consultar: " + (e && e.code ? e.code : "error"));
+  }
+
+  /* --- 2. el bloqueo que decide todo --- */
+  seccion("El bloqueo que decide si el reconocedor puede funcionar");
+
+  fila("fetch", "Una descarga que no es script",
+       "Un reconocedor de texto baja por su cuenta su motor y el diccionario del idioma. Si el visor bloquea esas descargas, el reconocedor no sirve por más que su script cargue.");
+  const f = await probarDescarga(CDNJS + "pdf.js/3.11.174/pdf.min.js");
+  resolver("fetch", f.ok ? "ok" : "bad",
+    f.ok ? "PASA · " + f.detalle + " (entonces el reconocedor podría bajar lo suyo)"
+         : "BLOQUEADA · " + f.detalle, f.ms);
+
+  /* --- 3. el reconocedor --- */
+  seccion("El reconocedor de texto");
+
+  for(const c of CANDIDATOS){
+    fila(c.id, c.v, "Se prueba hasta encontrar uno que exista en un CDN permitido.");
+  }
+  for(const c of CANDIDATOS){
+    if(reconocedorListo){ resolver(c.id, "warn", "no hizo falta probarlo"); continue; }
+    const r = await cargarScript(c.url, 20000);
+    const global = (typeof window.Tesseract !== "undefined");
+    if(r.ok && global){
+      reconocedorListo = true;
+      resolver(c.id, "ok", "cargó y expone su interfaz", r.ms);
+    } else if(r.ok){
+      resolver(c.id, "warn", "el archivo cargó pero no expuso nada usable", r.ms);
+    } else {
+      resolver(c.id, "bad", r.detalle, r.ms);
+    }
+  }
+
+  veredicto(pdf.ok, f.ok);
+
+  const btn = document.getElementById("run");
+  const lbl = document.getElementById("run-lbl");
+  if(reconocedorListo){
+    btn.disabled = false;
+    lbl.textContent = "Elegir una foto y reconocer el texto";
+    btn.querySelector("input").style.pointerEvents = "auto";
+  } else {
+    lbl.textContent = "No hay reconocedor: este paso no se puede correr";
+  }
+}
+
+function veredicto(pdfOk, fetchOk){
+  const v = document.getElementById("verdict");
+  const a = document.getElementById("v-a");
+  const d = document.getElementById("v-d");
+  v.classList.remove("si","no","parcial");
+
+  if(!reconocedorListo){
+    v.classList.add("no");
+    a.textContent = "No, por ahora no";
+    d.textContent = "Ningún reconocedor de texto cargó desde los CDN que el visor permite. "
+      + "Sin librería no hay función: hay que buscar otro camino para leer la captura del correo.";
+    return;
+  }
+  if(!fetchOk){
+    v.classList.add("parcial");
+    a.textContent = "El script carga, pero probablemente no alcance";
+    d.textContent = "El reconocedor cargó, pero el visor bloquea las descargas que no son script, "
+      + "y esa librería necesita bajar su motor y el diccionario del idioma. Corré el paso final: "
+      + "es lo único que lo confirma de verdad.";
+    return;
+  }
+  v.classList.add("si");
+  a.textContent = "Todo indica que sí";
+  d.textContent = "Cargó el reconocedor y las descargas pasan. Falta la prueba de verdad: "
+    + "corré el paso final con una foto para ver la calidad y cuánto tarda en tu teléfono."
+    + (pdfOk ? "" : " Ojo: la librería de PDF no bajó, así que el CDN está fallando en este teléfono.");
+}
+
+/* ============================================================
+   PASO FINAL — el reconocedor, sobre una imagen real
+   ============================================================ */
+const $out = document.getElementById("out");
+const $btn = document.getElementById("run");
+const $lbl = document.getElementById("run-lbl");
+
+$btn.onclick = () => { const i = document.getElementById("file"); if(i) i.click(); };
+
+document.getElementById("file").onchange = async (ev) => {
+  const file = ev.target.files && ev.target.files[0];
+  if(!file) return;
+  ev.target.value = "";
+  $btn.disabled = true;
+  $lbl.innerHTML = '<span class="spin"></span> Reconociendo…';
+  $out.hidden = false;
+  const linea = t => { $out.textContent += t + "\n"; $out.scrollTop = $out.scrollHeight; };
+  $out.textContent = "";
+  linea("archivo: " + file.name + "  (" + Math.round(file.size/1024) + " KB)");
+  linea("");
+
+  const t0 = marca();
+  try{
+    const r = await window.Tesseract.recognize(file, "spa", {
+      logger: m => {
+        if(m && m.status) linea("  " + m.status + (m.progress != null ? "  " + Math.round(m.progress*100) + "%" : ""));
+      }
+    });
+    const ms = marca() - t0;
+    const texto = (r && r.data && r.data.text || "").trim();
+    linea("");
+    linea("=== TARDÓ " + (ms/1000).toFixed(1) + " s ===");
+    linea("confianza que declara: " + (r && r.data ? Math.round(r.data.confidence) + "%" : "?"));
+    linea("caracteres reconocidos: " + texto.length);
+    linea("");
+    linea(texto || "(no reconoció ningún texto)");
+    $lbl.textContent = "Probar con otra foto";
+  }catch(e){
+    const ms = marca() - t0;
+    linea("");
+    linea("=== FALLÓ a los " + (ms/1000).toFixed(1) + " s ===");
+    linea(String(e && e.message || e));
+    linea("");
+    linea("Si dice algo de red, de worker o de traineddata, es el bloqueo del visor:");
+    linea("la librería no puede bajar su motor ni el diccionario del idioma.");
+    $lbl.textContent = "Probar de nuevo";
+  }
+  $btn.disabled = false;
+};
+
+correr();
+</script>
