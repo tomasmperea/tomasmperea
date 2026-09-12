@@ -601,6 +601,10 @@ Este módulo no se edita desde acá; esto es la lista de lo que el rol de integr
    calculan solos, adentro; no hay que armar ni pasar nada aparte para eso. `notasViaje` sale de `trip.notes`
    tal como ya lo maneja `Store`: alcanza con que el viaje que se pasa traiga ese campo.
 
+   **`"complex"` acá es a propósito y se revisó el 12/09/2026:** es el único lugar de la app donde hay
+   razonamiento de verdad (cruzar una escala larga con un depto sin lavarropas). La importación desde texto
+   sí bajó a `"default"`; esto no. Ver `docs/design/import-engine.md` § 4.9.
+
 3. **Guardarla.** Persistir el documento completo con `db.doc('trips/'+tripId+'/packing/lista').set(list)`
    (o el equivalente en `localStorage` si no hay `db`) tras generar o regenerar. Para marcar un solo ítem sin
    reescribir la lista entera, usar `PackingEngine.stateUpdatePatch(clave, estado)` con `.update(...)`.

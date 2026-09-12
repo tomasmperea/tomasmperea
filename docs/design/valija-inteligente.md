@@ -437,6 +437,10 @@ Esta sección es para el rol de integración. No se edita `valija.html` desde ac
    Si `sample` es `null`, no pasar `ask` a `generatePackingList`: el motor ya contempla ese caso y devuelve
    la lista base con `capaInteligente.estado:"no-disponible"` (estado 08).
 
+   **`"complex"` acá es a propósito y se revisó el 12/09/2026:** es el único lugar de la app donde hay
+   razonamiento de verdad (cruzar una escala larga con un depto sin lavarropas). La importación desde texto
+   sí bajó a `"default"`; esto no. Ver `docs/design/import-engine.md` § 4.9.
+
 ### 5.2 Store — persistencia de la lista
 `packing-engine.js` documenta el modelo: un documento por viaje en `trips/{tripId}/packing/lista`, hermano
 de `trips/{tripId}/items`. Hace falta agregar a `Store`:

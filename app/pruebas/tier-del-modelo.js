@@ -51,13 +51,17 @@
    EL CONTROL NEGATIVO
    ------------------------------------------------------------
    Una prueba de configuración que no puede fallar no prueba nada. Se
-   comprueba corriendo el mismo arnés contra una copia del HTML a la que
-   se le puso "complex" en el camino de texto:
+   comprueba corriendo el mismo arnés contra copias del HTML con cada tier
+   movido. Los tres controles, corridos el 12/09/2026:
 
-     sed 's/const TIER = { texto:"default"/const TIER = { texto:"complex"/' \
-       app/valija.html > /tmp/tier-alto.html
-     node app/pruebas/tier-del-modelo.js /tmp/tier-alto.html
-     → FALLA  la llamada de texto pide "default"
+     sed 's/texto:"default"/texto:"complex"/' app/valija.html > /tmp/t1.html
+       → 5 FALLA (la llamada de texto pide "default": "complex")
+     sed 's/imagenes:"complex"/imagenes:"default"/' app/valija.html > /tmp/t2.html
+       → 1 FALLA (y pide "complex", sin que nadie se tenga que acordar: "default")
+     sed 's/equipaje:"complex"/equipaje:"quick"/' app/valija.html > /tmp/t3.html
+       → 2 FALLA (todas las llamadas del equipaje piden "complex": ["quick"])
+
+     node app/pruebas/tier-del-modelo.js /tmp/t1.html
    ============================================================ */
 "use strict";
 

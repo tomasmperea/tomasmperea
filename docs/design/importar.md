@@ -439,8 +439,12 @@ sheetImport(trip)` sigue apuntando al mismo nombre de función, sólo cambia su 
    `generatePackingList`:
    ```js
    const sample = await claude.use("sample").catch(()=>null);
-   const callModel = sample ? (prompt, opts) => sample.json(prompt, { ...opts, modelTier:"complex" }) : null;
+   const callModel = sample ? (prompt, opts) => sample.json(prompt, opciones(opts)) : null;
    ```
+   **El `modelTier` ya no es `"complex"` en todos los caminos** (decisión del PO del 12/09/2026): el de
+   texto pide `"default"` y el de imágenes `"complex"`. Lo decide `tierDeImportacion()` en `valija.html`, y
+   el porqué está en `docs/design/import-engine.md` § 4.9. Y `opts` no se reenvía tal cual: `modo`,
+   `archivo` y `paginas` son nuestros y se quedan del lado de la app.
    Si `sample` es `null`, no pasar `callModel`: cada archivo degrada solo a `estado:"error"` (estado 10 o, si
    la hoja recién se abre y todavía no se intentó nada, directo al estado 11 como hoy hace `sheetImport`).
 

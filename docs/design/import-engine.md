@@ -375,7 +375,8 @@ Este módulo no se edita desde acá; esto es la lista de lo que el rol de integr
    importa pdf.js:
    ```js
    const callModel = (prompt, o) =>
-     sample.json(prompt, o.images ? { images: o.images, modelTier:"complex" } : { modelTier:"complex" });
+     sample.json(prompt, o.images ? { images: o.images, modelTier:"complex" }
+                                  : { modelTier:"default" });   // ver § 4.9
 
    const resultado = await ImportEngine.interpretFiles(files, {
      callModel,
@@ -388,7 +389,9 @@ Este módulo no se edita desde acá; esto es la lista de lo que el rol de integr
    **`o.images` sólo viene en el camino de imágenes.** En el de texto la clave no existe, y la app no tiene
    que agregarla: mandar `images: undefined` a una vista sin soporte es justamente lo que hay que evitar.
    `o` también trae `modo`, `archivo` y `paginas`, por si se quiere elegir otro `modelTier` para texto o
-   mostrar progreso por archivo.
+   mostrar progreso por archivo. **Esos tres son nuestros, no del contrato:** no se reenvían a `sample.json()`
+   (los miembros que no conoce los ignora, pero los nombra en la consola). El tier que le corresponde a cada
+   camino está decidido en § 4.9.
 
    Igual que con `PackingEngine.generatePackingList`, si `claude.use("sample")` no resolvió, no pasar
    `callModel`: cada archivo va a degradar solo a `estado:"error"` con `codigo:"ia-no-disponible"`, sin que
@@ -417,6 +420,91 @@ Este módulo no se edita desde acá; esto es la lista de lo que el rol de integr
    reserva nueva. El motor no fuerza ninguna de las dos: entrega el dato tal cual lo leyó, en su propio campo.
 
 No hace falta ninguna dependencia nueva más allá de pdf.js. El resto del módulo es JavaScript vainilla.
+
+---
+
+### 4.9 · El tier del modelo: texto en `"default"`, imágenes en `"complex"`
+
+Decisión del PO, 12 de septiembre de 2026, a partir de
+`docs/investigacion/cuota-de-la-capa-inteligente.md`. Está escrita acá porque es del tipo de decisión que
+dentro de tres meses alguien va a querer revertir "por seguridad", subiendo todo a `"complex"` otra vez.
+Si la vas a cambiar, cambiala con una medición, no con una intuición.
+
+En `app/valija.html` vive en un solo lugar, la constante `TIER`:
+
+```js
+const TIER = { texto:"default", imagenes:"complex", equipaje:"complex" };
+```
+
+| Camino | Tier | En una línea |
+|---|---|---|
+| Importar desde texto (pegado, o PDF con capa de texto) | `"default"` | Extraer lleva inferencia, y `"quick"` no piensa antes |
+| Importar desde imagen (foto, o PDF escaneado renderizado) | `"complex"` | Percepción difícil, y las imágenes se reenvían en cada ronda |
+| Sugerencia de equipaje (`PackingEngine`) | `"complex"` | Es el único lugar con razonamiento de verdad |
+
+**Texto → `"default"`, y por qué NO es `"quick"`.** El contrato describe `"quick"` como el tier para
+"short routine work — classification, tags, one-line rewrites, **small JSON** (…) it does not think first".
+Extraer campos de un voucher ya limpio suena exactamente a eso, y no lo es: el trabajo lleva inferencia
+que `"quick"` saltea explícitamente.
+
+- Deducir el año cuando el documento dice "20 de septiembre" sin año, usando las fechas del viaje.
+- Partir una ida y vuelta en **dos** vuelos separados.
+- Decidir el **tipo** de reserva por contexto: un voucher de micro es `transfer`, no `flight`.
+- Normalizar "13/9/2026 - 19:01" a ISO.
+
+Una fecha equivocada en un vuelo es un daño mucho peor que dos segundos más de espera. `"default"` es el
+medio equilibrado y ya es un escalón más barato que lo que la app pedía antes.
+
+**Cuándo sí se evalúa `"quick"`:** si con una docena de documentos reales del PM el camino de texto se
+porta impecable. Si erra una fecha, se vuelve a subir. No se baja sin ese material.
+
+**Imagen → `"complex"`.** Leer una tarjeta de embarque fotografiada torcida y con reflejo es percepción
+difícil, y el contrato avisa que las imágenes se reenvían en cada ronda: es el lugar donde la calidad
+tiene que ganarle al costo. El camino existe en el código aunque la vista del PM no lo habilite, así que
+**el tier no lo elige el call site**: lo decide `tierDeImportacion(o)` mirando las opciones que manda el
+motor (`o.images` presente, o `o.modo === "imagenes"`). El día que la vista habilite las fotos, ya está en
+el tier alto sin que nadie se tenga que acordar.
+
+**Equipaje → `"complex"`, sin cambios.** Ahí sí hay razonamiento: combinar una escala de ocho horas con un
+departamento sin lavarropas y sacar una conclusión. Es el único lugar donde el modelo que piensa más largo
+se paga solo.
+
+### `modelTierApplied` no llega por `sample.json()`
+
+El contrato avisa que la plataforma puede servir un tier más barato si el plan del visitante no tiene el
+pedido, y que `modelTierApplied` informa cuál contestó realmente. **Ese campo vive en `SampleResult`**, o
+sea en lo que resuelve `sample()`. `sample.json()` "resolves with the reply parsed as one JSON value
+instead of `{text}`", y la app usa `json()` en las tres llamadas: **por ese camino el dato no llega, y no
+hay forma de obtenerlo sin dejar de usar `json()`.** No se inventa.
+
+Lo que sí se registra, en `app/valija.html`, es el tier **pedido**:
+
+```js
+ValijaTier.log()      // últimas 30 llamadas: {ts, tarea, pedido, aplicado:null, motivo, estado, ms, codigo?}
+ValijaTier.resumen()  // agrupado por tarea y tier: {llamadas, ok, error, msProm}
+ValijaTier.borrar()
+```
+
+- `aplicado` queda en `null` **siempre**, con el motivo escrito en la propia entrada. Si alguna llamada
+  pasa algún día por `sample()` en lugar de `json()`, `iaRegistrar({aplicado})` ya lo acepta y no hay nada
+  más que cambiar.
+- Vive en `localStorage` (`valija.iaTier.v1`), igual que el tema y el aplazamiento del plan: es estado del
+  dispositivo para diagnóstico, no datos del viaje, y por eso **no pasa por `Store`**.
+- No guarda ni el prompt ni nada del viaje: tarea, tier, duración y código de error.
+- No se muestra en la interfaz. Se lee desde la consola del dispositivo.
+
+**Brecha declarada:** en un teléfono no hay consola. Si hace falta decidir con datos del teléfono del PM,
+hay que agregarle una salida (copiar al portapapeles desde una pantalla de diagnóstico, por ejemplo), y eso
+todavía no está hecho.
+
+**Cómo se prueba que el tier pedido es el que se pide de verdad:**
+
+```
+NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/tier-del-modelo.js
+```
+
+Asevera sobre las opciones que **efectivamente recibió** `sample.json()`, tocando los controles. Y tiene
+control negativo: corriendo el mismo arnés contra una copia del HTML con `texto:"complex"`, falla.
 
 ---
 

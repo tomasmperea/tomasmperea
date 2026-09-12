@@ -81,9 +81,36 @@ de embarque a mano"*.
 - Si el documento no se pudo guardar, la reserva se guarda igual: el dato vale por sí
   mismo.
 
-**Nota técnica:** la plataforma tiene una capacidad de almacenamiento de archivos por
-artifact. Hay que leer su contrato antes de diseñar, no después, y declarar sus topes
-reales en el diseño. Es exactamente el error que costó tres iteraciones en la 2.
+**El contrato, leído antes de diseñar y no después.**
+
+**No hay capacidad de almacenamiento de archivos disponible para esta cuenta.** Las
+capacidades habilitadas son las que ya usamos y algunas más, pero ninguna guarda
+archivos. El documento tiene que vivir en la misma base que el resto de los datos,
+codificado como texto.
+
+Y esa base tiene un techo duro: **un documento de más de 256 KiB se rechaza.** Codificar
+un archivo como texto lo infla un tercio, así que el archivo crudo más grande que entra
+es de unos **192 KB**. Medido contra los documentos reales del PM:
+
+| Archivo | Tamaño | Codificado | ¿Entra? |
+|---|---|---|---|
+| Voucher de micro (Lobos Bus) | 20 KB | 28 KB | **Sí**, de sobra |
+| Pasaje de Aerolíneas | 123 KB | 164 KB | **Sí**, con margen |
+| Foto típica de cámara | ~3 MB | ~4 MB | **No**, hay que recomprimir |
+
+Consecuencias para el diseño, que dejan de ser sorpresas:
+
+- **La mayoría de los vouchers y tarjetas de embarque entran.** Los dos casos reales del
+  PM entran, y son representativos: un PDF de aerolínea rara vez pasa los 200 KB.
+- **Una foto de cámara no entra tal cual.** Hay que reducirla y recomprimirla en el
+  navegador antes de guardarla, y **decirle a la persona que se guardó en menor
+  calidad**, no hacerlo en silencio.
+- **Un PDF grande de varias páginas no entra ni recomprimido.** Ahí no se guarda, se dice
+  por qué, y la reserva se guarda igual: el dato vale por sí mismo.
+- Partir el archivo en varios documentos es posible pero gasta el cupo de documentos de
+  la base. **No se hace en esta iteración**; si aparece la necesidad, se decide con datos.
+- Para devolver el archivo sí hay capacidad de descarga disponible, la misma que usa el
+  PDF del resumen.
 
 ## VAL-59 · La tarjeta de embarque no es un vuelo — P0
 

@@ -252,6 +252,40 @@ están escritos como entregados en el roadmap y no lo son.
 - Se prueba en más de un contexto: el visor de la aplicación y el navegador.
 - El resultado se escribe en el brief y se corrige el estado de VAL-41 y VAL-42.
 
+### VAL-61 · Reconocer texto de una imagen dentro de la app — ESTACIONADA
+
+Como viajero querría sacarle una foto a un comprobante en papel y que se interprete.
+
+**No está descartada por falta de valor, sino por falta de camino.** El paso cero del
+12/09 lo probó en el teléfono del PM: el motor de reconocimiento carga, y el diccionario
+del idioma no baja de ningún host que el visor permita. Cuatro orígenes probados,
+ninguno funciona. Evidencia en `docs/investigacion/paso-cero-leer-una-foto.md`.
+
+**Decisión del PM (12/09):** *"me cierra el replanteo para esta versión MVP; en todo caso
+lo iré probando y si hay necesidades de un OCR, lo agregaremos al backlog en algún
+momento."*
+
+Para el MVP la necesidad se cubre pegando el texto del correo, que es mejor que
+fotografiarlo. Esta historia queda acá para no volver a investigarla desde cero.
+
+**Qué la revive, cualquiera de las tres:**
+
+1. Que la plataforma habilite el envío de imágenes al modelo. Entonces no hace falta
+   reconocer nada localmente: se manda la foto. **Es el camino preferido** y lo que hay
+   que mirar primero.
+2. Que aparezca una copia del diccionario del idioma en un host permitido.
+3. Que el uso real muestre casos que copiar y pegar no cubre —un comprobante en papel,
+   un cartel, algo que no llegó por correo— y que sean frecuentes.
+
+**Lo que ya sabemos y no hay que volver a averiguar:**
+
+- El visor bloquea **por host**, no por tipo de archivo: el motor en WebAssembly bajó
+  perfecto del CDN permitido.
+- Empotrar el diccionario dentro de la app sumaría unos 3 MB de descarga inicial para
+  todos, y este entorno no puede conseguir el archivo para probarlo.
+- Los dos sistemas operativos ya traen reconocimiento de texto propio. Reimplementarlo
+  peor no es una mejora.
+
 ### VAL-50 · El generador de PDF no siempre carga — bug, SUBE A P1
 
 **Cambia de prioridad el 12/09.** Nació como un bug menor del PDF de salida, pero la

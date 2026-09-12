@@ -29,6 +29,7 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `importar-sin-imagenes.js` | El motor de importación v2 desde la pantalla: una vista sin imágenes lo dice **antes** de subir nada, una vista con imágenes sigue igual, y un PDF con capa de texto se interpreta sin mandar ni una imagen | 45 aserciones |
 | `importar-arranque.js` | El arranque de la pantalla de importar (hallazgos A y B de la auditoría del 12/09): que el toque reaccione **en el acto** aunque la plataforma tarde, que lo que resuelve tarde no reabra ni pise nada, y que sin `pdf.js` se diga antes de subir nada | 59 aserciones |
 | `motores-desde-html.js` | Las pruebas de los dos motores corridas contra la copia **embebida en `valija.html`**, no contra `app/parts/` | 68 + 69 casos |
+| `tier-del-modelo.js` | Qué `modelTier` pide cada camino, aseverado sobre las opciones que **efectivamente recibe** `sample.json()`: texto `"default"`, imágenes `"complex"`, equipaje `"complex"`. Y qué queda registrado, incluido que `modelTierApplied` no llega por `json()` | 42 aserciones |
 
 `importar-botones.js` recibe la ruta del HTML como argumento:
 
@@ -37,6 +38,16 @@ NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-botones.js "$PW
 ```
 
 `motores-desde-html.js` no necesita navegador: corre con `node` solo.
+
+`tier-del-modelo.js` también acepta la ruta del HTML, y por el mismo motivo: una prueba de
+configuración que no puede fallar no prueba nada. Los tres controles negativos:
+
+```
+sed 's/texto:"default"/texto:"complex"/'   app/valija.html > /tmp/t1.html   # → 5 FALLA
+sed 's/imagenes:"complex"/imagenes:"default"/' app/valija.html > /tmp/t2.html   # → 1 FALLA
+sed 's/equipaje:"complex"/equipaje:"quick"/'   app/valija.html > /tmp/t3.html   # → 2 FALLA
+NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/tier-del-modelo.js /tmp/t1.html
+```
 
 `importar-arranque.js` también acepta la ruta del HTML como argumento, y eso no es
 un adorno: es el **control negativo** de su aserción más importante. La medición del
@@ -51,7 +62,7 @@ NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-arranque.js /tm
 
 ## Dónde sale el resultado
 
-En la **terminal**, en los ocho arneses. `valija-bloque-b.js` y
+En la **terminal**, en los nueve arneses. `valija-bloque-b.js` y
 `hallazgos-qa-bloque-b.js` escribían sólo en `os.tmpdir()/valija-qa.log` y correrlos
 como dice este archivo no mostraba nada; desde el 12/09 imprimen en pantalla y además
 dejan el log. Los dos tardan entre dos y tres minutos: un timeout corto los mata a
