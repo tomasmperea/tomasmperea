@@ -272,15 +272,19 @@ fotografiarlo. Esta historia queda acá para no volver a investigarla desde cero
 
 1. Que la plataforma habilite el envío de imágenes al modelo. Entonces no hace falta
    reconocer nada localmente: se manda la foto. **Es el camino preferido** y lo que hay
-   que mirar primero.
-2. Que aparezca una copia del diccionario del idioma en un host permitido.
+   que mirar primero. Al 12/09 `limits()` dice explícitamente que no las acepta.
+2. Que se consiga el archivo del diccionario para empotrarlo en la app. Ya no alcanza
+   con que exista en un host permitido: **ninguna descarga por `fetch` pasa**, así que
+   tiene que viajar dentro de la propia app.
 3. Que el uso real muestre casos que copiar y pegar no cubre —un comprobante en papel,
    un cartel, algo que no llegó por correo— y que sean frecuentes.
 
 **Lo que ya sabemos y no hay que volver a averiguar:**
 
-- El visor bloquea **por host**, no por tipo de archivo: el motor en WebAssembly bajó
-  perfecto del CDN permitido.
+- **Una descarga por `fetch` está bloqueada siempre**, incluso desde un host permitido:
+  la sonda lo probó contra `cdnjs` y falló en 3 ms. Sólo pasa un `<script>`. El motor bajó
+  porque la librería lo carga como script desde su worker; el diccionario usa `fetch`, y
+  por eso no hay **ningún** host del que pueda bajar.
 - Empotrar el diccionario dentro de la app sumaría unos 3 MB de descarga inicial para
   todos, y este entorno no puede conseguir el archivo para probarlo.
 - Los dos sistemas operativos ya traen reconocimiento de texto propio. Reimplementarlo

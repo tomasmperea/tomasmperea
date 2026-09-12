@@ -112,28 +112,56 @@ Consecuencias para el diseño, que dejan de ser sorpresas:
 - Para devolver el archivo sí hay capacidad de descarga disponible, la misma que usa el
   PDF del resumen.
 
-## VAL-59 · La tarjeta de embarque no es un vuelo — P0
+## VAL-59 · La tarjeta de embarque se desprende de un vuelo — P0
 
 Como viajero quiero que la tarjeta de embarque complete mi vuelo, y que si ese vuelo no
-está cargado la app me lo diga en vez de inventar una reserva suelta.
+está cargado la app me lo diga y me ofrezca crearlo, en vez de inventar una reserva
+suelta.
 
-**Pedido del PM, textual:** *"identifico que las tarjetas de embarque las interpreta
-como reserva 'vuelo' pero en realidad, debería estar incluido dentro de una reserva
-previa que exista como vuelo o, sino, alertar que no existe vuelo asociado y dar la
-posibilidad de crear uno. en definitiva, la tarjeta se desprende de una reserva de
-vuelo"*.
+**Pedido del PM, textual:** *"identifico que las tarjetas de embarque las interpreta como
+reserva 'vuelo' pero en realidad, debería estar incluido dentro de una reserva previa que
+exista como vuelo o, sino, alertar que no existe vuelo asociado y dar la posibilidad de
+crear uno. en definitiva, la tarjeta se desprende de una reserva de vuelo"*.
 
-Es una corrección conceptual, no un bug de implementación. VAL-42 ya reconoce el vuelo
-por número y fecha y lo completa. Lo que está mal es **el caso en que no encuentra
-ninguno**: hoy crea una reserva de vuelo nueva a partir de la tarjeta, y una tarjeta de
-embarque no es un vuelo. Es un documento que se desprende de uno.
+Es una corrección conceptual, no un bug. VAL-42 ya reconoce el vuelo por número y fecha
+y lo completa; lo que está mal es el caso en que **no encuentra ninguno**: hoy crea una
+reserva de vuelo a partir de la tarjeta, y una tarjeta de embarque no es un vuelo.
 
-- Si el vuelo existe, la tarjeta lo completa. Ya funciona.
-- **Si no existe, no se crea una reserva de vuelo en silencio.** Se avisa que no hay
-  vuelo asociado y se ofrece crearlo, con lo que la tarjeta ya aporta precargado.
-- La persona puede decir que no: la tarjeta no se guarda como una reserva suelta.
-- Ante la duda entre dos vuelos, sigue preguntando. Nunca adivina.
-- Junto con VAL-58: la tarjeta queda adjunta al vuelo, que es de donde se desprende.
+### El flujo, como lo especificó el PM
+
+La regla que atraviesa los tres casos: **primero intentar el match, siempre. Después
+preguntar. Nunca inventar.**
+
+**Sin ningún vuelo cargado en el viaje**
+- No hay con qué matchear. La app avisa que no hay vuelo asociado y **ofrece crearlo**.
+- Si se acepta, la reserva de vuelo se crea **precargada con lo que la tarjeta aporta**
+  (número, fecha, ruta, asiento, puerta, terminal, hora de embarque). Lo que la tarjeta
+  no traiga queda vacío y se completa a mano después: un campo vacío nunca se rellena
+  adivinando.
+- La tarjeta queda **adjunta a ese vuelo** (VAL-58). Es de donde se desprende.
+- Si se rechaza, no se guarda nada: ni reserva suelta ni documento huérfano.
+
+**Con un vuelo cargado**
+- Primero el match inteligente contra la tarjeta. Si coincide, **completa solo**, sin
+  preguntar nada. Es el caso frecuente y tiene que ser invisible.
+- Si no coincide, se pregunta: **asociarla a ese vuelo, o crear uno nuevo.** Las dos
+  salidas explícitas. Que no coincida el número no significa que sea otro vuelo — puede
+  ser que el número se leyó mal, o que la reserva se cargó a mano sin número.
+
+**Con más de un vuelo cargado**
+- Primero el match contra todos. Si coincide con uno solo, completa solo.
+- Si no coincide con ninguno, o coincide con más de uno, **se pregunta contra cuál
+  asociarla**, mostrando los vuelos con lo que los distingue: ruta, fecha y hora. Más la
+  salida de crear uno nuevo.
+- **Nunca se elige por la app.** Ya es la regla de VAL-42 y se mantiene.
+
+### Criterios
+
+- Un match exitoso no pregunta nada y deja registro de por qué coincidió.
+- Ninguna rama crea una reserva de vuelo sin que la persona lo haya pedido.
+- Ninguna rama descarta la tarjeta sin decirlo.
+- La tarjeta siempre termina adjunta al vuelo con el que quedó asociada, nunca suelta.
+- Lo que la tarjeta no traiga se queda vacío, visible, y se completa a mano.
 
 ## VAL-60 · Dejar de pedir el modelo más caro para extraer datos — P1
 

@@ -18,21 +18,48 @@ loading language traineddata   0%   ← se quedó acá, en los cuatro intentos
 **Costó una tarde en lugar de una iteración.** Es exactamente para esto que existe el
 paso cero.
 
-## El dato que corrige una suposición mía
+## Una corrección: me había equivocado dos veces, y la segunda la arreglo acá
 
-Yo había leído del contrato que el visor bloquea *toda* descarga que no sea un script.
-**Es más preciso que eso: bloquea por host, no por tipo de archivo.** El motor es un
-archivo WebAssembly —no un script— y bajó perfecto desde el CDN permitido. El
-diccionario falla porque vive en `tessdata.projectnaptha.com`, que no está en la lista.
+Primero leí el contrato y dije que el visor bloquea *toda* descarga que no sea un
+script. Cuando el motor bajó bien, lo corregí y dije que el bloqueo era **por host y no
+por tipo de archivo**. **Eso también estaba mal**, y el chequeo de la propia sonda lo
+desmiente:
 
-Queda anotado porque cambia qué es posible en general, no sólo acá.
+```
+Una descarga que no es script → BLOQUEADA (TypeError) · 3 ms
+```
 
-## Lo que quedó abierto
+Ese intento apuntaba a `cdnjs`, que **sí** es un host permitido, y aun así falló. Lo que
+vale es la lectura original del contrato: **una descarga por `fetch` está bloqueada
+siempre, incluso desde un host permitido.** Lo único que pasa es un `<script>`.
 
-La sonda no pudo leerse el resultado del chequeo de `limits()` (quedó fuera de la
-captura), así que **VAL-56 sigue sin respuesta escrita**: no sabemos todavía si esa
-vista informa que acepta imágenes. La sonda sigue publicada y lo contesta en la primera
-pantalla.
+Entonces por qué bajó el motor: porque la librería lo carga **como script** desde dentro
+de su worker, no con `fetch`. El diccionario del idioma, en cambio, se baja con `fetch`,
+y por eso no llega **de ningún lado**.
+
+**La consecuencia práctica es peor de lo que dije:** no existe ningún host desde el cual
+el diccionario pueda bajar. La única vía sería empotrarlo dentro de la app como dato, y
+para eso hace falta que alguien consiga el archivo —este entorno tampoco puede
+descargarlo, por lo mismo—.
+
+## VAL-56, contestada
+
+La sonda leyó `limits()` en vivo en el teléfono del PM, el 12/09:
+
+```
+El modelo acepta imágenes en esta vista
+  → NO acepta imágenes · prompt máximo 64 KB de texto
+```
+
+**Confirmado por el contrato, no inferido de un error.** La vista no acepta imágenes, y
+punto. VAL-56 queda cerrada: VAL-41, VAL-42 y VAL-61 están bloqueadas por plataforma,
+no por una falla nuestra ni por un error transitorio.
+
+**Y un dato nuevo que no teníamos: el prompt tiene un tope de 64 KB de texto.** Fui a
+ver si el motor lo respeta y sí: recorta a 12000 caracteres antes de armar el pedido,
+avisando en el propio texto que recortó. Está en `MAX_CARACTERES_TEXTO`, decidido leyendo
+el contrato. Un comprobante real no se acerca; un contrato de treinta páginas sí, y ahí
+el recorte es visible en lugar de silencioso.
 
 ---
 
