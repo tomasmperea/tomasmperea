@@ -163,7 +163,7 @@ preguntar. Nunca inventar.**
 - La tarjeta siempre termina adjunta al vuelo con el que quedó asociada, nunca suelta.
 - Lo que la tarjeta no traiga se queda vacío, visible, y se completa a mano.
 
-## VAL-60 · Dejar de pedir el modelo más caro para extraer datos — P1
+## VAL-60 · Gastar menos por documento — P1 · UN TERCIO HECHO
 
 Como equipo queremos que el límite de uso del visitante aparezca cada veinte documentos
 y no cada cinco.
@@ -171,14 +171,31 @@ y no cada cinco.
 Sale de `docs/investigacion/cuota-de-la-capa-inteligente.md`. No rompe nada, y por eso
 es P1, pero es desperdicio medible y nuestro.
 
-- El camino de texto deja de usar el tier más caro. Se mide si el más rápido alcanza
-  para extraer campos de un texto limpio.
-- Un lote de varios documentos de texto se resuelve en **una** llamada, no una por
-  archivo, conservando el progreso por fila.
-- Se registra qué tier contestó de verdad (`modelTierApplied`), porque la plataforma
-  puede servir uno más barato que el pedido y hoy no lo sabemos.
-- La lectura de imágenes y la sugerencia de equipaje se quedan en el tier alto: ahí sí
-  hay trabajo difícil.
+**Estado al 12/09, corregido por la auditoría.** Yo encuadré el cambio de tier como
+"lo último que quedaba abierto". Era falso: esta historia tiene tres criterios y sólo se
+cumplió el primero. Queda anotado porque el que falta es **el que de verdad mueve el
+número**.
+
+- ~~El camino de texto deja de usar el tier más caro~~ · **HECHO** (publicado en la
+  versión 13). El texto pide `default`; la lectura de imágenes y la sugerencia de
+  equipaje se quedan en `complex`, y el tier de importación sale de las opciones que
+  manda el motor, así que el día que se habiliten las fotos arranca arriba solo.
+- **Un lote de varios documentos se resuelve en UNA llamada**, no una por archivo,
+  conservando el progreso por fila. **PENDIENTE, y es la palanca principal**: el propio
+  contrato pide *"prefer ONE call that returns a JSON array over one call per item"*.
+  Subir cuatro documentos son hoy cuatro llamadas. El tier solo no baja la frecuencia
+  del aviso de límite; esto sí.
+- Se registra qué tier contestó de verdad. **NO SE PUEDE**, y está declarado:
+  `modelTierApplied` viaja en lo que resuelve `sample()`, y la app usa `json()`, que
+  resuelve con el JSON ya parseado. Verificado contra el contrato por el PO y por la
+  auditoría. Lo que sí se registra: tier pedido, tarea, duración y código de error.
+
+**Deuda de prueba que viene con esto:** `app/pruebas/tier-del-modelo.js` falló una
+aserción en una de siete corridas del PO; la auditoría lo corrió diez veces más sin
+reproducirlo, y por inspección señaló el sospechoso: tres esperas fijas después de tocar
+`#pk-build` y `#save`, en lugar de esperar una señal real de que el recálculo terminó. Es
+el mismo patrón que ya tumbó otro arnés. Se arregla en esta iteración: una prueba que
+falla una de cada siete no garantiza lo que dice.
 
 ---
 
