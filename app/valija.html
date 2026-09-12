@@ -6140,6 +6140,12 @@ function esperaConTecho(promesa, ms, valorSiTarda){
    Pasado el techo se sigue con certeza "desconocida" —que es exactamente el
    comportamiento de una plataforma sin `limits`: no se saca nada de la
    pantalla— y si la respuesta llega después, se aplica ahí. */
+/* DECISIÓN SIN MEDICIÓN. Nadie midió cuánto tarda `limits()` en el visor del
+   teléfono: los 4 segundos son un criterio, no un dato. Si allá tardara más, lo
+   que se ve es la pantalla completa ofreciendo todo y la corrección llegando
+   unos segundos después — degradación prevista, no rotura. Está en el guion de
+   pruebas del PM: anotar si la cámara desaparece después de abrir la pantalla.
+   Con ese número real, este techo se ajusta. */
 const LIMITS_TECHO_MS = 4000;
 
 async function sheetImport(trip){
