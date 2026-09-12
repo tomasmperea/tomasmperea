@@ -23,34 +23,46 @@ pantalla del correo"*.
 
 ---
 
-## VAL-57 · Leer la captura de pantalla del correo — P0
+## VAL-57 · Que la confirmación del correo entre sin tipear — P0 · REPLANTEADA
 
-Como viajero quiero sacarle una captura al correo de confirmación y que se interprete,
-aunque no haya ningún archivo adjunto.
+**El planteo original era leer la captura de pantalla reconociendo el texto en el
+teléfono. El paso cero lo descartó:** el motor de reconocimiento carga, pero el
+diccionario del idioma no baja de ningún host que el visor permita. Cuatro orígenes
+probados, ninguno funciona. El detalle está en
+`docs/investigacion/paso-cero-leer-una-foto.md`.
 
-**Por qué no está resuelto:** la vista donde corre la app no acepta imágenes
-(`images_unavailable`, ver el brief de la iteración 2). Esperar a que la plataforma lo
-habilite no es un plan: es esperar.
+**Y al mirarlo de nuevo, el problema estaba mal planteado.** La necesidad no es la
+captura: es que la confirmación esté en el cuerpo de un correo. La captura era el medio
+que se le ocurrió al PM para traerla.
 
-**El camino que no depende de eso:** reconocer el texto de la imagen **en el propio
-teléfono** y mandar texto, que es el camino que sí funciona. La foto nunca sale del
-dispositivo hacia un modelo de visión.
+Para eso ya hay un camino que funciona hoy: **copiar el texto del correo y pegarlo.** Y
+es estrictamente mejor que fotografiarlo — no hay error de lectura, no hay librería de
+varios megas, no hay espera, y funciona sin señal. Un reconocedor de imagen sobre una
+captura de pantalla es la peor versión de algo que el correo ya entrega en texto
+perfecto.
 
-- Se acepta una captura de pantalla o una foto, y de ahí sale una reserva.
-- Funciona **sin** la capacidad de imágenes de la plataforma. Si algún día se habilita,
-  la capa de visión pasa a ser el camino preferido por precisión, y esto queda como
-  respaldo.
-- El reconocimiento corre en el teléfono. Hay que decir cuánto tarda y mostrarlo: no es
-  instantáneo y la persona tiene que saber que está pasando algo.
-- Un reconocimiento pobre —foto torcida, con reflejo, con poca luz— **se declara como
-  tal**. Antes una reserva vacía para revisar que una inventada.
-- Mismo criterio que ya rige: nada se guarda sin que la persona lo vea antes.
+Lo que falta no es tecnología: es que **la app no te lleva a esa vía.** Está ahí, abajo,
+como si fuera el plan de contingencia.
 
-**Riesgo que hay que resolver antes de comprometer esto:** la librería de
-reconocimiento pesa varios megas y tiene que bajar del único CDN permitido, **el mismo
-que ya falló en el teléfono del PM** (VAL-50). Si no baja, esta función no existe. Hay
-que confirmar que baja, medir cuánto tarda en un teléfono real, y decidir qué se ve
-mientras baja. **Sin esa confirmación, VAL-57 no arranca.**
+- Pegar el texto de una confirmación deja de ser el camino de escape y pasa a ser uno de
+  los dos caminos principales, a la par de subir el PDF.
+- Se explica en una línea cómo traer un correo que no tiene adjunto, sin tecnicismos y
+  sin dar por sentado qué teléfono usa la persona.
+- Si la única fuente es una captura, se dice que el propio teléfono sabe sacarle el texto
+  y cómo. **No lo reimplementamos peor que el sistema operativo.**
+- El texto pegado se interpreta con la misma calidad que un PDF: mismo motor, mismas
+  reglas, misma pantalla de revisión.
+- Varias reservas pegadas juntas se separan solas. Ya funciona; hay que verificarlo con
+  correos reales del PM, que es lo que nunca se hizo.
+
+**Lo que NO se hace, y por qué:** no se empotra el diccionario del idioma dentro de la
+app. Serían unos 3 MB más de descarga inicial para todos, este entorno no puede
+conseguir el archivo para probarlo, y resolvería peor un problema que el copiar y pegar
+ya resuelve bien. Queda anotado como apuesta posible si la vía A resulta incómoda en la
+práctica.
+
+**Si algún día la plataforma acepta imágenes,** la lectura de la foto se suma como
+camino preferido por precisión y esto queda como respaldo. No depende de nosotros.
 
 ## VAL-58 · El documento original queda en la reserva y se puede descargar — P0
 
@@ -143,9 +155,10 @@ procesarlo de nuevo. No se manda a ningún lado que no sea su propia valija.
 Contra la app publicada, en el teléfono del PM, con documentos reales. Un criterio que
 no se puede verificar así se considera no cumplido.
 
-**La prueba que define el éxito:** sacarle una captura al correo de una reserva que no
-tiene PDF adjunto, que se cargue sola, y que la captura quede adjunta a la reserva y se
-pueda volver a abrir.
+**La prueba que define el éxito:** tomar la confirmación de un correo sin adjunto,
+traerla a la app sin tipear ningún dato, y que el documento —el que haya— quede adjunto a
+la reserva y se pueda volver a abrir.
 
-Y antes de empezar, el paso cero: **confirmar que la librería de reconocimiento baja en
-el teléfono.** Si no baja, VAL-57 no existe y hay que rediseñar la iteración.
+**El paso cero ya corrió y su resultado está incorporado arriba:** el reconocimiento de
+texto en el teléfono no es viable dentro de la app. VAL-57 quedó replanteada en
+consecuencia, no cancelada.

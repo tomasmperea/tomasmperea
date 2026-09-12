@@ -941,8 +941,11 @@ const TIER = { texto:"default", imagenes:"complex", equipaje:"complex" };
     imágenes (ver `callModelForSource`), y `modo:"imagenes"` es el segundo
     testigo por si algún día la opción llega antes que los blobs. Sin
     opciones —el camino de pegar texto llama con `{}`— es texto. */
+function esImportacionPorImagen(o){
+  return !!(o && (o.images || o.modo === "imagenes"));
+}
 function tierDeImportacion(o){
-  return (o && (o.images || o.modo === "imagenes")) ? TIER.imagenes : TIER.texto;
+  return esImportacionPorImagen(o) ? TIER.imagenes : TIER.texto;
 }
 
 /* ---------- qué tier contestó DE VERDAD ----------
@@ -6325,8 +6328,11 @@ async function sheetImport(trip){
      recordar el día que la vista habilite las fotos. */
   const callModel = (sample && typeof sample.json === "function")
     ? (prompt, opts) => {
-        const tier = tierDeImportacion(opts);
-        return askJson(sample, tier === TIER.imagenes ? "importar-imagen" : "importar-texto", tier, prompt, opts);
+        // El nombre de la tarea sale del CAMINO, no del tier: si algún día
+        // los dos tiers coinciden, el registro tiene que seguir distinguiendo
+        // de dónde vino la llamada.
+        const tarea = esImportacionPorImagen(opts) ? "importar-imagen" : "importar-texto";
+        return askJson(sample, tarea, tierDeImportacion(opts), prompt, opts);
       }
     : null;
   if(!callModel){ dejarDeEsperar(); renderImportNoAi(); return; }
