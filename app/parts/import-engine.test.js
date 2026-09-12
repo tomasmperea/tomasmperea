@@ -14,6 +14,21 @@
      - vuelo nuevo, vuelo que coincide con uno existente, y
        coincidencia ambigua entre dos candidatos (VAL-42).
 
+   Y lo que agregó la versión 2 del motor (primero texto, imágenes
+   como último recurso):
+     - qué contesta `getViewCapabilities` con y sin `images` en
+       `sample.limits()`, y cuando `limits()` rechaza;
+     - cuándo alcanza la capa de texto de un PDF y cuándo no;
+     - el voucher de micro REAL del PM
+       (app/pruebas/fixtures/voucher-lobos-bus.txt) leído de punta a
+       punta como texto, con su código LB0TKCV5;
+     - que un PDF con capa de texto no pide imágenes NI llama a
+       `limits()` — con espías, no por inspección del código;
+     - que un PDF escaneado sin soporte de imágenes, y una foto sin
+       soporte de imágenes, fallan con un error propio SIN llamar al
+       modelo (es el bug que el PM vio en su teléfono: tres archivos,
+       tres veces "Esta vista no acepta imágenes").
+
    Nada de esto toca el navegador: los "blobs" son objetos cualquiera,
    porque el motor no mira su contenido, sólo los pasa a `callModel`.
    `renderPdfToImages` se inyecta como una función falsa, igual que en
@@ -21,6 +36,15 @@
    ============================================================ */
 
 var E = require("./import-engine.js");
+var fs = require("fs");
+var path = require("path");
+
+/* El texto REAL que el PM extrajo del voucher de micro con
+   app/pruebas/fixtures/extraer-texto-pdf.py. No se copia acá adentro a mano:
+   se lee del archivo, para que la prueba use exactamente lo que salió del PDF. */
+var TEXTO_VOUCHER = fs.readFileSync(
+  path.resolve(__dirname, "../pruebas/fixtures/voucher-lobos-bus.txt"), "utf8"
+).trim();
 
 /* ---------- arnés mínimo, igual al de packing-engine.test.js ---------- */
 var passed = 0, failed = 0, pending = [];
@@ -98,17 +122,35 @@ function withFakeDom(fn) {
   return Promise.resolve().then(fn).finally(function () { delete global.document; });
 }
 
-/** Documento de pdf.js falso, con `numPages` páginas que "renderizan" sin problema. */
-function fakePdfDocument(numPages) {
+/** Documento de pdf.js falso, con `numPages` páginas que "renderizan" sin problema.
+ *  `textoPorPagina` (opcional) simula la capa de texto: `getTextContent()` devuelve
+ *  `{items:[{str, hasEOL}]}`, que es la forma que documenta la API de pdf.js —
+ *  un ítem por fragmento, con `hasEOL` en el último de cada línea. Sin
+ *  `textoPorPagina`, `getTextContent()` devuelve `{items:[]}`: un PDF escaneado. */
+function fakePdfDocument(numPages, textoPorPagina) {
   return {
     numPages: numPages,
-    getPage: function () {
+    getPage: function (n) {
+      var texto = (textoPorPagina || [])[n - 1] || "";
       return Promise.resolve({
         getViewport: function () { return { width: 100, height: 100 }; },
-        render: function () { return { promise: Promise.resolve() }; }
+        render: function () { return { promise: Promise.resolve() }; },
+        getTextContent: function () { return Promise.resolve({ items: textItems(texto) }); }
       });
     }
   };
+}
+
+/** Pasa un texto a los `items` que devolvería pdf.js: un ítem por palabra, `hasEOL` al fin de línea. */
+function textItems(texto) {
+  var items = [];
+  String(texto).split("\n").forEach(function (linea) {
+    var palabras = linea.split(/ +/).filter(Boolean);
+    palabras.forEach(function (w, i) {
+      items.push({ str: w, hasEOL: i === palabras.length - 1 });
+    });
+  });
+  return items;
 }
 
 /**
@@ -127,7 +169,7 @@ function fakePdfjsLib(opts) {
       if (opts.workerFails && !params.disableWorker) {
         throw new Error("no se pudo instanciar el Worker: bloqueado por el sandbox del iframe");
       }
-      return { promise: Promise.resolve(fakePdfDocument(opts.numPages || 1)) };
+      return { promise: Promise.resolve(fakePdfDocument(opts.numPages || 1, opts.textoPorPagina)) };
     }
   };
 }
@@ -537,6 +579,324 @@ await test("coincidencia ambigua: dos vuelos cargados con el mismo número y fec
 await test("matchAgainstExisting: lo que no es vuelo siempre es nuevo", function () {
   var r = E.matchAgainstExisting({ type: "stay", title: "Hotel" }, [existente()]);
   eq(r.resultado, "nuevo");
+});
+
+group("v2 · qué puede esta vista — `sample.limits()` inyectado (getViewCapabilities)");
+
+/** `sample.limits()` de una vista que SÍ acepta imágenes, con la forma del contrato. */
+function limitsConImagenes(espia) {
+  return async function () {
+    if (espia) espia.llamadas++;
+    return {
+      maxPromptBytes: 65536,
+      images: { maxCount: 5, maxInputBytes: 20971520, mediaTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"] },
+      tools: { maxCount: 4 }
+    };
+  };
+}
+/** La misma vista del teléfono del PM: responde, pero SIN el miembro `images`. */
+function limitsSinImagenes(espia) {
+  return async function () {
+    if (espia) espia.llamadas++;
+    return { maxPromptBytes: 65536 };
+  };
+}
+
+await test("con `images` en limits: se ofrecen las fotos y el accept los lista", async function () {
+  var caps = await E.getViewCapabilities(limitsConImagenes());
+  eq(caps.aceptaImagenes, true);
+  eq(caps.certeza, "si");
+  eq(caps.puedeFoto, true);
+  eq(caps.puedePdfEscaneado, true);
+  eq(caps.maxImagenes, 5);
+  assert(caps.accept.indexOf("image/jpeg") >= 0 && caps.accept.indexOf("application/pdf") >= 0, "el accept del input sale de mediaTypes + PDF: " + caps.accept);
+  eq(caps.nota, "", "no hay nada que aclarar cuando las imágenes andan");
+});
+
+await test("sin `images` en limits: no se ofrecen fotos, pero el PDF con texto sigue disponible", async function () {
+  var caps = await E.getViewCapabilities(limitsSinImagenes());
+  eq(caps.aceptaImagenes, false);
+  eq(caps.certeza, "no");
+  eq(caps.puedeFoto, false, "la app no tiene que ofrecer \"Sacar foto\" ni \"Galería\" acá");
+  eq(caps.puedePdfEscaneado, false);
+  eq(caps.puedePdfConTexto, true, "el contrato es explícito: las llamadas de texto siguen funcionando");
+  eq(caps.accept, "application/pdf");
+  eq(caps.nota, E.MENSAJE_SIN_IMAGENES);
+});
+
+await test("si limits() rechaza se trata como si no hubiera imágenes, como dice el contrato", async function () {
+  var caps = await E.getViewCapabilities(async function () { throw { code: "capability_disabled", message: "no" }; });
+  eq(caps.aceptaImagenes, false);
+  eq(caps.accept, "application/pdf");
+});
+
+await test("si limits() lanza de forma síncrona, getViewCapabilities igual resuelve", async function () {
+  var caps = await E.getViewCapabilities(function () { throw new Error("explotó"); });
+  eq(caps.aceptaImagenes, false);
+});
+
+await test("sin limits inyectado no se inventa una respuesta: queda en desconocida y se sigue como antes", async function () {
+  var caps = await E.getViewCapabilities(null);
+  eq(caps.certeza, "desconocida");
+  eq(caps.aceptaImagenes, true, "no saber no puede dejar a una integración vieja peor que antes del cambio");
+});
+
+group("v2 · ¿alcanza la capa de texto de un PDF? (umbral declarado como datos)");
+
+await test("el texto del voucher real alcanza de sobra", function () {
+  var ev = E.evaluateText(TEXTO_VOUCHER, "normal");
+  eq(ev.suficiente, true, ev.motivo);
+  assert(ev.medida.caracteres > 500, "el voucher real trae " + ev.medida.caracteres + " caracteres");
+});
+
+await test("tres palabras sueltas de un pie de página NO alcanzan, y el motivo lo explica", function () {
+  var ev = E.evaluateText("Página 1 de 2", "normal");
+  eq(ev.suficiente, false);
+  assert(/caracteres/.test(ev.motivo) && /palabras/.test(ev.motivo), "el motivo dice qué faltó: " + ev.motivo);
+});
+
+await test("una tira larga de un solo token (una URL al pie) tampoco alcanza: no basta con los caracteres", function () {
+  var url = "https://sistema.example.com/comprobantes/" + "a1b2c3d4".repeat(30);
+  assert(url.length > 120, "la URL sola supera el mínimo de caracteres");
+  eq(E.evaluateText(url, "normal").suficiente, false, "por eso el umbral también cuenta palabras");
+});
+
+await test("un PDF sin capa de texto no alcanza en ningún nivel", function () {
+  eq(E.evaluateText("", "normal").suficiente, false);
+  eq(E.evaluateText("", "ultimo-recurso").suficiente, false);
+  eq(E.evaluateText("   \n  ", "ultimo-recurso").suficiente, false);
+});
+
+await test("el nivel \"ultimo-recurso\" es más permisivo, pero sigue siendo un umbral", function () {
+  var flaco = "Reserva 4471 13/9/2026 Monte a Buenos Aires 19:01";
+  eq(E.evaluateText(flaco, "normal").suficiente, false);
+  eq(E.evaluateText(flaco, "ultimo-recurso").suficiente, true);
+  eq(E.evaluateText("Página 1 de 2", "ultimo-recurso").suficiente, false, "el pie de página no pasa ni siendo el último recurso");
+});
+
+group("v2 · extractPdfText — la capa de texto con pdf.js (inyectado)");
+
+await test("junta las páginas en orden y devuelve el texto tal cual", async function () {
+  var pdfjsLib = fakePdfjsLib({ numPages: 2, textoPorPagina: ["Primera página", "Segunda página"] });
+  var out = await E.extractPdfText({ arrayBuffer: async function () { return new ArrayBuffer(1); } }, { pdfjsLib: pdfjsLib });
+  eq(out.paginas, 2);
+  eq(out.texto, "Primera página\n\nSegunda página");
+  eq(out.porPagina[0], "Primera página");
+});
+
+await test("el texto del voucher real sobrevive entero al viaje por getTextContent", async function () {
+  var pdfjsLib = fakePdfjsLib({ numPages: 1, textoPorPagina: [TEXTO_VOUCHER] });
+  var out = await E.extractPdfText({ arrayBuffer: async function () { return new ArrayBuffer(1); } }, { pdfjsLib: pdfjsLib });
+  eq(out.texto, TEXTO_VOUCHER, "lo que entra por la capa de texto es lo que sale: ni un carácter de diferencia");
+  eq(E.evaluateText(out.texto, "normal").suficiente, true);
+});
+
+await test("un PDF escaneado devuelve texto vacío, que no es un error sino el dato de que hay que ir por imágenes", async function () {
+  var pdfjsLib = fakePdfjsLib({ numPages: 3 });   // sin textoPorPagina: items vacíos
+  var out = await E.extractPdfText({ arrayBuffer: async function () { return new ArrayBuffer(1); } }, { pdfjsLib: pdfjsLib });
+  eq(out.texto, "");
+  eq(out.paginas, 3, "igual sabe cuántas páginas tiene");
+});
+
+await test("sin pdf.js cargado, rechaza con un mensaje claro", async function () {
+  try {
+    await E.extractPdfText({}, {});
+    assert(false, "tenía que rechazar");
+  } catch (e) {
+    assert(/pdfjs-no-disponible/.test(e.message));
+  }
+});
+
+group("v2 · VAL-40 · un PDF con capa de texto se interpreta COMO TEXTO");
+
+/** callModel fiel al contrato de `sample.json`: resuelve el JSON ya parseado.
+ *  Sólo "reconoce" la reserva si el prompt trae de verdad los datos del voucher:
+ *  si el motor no hubiera metido el texto en el prompt, el caso falla. */
+function callModelVoucher(registro) {
+  return async function (prompt, opciones) {
+    registro.push({ prompt: prompt, opciones: opciones });
+    if (prompt.indexOf("LB0TKCV5") < 0 || prompt.indexOf("13/9/2026") < 0) return { items: [] };
+    return { items: [{
+      type: "transfer",
+      title: "Monte → Buenos Aires",
+      start: "2026-09-13T19:01",
+      end: "2026-09-13T20:31",
+      from: "Monte, Blandengues y Belgrano",
+      to: "Buenos Aires, Bartolomé Mitre 1760",
+      provider: "Lobos Bus",
+      flightNumber: "", confirmation: "LB0TKCV5", seat: "", terminal: "", gate: "",
+      boardingTime: "", address: "", phone: "", cost: "", currency: "", notes: ""
+    }] };
+  };
+}
+
+await test("el voucher de micro real sale como reserva, con su código, origen, destino y los dos horarios", async function () {
+  var registro = [];
+  var r = await E.interpretFile(filePdf("RLB_CLARA_SANCHEZ_ESPUELAS.pdf"), {
+    limits: limitsConImagenes(),
+    extractPdfText: async function () { return { texto: TEXTO_VOUCHER, paginas: 1 }; },
+    callModel: callModelVoucher(registro),
+    trip: { name: "Monte", startDate: "2026-09-12", endDate: "2026-09-14" },
+    now: "2026-09-11"
+  });
+  eq(r.estado, "ok");
+  eq(r.modo, "texto", "se leyó del texto del PDF, no de una imagen");
+  eq(r.reservas.length, 1);
+  var res = r.reservas[0];
+  eq(res.confirmation, "LB0TKCV5");
+  eq(res.type, "transfer");
+  eq(res.start, "2026-09-13T19:01");
+  eq(res.end, "2026-09-13T20:31");
+  assert(res.from.indexOf("Monte") >= 0, "el origen viene del voucher: " + res.from);
+  assert(res.to.indexOf("Buenos Aires") >= 0, "el destino viene del voucher: " + res.to);
+  eq(res.archivo, "RLB_CLARA_SANCHEZ_ESPUELAS.pdf");
+});
+
+await test("el prompt lleva el texto del comprobante entero y no manda imágenes", async function () {
+  var registro = [];
+  await E.interpretFile(filePdf("voucher.pdf"), {
+    limits: limitsConImagenes(),
+    extractPdfText: async function () { return { texto: TEXTO_VOUCHER, paginas: 1 }; },
+    callModel: callModelVoucher(registro)
+  });
+  eq(registro.length, 1);
+  assert(registro[0].prompt.indexOf(TEXTO_VOUCHER) >= 0, "el texto del voucher va tal cual dentro del prompt");
+  assert(!("images" in registro[0].opciones), "en el camino de texto la clave `images` ni aparece en las opciones");
+  eq(registro[0].opciones.modo, "texto");
+  assert(/NUNCA inventes/.test(registro[0].prompt), "el prompt de texto también prohíbe inventar un dato");
+});
+
+await test("un PDF con capa de texto NO renderiza imágenes NI consulta limits()", async function () {
+  var espia = { llamadas: 0 };
+  var renders = 0;
+  var r = await E.interpretFile(filePdf("voucher.pdf"), {
+    limits: limitsConImagenes(espia),
+    extractPdfText: async function () { return { texto: TEXTO_VOUCHER, paginas: 1 }; },
+    renderPdfToImages: async function () { renders++; return [blob("p1")]; },
+    callModel: callModelVoucher([])
+  });
+  eq(r.estado, "ok");
+  eq(renders, 0, "renderizar a imagen es el último recurso, no el camino de siempre");
+  eq(espia.llamadas, 0, "ni siquiera hace falta preguntar qué puede la vista: el texto no depende de eso");
+});
+
+await test("un PDF cuya capa de texto es sólo un pie de página cae a imágenes, no manda esas tres palabras", async function () {
+  var registro = [];
+  var r = await E.interpretFile(filePdf("escaneado-con-pie.pdf"), {
+    limits: limitsConImagenes(),
+    extractPdfText: async function () { return { texto: "Página 1 de 2", paginas: 2 }; },
+    renderPdfToImages: async function () { return [blob("p1"), blob("p2")]; },
+    callModel: async function (prompt, opciones) { registro.push(opciones); return { items: [{ type: "stay", title: "Hotel", provider: "Booking" }] }; }
+  });
+  eq(r.estado, "ok");
+  eq(r.modo, "imagenes");
+  eq(registro[0].images.length, 2);
+});
+
+await test("si la extracción de texto se cae, el PDF sigue por el camino de imágenes", async function () {
+  var r = await E.interpretFile(filePdf("raro.pdf"), {
+    limits: limitsConImagenes(),
+    extractPdfText: async function () { throw new Error("pdf.js explotó leyendo el texto"); },
+    renderPdfToImages: async function () { return [blob("p1")]; },
+    callModel: async function () { return { items: [{ type: "flight", title: "Vuelo", provider: "AR" }] }; }
+  });
+  eq(r.estado, "ok");
+  eq(r.modo, "imagenes", "un fallo de la extracción no puede costar el archivo entero");
+});
+
+group("v2 · lo que le pasó al PM: una vista que no acepta imágenes");
+
+await test("un PDF escaneado sin soporte de imágenes da un error propio y NO llama al modelo", async function () {
+  var llamadasModelo = 0, renders = 0;
+  var r = await E.interpretFile(filePdf("aerolineas-escaneado.pdf"), {
+    limits: limitsSinImagenes(),
+    extractPdfText: async function () { return { texto: "", paginas: 1 }; },
+    renderPdfToImages: async function () { renders++; return [blob("p1")]; },
+    callModel: async function () { llamadasModelo++; throw { code: "images_unavailable", message: "this view cannot send images" }; }
+  });
+  eq(r.estado, "error");
+  eq(r.error.codigo, "pdf-escaneado-sin-imagenes");
+  eq(llamadasModelo, 0, "no se gasta una llamada que ya sabemos que va a ser rechazada");
+  eq(renders, 0, "tampoco se renderiza una imagen que no se va a poder mandar");
+  assert(/escaneo/.test(r.error.mensaje) && /a mano/.test(r.error.mensaje), "el error dice qué pasó y qué hacer: " + r.error.mensaje);
+});
+
+await test("una foto sin soporte de imágenes falla con un error que lo explica, sin intentar la llamada", async function () {
+  var llamadasModelo = 0;
+  var r = await E.interpretFile(fileImg("foto-del-voucher.jpg"), {
+    limits: limitsSinImagenes(),
+    callModel: async function () { llamadasModelo++; throw { code: "images_unavailable", message: "this view cannot send images" }; }
+  });
+  eq(r.estado, "error");
+  eq(r.error.codigo, "imagenes-no-disponibles");
+  eq(llamadasModelo, 0);
+  assert(/PDF/.test(r.error.mensaje), "el error propone el camino que sí funciona: " + r.error.mensaje);
+});
+
+await test("una foto con soporte de imágenes se interpreta igual que siempre", async function () {
+  var registro = [];
+  var r = await E.interpretFile(fileImg("voucher.jpg"), {
+    limits: limitsConImagenes(),
+    callModel: async function (prompt, opciones) { registro.push(opciones); return { items: [{ type: "stay", title: "Hotel Central", provider: "Booking" }] }; }
+  });
+  eq(r.estado, "ok");
+  eq(r.modo, "imagenes");
+  eq(registro[0].images.length, 1);
+});
+
+await test("último recurso: sin imágenes, un texto flaco se manda igual — es eso o no leer nada", async function () {
+  var registro = [];
+  var r = await E.interpretFile(filePdf("flaco.pdf"), {
+    limits: limitsSinImagenes(),
+    extractPdfText: async function () { return { texto: "Reserva 4471 13/9/2026 Monte a Buenos Aires 19:01", paginas: 1 }; },
+    renderPdfToImages: async function () { return [blob("p1")]; },
+    callModel: async function (prompt, opciones) { registro.push(opciones); return { items: [{ type: "transfer", title: "Monte → Buenos Aires", provider: "Lobos Bus" }] }; }
+  });
+  eq(r.estado, "ok");
+  eq(r.modo, "texto");
+  assert(!("images" in registro[0]), "no se mandan imágenes a una vista que no las acepta");
+});
+
+await test("VAL-41 · en la misma carga, el PDF con texto se lee y la foto falla sola", async function () {
+  var res = await E.interpretFiles(
+    [filePdf("voucher.pdf"), fileImg("captura.png")],
+    {
+      limits: limitsSinImagenes(),
+      extractPdfText: async function () { return { texto: TEXTO_VOUCHER, paginas: 1 }; },
+      callModel: callModelVoucher([])
+    }
+  );
+  eq(res.resumen.total, 2);
+  eq(res.resumen.ok, 1);
+  eq(res.resumen.errores, 1);
+  eq(res.resumen.porTexto, 1);
+  eq(res.reservas.length, 1);
+  eq(res.reservas[0].confirmation, "LB0TKCV5");
+  var foto = res.archivos.find(function (a) { return a.archivo === "captura.png"; });
+  eq(foto.error.codigo, "imagenes-no-disponibles");
+});
+
+await test("limits() se consulta UNA sola vez por corrida, por más archivos que haya", async function () {
+  var espia = { llamadas: 0 };
+  var res = await E.interpretFiles(
+    [fileImg("a.jpg"), fileImg("b.jpg"), filePdf("escaneado.pdf")],
+    {
+      limits: limitsConImagenes(espia),
+      extractPdfText: async function () { return { texto: "", paginas: 1 }; },
+      renderPdfToImages: async function () { return [blob("p1")]; },
+      callModel: async function () { return { items: [{ type: "note", title: "Algo", provider: "X" }] }; }
+    }
+  );
+  eq(res.resumen.ok, 3);
+  eq(espia.llamadas, 1, "es barato, pero no hay razón para preguntarlo tres veces");
+});
+
+await test("sin limits inyectado, todo sigue funcionando como antes del cambio (integración vieja)", async function () {
+  var r = await E.interpretFile(fileImg("foto.jpg"), {
+    callModel: async function () { return { items: [{ type: "stay", title: "Hotel", provider: "Booking" }] }; }
+  });
+  eq(r.estado, "ok");
+  eq(r.modo, "imagenes");
 });
 
 /* ---------- cierre ---------- */
