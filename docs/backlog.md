@@ -252,7 +252,21 @@ están escritos como entregados en el roadmap y no lo son.
 - Se prueba en más de un contexto: el visor de la aplicación y el navegador.
 - El resultado se escribe en el brief y se corrige el estado de VAL-41 y VAL-42.
 
-### VAL-50 · El generador de PDF no siempre carga — bug, no prioritario
+### VAL-50 · El generador de PDF no siempre carga — bug, SUBE A P1
+
+**Cambia de prioridad el 12/09.** Nació como un bug menor del PDF de salida, pero la
+auditoría cruzó dos hechos que estaban sueltos: el `<script src="cdnjs…">` que falló en
+el teléfono del PM es **el mismo mecanismo** con el que se carga `pdf.js`, y desde la
+iteración 2 toda la importación de PDF depende de eso. Que es, además, lo único que
+quedó entregable del bloque A después de la restricción de imágenes.
+
+O sea: el mismo fallo que hoy sólo arruina la exportación deja sin importar nada.
+
+Mitigado en parte —la app detecta que la librería no cargó **antes** de que la persona
+suba un archivo, y muestra la vía que sí funciona— pero la causa sigue viva y sin
+diagnosticar. No sabemos si fue un corte puntual, la red del PM, o algo del visor.
+
+
 
 Al exportar el resumen aparece "No se pudo cargar el generador de PDF" y no se genera nada.
 

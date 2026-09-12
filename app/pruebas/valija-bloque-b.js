@@ -9,7 +9,11 @@ let ok = 0, fail = 0;
 const fs = require('fs');
 const LOG = require('path').join(require('os').tmpdir(), 'valija-qa.log');
 try{ fs.unlinkSync(LOG); }catch(e){}
-const log = m => { try{ fs.appendFileSync(LOG, m + '\n'); }catch(e){} };
+/* En pantalla PRIMERO, y además al archivo. La auditoría del 12/09 marcó
+   que correr esto como dice LEEME.md no mostraba nada: el resultado vivía
+   sólo en un log del directorio temporal. Una prueba cuyo resultado hay
+   que ir a buscar es media prueba. */
+const log = m => { console.log(m); try{ fs.appendFileSync(LOG, m + '\n'); }catch(e){} };
 function assert(cond, msg){
   if(cond){ ok++; log('  ok   ' + msg); }
   else { fail++; log('  FALLA ' + msg); }
@@ -705,5 +709,10 @@ async function armarLista(page){
   log('\n====================================================');
   log(`  ${ok} pasaron, ${fail} fallaron`);
   log('====================================================');
-  process.exit(fail ? 1 : 0);
+  /* Nada de `process.exit()` acá: con la salida por pantalla, cortar el
+     proceso a mano puede truncar lo último que se escribió. Se deja el
+     código de salida y el proceso termina solo cuando no queda nada
+     pendiente; el temporizador suelto es la red por si algo quedó vivo. */
+  process.exitCode = fail ? 1 : 0;
+  setTimeout(() => process.exit(fail ? 1 : 0), 3000).unref();
 })();

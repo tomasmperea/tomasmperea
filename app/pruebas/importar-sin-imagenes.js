@@ -80,6 +80,10 @@ const LIMITS_SIN_IMAGENES = { maxPromptBytes: 200000 };
  * @param {Object|null} cfg.limits  qué resuelve sample.limits()
  * @param {boolean} cfg.conLimits   si `sample` expone el método `limits`
  * @param {string[]} cfg.paginasPdf texto por página del pdf.js simulado
+ * @param {boolean} cfg.sinPdfjs    simula que cdnjs no cargó: `window.pdfjsLib`
+ *   nunca queda definida. Por defecto el simulador SÍ está, porque la app en el
+ *   teléfono con cdnjs disponible tiene pdf.js cargado, y desde el 12/09 la
+ *   pantalla de importar cambia si no está (ver `importar-arranque.js`).
  */
 async function nuevaPagina(browser, cfg) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -150,7 +154,7 @@ async function nuevaPagina(browser, cfg) {
     datos: { trips: [TRIP], items: { t1: [] }, packing: {} },
     limits: cfg.limits || null,
     conLimits: cfg.conLimits !== false,
-    paginas: cfg.paginasPdf || null,
+    paginas: cfg.sinPdfjs ? null : (cfg.paginasPdf || [""]),
     voucher: VOUCHER
   });
 

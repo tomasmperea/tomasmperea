@@ -4,6 +4,10 @@ const BLOQUEAR = process.argv[3] === "bloquear";
 (async () => {
   const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
   const p = await (await b.newContext({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true })).newPage();
+  /* Se corta la red externa: este entorno bloquea cdnjs y las fuentes, y sin
+     esto cada carga espera un handshake que no llega. Además deja explícito
+     que acá pdf.js NO está, que es el caso de VAL-50 (ver importar-arranque.js). */
+  await p.route("**/*", r => (/^file:/.test(r.request().url()) ? r.continue() : r.abort()));
   let fallos = 0; const ok = (c,m)=>{ console.log((c?"  ok   ":"  FALLA")+"  "+m); if(!c) fallos++; };
   p.on("pageerror", e => { console.log(">> PAGEERROR:", e.message); fallos++; });
   await p.addInitScript(() => {

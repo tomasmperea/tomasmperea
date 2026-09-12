@@ -6,7 +6,11 @@ const fs = require('fs');
 const APP = 'file://' + path.resolve(__dirname, '..', 'valija.html');
 const LOG = require('path').join(require('os').tmpdir(), 'valija-qa.log');
 try{ fs.unlinkSync(LOG); }catch(e){}
-const log = m => { try{ fs.appendFileSync(LOG, m + '\n'); }catch(e){} };
+/* En pantalla PRIMERO, y además al archivo. La auditoría del 12/09 marcó
+   que correr esto como dice LEEME.md no mostraba nada: el resultado vivía
+   sólo en un log del directorio temporal. Una prueba cuyo resultado hay
+   que ir a buscar es media prueba. */
+const log = m => { console.log(m); try{ fs.appendFileSync(LOG, m + '\n'); }catch(e){} };
 let ok = 0, fail = 0;
 const A = (c, m) => { if(c){ ok++; log('  ok   ' + m); } else { fail++; log('  FALLA ' + m); } };
 async function test(n, fn){ log('\n· ' + n); try{ await fn(); }catch(e){ fail++; log('  FALLA (excepción) ' + e.message); log(e.stack); } }
@@ -271,5 +275,10 @@ const tipoDe = page => page.evaluate(() => Store.packingOf('t1').tipoViaje);
 
   await browser.close();
   log(`\n====================================================\n  ${ok} pasaron, ${fail} fallaron\n====================================================`);
-  process.exit(fail ? 1 : 0);
+  /* Nada de `process.exit()` acá: con la salida por pantalla, cortar el
+     proceso a mano puede truncar lo último que se escribió. Se deja el
+     código de salida y el proceso termina solo cuando no queda nada
+     pendiente; el temporizador suelto es la red por si algo quedó vivo. */
+  process.exitCode = fail ? 1 : 0;
+  setTimeout(() => process.exit(fail ? 1 : 0), 3000).unref();
 })();

@@ -6102,13 +6102,105 @@ function renderImportReadOnly(){
   document.getElementById("im-close").onclick = closeSheet;
 }
 
+/* ---------- ¿está el lector de PDF? ----------
+   VAL-50 dejó evidencia real, en el teléfono del PM: un <script src> de
+   cdnjs puede no cargar ("No se pudo cargar el generador de PDF"). pdf.js
+   viene del MISMO host y por el MISMO camino que jsPDF, así que la misma
+   falla deja sin efecto toda la importación de PDF —que es justo el corazón
+   de VAL-40—. No es una hipótesis: ya pasó una vez con la otra librería.
+
+   Se detecta igual que las capacidades de la vista: antes de dibujar la
+   pantalla, y se dice antes de que la persona suba nada. El <script> de la
+   cabecera es sincrónico, así que cuando la app arranca ya cargó o ya
+   falló: alcanza con mirar `window`. */
+function pdfEngineReady(){
+  return !!(window.pdfjsLib && typeof window.pdfjsLib.getDocument === "function");
+}
+
+/* Cuántas veces se abrió la hoja de importar. Una promesa que resuelve tarde
+   tiene que saber si la apertura que la disparó sigue siendo la de la
+   pantalla, y no alcanza con que exista la marca viva: la hoja pudo haberse
+   cerrado y vuelto a abrir en el medio. */
+let importSheetSeq = 0;
+
+/** Espera una promesa con techo: si tarda más de `ms`, devuelve `valorSiTarda`
+    y sigue. La promesa original NO se cancela (no se puede) ni se tira: quien
+    llama puede engancharse a ella para usar la respuesta cuando llegue.
+    @param {Promise} promesa @param {number} ms @param {*} valorSiTarda */
+function esperaConTecho(promesa, ms, valorSiTarda){
+  let t = null;
+  return Promise.race([
+    Promise.resolve(promesa).then(v=>{ clearTimeout(t); return v; }, ()=>{ clearTimeout(t); return valorSiTarda; }),
+    new Promise(res=>{ t = setTimeout(()=>res(valorSiTarda), ms); })
+  ]);
+}
+/* Techo de espera de `limits()`. El contrato (0.2.41) dice que `claude.use()`
+   resuelve SIEMPRE más tarde que la primera corrida del script y que devuelve
+   null recién a los 10 s: la espera larga es el caso previsto, no el raro.
+   Pasado el techo se sigue con certeza "desconocida" —que es exactamente el
+   comportamiento de una plataforma sin `limits`: no se saca nada de la
+   pantalla— y si la respuesta llega después, se aplica ahí. */
+const LIMITS_TECHO_MS = 4000;
+
 async function sheetImport(trip){
   if(!Store.canWrite){ renderImportReadOnly(); return; }
 
+  /* Marca viva: mientras exista en el DOM Y sea de ESTA apertura, la hoja
+     sigue siendo la que se ve. Si el visitante cerró, navegó a otro lado o
+     volvió a abrir importar, una promesa que resuelve tarde no debe reabrir
+     ni pisar un modal ajeno. Se define acá arriba, antes del primer `await`,
+     porque las esperas de abajo ya la necesitan. */
+  const marker = `<span id="imp-live" hidden></span>`;
+  const miTurno = ++importSheetSeq;
+  const alive = ()=> miTurno === importSheetSeq && !!document.getElementById("imp-live");
+
+  /** Estado de carga de la hoja. Dos patrones que la app ya usa, los dos:
+      el `.notice` + `.spin` de "Leyendo…" (paso 03 de esta misma hoja) para
+      decir en palabras qué está pasando, y el esqueleto `.sk` de la pantalla
+      de la valija para mostrar la forma de lo que está llegando. Con
+      `prefers-reduced-motion` las dos animaciones quedan quietas —regla
+      global— y el texto es el que sigue informando. */
+  function renderPreparando(){
+    const hueco = `<span class="sk" style="height:83px"></span>`;
+    openSheet("Importar reservas", `${marker}
+      <div class="notice" id="im-prep"><span class="spin"></span><span class="bd">Preparando la importación…</span></div>
+      <div class="f">
+        <label>Cómo lo cargás</label>
+        <div class="tp tp3">${hueco}${hueco}${hueco}</div>
+      </div>
+      <div id="im-slow"></div>`,
+      `<button class="btn ghost block" id="im-cancel-prep">Cancelar</button>`);
+    document.getElementById("im-cancel-prep").onclick = closeSheet;
+  }
+  /** Mismo patrón que `runInterpretation`: a los 7 segundos se dice que está
+      tardando y se ofrece la salida que no depende de nadie —cargar la
+      reserva a mano—. Nunca se deja a la persona mirando un spinner sin
+      opciones. */
+  function mostrarPrepLenta(){
+    const el = document.getElementById("im-slow");
+    if(!el || el.innerHTML) return;
+    el.innerHTML = `<div class="notice warn">${svg(I.info)}<span class="bd">Esto está tardando más de lo normal. Podés esperar unos segundos más, o cargar la reserva a mano.
+      <button class="act" id="im-prep-manual">Cargar a mano</button></span></div>`;
+    const b = document.getElementById("im-prep-manual");
+    if(b) b.onclick = ()=>{ closeSheet(); sheetItem(trip, null); };
+  }
+
+  /* ---------- lo primero es la reacción, no el dato ----------
+     Tocar "Importar" tiene que cambiar la pantalla EN EL ACTO, siempre. Lo
+     que viene después son dos esperas de plataforma (`claude.use` y
+     `limits()`) que pueden tardar segundos: si la hoja se dibujara recién
+     al final, el botón se vería muerto —el mismo síntoma que el PM reportó
+     tres veces—. Así que la hoja se abre ya, con su estado de carga, y se
+     completa cuando llega la respuesta. */
+  renderPreparando();
+  const prepSlow = setTimeout(()=>{ if(alive()) mostrarPrepLenta(); }, 7000);
+  const dejarDeEsperar = ()=> clearTimeout(prepSlow);
+
   let sample = null;
   try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
+  if(!alive()){ dejarDeEsperar(); return; }
   const callModel = sample ? (prompt, opts) => sample.json(prompt, {...(opts||{}), modelTier:"complex"}) : null;
-  if(!callModel){ renderImportNoAi(); return; }
+  if(!callModel){ dejarDeEsperar(); renderImportNoAi(); return; }
 
   /* ---------- qué puede ESTA vista, ANTES de dibujar la pantalla ----------
      El 11/09 el PM subió tres archivos desde su teléfono y los tres fallaron
@@ -6127,8 +6219,19 @@ async function sheetImport(trip){
   const viewLimits = (sample && typeof sample.limits === "function")
     ? () => (limitsOnce || (limitsOnce = Promise.resolve().then(()=> sample.limits())))
     : null;
-  const caps = await ImportEngine.getViewCapabilities(viewLimits);   // nunca rechaza
-  const sinImagenes = caps.certeza === "no";   // "desconocida" NO cambia nada
+  /* La pregunta no rechaza nunca, pero puede tardar: se le pone techo. Si no
+     contesta a tiempo se sigue con "desconocida" (todo se ofrece, nada se
+     inventa) y la respuesta tardía se aplica cuando llegue. */
+  const capsPromise = ImportEngine.getViewCapabilities(viewLimits);   // nunca rechaza
+  const capsNoSe = await ImportEngine.getViewCapabilities(null);      // resuelve ya: no consulta nada
+  let caps = await esperaConTecho(capsPromise, LIMITS_TECHO_MS, capsNoSe);
+  dejarDeEsperar();
+  if(!alive()) return;
+  let sinImagenes = caps.certeza === "no";   // "desconocida" NO cambia nada
+
+  /* El lector de PDF se mira una vez por apertura, igual que las
+     capacidades de la vista (ver `pdfEngineReady`). */
+  const sinPdf = !pdfEngineReady();
 
   // Estado de la hoja: nada de esto toca `Store` hasta el guardado final
   // (el botón "Guardar" de la pantalla de revisión). Eso incluye las
@@ -6144,11 +6247,25 @@ async function sheetImport(trip){
     matchDone:0, savedTotal:0, acceptPartial:null
   };
   const tripCtx = ()=> ({name:trip.name, destination:trip.destination, startDate:trip.startDate, endDate:trip.endDate});
-  // Marca viva: mientras exista en el DOM, esta hoja sigue siendo la que se
-  // ve. Si el visitante cerró/navegó a otro lado, una promesa que resuelve
-  // tarde no debe reabrir ni pisar un modal ajeno.
-  const alive = ()=> !!document.getElementById("imp-live");
-  const marker = `<span id="imp-live" hidden></span>`;
+
+  /* Si `limits()` llegó tarde, la respuesta no se tira. Se aplica sin pisar
+     lo que la persona ya escribió: si está tipeando el texto del correo, se
+     cambia sólo el aviso de arriba; si no, se redibuja la pantalla (que
+     conserva la cola y el texto pegado, porque los dos viven en `st`). */
+  if(caps === capsNoSe) capsPromise.then(tardias=>{
+    if(!alive() || !tardias || tardias.certeza === caps.certeza) return;
+    caps = tardias;
+    sinImagenes = caps.certeza === "no";
+    st.queue.forEach(f=>Object.assign(f, flagsDeArchivo(f)));
+    if(!document.getElementById("im-caps")) return;   // ya no está en la pantalla de elegir
+    const ta = document.getElementById("im_text");
+    if(ta && document.activeElement === ta){
+      const aviso = document.getElementById("im-caps");
+      if(aviso) aviso.outerHTML = avisoCapsHtml();
+      return;
+    }
+    renderElegir();
+  }, ()=>{});   // no rechaza nunca, pero si algún día lo hiciera no se cae nada
 
   function makeCard(reserva, chip, meta){ return {id:uid(), reserva, chip, meta:meta||{}}; }
 
@@ -6226,27 +6343,40 @@ async function sheetImport(trip){
     input.onchange = ()=>{
       Array.from(input.files||[]).forEach(file=>{
         const engineKind = ImportEngine.fileKind({name:file.name, mimeType:file.type});
-        const kind = forcedKind || (engineKind==="pdf" ? "pdf" : "img");
-        const invalid = !forcedKind && engineKind==="desconocido";
-        const big = file.size > MAX_FILE_BYTES;
-        // El `accept` del input es una sugerencia que varios selectores
-        // ignoran: si igual entró una imagen en una vista que no las lee, se
-        // dice acá, en la cola, antes de subir nada.
-        const noLeible = sinImagenes && (engineKind==="imagen" || kind==="img");
-        st.queue.push({id:uid(), name:file.name, mimeType:file.type, blob:file, size:file.size, kind, big, invalid, noLeible});
+        const entrada = {
+          id:uid(), name:file.name, mimeType:file.type, blob:file, size:file.size,
+          kind: forcedKind || (engineKind==="pdf" ? "pdf" : "img"),
+          forced: !!forcedKind
+        };
+        st.queue.push(Object.assign(entrada, flagsDeArchivo(entrada)));
       });
       input.value = "";
       renderElegir();
     };
   }
+  /* Los motivos por los que un archivo no se va a poder leer, calculados en
+     un solo lugar: al encolarlo, y otra vez si `limits()` contesta tarde.
+     El `accept` del input es una sugerencia que varios selectores ignoran,
+     así que la cola vuelve a mirar cada archivo antes de subir nada. */
+  function flagsDeArchivo(f){
+    const engineKind = ImportEngine.fileKind({name:f.name, mimeType:f.mimeType});
+    return {
+      big: f.size > MAX_FILE_BYTES,
+      invalid: !f.forced && engineKind==="desconocido",
+      noLeible: sinImagenes && (engineKind==="imagen" || f.kind==="img"),
+      sinLector: sinPdf && (engineKind==="pdf" || f.kind==="pdf")
+    };
+  }
+  const legible = f => !f.big && !f.invalid && !f.noLeible && !f.sinLector;
   function queueRowHtml(f){
     const cls = kindThumbCls(f.kind), icon = kindIcon(f.kind);
     let meta;
     if(f.big) meta = `<span class="meta err">Pesa ${fmtSize(f.size)}, más de lo que puedo leer (máx. ${MAX_FILE_MB} MB). Elegí otro archivo o sacá la foto de nuevo con menos calidad.</span>`;
     else if(f.invalid) meta = `<span class="meta err">No reconozco este tipo de archivo. Subí una foto (PNG o JPG) o un PDF.</span>`;
     else if(f.noLeible) meta = `<span class="meta err">Acá no se pueden leer imágenes. Subí el PDF del comprobante, o pegá abajo el texto del correo.</span>`;
+    else if(f.sinLector) meta = `<span class="meta err">El lector de PDF no cargó, así que este archivo no se puede leer acá. ${sinImagenes?"Pegá abajo el texto del correo.":"Sacale una foto al comprobante, o pegá abajo el texto del correo."}</span>`;
     else meta = `<span class="meta">${fmtSize(f.size)}</span>`;
-    return `<div class="imp-file ${(f.big||f.invalid||f.noLeible)?"err":""}">
+    return `<div class="imp-file ${legible(f)?"":"err"}">
       <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
       <span class="bd"><span class="nm">${esc(f.name)}</span>${meta}</span>
       <button class="rm" aria-label="Sacar ${esc(f.name)}" data-rmq="${f.id}">${svg(I.x)}</button>
@@ -6262,14 +6392,26 @@ async function sheetImport(trip){
          funcionan. En su lugar queda, dicho de entrada y no después de
          subir y esperar, lo que sí funciona: el PDF del comprobante (se lee
          su texto) y pegar el texto del correo, que nunca dependió de
-         imágenes. */
+         imágenes.
+
+     Y lo mismo con el lector de PDF (`sinPdf`, ver `pdfEngineReady`): si la
+     librería no cargó, subir un PDF no puede funcionar de ninguna manera —ni
+     por texto ni por imagen— así que no se ofrece. Si tampoco hay imágenes,
+     no queda ningún selector de archivos: la única vía viva es pegar el
+     texto, y se muestra sola, abierta, sin un botón que no lleva a ningún
+     lado. */
+  function acceptAttr(){
+    const partes = String(caps.accept||"").split(",").map(s=>s.trim()).filter(Boolean);
+    return (sinPdf ? partes.filter(p=>p!=="application/pdf") : partes).join(",");
+  }
   function pickerHtml(){
+    if(sinImagenes && sinPdf) return "";
     if(sinImagenes) return `
       <div class="f">
         <label>Cómo lo cargás</label>
         <div class="tp imp-pick">
           <button type="button" class="tpbtn" data-pick="im_doc">${svg(I.doc)} Subir el PDF <span class="n">del comprobante</span></button>
-          <input id="im_doc" type="file" accept="${esc(caps.accept)}" multiple>
+          <input id="im_doc" type="file" accept="${esc(acceptAttr())}" multiple>
         </div>
         <span class="hint">Podés subir varios PDF a la vez. Un PDF escaneado —el que por dentro es una foto— tampoco se puede leer acá: esa reserva cargala a mano desde <b>Agregar</b>.</span>
         <div id="im-nopick" hidden></div>
@@ -6280,12 +6422,12 @@ async function sheetImport(trip){
         <div class="tp tp3 imp-pick">
           <button type="button" class="tpbtn" data-pick="im_cam">${svg(I.cam)} Sacar foto <span class="n">con la cámara</span></button>
           <button type="button" class="tpbtn" data-pick="im_gal">${svg(I.gallery)} Galería <span class="n">fotos y capturas</span></button>
-          <button type="button" class="tpbtn" data-pick="im_doc">${svg(I.doc)} Archivo <span class="n">PDF o imagen</span></button>
+          <button type="button" class="tpbtn" data-pick="im_doc">${svg(I.doc)} Archivo <span class="n">${sinPdf?"foto o captura":"PDF o imagen"}</span></button>
           <input id="im_cam" type="file" accept="image/*" capture="environment">
           <input id="im_gal" type="file" accept="image/*" multiple>
-          <input id="im_doc" type="file" accept="${esc(caps.accept)}" multiple>
+          <input id="im_doc" type="file" accept="${esc(acceptAttr())}" multiple>
         </div>
-        <span class="hint">Podés elegir varios a la vez, y combinar fotos con PDF en la misma carga.</span>
+        <span class="hint">${sinPdf?"Podés elegir varias fotos a la vez.":"Podés elegir varios a la vez, y combinar fotos con PDF en la misma carga."}</span>
         <div id="im-nopick" hidden></div>
       </div>`;
   }
@@ -6293,6 +6435,17 @@ async function sheetImport(trip){
      verdad para el texto de la restricción) y acá se le agrega la segunda
      salida, que es de la pantalla: pegar el texto. */
   function avisoCapsHtml(){
+    /* Las dos restricciones juntas: no queda ningún archivo que subir. No se
+       usa `caps.nota` acá porque esa frase manda al PDF, que hoy tampoco
+       funciona; decir lo que no es cierto sería peor que no decir nada. */
+    if(sinImagenes && sinPdf) return `
+      <div class="notice warn" id="im-caps">${svg(I.info)}
+        <span class="bd">Acá no puedo leer imágenes, y el lector de PDF tampoco cargó —casi siempre es la conexión—. Queda una vía, y funciona siempre: pegá abajo el texto del correo. Si más tarde volvés a entrar, puede que el PDF ande de nuevo.</span>
+      </div>`;
+    if(sinPdf) return `
+      <div class="notice warn" id="im-caps">${svg(I.info)}
+        <span class="bd">El lector de PDF no cargó —casi siempre es la conexión—, así que en esta sesión no puedo leer archivos PDF. Te lo digo antes de que subas nada: sacale una foto al comprobante o pegá el texto del correo acá abajo, esas dos funcionan igual. Si más tarde volvés a entrar, puede que el PDF ande de nuevo.</span>
+      </div>`;
     if(sinImagenes) return `
       <div class="notice warn" id="im-caps">${svg(I.info)}
         <span class="bd">${esc(caps.nota)} Una foto o una captura no se pueden interpretar en esta vista, así que te lo digo antes de que subas nada. Si no tenés el PDF, pegá el texto del correo acá abajo: eso funciona siempre.</span>
@@ -6303,7 +6456,7 @@ async function sheetImport(trip){
       </div>`;
   }
   function renderElegir(){
-    const validCount = st.queue.filter(f=>!f.big && !f.invalid && !f.noLeible).length;
+    const validCount = st.queue.filter(legible).length;
     const body = `${marker}
       ${avisoCapsHtml()}
       ${pickerHtml()}
@@ -6312,8 +6465,8 @@ async function sheetImport(trip){
         <label>Vas a interpretar</label>
         <div class="imp-files">${st.queue.map(queueRowHtml).join("")}</div>
       </div>` : ""}
-      <details class="imp-more" ${(st.pastedText||sinImagenes)?"open":""}>
-        <summary>${sinImagenes?"Pegar el texto del correo":"Pegar el texto en cambio"}</summary>
+      <details class="imp-more" ${(st.pastedText||sinImagenes||sinPdf)?"open":""}>
+        <summary>${(sinImagenes||sinPdf)?"Pegar el texto del correo":"Pegar el texto en cambio"}</summary>
         <div class="f">
           <label for="im_text">Texto de la confirmación</label>
           <textarea id="im_text" class="mono" placeholder="Tu reserva está confirmada&#10;Vuelo G3 1234 · EZE → GIG&#10;20 de septiembre, 06:40&#10;Código: K7QXPL">${esc(st.pastedText)}</textarea>
@@ -6338,7 +6491,7 @@ async function sheetImport(trip){
     document.getElementById("im-run").onclick = startInterpret;
   }
   function startInterpret(){
-    const fileSources = st.queue.filter(f=>!f.big && !f.invalid && !f.noLeible)
+    const fileSources = st.queue.filter(legible)
       .map(f=>({name:f.name, mimeType:f.mimeType, blob:f.blob, kind:f.kind}));
     const sources = fileSources.slice();
     if(st.pastedText && st.pastedText.trim()) sources.push({name:"Texto pegado", kind:"texto", text:st.pastedText.trim()});

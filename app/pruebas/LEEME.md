@@ -27,6 +27,7 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `auditoria-h2.js` | Reproducción independiente de H2: categoría plegada a mano con ítems nuevos | reproducción |
 | `importar-botones.js` | Los tres botones de origen de archivo, tocados. Con el argumento `bloquear` simula un navegador que ignora la apertura, para probar que el aviso aparece | 11 y 12 aserciones |
 | `importar-sin-imagenes.js` | El motor de importación v2 desde la pantalla: una vista sin imágenes lo dice **antes** de subir nada, una vista con imágenes sigue igual, y un PDF con capa de texto se interpreta sin mandar ni una imagen | 45 aserciones |
+| `importar-arranque.js` | El arranque de la pantalla de importar (hallazgos A y B de la auditoría del 12/09): que el toque reaccione **en el acto** aunque la plataforma tarde, que lo que resuelve tarde no reabra ni pise nada, y que sin `pdf.js` se diga antes de subir nada | 59 aserciones |
 | `motores-desde-html.js` | Las pruebas de los dos motores corridas contra la copia **embebida en `valija.html`**, no contra `app/parts/` | 68 + 69 casos |
 
 `importar-botones.js` recibe la ruta del HTML como argumento:
@@ -36,6 +37,25 @@ NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-botones.js "$PW
 ```
 
 `motores-desde-html.js` no necesita navegador: corre con `node` solo.
+
+`importar-arranque.js` también acepta la ruta del HTML como argumento, y eso no es
+un adorno: es el **control negativo** de su aserción más importante. La medición del
+tiempo de reacción no sirve de nada si no puede fallar, así que se comprueba corriendo
+el mismo arnés contra una copia del HTML a la que se le sacó el estado de carga:
+
+```
+sed 's/^  renderPreparando();$//' app/valija.html > /tmp/sin-preparando.html
+NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-arranque.js /tmp/sin-preparando.html
+→ FALLA  hubo un cambio visible en pantalla dentro de los 300 ms del toque
+```
+
+## Dónde sale el resultado
+
+En la **terminal**, en los ocho arneses. `valija-bloque-b.js` y
+`hallazgos-qa-bloque-b.js` escribían sólo en `os.tmpdir()/valija-qa.log` y correrlos
+como dice este archivo no mostraba nada; desde el 12/09 imprimen en pantalla y además
+dejan el log. Los dos tardan entre dos y tres minutos: un timeout corto los mata a
+mitad de camino y produce fallos que son del timeout, no del producto.
 
 ## Por qué las pruebas de motor se corren dos veces
 
@@ -64,7 +84,7 @@ del teléfono— que estas pruebas dan en verde y que en el teléfono falla.
 
 Y hay dos piezas que acá son **simuladores, no la cosa real**: `claude`
 (inyectado con `page.addInitScript`) y **pdf.js**, que en este entorno no baja
-porque cdnjs está bloqueado. `importar-sin-imagenes.js` inyecta un pdf.js
-escrito contra la API documentada. Un simulador replica el contrato, no lo
+porque cdnjs está bloqueado. `importar-sin-imagenes.js` e `importar-arranque.js`
+inyectan un pdf.js escrito contra la API documentada. Un simulador replica el contrato, no lo
 verifica: que `page.getTextContent()` del pdf.js real devuelva esa forma en un
 teléfono se comprueba con los pasos de `docs/design/import-engine.md` §5.
