@@ -10,6 +10,11 @@ const L=[]; const log=m=>{L.push(m);console.log(m);};
 (async()=>{
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport:{width:390,height:800} });
+  /* Este entorno bloquea los hosts externos (fuentes, jspdf, pdf.js): sin
+     cortarlos, cada carga espera un handshake que nunca llega y la corrida se
+     cae a mitad de camino como si fuera un fallo del producto. Mismo corte que
+     hacen los demás arneses de app/pruebas/. */
+  await page.route('**/*', r => (/^file:/.test(r.request().url()) ? r.continue() : r.abort()));
   page.on('pageerror', e=>log('  !! pageerror: '+e.message));
   await page.addInitScript(({trip,vuelo})=>{
     window.claude = { use: async k => null };   // sin capa de IA: peor caso honesto

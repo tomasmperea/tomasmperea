@@ -26,6 +26,26 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `auditoria-h1.js` | Reproducción independiente de H1: Ciudad → auto → Playa → aplicar el plan viejo | reproducción |
 | `auditoria-h2.js` | Reproducción independiente de H2: categoría plegada a mano con ítems nuevos | reproducción |
 | `importar-botones.js` | Los tres botones de origen de archivo, tocados. Con el argumento `bloquear` simula un navegador que ignora la apertura, para probar que el aviso aparece | 11 y 12 aserciones |
+| `importar-sin-imagenes.js` | El motor de importación v2 desde la pantalla: una vista sin imágenes lo dice **antes** de subir nada, una vista con imágenes sigue igual, y un PDF con capa de texto se interpreta sin mandar ni una imagen | 45 aserciones |
+| `motores-desde-html.js` | Las pruebas de los dos motores corridas contra la copia **embebida en `valija.html`**, no contra `app/parts/` | 68 + 69 casos |
+
+`importar-botones.js` recibe la ruta del HTML como argumento:
+
+```
+NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-botones.js "$PWD/app/valija.html"
+```
+
+`motores-desde-html.js` no necesita navegador: corre con `node` solo.
+
+## Por qué las pruebas de motor se corren dos veces
+
+`app/parts/*.test.js` prueba el archivo suelto. La app no corre ese archivo:
+corre la copia pegada dentro de `app/valija.html`. Entre los dos hay un paso
+manual, y ese paso ya se quedó corto una vez —la auditoría del bloque B
+encontró que al HTML le faltaba parte del motor que sí estaba en `parts/`—.
+`motores-desde-html.js` extrae el cuerpo de cada IIFE del HTML y corre las
+mismas pruebas contra esa copia. Si el HTML quedó atrás, falla ahí aunque
+`parts/` esté en verde.
 
 ## La regla
 
@@ -41,3 +61,10 @@ entorno real es el Artifact publicado abierto desde el teléfono. Estas pruebas 
 sustituto bueno y su brecha está declarada en `CLAUDE.md`, sección "La palabra
 verificado". Hay al menos un bug vivo —el selector de archivos que no abre en el visor
 del teléfono— que estas pruebas dan en verde y que en el teléfono falla.
+
+Y hay dos piezas que acá son **simuladores, no la cosa real**: `claude`
+(inyectado con `page.addInitScript`) y **pdf.js**, que en este entorno no baja
+porque cdnjs está bloqueado. `importar-sin-imagenes.js` inyecta un pdf.js
+escrito contra la API documentada. Un simulador replica el contrato, no lo
+verifica: que `page.getTextContent()` del pdf.js real devuelva esa forma en un
+teléfono se comprueba con los pasos de `docs/design/import-engine.md` §5.

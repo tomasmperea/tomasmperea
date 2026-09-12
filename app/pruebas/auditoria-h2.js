@@ -8,6 +8,11 @@ const log=console.log;
 (async()=>{
   const b=await chromium.launch();
   const page=await b.newPage({viewport:{width:390,height:800}});
+  /* Este entorno bloquea los hosts externos (fuentes, jspdf, pdf.js): sin
+     cortarlos, cada carga espera un handshake que nunca llega y la corrida se
+     cae a mitad de camino como si fuera un fallo del producto. Mismo corte que
+     hacen los demás arneses de app/pruebas/. */
+  await page.route('**/*', r => (/^file:/.test(r.request().url()) ? r.continue() : r.abort()));
   page.on('pageerror',e=>log('  !! pageerror: '+e.message));
   await page.addInitScript(({trip,vuelo})=>{
     window.claude={use:async k=>null};
@@ -57,10 +62,15 @@ const log=console.log;
   // dejar el chip a la vista el tiempo de permanencia y salir tocando "volver"
   await page.locator('.pk-cat-hd', {hasText:'Documentación'}).first().scrollIntoViewIfNeeded();
   await page.waitForTimeout(1400);
+  /* El estado de la categoría se lee ANTES de salir: después de tocar
+     "volver" la pantalla de la valija ya no está en el DOM y el locator se
+     queda esperando para siempre un nodo que nadie va a volver a dibujar.
+     (Este arnés caía acá desde antes, por eso nunca imprimía su veredicto.) */
+  const sigueplegada = await cat.getAttribute('data-open');
   await page.locator('#pk-back').click(); await page.waitForTimeout(900);
   const quedan = await page.evaluate(()=>PackingEngine.itemList(Store.packingOf('t1'),{includeDismissed:true}).filter(i=>i.nuevo).map(i=>i.clave));
   log('SALIDA · ítems que siguen marcados nuevo = '+(quedan.length?quedan.join(', '):'ninguno'));
   log('');
-  log('VEREDICTO H2: categoría plegada a mano NO se reabre ('+(await cat.getAttribute('data-open'))+') y el chip visible limpió la marca = '+(quedan.length===0));
+  log('VEREDICTO H2: categoría plegada a mano NO se reabre ('+sigueplegada+') y el chip visible limpió la marca = '+(quedan.length===0));
   await b.close();
 })().catch(e=>{console.error('CAYÓ:',e);process.exit(1);});
