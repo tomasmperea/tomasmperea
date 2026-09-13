@@ -90,13 +90,20 @@ codificado como texto.
 
 Y esa base tiene un techo duro: **un documento de más de 256 KiB se rechaza.** Codificar
 un archivo como texto lo infla un tercio, así que el archivo crudo más grande que entra
-es de unos **192 KB**. Medido contra los documentos reales del PM:
+es de unos **190 KB**. Medido contra los documentos reales del PM:
 
 | Archivo | Tamaño | Codificado | ¿Entra? |
 |---|---|---|---|
 | Voucher de micro (Lobos Bus) | 20 KB | 28 KB | **Sí**, de sobra |
 | Pasaje de Aerolíneas | 123 KB | 164 KB | **Sí**, con margen |
 | Foto típica de cámara | ~3 MB | ~4 MB | **No**, hay que recomprimir |
+
+**Corrección del 13/09:** el tope que escribí primero, 192 KB, sale de dividir 256 KiB por cuatro tercios y
+**deja cero bytes** para los nombres de campo del propio documento. El motor lo detectó midiendo el cuerpo
+serializado en vez de confiar en la cuenta. **El número bueno es 190 KB**, con 2,7 KB de margen.
+
+**Y el cupo de la base ya no es una pregunta abierta:** el contrato dice **5.000 documentos** en total por
+artifact, y cuando se llena, crear uno más falla con un error no transitorio. Cada adjunto cuesta un documento.
 
 Consecuencias para el diseño, que dejan de ser sorpresas:
 

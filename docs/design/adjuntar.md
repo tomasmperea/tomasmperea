@@ -191,7 +191,7 @@ Las dos salidas tienen el mismo peso y la destructiva está nombrada: "Quitar la
 documentos y hay permiso de edición.
 **Qué muestra:** el bloque "Documento" con un `.empty.sm` punteado y **dos** orígenes, con el mismo patrón de
 `<button>` + `<input type="file">` hermano que ya usa el importador: **Archivo** (PDF o imagen) y **Sacar foto**
-(cámara). Debajo, el `hint` con los dos topes: 192 KB por documento y tres por reserva, más el aviso de que una
+(cámara). Debajo, el `hint` con los dos topes: 190 KB por documento y tres por reserva, más el aviso de que una
 foto grande se reduce sola.
 **Por qué dos y no los tres del importador:** "Galería" existe ahí porque se eligen varios archivos de golpe;
 acá se adjunta uno a una reserva puntual, y una captura de pantalla se elige igual desde "Archivo". Tres botones
@@ -458,8 +458,13 @@ manual no se pregunta nada: preguntar "¿qué tipo de documento es?" a alguien q
 pedirle que clasifique para nosotros.
 
 ### 5.4 El peso se muestra en KB, y el tope también
-"192 KB" y "1,2 MB", no "196.608 bytes" ni "256 KiB". El tope real es el de la base (256 KiB por documento) menos
-lo que agrega codificar el archivo como texto, que es un tercio: **192 KB de archivo crudo**. Ese es el número
+"190 KB" y "1,2 MB", no "196.608 bytes" ni "256 KiB". El tope real es el de la base (256 KiB por documento) menos
+lo que agrega codificar el archivo como texto, que es un tercio: **190 KB de archivo crudo**. Ese es el número
+
+**Corregido el 13/09.** El PO había dado 192 KB, que sale de dividir el tope por cuatro tercios. Está mal por
+poco y en el sentido peligroso: 196.608 bytes codificados son 262.144 caracteres, o sea **el tope entero**, sin
+un byte libre para los nombres de campo del propio documento. Lo encontró el motor midiendo en lugar de confiar.
+190 KB deja 2,7 KB de margen y es un número redondo que la persona puede comparar con lo que ve en su teléfono.
 que la interfaz dice, porque es el único que la persona puede comparar con lo que ve en su teléfono.
 
 ### 5.5 El documento se guarda cuando se toca Guardar
@@ -515,10 +520,10 @@ Todo en español rioplatense, voseo. Reproducido tal como está en `adjuntar-ui.
   salir: así queda en el teléfono." + "Probar de nuevo"
 
 **Menor calidad (D5, D11)**
-- "**Guardada en menor calidad.** La foto pesaba **3,1 MB** y el tope por documento es **192 KB**, así que la
+- "**Guardada en menor calidad.** La foto pesaba **3,1 MB** y el tope por documento es **190 KB**, así que la
   reduje a **178 KB**. Se lee bien en pantalla; si un código de barras no te pasa el lector, usá el original del
   mail."
-- Al adjuntar: "**La guardé más chica.** La foto pesaba **3,1 MB** y el tope por documento es **192 KB**: la
+- Al adjuntar: "**La guardé más chica.** La foto pesaba **3,1 MB** y el tope por documento es **190 KB**: la
   reduje a **178 KB**. Se lee bien en pantalla. Si necesitás la original tal cual, guardala también en las fotos
   del teléfono."
 - En la fila y en la línea de datos: "menor calidad" · "reducida de 3,1 MB"
@@ -539,7 +544,7 @@ Todo en español rioplatense, voseo. Reproducido tal como está en `adjuntar-ui.
 - "Adjuntá el PDF que te mandaron o sacale una foto al papel. Queda guardado con la reserva, para tenerlo a mano
   sin ir a buscar el mail."
 - Botones: "Archivo · PDF o imagen" / "Sacar foto · con la cámara"
-- "Hasta 192 KB por documento, y hasta tres por reserva. Si la foto pesa más, la reduzco yo y te aviso."
+- "Hasta 190 KB por documento, y hasta tres por reserva. Si la foto pesa más, la reduzco yo y te aviso."
 
 **Preparando (D9)**
 - "Preparando el archivo…" (PDF) · "Reduciendo la foto para que entre…" (imagen)
@@ -549,7 +554,7 @@ Todo en español rioplatense, voseo. Reproducido tal como está en `adjuntar-ui.
 - "Queda adjunto cuando toques Guardar. Podés sumar hasta dos documentos más."
 
 **No entró (D12)**
-- Fila: "Pesa 1,2 MB y el tope es 192 KB. Un PDF no lo puedo reducir sin romperlo, así que este no lo puedo
+- Fila: "Pesa 1,2 MB y el tope es 190 KB. Un PDF no lo puedo reducir sin romperlo, así que este no lo puedo
   guardar." + "Elegir otro"
 - "La reserva no cambia: lo único que no entró es el archivo. Si en el mail viene también la página sola de tu
   pasaje, esa suele entrar."
@@ -562,7 +567,7 @@ Todo en español rioplatense, voseo. Reproducido tal como está en `adjuntar-ui.
 - "Guardado. Agregué **2** reservas, completé el vuelo de ida con los datos de la tarjeta de embarque y le dejé
   la tarjeta adjunta."
 - "**Un documento quedó afuera:** **itinerario-completo.pdf** pesa **1,2 MB** y el tope por documento es
-  **192 KB**. Sus reservas sí se guardaron; lo que no quedó es el archivo."
+  **190 KB**. Sus reservas sí se guardaron; lo que no quedó es el archivo."
 - Filas: "Adjunta al vuelo Buenos Aires → Río · JPG · 178 KB · menor calidad"
 - Toast: "2 reservas agregadas · tarjeta adjunta al vuelo de ida · 1 documento no entró"
 
@@ -638,7 +643,7 @@ documento de más de 256 KiB se rechaza. Lo que el diseño **necesita** de ese m
    donde `estado` es `"ok"` o `"recomprimido"`. Son unas decenas de bytes: viajan en el snapshot que ya existe y
    se pueden espejar en `localStorage` sin problema.
 2. **El cuerpo va aparte**, en su propio documento de la base (por ejemplo `trips/{tripId}/docs/{docId}`), con el
-   archivo codificado como texto. **No se espeja en `localStorage`**: 192 KB por documento reventarían la cuota
+   archivo codificado como texto. **No se espeja en `localStorage`**: 190 KB por documento reventarían la cuota
    del navegador y, peor, harían lento el arranque de la app para todos.
 3. Consecuencia directa, y es la que se diseñó en **D4**: la tira del documento se puede pintar sin conexión
    (los metadatos están), pero **abrirlo necesita traer el cuerpo**. De ahí el estado de carga y el de "no pude
@@ -650,7 +655,7 @@ documento de más de 256 KiB se rechaza. Lo que el diseño **necesita** de ese m
 
 **Si integración elige otro modelo** (por ejemplo, el cuerpo adentro del mismo ítem), el diseño no se rompe:
 lo único que cambia es que D4 deja de aparecer. Pero entonces hay que medir qué le pasa al snapshot de ítems y a
-`localStorage` con tres documentos de 192 KB en un viaje de diez reservas, **antes** de publicarlo.
+`localStorage` con tres documentos de 190 KB en un viaje de diez reservas, **antes** de publicarlo.
 
 ### 7.3 Preparar el archivo: codificar y, si hace falta, reducir
 Antes de guardar, en el navegador:
@@ -658,7 +663,7 @@ Antes de guardar, en el navegador:
 - **Imagen:** se reduce con `<canvas>` hasta que entre — bajando el lado mayor y la calidad de JPEG por pasos— y
   se marca `estado:"recomprimido"`. Si ni así entra, es D12.
 - El tope a comparar es el del **texto codificado**, no el del archivo: 256 KiB menos el margen del propio
-  documento de la base. Los 192 KB de la interfaz son ese número traducido a algo que la persona pueda comparar
+  documento de la base. Los 190 KB de la interfaz son ese número traducido a algo que la persona pueda comparar
   con lo que ve en su teléfono.
 - `estado:"recomprimido"` es **persistente**: se guarda con el documento porque D5 lo muestra cada vez que se
   abre, no una sola vez.
@@ -731,7 +736,7 @@ V5 es ese mismo componente.
 | Cero tokens nuevos | sección 5.8 |
 
 **Pregunta abierta para el PO / el motor, que no invento:** el criterio "se dice cuántos documentos caben" está
-cubierto en lo que es nuestro (192 KB por documento, tres por reserva). Lo que **no** puedo decir es cuántos
+cubierto en lo que es nuestro (190 KB por documento, tres por reserva). Lo que **no** puedo decir es cuántos
 documentos admite la base en total, porque no conozco ese número. Si existe y es bajo, hace falta una frase más
 —probablemente en la pantalla del viaje, no en la reserva— y la escribo en cuanto tenga el dato.
 
