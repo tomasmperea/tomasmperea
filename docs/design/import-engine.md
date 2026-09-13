@@ -760,6 +760,10 @@ Cuatro eventos, declarados en `EVENTOS_PROGRESO`, todos con `archivo`:
 de texto— sigue siendo estrictamente por archivo y avisa por archivo. Y `preparado` llega **antes** de la
 llamada, así que la fila puede decir "leído del texto del PDF" antes de que el modelo conteste.
 
+Cuando un lote cae a llamadas sueltas (§7.3 y §7.4), cada archivo recibe un **segundo** `leyendo`, esta vez
+con `lote:null`. La fila no tiene que hacer nada distinto —ya está en "Leyendo…"— pero conviene saberlo antes
+de contar eventos.
+
 **Qué se pierde, dicho de frente.** Dentro de un lote, las filas **dejan de terminar de a una**: los tres
 archivos de un lote pasan a "Leyendo…" en el mismo instante y a "Listo" en el mismo instante, porque hay una
 sola respuesta. Antes, con tres llamadas en paralelo, la persona veía terminar primero a la más rápida. Es

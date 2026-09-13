@@ -28,10 +28,15 @@ Nadie edita `app/valija.html` salvo el rol de integración. El trabajo en parale
 como piezas autónomas, y se integra en un paso posterior. Un agente que necesita cambiar algo en
 `valija.html` lo describe en su entrega en lugar de editarlo.
 
-**Y no se commitea el árbol entero mientras alguien más está trabajando.** `git add -A` con un agente a
-medio camino mete su trabajo sin terminar en un commit que habla de otra cosa: ya pasó el 12/09, y el
-historial quedó diciendo que un cambio de configuración del modelo era parte de una sonda de OCR. Mientras
-haya trabajo en curso se agregan los archivos por nombre.
+**Y no se commitea el árbol entero mientras alguien más está trabajando.** La regla escrita el 12/09 decía
+"se agregan los archivos por nombre" y **se rompió al día siguiente**: `git add docs/` se llevó 368 líneas a
+medio escribir de otro agente dentro de un commit que hablaba de otra cosa, describiendo un comportamiento
+que el código de ese commit todavía no tenía. Dos veces en dos días, con la regla ya escrita.
+
+Así que la regla deja de ser una intención y pasa a ser mecánica: **mientras haya un agente corriendo, sólo
+`git add` con rutas de archivo exactas.** Ni `-A`, ni un punto, ni un directorio — `docs/` es un directorio y
+por eso falló. Si no se puede nombrar cada archivo, es señal de que no se sabe qué se está commiteando, y
+entonces no se commitea: se espera.
 
 ## Sistema de diseño
 

@@ -11,6 +11,45 @@
    inyecta): las dos están aisladas a propósito.
 
    ============================================================
+   LO QUE CAMBIÓ EN LA VERSIÓN 3
+   ============================================================
+
+   VAL-59 · LA TARJETA DE EMBARQUE SE DESPRENDE DE UN VUELO.
+   Hasta acá, una tarjeta de embarque que no coincidía con ningún
+   vuelo cargado daba "nuevo", y la app creaba una reserva de vuelo
+   con ella. Una tarjeta de embarque NO es un vuelo: es un documento
+   que se desprende de uno. Ahora ese caso devuelve "sin-vuelo" con
+   el caso que corresponde ("sin-vuelos", "un-vuelo", "varios-vuelos"),
+   los candidatos, las salidas posibles y lo que la tarjeta aporta
+   para precargar un vuelo nuevo. El motor decide y devuelve el caso;
+   la app dibuja y pregunta. Acá adentro no hay texto de interfaz.
+
+   El orden no cambia: PRIMERO EL MATCH, SIEMPRE. Después preguntar.
+   Nunca inventar. "mismo" y "ambiguo" funcionan exactamente igual
+   que antes; un pasaje, un voucher y cualquier otra reserva siguen
+   dando "nuevo" y se cargan como hasta hoy.
+
+   Qué cuenta como tarjeta de embarque está en REGLAS_TARJETA, en un
+   solo lugar, y es el mismo criterio que la interfaz usa para poner
+   su chip (docs/design/adjuntar.md §7.6.1).
+
+   VAL-60 · UN LOTE, UNA LLAMADA. El contrato pide, textual: "For a
+   list of items prefer ONE call that returns a JSON array over one
+   call per item". `interpretFiles` agrupa los archivos que se leen
+   como TEXTO y los resuelve en una sola llamada por lote; los que
+   necesitan imágenes siguen sueltos. El progreso por fila —que era
+   la razón válida por la que se llamaba una vez por archivo— se
+   conserva con `opts.onProgress` (ver EVENTOS_PROGRESO).
+
+   Dos cosas que el lote no puede romper, y por eso están escritas:
+     · cada reserva sale atribuida a SU archivo, o no sale. Si la
+       respuesta no permite atribuirla sin adivinar, el motor relee
+       archivo por archivo en vez de mezclar.
+     · un archivo que falla no invalida a los demás (VAL-41): los que
+       fallan antes de la llamada ni entran al lote, y un error del
+       lote que pueda ser del lote cae a llamadas sueltas.
+
+   ============================================================
    PRIMERO TEXTO, IMÁGENES COMO ÚLTIMO RECURSO   (versión 2)
    ============================================================
 
@@ -127,11 +166,17 @@
    RESULTADO DE matchFlightReservation(candidato, existentes)
    ============================================================
 
-   Tres resultados posibles, nunca una decisión adivinada:
+   Cuatro resultados posibles, nunca una decisión adivinada:
 
      { resultado:"nuevo",   candidato, motivo }
      { resultado:"mismo",   candidato, existente, patch, motivo }
      { resultado:"ambiguo", candidato, candidatos:[...], motivo }
+     { resultado:"sin-vuelo", caso, candidato, candidatos:[...],
+       opciones:["asociar","crear"], precarga:{vuelo, desdeLaTarjeta, vacios} }
+
+   El cuarto es de VAL-59 y sólo aparece con tarjetas de embarque:
+   es el "nuevo" de antes, con lo que hace falta para preguntar en
+   vez de crear una reserva suelta.
 
    El criterio es número de vuelo y fecha (brief VAL-42), comparados
    de forma tolerante: "JA 3040" y "3040" son el mismo número si las
@@ -151,10 +196,19 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
 "use strict";
 
-var VERSION = 2;
+var VERSION = 3;
 
 /** Tipos de reserva que la app conoce (mismas claves que TYPES en valija.html). */
 var RESERVATION_TYPES = ["flight", "stay", "car", "transfer", "act", "note"];
+
+/**
+ * QUÉ CLASE DE DOCUMENTO SE LEYÓ (VAL-59). Lo declara el modelo en el campo
+ * `docType`, y es una lista cerrada: cualquier otra cosa que conteste se
+ * descarta y queda "". Un valor vacío NO es un error: es la respuesta
+ * honesta cuando el documento no dice qué es, y el criterio local de
+ * `REGLAS_TARJETA` sigue funcionando sin él (ver `esTarjetaDeEmbarque`).
+ */
+var TIPOS_DOCUMENTO = ["boarding-pass", "ticket", "voucher", "booking", "other"];
 
 /** Campos de texto de una reserva interpretada. Todos son string, "" si no se supo. */
 var STRING_FIELDS = [
@@ -169,6 +223,95 @@ var STRING_FIELDS = [
  * es agregar una entrada acá, no tocar la lógica del patch.
  */
 var CAMPOS_COMPLETABLES = ["gate", "terminal", "seat", "boardingTime"];
+
+/**
+ * Los campos de un vuelo que la interfaz muestra al crear uno nuevo a partir
+ * de una tarjeta de embarque (VAL-59, estado V3 de docs/design/adjuntar.md:
+ * "8 campos · de la tarjeta" / "3 campos · vacíos"). Son once, y el orden es
+ * el del formulario. El motor NO pone las etiquetas: devuelve los nombres de
+ * campo y la app les pone el nombre que usa un viajero.
+ */
+var CAMPOS_VUELO = [
+  "from", "to", "provider", "flightNumber", "start", "end",
+  "seat", "terminal", "gate", "boardingTime", "confirmation"
+];
+
+/**
+ * ¿ESTO ES UNA TARJETA DE EMBARQUE? (VAL-59)
+ *
+ * Declarado como datos y evaluado EN ORDEN: gana la primera regla que
+ * aplica, y cada una deja escrito su motivo. Agregar un criterio es agregar
+ * una entrada.
+ *
+ * Por qué hace falta un criterio explícito: la sección 7.6 de
+ * docs/design/adjuntar.md pide que el dato salga del motor y NO se infiera en
+ * la interfaz, con una advertencia textual — "si la app adivina 'es una
+ * tarjeta porque trae asiento', va a tratar como tarjeta a un pasaje con
+ * asiento asignado". Por eso el asiento solo NUNCA alcanza (regla
+ * `asiento-solo-no-alcanza`), y por eso el criterio vive en un solo lugar:
+ * el mismo `esTarjetaDeEmbarque` que decide el flujo es el que la interfaz
+ * usa para poner su chip.
+ *
+ * Las señales, en orden de fuerza:
+ *
+ *  1. `declarada-por-el-modelo` — el documento dice qué es y el modelo lo
+ *     copió en `docType`. Es la única señal de primera mano; si está, manda.
+ *     También manda en negativo: si el modelo dijo "ticket", no es tarjeta.
+ *  2. `hora-de-embarque` — `boardingTime` es un dato que sólo se imprime en
+ *     una tarjeta de embarque (y el prompt lo dice: "si el documento no es
+ *     una tarjeta de embarque, dejalo vacío").
+ *  3. `puerta-de-embarque` — la puerta se asigna el día del vuelo, no cuando
+ *     se compra el pasaje.
+ *  4. `sin-titulo-ni-proveedor` — el perfil que `sanitizeReservation` ya
+ *     contemplaba: un vuelo sin título ni aerolínea pero con asiento, puerta
+ *     o terminal. Un pasaje siempre nombra a la aerolínea; una tarjeta
+ *     fotografiada o recortada, a veces no.
+ */
+var REGLAS_TARJETA = [
+  {
+    id: "no-es-vuelo",
+    aplica: function (r) { return !r || r.type !== "flight"; },
+    esTarjeta: false,
+    motivo: "No es un vuelo: una tarjeta de embarque siempre lo es."
+  },
+  {
+    id: "declarada-por-el-modelo",
+    aplica: function (r) { return TIPOS_DOCUMENTO.indexOf(r.docType) >= 0; },
+    esTarjeta: function (r) { return r.docType === "boarding-pass"; },
+    certeza: "declarada",
+    motivo: function (r) { return "El documento se identifica como \"" + r.docType + "\"."; }
+  },
+  {
+    id: "hora-de-embarque",
+    aplica: function (r) { return !!norm(r.boardingTime); },
+    esTarjeta: true,
+    certeza: "inferida",
+    motivo: "Trae hora de embarque, un dato que sólo se imprime en una tarjeta de embarque."
+  },
+  {
+    id: "puerta-de-embarque",
+    aplica: function (r) { return !!norm(r.gate); },
+    esTarjeta: true,
+    certeza: "inferida",
+    motivo: "Trae puerta de embarque, que se asigna el día del vuelo y no figura en un pasaje."
+  },
+  {
+    id: "sin-titulo-ni-proveedor",
+    aplica: function (r) {
+      return !norm(r.title) && !norm(r.provider) &&
+        (!!norm(r.seat) || !!norm(r.terminal) || !!norm(r.gate) || !!norm(r.boardingTime));
+    },
+    esTarjeta: true,
+    certeza: "inferida",
+    motivo: "Es un vuelo sin título ni aerolínea, con datos de embarque: el perfil de una tarjeta recortada o borrosa."
+  },
+  {
+    id: "asiento-solo-no-alcanza",
+    aplica: function () { return true; },
+    esTarjeta: false,
+    motivo: "No hay ningún dato de embarque que la distinga de un pasaje: un asiento asignado también lo trae un pasaje."
+  }
+];
 
 /** Versión fija de pdf.js, cargada desde cdnjs por la app (ver nota de integración). */
 var PDFJS_VERSION = "3.11.174";
@@ -223,6 +366,79 @@ var REGLAS_TEXTO_SUFICIENTE = {
  * páginas de voucher: ningún comprobante real se acerca.
  */
 var MAX_CARACTERES_TEXTO = 12000;
+
+/**
+ * UN LOTE, UNA LLAMADA (VAL-60). El contrato lo pide textual: "For a list of
+ * items prefer ONE call that returns a JSON array over one call per item".
+ * Subir cuatro PDFs con texto era hasta acá cuatro llamadas al modelo.
+ *
+ * El tope de 64 KiB del contrato es para TODO el input, así que con un lote
+ * hay que mirar la suma, no cada archivo por separado. Los tres números,
+ * declarados como datos:
+ *
+ *   maxCaracteresPorDocumento — es `MAX_CARACTERES_TEXTO` y no cambia: lo
+ *     que entra de UN comprobante. El recorte de `clipText` sigue pasando
+ *     archivo por archivo, antes de agrupar.
+ *
+ *   maxCaracteres 24000 — la suma de todos los documentos de una misma
+ *     llamada. La cuenta: 64 KiB son 65536 bytes; un texto en español con
+ *     acentos puede pesar hasta ~2 bytes por carácter, así que 24000
+ *     caracteres son como mucho ~48000 bytes, más ~3000 del andamiaje del
+ *     prompt (reglas, formato, encabezado de cada documento): ~51000, con
+ *     margen. Y está muy por encima de cualquier lote real: el voucher de
+ *     micro del PM tiene 625 caracteres, así que entran cuarenta.
+ *
+ *   maxDocumentos 6 — techo por prudencia, no por tamaño: cuanto más largo
+ *     el lote, más caro sale reintentar si la respuesta viene mal. Con seis
+ *     documentos ya se bajó de seis llamadas a una.
+ *
+ * Un documento que solo ya llena el lote viaja solo. El orden de los
+ * archivos nunca se altera.
+ */
+var LIMITES_LOTE = {
+  maxDocumentos: 6,
+  maxCaracteres: 24000,
+  maxCaracteresPorDocumento: MAX_CARACTERES_TEXTO
+};
+
+/**
+ * Los eventos que `interpretFiles` le avisa a la app por `opts.onProgress`,
+ * declarados como datos. Es la forma de conservar el progreso por fila
+ * (VAL-60) ahora que varios archivos comparten una llamada.
+ *
+ *   preparando — empezó a prepararse este archivo (extraer la capa de texto
+ *                de un PDF, ver si la vista acepta imágenes). Es trabajo por
+ *                archivo y sigue siendo por archivo.
+ *   preparado  — ya se sabe cómo se va a leer: `modo`, `paginas`,
+ *                `caracteres`. La fila puede decir "leído del texto del PDF"
+ *                antes de que el modelo conteste.
+ *   leyendo    — salió la llamada que incluye a este archivo. Si va en lote,
+ *                `lote` trae los nombres de todos los archivos de esa misma
+ *                llamada: todas esas filas arrancan juntas.
+ *   terminado  — este archivo tiene su resultado (`fileResult`), haya salido
+ *                bien, vacío o con error.
+ */
+var EVENTOS_PROGRESO = ["preparando", "preparado", "leyendo", "terminado"];
+
+/**
+ * Cuando la llamada de un lote falla, ¿conviene reintentar cada archivo por
+ * separado? Declarado como datos, porque la respuesta depende del código y
+ * no es obvia:
+ *
+ *   true  — el problema puede ser del lote en sí (demasiado largo, respuesta
+ *           cortada a la mitad). Cada archivo solo tiene chance de andar, y
+ *           es la única forma de cumplir la garantía de VAL-41: un archivo
+ *           que falla no invalida a los demás.
+ *   false (o ausente) — el problema es de la vista o de la cuota, y no lo
+ *           arregla repetirlo: reintentar seis veces lo empeora. El error se
+ *           reparte tal cual a todos los archivos del lote.
+ */
+var ERRORES_QUE_SE_REINTENTAN_SUELTOS = {
+  prompt_too_large: true,
+  invalid_json: true,
+  empty_completion: true,
+  desconocido: true
+};
 
 /* ============================================================
    UTILIDADES
@@ -629,8 +845,18 @@ var REGLAS_PROMPT = {
     "Para alojamiento, \"start\" es el check-in y \"end\" el check-out.",
     "Un micro, colectivo, tren, ferry, combi o traslado por tierra es type \"transfer\"; un avión es \"flight\". En un transfer, \"from\" y \"to\" son el lugar de salida y el de llegada tal como están escritos, sin códigos IATA.",
     "\"boardingTime\" es la hora de embarque impresa en una tarjeta de embarque, distinta de la hora de salida. Si el documento no es una tarjeta de embarque, dejalo vacío.",
-    "Si no reconocés ninguna reserva en el documento, devolvé {\"items\":[]}. Es preferible eso a inventar una.",
+    "\"docType\" dice qué clase de documento leíste, y sólo acepta uno de estos cinco valores: \"boarding-pass\" si es una tarjeta de embarque (dice BOARDING PASS o TARJETA DE EMBARQUE, o trae puerta y hora de embarque); \"ticket\" si es un pasaje, e-ticket o billete; \"voucher\" si es un voucher o comprobante de un servicio; \"booking\" si es una reserva de alojamiento o de alquiler; \"other\" para cualquier otra cosa. Si el documento no dice qué es y no estás seguro, dejalo VACÍO: vacío es una respuesta válida y correcta, y es mejor que elegir uno al azar.",
     "Nada de comentarios ni texto fuera del JSON."
+  ],
+  /* Cierre del formato cuando la llamada lleva UN solo documento. */
+  unDocumento: [
+    "Si no reconocés ninguna reserva en el documento, devolvé {\"items\":[]}. Es preferible eso a inventar una."
+  ],
+  /* Cierre del formato cuando la llamada lleva VARIOS documentos (VAL-60). */
+  lote: [
+    "Hay varios documentos numerados. Devolvé UNA entrada por cada uno, con su número en \"documento\", incluso si no encontraste nada en él: en ese caso su \"items\" va vacío.",
+    "Cada reserva va en el documento del que salió. NUNCA mezcles datos de un documento con los de otro, ni repitas en uno lo que leíste en el otro: son comprobantes distintos y sin relación entre sí.",
+    "Un documento ilegible o que no sea una reserva no cancela a los demás: dejá su \"items\" vacío y seguí con el resto."
   ],
   texto: [
     "El texto de arriba es la capa de texto del PDF, tal como está guardada: puede venir con las columnas mezcladas, con espacios de más o con una etiqueta pegada a su valor. Interpretá lo que dice; no completes lo que no está.",
@@ -643,10 +869,8 @@ var REGLAS_PROMPT = {
   ]
 };
 
-/** El JSON que se le pide al modelo. Es el mismo, se lea por texto o por imagen. */
-var FORMATO_JSON_PROMPT = [
-  "Devolvé este JSON exacto:",
-  '{"items":[{',
+/** Los campos de una reserva, tal como se le piden al modelo. */
+var CAMPOS_JSON_PROMPT = [
   '"type":"flight|stay|car|transfer|act|note",',
   '"title":"texto corto y humano, ej: Buenos Aires → Madrid",',
   '"start":"YYYY-MM-DDTHH:mm o vacío",',
@@ -656,9 +880,19 @@ var FORMATO_JSON_PROMPT = [
   '"provider":"aerolínea, hotel, plataforma, empresa de micro o rentadora",',
   '"flightNumber":"","confirmation":"código de reserva","seat":"","terminal":"","gate":"",',
   '"boardingTime":"HH:mm o vacío",',
-  '"address":"","phone":"","cost":"","currency":"","notes":""',
-  "}]}"
+  '"docType":"boarding-pass|ticket|voucher|booking|other, o vacío si el documento no lo dice",',
+  '"address":"","phone":"","cost":"","currency":"","notes":""'
 ];
+
+/** El JSON de una llamada con UN documento. */
+var FORMATO_JSON_PROMPT = ["Devolvé este JSON exacto:", '{"items":[{']
+  .concat(CAMPOS_JSON_PROMPT).concat(["}]}"]);
+
+/** El JSON de una llamada con VARIOS documentos (VAL-60): un arreglo, como pide el contrato. */
+var FORMATO_JSON_LOTE = ["Devolvé este JSON exacto, con una entrada por documento y en el mismo orden:",
+  '{"documentos":[{"documento":1,"items":[{']
+  .concat(CAMPOS_JSON_PROMPT)
+  .concat(["}]},", '{"documento":2,"items":[…]}', "]}"]);
 
 /**
  * Arma el prompt para un archivo, según cómo se lo va a mandar.
@@ -681,15 +915,9 @@ var FORMATO_JSON_PROMPT = [
 function buildImportPrompt(ctx) {
   ctx = ctx || {};
   var modo = ctx.modo === "texto" ? "texto" : "imagenes";
-  var trip = ctx.trip || {};
-  var hoy = ctx.now ? String(ctx.now).slice(0, 10) : new Date().toISOString().slice(0, 10);
   var paginas = ctx.paginas;
   var nombreArchivo = ctx.archivo ? " (\"" + ctx.archivo + "\")" : "";
-
-  var contexto = "El viaje se llama \"" + (trip.name || "") + "\"" +
-    (trip.destination ? ", destino " + trip.destination : "") +
-    (trip.startDate ? ", entre " + trip.startDate + " y " + (trip.endDate || "?") : "") +
-    ". Hoy es " + hoy + ".";
+  var contexto = contextoDelViaje(ctx.trip, ctx.now);
 
   var encabezado, cuerpo;
 
@@ -712,15 +940,80 @@ function buildImportPrompt(ctx) {
       : "La imagen adjunta" + nombreArchivo + " es un comprobante de viaje: tarjeta de embarque, voucher de hotel, contrato de auto, o la captura de un mail de confirmación."];
   }
 
-  var reglas = REGLAS_PROMPT.comunes.concat(REGLAS_PROMPT[modo] || []);
-  var reglasNumeradas = reglas.map(function (r, i) { return (i + 1) + ". " + r; });
+  var reglas = REGLAS_PROMPT.comunes
+    .concat(REGLAS_PROMPT.unDocumento)
+    .concat(REGLAS_PROMPT[modo] || []);
 
   return [encabezado, ""]
     .concat(cuerpo)
     .concat(["", "Contexto: " + contexto, ""])
     .concat(FORMATO_JSON_PROMPT)
     .concat(["", "Reglas que no se rompen:"])
-    .concat(reglasNumeradas)
+    .concat(numerar(reglas))
+    .join("\n");
+}
+
+/** Las reglas del prompt, numeradas. Se usa igual en el prompt de uno y en el de lote. */
+function numerar(reglas) {
+  return reglas.map(function (r, i) { return (i + 1) + ". " + r; });
+}
+
+/** El contexto del viaje, igual para el prompt de uno y para el de lote. */
+function contextoDelViaje(trip, now) {
+  trip = trip || {};
+  var hoy = now ? String(now).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  return "El viaje se llama \"" + (trip.name || "") + "\"" +
+    (trip.destination ? ", destino " + trip.destination : "") +
+    (trip.startDate ? ", entre " + trip.startDate + " y " + (trip.endDate || "?") : "") +
+    ". Hoy es " + hoy + ".";
+}
+
+/**
+ * VAL-60 · El prompt de UNA llamada con VARIOS documentos de texto.
+ *
+ * Cada documento va numerado y delimitado, y el JSON que se pide es un
+ * arreglo con esos mismos números: de ahí sale la atribución de cada reserva
+ * a SU archivo. Si esa atribución no llega, el motor no adivina — reparte los
+ * archivos en llamadas sueltas (ver `interpretarLote`).
+ *
+ * El prompt de un solo documento (`buildImportPrompt`) no cambia, y se sigue
+ * usando cuando el lote tiene un solo archivo: no hay nada que agrupar y no
+ * hay razón para pedirle al modelo un formato más difícil.
+ *
+ * @param {Object} ctx
+ * @param {Array<{archivo:string, texto:string, paginas:number|null}>} ctx.documentos
+ * @param {Object} [ctx.trip] {name, destination, startDate, endDate}
+ * @param {string} [ctx.now]
+ * @returns {string}
+ */
+function buildBatchImportPrompt(ctx) {
+  ctx = ctx || {};
+  var docs = (ctx.documentos || []).filter(Boolean);
+  var total = docs.length;
+
+  var cuerpo = ["Abajo están los textos de " + total + " comprobantes de viaje DISTINTOS, numerados. " +
+    "Cada uno puede ser un pasaje, un voucher, una tarjeta de embarque, una reserva de hotel o un contrato de alquiler, " +
+    "y cada uno puede describir una reserva, varias o ninguna.", ""];
+
+  docs.forEach(function (d, i) {
+    var n = i + 1;
+    cuerpo.push("--- COMIENZA EL DOCUMENTO " + n + " de " + total + " (\"" + d.archivo + "\")" +
+      (d.paginas && d.paginas > 1 ? ", " + d.paginas + " páginas en orden" : "") + " ---");
+    cuerpo.push(String(d.texto == null ? "" : d.texto));
+    cuerpo.push("--- TERMINA EL DOCUMENTO " + n + " ---");
+    cuerpo.push("");
+  });
+
+  var reglas = REGLAS_PROMPT.comunes
+    .concat(REGLAS_PROMPT.lote)
+    .concat(REGLAS_PROMPT.texto);
+
+  return ["Extraés datos de reservas de viaje a partir del TEXTO de varios comprobantes y devolvés SOLO JSON, sin texto alrededor.", ""]
+    .concat(cuerpo)
+    .concat(["Contexto: " + contextoDelViaje(ctx.trip, ctx.now), ""])
+    .concat(FORMATO_JSON_LOTE)
+    .concat(["", "Reglas que no se rompen:"])
+    .concat(numerar(reglas))
     .join("\n");
 }
 
@@ -740,6 +1033,10 @@ function sanitizeReservation(x) {
   STRING_FIELDS.forEach(function (f) {
     out[f] = typeof x[f] === "string" ? x[f].trim() : "";
   });
+  // Qué clase de documento dijo el modelo que era (VAL-59). Lista cerrada:
+  // cualquier otra cosa queda en "", que es un valor legítimo — el criterio
+  // de `esTarjetaDeEmbarque` no depende de que esto venga.
+  out.docType = TIPOS_DOCUMENTO.indexOf(x.docType) >= 0 ? x.docType : "";
   // Sin título ni proveedor no hay nada que mostrarle a la persona para revisar
   // — EXCEPTO una tarjeta de embarque (VAL-42): ahí el título lo termina
   // aportando el vuelo ya cargado que se va a completar, no la tarjeta. El
@@ -766,12 +1063,88 @@ function parseImportResponse(raw) {
     try { data = JSON.parse(data); } catch (e) { return []; }
   }
   if (!data || typeof data !== "object" || !Array.isArray(data.items)) return [];
+  return sanitizeList(data.items);
+}
+
+function sanitizeList(items) {
   var out = [];
-  data.items.forEach(function (x) {
+  (Array.isArray(items) ? items : []).forEach(function (x) {
     var r = sanitizeReservation(x);
     if (r) out.push(r);
   });
   return out;
+}
+
+/**
+ * VAL-60 · La respuesta de una llamada con VARIOS documentos, repartida por
+ * documento. **Nunca adivina a qué archivo pertenece una reserva:** si la
+ * atribución no se puede establecer sin suponer, devuelve `null` y el motor
+ * cae a llamadas sueltas. Una reserva atribuida al archivo equivocado hace
+ * que la pantalla de revisión mienta sobre de dónde salió cada dato, y eso es
+ * peor que gastar una llamada de más.
+ *
+ * Acepta tres formas, en este orden:
+ *   1. `{"documentos":[{"documento":1,"items":[…]}]}` — la que pide el prompt.
+ *   2. `{"items":[{"documento":1, …}]}` — plana, con el número en cada ítem.
+ *   3. `{"documentos":[{"items":[…]}, {"items":[…]}]}` — sin números, PERO
+ *      sólo si hay exactamente una entrada por documento y NINGUNA trae
+ *      número: ahí el orden es la única lectura posible y es la que el prompt
+ *      pidió. Si algunas traen número y otras no, es `null`: mezcla.
+ *
+ * @param {*} raw lo que devolvió `callModel`
+ * @param {number} cantidad cuántos documentos iban en la llamada
+ * @returns {Array<Array<Object>>|null} una lista de reservas por documento, en orden
+ */
+function parseBatchResponse(raw, cantidad) {
+  var data = raw;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch (e) { return null; }
+  }
+  if (!data || typeof data !== "object") return null;
+
+  var porDocumento = [];
+  var i;
+  for (i = 0; i < cantidad; i++) porDocumento.push([]);
+
+  function indiceDe(x) {
+    var n = x && x.documento;
+    if (typeof n === "string" && /^\d+$/.test(n.trim())) n = parseInt(n, 10);
+    if (typeof n !== "number" || !isFinite(n)) return -1;
+    n = Math.round(n) - 1;                       // los documentos se numeran desde 1
+    return (n >= 0 && n < cantidad) ? n : -1;
+  }
+
+  if (Array.isArray(data.documentos)) {
+    var entradas = data.documentos.filter(function (d) { return d && typeof d === "object"; });
+    var conNumero = entradas.filter(function (d) { return indiceDe(d) >= 0; });
+
+    if (conNumero.length === entradas.length && entradas.length) {
+      entradas.forEach(function (d) {
+        porDocumento[indiceDe(d)] = porDocumento[indiceDe(d)].concat(sanitizeList(d.items));
+      });
+      return porDocumento;
+    }
+    // Sin ningún número, y una entrada por documento: el orden que pidió el prompt.
+    if (!conNumero.length && entradas.length === cantidad) {
+      entradas.forEach(function (d, n) { porDocumento[n] = sanitizeList(d.items); });
+      return porDocumento;
+    }
+    return null;                                  // mezcla: no se atribuye adivinando
+  }
+
+  if (Array.isArray(data.items)) {
+    if (cantidad === 1) return [sanitizeList(data.items)];
+    var todos = data.items.filter(function (x) { return x && typeof x === "object"; });
+    if (!todos.length) return porDocumento;       // "no encontré nada", y es una respuesta válida
+    if (!todos.every(function (x) { return indiceDe(x) >= 0; })) return null;
+    todos.forEach(function (x) {
+      var r = sanitizeReservation(x);
+      if (r) porDocumento[indiceDe(x)].push(r);
+    });
+    return porDocumento;
+  }
+
+  return null;
 }
 
 /* ============================================================
@@ -980,38 +1353,218 @@ function interpretFile(file, opts, sesion) {
     });
 }
 
+/* ============================================================
+   UN LOTE, UNA LLAMADA — VAL-60
+   ============================================================ */
+
+/**
+ * Reparte los documentos de texto en lotes que entren en una llamada, sin
+ * alterar el orden de los archivos. Pura y sincrónica: recibe entradas con su
+ * texto ya recortado y devuelve grupos.
+ *
+ * @param {Array<{texto:string}>} entradas
+ * @param {Object} [limites] por defecto `LIMITES_LOTE`
+ * @returns {Array<Array>} los mismos objetos, agrupados
+ */
+function planBatches(entradas, limites) {
+  limites = limites || LIMITES_LOTE;
+  var lotes = [], actual = [], largo = 0;
+  (entradas || []).forEach(function (e) {
+    var n = String((e && e.texto) || "").length;
+    var noEntra = actual.length &&
+      (actual.length >= limites.maxDocumentos || largo + n > limites.maxCaracteres);
+    if (noEntra) { lotes.push(actual); actual = []; largo = 0; }
+    actual.push(e);
+    largo += n;
+  });
+  if (actual.length) lotes.push(actual);
+  return lotes;
+}
+
+/** Avisa el progreso sin poder romper nada: si la app se cae adentro, el motor sigue. */
+function avisar(opts, evento) {
+  if (typeof opts.onProgress !== "function") return;
+  try { opts.onProgress(evento); } catch (e) { /* el progreso es adorno: nunca tumba una importación */ }
+}
+
+/**
+ * Interpreta UN lote de documentos de texto en UNA sola llamada (VAL-60).
+ * Nunca rechaza: devuelve un `fileResult` por entrada, en orden.
+ *
+ * Tres cosas que no se negocian y por eso están acá y no repartidas:
+ *   · cada reserva sale atribuida a SU archivo, o no sale;
+ *   · si la atribución no se puede establecer, se reintenta archivo por
+ *     archivo en vez de adivinar;
+ *   · un error del lote que pueda ser del lote (ver
+ *     ERRORES_QUE_SE_REINTENTAN_SUELTOS) también cae a llamadas sueltas, para
+ *     que un documento roto no se lleve puestos a los demás (VAL-41).
+ */
+function interpretBatch(lote, opts, cuenta) {
+  var nombres = lote.map(function (e) { return e.nombre; });
+  cuenta = cuenta || { llamadas: 0 };
+
+  function extraDe(e) { return { paginas: e.fuente.paginas, modo: e.fuente.modo, caracteres: e.fuente.caracteres }; }
+
+  function sueltos(motivo) {
+    cuenta.llamadas += lote.length;
+    return Promise.all(lote.map(function (e) {
+      avisar(opts, { evento: "leyendo", archivo: e.nombre, modo: e.fuente.modo, lote: null, motivo: motivo });
+      return callModelForSource(e.fuente, e.nombre, opts).then(function (r) {
+        avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+        return r;
+      });
+    }));
+  }
+
+  if (typeof opts.callModel !== "function") {
+    return Promise.all(lote.map(function (e) {
+      var r = fileResult(e.nombre, "error", [], errorInfo("ia-no-disponible", ERRORES_PROPIOS["ia-no-disponible"]), extraDe(e));
+      avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+      return r;
+    }));
+  }
+
+  // Un solo documento no es un lote: va con el prompt de siempre, que es más
+  // simple de contestar y es el que ya está probado de punta a punta.
+  if (lote.length === 1) return sueltos(null);
+
+  var prompt = buildBatchImportPrompt({
+    trip: opts.trip, now: opts.now,
+    documentos: lote.map(function (e) {
+      return { archivo: e.nombre, texto: e.fuente.texto, paginas: e.fuente.paginas };
+    })
+  });
+  var opciones = { modo: "texto", archivo: nombres[0], archivos: nombres.slice(), paginas: null, lote: lote.length };
+
+  lote.forEach(function (e) {
+    avisar(opts, { evento: "leyendo", archivo: e.nombre, modo: "texto", lote: nombres.slice() });
+  });
+  cuenta.llamadas += 1;
+
+  return Promise.resolve()
+    .then(function () { return opts.callModel(prompt, opciones); })
+    .then(function (raw) {
+      var porDocumento = parseBatchResponse(raw, lote.length);
+      if (!porDocumento) return sueltos("la respuesta del lote no dejaba claro de qué documento salía cada reserva");
+      return lote.map(function (e, i) {
+        var reservas = porDocumento[i].map(function (r) { return Object.assign({}, r, { archivo: e.nombre }); });
+        var r = fileResult(e.nombre, reservas.length ? "ok" : "vacio", reservas, null, extraDe(e));
+        avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+        return r;
+      });
+    })
+    .catch(function (err) {
+      var info = friendlyModelError(err);
+      if (ERRORES_QUE_SE_REINTENTAN_SUELTOS[info.codigo]) return sueltos(info.codigo);
+      return lote.map(function (e) {
+        var r = fileResult(e.nombre, "error", [], info, extraDe(e));
+        avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+        return r;
+      });
+    });
+}
+
 /**
  * Interpreta varios archivos a la vez (VAL-41), mezclando fotos y PDFs.
  * La promesa se resuelve siempre: cada archivo lleva su propio resultado.
  * `limits()` se consulta como mucho UNA vez por corrida, y sólo si algún
  * archivo necesita imágenes.
  *
+ * VAL-60 · Los archivos que se leen COMO TEXTO se agrupan y se resuelven en
+ * una sola llamada por lote, como pide el contrato ("For a list of items
+ * prefer ONE call that returns a JSON array over one call per item"). Los que
+ * necesitan imágenes siguen sueltos: sus imágenes se reenvían en cada ronda y
+ * agruparlas sería exactamente lo contrario de ahorrar.
+ *
+ * El progreso por fila se conserva por `opts.onProgress` (ver
+ * EVENTOS_PROGRESO). Es la única función impura del motor y el motivo tiene
+ * nombre: sin ella la persona mira una pantalla quieta mientras se leen
+ * cuatro documentos.
+ *
  * @param {Array<{name:string, blob:Blob, mimeType?:string}>} files
  * @param {Object} opts ver `interpretFile`
+ * @param {Function} [opts.onProgress] (evento) => void; nunca puede romper la corrida
  * @returns {Promise<{archivos:Array, reservas:Array, resumen:Object}>}
  */
 function interpretFiles(files, opts) {
   opts = opts || {};
   var sesion = newSession(opts);
   files = (files || []).filter(Boolean);
-  return Promise.all(files.map(function (f) { return interpretFile(f, opts, sesion); }))
-    .then(function (archivos) {
-      var reservas = [];
-      archivos.forEach(function (a) { reservas = reservas.concat(a.reservas); });
-      function cuantos(campo, valor) {
-        return archivos.filter(function (a) { return a[campo] === valor; }).length;
-      }
-      var resumen = {
-        total: archivos.length,
-        ok: cuantos("estado", "ok"),
-        vacios: cuantos("estado", "vacio"),
-        errores: cuantos("estado", "error"),
-        reservas: reservas.length,
-        porTexto: cuantos("modo", "texto"),
-        porImagenes: cuantos("modo", "imagenes")
-      };
-      return { archivos: archivos, reservas: reservas, resumen: resumen };
+
+  var cuenta = { llamadas: 0 };
+  var lotes = 0;
+
+  // 1. Preparar TODO primero: es trabajo por archivo (extraer la capa de
+  //    texto, mirar si la vista acepta imágenes) y se avisa por archivo.
+  var preparados = files.map(function (f, i) {
+    var nombre = (f && f.name) || "archivo";
+    avisar(opts, { evento: "preparando", archivo: nombre, indice: i, total: files.length });
+    return Promise.resolve().then(function () {
+      return prepareSource(f, opts, sesion);
+    }).then(function (fuente) {
+      avisar(opts, {
+        evento: "preparado", archivo: nombre, indice: i,
+        modo: fuente.modo, paginas: fuente.paginas, caracteres: fuente.caracteres
+      });
+      return { nombre: nombre, indice: i, fuente: fuente, resultado: null };
+    }, function (e) {
+      var info = (e && e.__importError) ? e.info
+        : errorInfo("desconocido", (e && e.message) || "No pude interpretar el archivo.");
+      var r = fileResult(nombre, "error", [], info, null);
+      avisar(opts, { evento: "terminado", archivo: nombre, indice: i, resultado: r });
+      return { nombre: nombre, indice: i, fuente: null, resultado: r };
     });
+  });
+
+  return Promise.all(preparados).then(function (entradas) {
+    var porImagen = entradas.filter(function (e) { return e.fuente && e.fuente.modo === "imagenes"; });
+    var porTexto  = entradas.filter(function (e) { return e.fuente && e.fuente.modo === "texto"; });
+
+    var tareas = [];
+
+    // 2. Las imágenes, una llamada cada una: agruparlas no ahorraría nada.
+    porImagen.forEach(function (e) {
+      if (typeof opts.callModel === "function") cuenta.llamadas++;
+      avisar(opts, { evento: "leyendo", archivo: e.nombre, modo: "imagenes", lote: null });
+      tareas.push(callModelForSource(e.fuente, e.nombre, opts).then(function (r) {
+        e.resultado = r;
+        avisar(opts, { evento: "terminado", archivo: e.nombre, indice: e.indice, resultado: r });
+      }));
+    });
+
+    // 3. Los textos, en lotes.
+    planBatches(porTexto.map(function (e) { return { texto: e.fuente.texto, e: e }; }))
+      .forEach(function (grupo) {
+        var deLote = grupo.map(function (g) { return g.e; });
+        lotes++;
+        tareas.push(interpretBatch(deLote, opts, cuenta).then(function (rs) {
+          rs.forEach(function (r, i) { deLote[i].resultado = r; });
+        }));
+      });
+
+    return Promise.all(tareas).then(function () { return entradas; });
+  }).then(function (entradas) {
+    var archivos = entradas.map(function (e) { return e.resultado; });
+    var reservas = [];
+    archivos.forEach(function (a) { reservas = reservas.concat(a.reservas); });
+    function cuantos(campo, valor) {
+      return archivos.filter(function (a) { return a[campo] === valor; }).length;
+    }
+    var resumen = {
+      total: archivos.length,
+      ok: cuantos("estado", "ok"),
+      vacios: cuantos("estado", "vacio"),
+      errores: cuantos("estado", "error"),
+      reservas: reservas.length,
+      porTexto: cuantos("modo", "texto"),
+      porImagenes: cuantos("modo", "imagenes"),
+      // Cuántas llamadas al modelo salieron y cuántos lotes hubo. Es el número
+      // que VAL-60 viene a bajar: sin él, no hay forma de saber si sirvió.
+      llamadas: cuenta.llamadas,
+      lotes: lotes
+    };
+    return { archivos: archivos, reservas: reservas, resumen: resumen };
+  });
 }
 
 /* ============================================================
@@ -1073,10 +1626,135 @@ function buildFlightPatch(candidato, existente) {
   return patch;
 }
 
+/* ============================================================
+   LA TARJETA DE EMBARQUE SE DESPRENDE DE UN VUELO — VAL-59
+   ============================================================ */
+
+/**
+ * ¿Esta reserva interpretada es una tarjeta de embarque? Recorre
+ * `REGLAS_TARJETA` en orden y devuelve la primera que aplica, con su motivo.
+ * Pura y sincrónica.
+ *
+ * Es el ÚNICO criterio del proyecto: el mismo que decide el flujo de VAL-59
+ * es el que la interfaz usa para poner su chip "Tarjeta de embarque"
+ * (docs/design/adjuntar.md §7.6.1). Si algún día hay que aflojarlo o
+ * apretarlo, se toca la tabla y cambian los dos a la vez.
+ *
+ * @param {Object} reserva
+ * @returns {{esTarjeta:boolean, regla:string, certeza:"declarada"|"inferida"|"descartada", motivo:string}}
+ */
+function clasificarTarjetaDeEmbarque(reserva) {
+  for (var i = 0; i < REGLAS_TARJETA.length; i++) {
+    var regla = REGLAS_TARJETA[i];
+    if (!regla.aplica(reserva)) continue;
+    var es = typeof regla.esTarjeta === "function" ? !!regla.esTarjeta(reserva) : !!regla.esTarjeta;
+    return {
+      esTarjeta: es,
+      regla: regla.id,
+      certeza: es ? (regla.certeza || "inferida") : "descartada",
+      motivo: typeof regla.motivo === "function" ? regla.motivo(reserva) : regla.motivo
+    };
+  }
+  return { esTarjeta: false, regla: "ninguna", certeza: "descartada", motivo: "No hay ninguna regla que la reconozca como tarjeta de embarque." };
+}
+
+/** El sí o no de `clasificarTarjetaDeEmbarque`, para el chip de la interfaz. */
+function esTarjetaDeEmbarque(reserva) {
+  return clasificarTarjetaDeEmbarque(reserva).esTarjeta;
+}
+
+/**
+ * Todos los vuelos del viaje, ordenados por fecha de salida (los que no
+ * tienen fecha van al final, sin alterar su orden entre sí). Son los
+ * candidatos que la interfaz ofrece cuando hay que preguntar contra cuál
+ * asociar una tarjeta — todos, no sólo los del día: si la tarjeta perdió la
+ * fecha, filtrar por fecha esconde justamente el candidato correcto
+ * (docs/design/adjuntar.md, V5).
+ */
+function flightCandidates(existentes) {
+  var vuelos = (existentes || []).filter(function (it) { return it && it.type === "flight"; });
+  return vuelos.map(function (v, i) { return { v: v, i: i }; })
+    .sort(function (a, b) {
+      var da = dateOnly(a.v.start) ? String(a.v.start) : "";
+      var db = dateOnly(b.v.start) ? String(b.v.start) : "";
+      if (da && db && da !== db) return da < db ? -1 : 1;
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      return a.i - b.i;
+    })
+    .map(function (x) { return x.v; });
+}
+
+/**
+ * Lo que la tarjeta aporta para precargar un vuelo nuevo (VAL-59).
+ *
+ * `vuelo` trae todos los campos de una reserva, con lo que la tarjeta traía y
+ * con "" en lo que no traía: **un campo vacío no se rellena adivinando**. No
+ * se compone el título con la ruta, no se deduce la terminal del aeropuerto,
+ * no se calcula la hora de llegada. `desdeLaTarjeta` y `vacios` son los
+ * nombres de campo de cada grupo, en el orden de `CAMPOS_VUELO`, para que la
+ * interfaz pueda decir "8 de 11 campos" sin volver a mirar los datos.
+ *
+ * @param {Object} tarjeta reserva interpretada
+ * @returns {{vuelo:Object, desdeLaTarjeta:Array<string>, vacios:Array<string>, campos:number}}
+ */
+function preloadFlightFromBoardingPass(tarjeta) {
+  tarjeta = tarjeta || {};
+  var vuelo = { type: "flight" };
+  STRING_FIELDS.forEach(function (f) { vuelo[f] = norm(tarjeta[f]); });
+  if (tarjeta.archivo) vuelo.archivo = tarjeta.archivo;
+
+  var desdeLaTarjeta = [], vacios = [];
+  CAMPOS_VUELO.forEach(function (f) { (vuelo[f] ? desdeLaTarjeta : vacios).push(f); });
+
+  return { vuelo: vuelo, desdeLaTarjeta: desdeLaTarjeta, vacios: vacios, campos: CAMPOS_VUELO.length };
+}
+
+/**
+ * El caso de VAL-59: una tarjeta de embarque que no coincidió con ningún
+ * vuelo cargado. El motor decide CUÁL de los tres casos es y devuelve los
+ * datos; la app dibuja. Acá adentro no hay una sola línea de texto de
+ * interfaz.
+ *
+ *   caso "sin-vuelos"    — el viaje no tiene ningún vuelo: no hay con qué
+ *                          matchear. Única salida: crear uno, precargado.
+ *   caso "un-vuelo"      — hay uno y no coincide. DOS salidas, y ninguna es
+ *                          la correcta: que el número no coincida puede ser
+ *                          un número mal leído o una reserva cargada a mano
+ *                          sin número. Por eso `opciones` las lista a las dos
+ *                          y el motor no marca ninguna preferida.
+ *   caso "varios-vuelos" — hay varios y ninguno coincide: van todos como
+ *                          candidatos, más la salida de crear uno nuevo.
+ */
+function resultadoSinVuelo(candidato, existentes, motivoDelMatch, clasificacion) {
+  var candidatos = flightCandidates(existentes);
+  var caso = !candidatos.length ? "sin-vuelos" : (candidatos.length === 1 ? "un-vuelo" : "varios-vuelos");
+  return {
+    resultado: "sin-vuelo",
+    caso: caso,
+    motivo: motivoDelMatch,
+    porQueEsTarjeta: clasificacion.motivo,
+    certeza: clasificacion.certeza,
+    candidato: candidato,
+    esTarjeta: true,
+    candidatos: candidatos,
+    opciones: candidatos.length ? ["asociar", "crear"] : ["crear"],
+    precarga: preloadFlightFromBoardingPass(candidato)
+  };
+}
+
 /**
  * VAL-42. Decide si una reserva de vuelo interpretada es nueva, es un
  * vuelo ya cargado (y con qué se completa), o hay más de un candidato
  * y hace falta preguntar. El criterio es número de vuelo y fecha.
+ *
+ * VAL-59 agrega un cuarto resultado, y sólo para tarjetas de embarque:
+ * donde antes decía "nuevo" —o sea, "creá una reserva de vuelo con esto"—
+ * ahora dice "sin-vuelo", porque **una tarjeta de embarque no es un vuelo:
+ * es un documento que se desprende de uno**. Un pasaje, un voucher o
+ * cualquier otra reserva de vuelo siguen dando "nuevo" y se cargan como
+ * hasta hoy; el orden tampoco cambia: primero el match, siempre, y recién
+ * después la pregunta.
  *
  * Ante la duda, nunca decide. Eso incluye el caso en que la tarjeta no
  * trae número de vuelo: sin número no hay certeza, así que si la fecha
@@ -1090,25 +1768,32 @@ function buildFlightPatch(candidato, existente) {
  *
  * @param {Object} candidato    reserva interpretada (de `interpretFiles`)
  * @param {Array}  existentes   reservas que el viaje ya tiene
- * @returns {{resultado:"nuevo"|"mismo"|"ambiguo", motivo:string, candidato:Object,
- *            existente?:Object, patch?:Object, candidatos?:Array}}
+ * @returns {{resultado:"nuevo"|"mismo"|"ambiguo"|"sin-vuelo", motivo:string, candidato:Object,
+ *            existente?:Object, patch?:Object, candidatos?:Array,
+ *            caso?:"sin-vuelos"|"un-vuelo"|"varios-vuelos", opciones?:Array, precarga?:Object}}
  */
 function matchFlightReservation(candidato, existentes) {
   existentes = (existentes || []).filter(Boolean);
 
+  /* El único punto por donde se sale sin match. Una tarjeta de embarque no se
+     convierte en reserva de vuelo (VAL-59): se devuelve el caso y la app
+     pregunta. Cualquier otra reserva de vuelo sigue siendo "nuevo", igual que
+     antes. */
+  function sinMatch(motivo) {
+    var clase = clasificarTarjetaDeEmbarque(candidato);
+    if (clase.esTarjeta) return resultadoSinVuelo(candidato, existentes, motivo, clase);
+    return { resultado: "nuevo", motivo: motivo, candidato: candidato, esTarjeta: false };
+  }
+
   if (!candidato || candidato.type !== "flight") {
-    return { resultado: "nuevo", motivo: "No es un vuelo.", candidato: candidato };
+    return { resultado: "nuevo", motivo: "No es un vuelo.", candidato: candidato, esTarjeta: false };
   }
 
   var numero = candidato.flightNumber;
   var fecha = dateOnly(candidato.start);
 
   if (!fecha) {
-    return {
-      resultado: "nuevo",
-      motivo: "No se pudo determinar la fecha del vuelo: no hay con qué comparar, se carga como reserva nueva.",
-      candidato: candidato
-    };
+    return sinMatch("No se pudo determinar la fecha del vuelo: no hay con qué comparar.");
   }
 
   var vuelosEseDia = existentes.filter(function (it) {
@@ -1117,11 +1802,7 @@ function matchFlightReservation(candidato, existentes) {
 
   if (!numero) {
     if (!vuelosEseDia.length) {
-      return {
-        resultado: "nuevo",
-        motivo: "La tarjeta no trae número de vuelo, pero no hay ningún vuelo cargado ese día: se carga como reserva nueva.",
-        candidato: candidato
-      };
+      return sinMatch("La tarjeta no trae número de vuelo, y no hay ningún vuelo cargado ese día.");
     }
     return {
       resultado: "ambiguo",
@@ -1129,6 +1810,7 @@ function matchFlightReservation(candidato, existentes) {
         (vuelosEseDia.length === 1 ? " vuelo cargado" : " vuelos cargados") +
         " ese mismo día: sin número no hay forma de distinguir sin adivinar.",
       candidato: candidato,
+      esTarjeta: esTarjetaDeEmbarque(candidato),
       candidatos: vuelosEseDia
     };
   }
@@ -1136,7 +1818,7 @@ function matchFlightReservation(candidato, existentes) {
   var candidatos = vuelosEseDia.filter(function (it) { return sameFlightNumber(it.flightNumber, numero); });
 
   if (!candidatos.length) {
-    return { resultado: "nuevo", motivo: "Ningún vuelo cargado coincide en número y fecha.", candidato: candidato };
+    return sinMatch("Ningún vuelo cargado coincide en número (" + numero + ") y fecha (" + fecha + ").");
   }
 
   if (candidatos.length > 1) {
@@ -1144,6 +1826,7 @@ function matchFlightReservation(candidato, existentes) {
       resultado: "ambiguo",
       motivo: "Hay " + candidatos.length + " vuelos cargados con el mismo número y la misma fecha.",
       candidato: candidato,
+      esTarjeta: esTarjetaDeEmbarque(candidato),
       candidatos: candidatos
     };
   }
@@ -1154,6 +1837,7 @@ function matchFlightReservation(candidato, existentes) {
     motivo: "Mismo número de vuelo (" + numero + ") y misma fecha (" + fecha + ").",
     candidato: candidato,
     existente: existente,
+    esTarjeta: esTarjetaDeEmbarque(candidato),
     patch: buildFlightPatch(candidato, existente)
   };
 }
@@ -1169,7 +1853,7 @@ function matchFlightReservation(candidato, existentes) {
  */
 function matchAgainstExisting(reserva, existentes) {
   if (reserva && reserva.type === "flight") return matchFlightReservation(reserva, existentes);
-  return { resultado: "nuevo", motivo: "No es un vuelo: se carga como reserva nueva.", candidato: reserva };
+  return { resultado: "nuevo", motivo: "No es un vuelo: se carga como reserva nueva.", candidato: reserva, esTarjeta: false };
 }
 
 /* ============================================================
@@ -1179,11 +1863,17 @@ return {
   VERSION: VERSION,
   RESERVATION_TYPES: RESERVATION_TYPES,
   STRING_FIELDS: STRING_FIELDS,
+  TIPOS_DOCUMENTO: TIPOS_DOCUMENTO,
   CAMPOS_COMPLETABLES: CAMPOS_COMPLETABLES,
+  CAMPOS_VUELO: CAMPOS_VUELO,
+  REGLAS_TARJETA: REGLAS_TARJETA,
   PDFJS_VERSION: PDFJS_VERSION,
   PDFJS_CDN_BASE: PDFJS_CDN_BASE,
   REGLAS_TEXTO_SUFICIENTE: REGLAS_TEXTO_SUFICIENTE,
   MAX_CARACTERES_TEXTO: MAX_CARACTERES_TEXTO,
+  LIMITES_LOTE: LIMITES_LOTE,
+  EVENTOS_PROGRESO: EVENTOS_PROGRESO,
+  ERRORES_QUE_SE_REINTENTAN_SUELTOS: ERRORES_QUE_SE_REINTENTAN_SUELTOS,
   ERRORES_PROPIOS: ERRORES_PROPIOS,
   MODEL_ERROR_MESSAGES: MODEL_ERROR_MESSAGES,
   MENSAJE_SIN_IMAGENES: MENSAJE_SIN_IMAGENES,
@@ -1213,10 +1903,21 @@ return {
   interpretFile: interpretFile,
   interpretFiles: interpretFiles,
 
+  // VAL-60: un lote, una llamada
+  buildBatchImportPrompt: buildBatchImportPrompt,
+  parseBatchResponse: parseBatchResponse,
+  planBatches: planBatches,
+
   // VAL-42: reconocer un vuelo ya cargado
   matchFlightReservation: matchFlightReservation,
   matchAgainstExisting: matchAgainstExisting,
   buildFlightPatch: buildFlightPatch,
+
+  // VAL-59: la tarjeta de embarque se desprende de un vuelo
+  esTarjetaDeEmbarque: esTarjetaDeEmbarque,
+  clasificarTarjetaDeEmbarque: clasificarTarjetaDeEmbarque,
+  preloadFlightFromBoardingPass: preloadFlightFromBoardingPass,
+  flightCandidates: flightCandidates,
   normalizeFlightNumber: normalizeFlightNumber,
   sameFlightNumber: sameFlightNumber,
   sameFlightDate: sameFlightDate,
@@ -1237,14 +1938,29 @@ return {
       `caps.nota`. Nunca rechaza; sin `sample`, no se ofrece importar.
 
    2. Al importar, se le pasan las cuatro funciones inyectadas — el motor
-      no llama a `claude.use` ni importa pdf.js:
+      no llama a `claude.use` ni importa pdf.js — y, desde la versión 3,
+      `onProgress`, que es lo que mantiene vivas las filas de la cola:
         ImportEngine.interpretFiles(files, {
           callModel: (prompt, o) => sample.json(prompt, o.images ? { images: o.images } : {}),
           limits: () => sample.limits(),   // envuelta, no suelta: se llama como método
           extractPdfText: (b) => ImportEngine.extractPdfText(b),
           renderPdfToImages: (b) => ImportEngine.renderPdfPagesToImages(b),
+          onProgress: (e) => pintarFila(e),   // preparando | preparado | leyendo | terminado
           trip
         });
+      IMPORTANTE para VAL-60: hay que llamar a `interpretFiles` con TODOS
+      los archivos juntos. `interpretFile` sigue existiendo y sigue siendo
+      una llamada por archivo: llamarla en un bucle, como hace hoy
+      `runInterpretation`, es exactamente lo que VAL-60 viene a sacar.
+
+   4. Antes de guardar una reserva de tipo "flight", `matchAgainstExisting`
+      puede devolver "sin-vuelo" (VAL-59). Ahí NO se guarda nada todavía:
+      se pregunta, según `caso` — "sin-vuelos" (V2 del diseño), "un-vuelo"
+      (V4) o "varios-vuelos" (V5) — y recién con la respuesta de la persona
+      se crea el vuelo con `precarga.vuelo` o se completa el elegido con
+      `ImportEngine.buildFlightPatch(tarjeta, vuelo)`. El chip "Tarjeta de
+      embarque" sale de `ImportEngine.esTarjetaDeEmbarque(reserva)`, que es
+      el mismo criterio que decidió el flujo.
 
    3. pdf.js sigue cargándose desde cdnjs con la versión fija de
       `PDFJS_VERSION`, ahora para las DOS cosas: `getTextContent()` (el

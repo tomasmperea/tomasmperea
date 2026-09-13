@@ -899,6 +899,455 @@ await test("sin limits inyectado, todo sigue funcionando como antes del cambio (
   eq(r.modo, "imagenes");
 });
 
+/* ============================================================
+   VAL-59 · LA TARJETA DE EMBARQUE SE DESPRENDE DE UN VUELO
+   ============================================================ */
+
+/** Una tarjeta de embarque interpretada: vuelo con datos de embarque. */
+function tarjeta(over) {
+  return Object.assign(reservaVuelo({
+    title: "", provider: "", confirmation: "", terminal: "", end: "",
+    seat: "14A", gate: "22", boardingTime: "21:10"
+  }), over || {});
+}
+
+group("VAL-59 · esTarjetaDeEmbarque — el criterio, en un solo lugar");
+
+await test("lo que el modelo declara como tarjeta de embarque, es una tarjeta de embarque", function () {
+  var c = E.clasificarTarjetaDeEmbarque(reservaVuelo({ docType: "boarding-pass" }));
+  assert(c.esTarjeta, "docType declarado manda");
+  eq(c.certeza, "declarada");
+  eq(c.regla, "declarada-por-el-modelo");
+});
+
+await test("un pasaje con asiento asignado NO es una tarjeta de embarque", function () {
+  // La advertencia textual de docs/design/adjuntar.md §7.6.1: "si la app adivina
+  // 'es una tarjeta porque trae asiento', va a tratar como tarjeta a un pasaje
+  // con asiento asignado". El asiento solo nunca alcanza.
+  var pasaje = reservaVuelo({ seat: "14A" });
+  assert(!E.esTarjetaDeEmbarque(pasaje), "un pasaje con asiento sigue siendo un pasaje");
+  eq(E.clasificarTarjetaDeEmbarque(pasaje).regla, "asiento-solo-no-alcanza");
+});
+
+await test("la hora de embarque sí alcanza, y la puerta también", function () {
+  assert(E.esTarjetaDeEmbarque(reservaVuelo({ boardingTime: "21:10" })));
+  eq(E.clasificarTarjetaDeEmbarque(reservaVuelo({ boardingTime: "21:10" })).regla, "hora-de-embarque");
+  assert(E.esTarjetaDeEmbarque(reservaVuelo({ gate: "22" })));
+  eq(E.clasificarTarjetaDeEmbarque(reservaVuelo({ gate: "22" })).regla, "puerta-de-embarque");
+});
+
+await test("un vuelo sin título ni aerolínea pero con asiento: el perfil que ya contemplaba sanitizeReservation", function () {
+  var recortada = reservaVuelo({ title: "", provider: "", seat: "14A" });
+  assert(E.esTarjetaDeEmbarque(recortada));
+  eq(E.clasificarTarjetaDeEmbarque(recortada).regla, "sin-titulo-ni-proveedor");
+});
+
+await test("si el modelo dijo que es un pasaje, una puerta suelta no lo convierte en tarjeta", function () {
+  var c = E.clasificarTarjetaDeEmbarque(reservaVuelo({ docType: "ticket", gate: "22" }));
+  assert(!c.esTarjeta, "lo que el documento dice de sí mismo es de primera mano y gana");
+  eq(c.certeza, "descartada");
+});
+
+await test("lo que no es un vuelo nunca es una tarjeta de embarque", function () {
+  assert(!E.esTarjetaDeEmbarque({ type: "stay", title: "Hotel", gate: "22" }));
+});
+
+await test("el modelo tiene que poder contestar vacío: un docType inventado se descarta", function () {
+  var r = E.parseImportResponse({ items: [{ type: "flight", title: "Vuelo", provider: "AR", docType: "tarjetita" }] });
+  eq(r[0].docType, "", "una clase que no está en la lista vale lo mismo que no haber contestado");
+  var r2 = E.parseImportResponse({ items: [{ type: "flight", title: "Vuelo", provider: "AR" }] });
+  eq(r2[0].docType, "", "si el modelo no contesta el campo, queda vacío y no se infiere en el sanitizador");
+});
+
+await test("el prompt le pide al modelo dejar docType vacío antes que elegir uno al azar", function () {
+  var p = E.buildImportPrompt({ trip: {} });
+  assert(p.indexOf("docType") >= 0, "el campo tiene que estar en el formato pedido");
+  assert(/dejalo VACÍO/.test(p), "y con la instrucción explícita de dejarlo vacío");
+});
+
+group("VAL-59 · los tres casos de una tarjeta que no coincide con ningún vuelo");
+
+await test("sin ningún vuelo cargado: no se inventa una reserva, se devuelve qué precargar", function () {
+  var r = E.matchAgainstExisting(tarjeta(), []);
+  eq(r.resultado, "sin-vuelo", "una tarjeta de embarque no es un vuelo: no se carga como reserva nueva");
+  eq(r.caso, "sin-vuelos");
+  eq(r.candidatos.length, 0, "no hay con qué matchear");
+  eq(r.opciones.join(","), "crear", "la única salida es crear el vuelo, y la pide la persona");
+  eq(r.esTarjeta, true);
+  eq(r.precarga.vuelo.flightNumber, "AR1140");
+  eq(r.precarga.vuelo.seat, "14A");
+  eq(r.precarga.vuelo.gate, "22");
+  eq(r.precarga.vuelo.boardingTime, "21:10");
+  eq(r.precarga.vuelo.from, "EZE");
+  eq(r.precarga.vuelo.to, "MAD");
+  eq(r.precarga.vuelo.start, "2026-03-10T22:40");
+});
+
+await test("lo que la tarjeta no trae queda vacío, y se dice cuántos campos son", function () {
+  var r = E.matchAgainstExisting(tarjeta(), []);
+  eq(r.precarga.campos, 11, "los once campos del vuelo, como los cuenta el diseño (V3)");
+  eq(r.precarga.desdeLaTarjeta.length + r.precarga.vacios.length, 11);
+  assert(r.precarga.vacios.indexOf("terminal") >= 0, "la terminal no se deduce del aeropuerto");
+  assert(r.precarga.vacios.indexOf("end") >= 0, "la hora de llegada no se calcula");
+  assert(r.precarga.vacios.indexOf("confirmation") >= 0, "el código de reserva no se inventa");
+  eq(r.precarga.vuelo.terminal, "");
+  eq(r.precarga.vuelo.end, "");
+  eq(r.precarga.vuelo.confirmation, "");
+});
+
+await test("con un vuelo que no coincide: las dos salidas, y ninguna marcada como la correcta", function () {
+  var otro = existente({ id: "it-7", flightNumber: "AR1143", start: "2026-03-10T22:40" });
+  var r = E.matchAgainstExisting(tarjeta(), [otro]);
+  eq(r.resultado, "sin-vuelo");
+  eq(r.caso, "un-vuelo");
+  eq(r.candidatos.length, 1);
+  eq(r.candidatos[0].id, "it-7");
+  eq(r.opciones.join(","), "asociar,crear", "asociarla a ese vuelo, o crear uno nuevo");
+  assert(!("preferida" in r) && !("sugerida" in r) && !r.existente,
+    "el motor no elige: un número que no coincide puede ser un número mal leído");
+  assert(!r.patch, "sin match no hay patch que aplicar");
+});
+
+await test("con varios vuelos y ninguno que coincida: vienen todos, ordenados por salida, con lo que los distingue", function () {
+  var v1 = existente({ id: "it-a", flightNumber: "AR9", start: "2026-03-18T06:00", from: "MAD", to: "BCN" });
+  var v2 = existente({ id: "it-b", flightNumber: "AR8", start: "2026-03-10T22:40", from: "EZE", to: "MAD" });
+  var v3 = existente({ id: "it-c", flightNumber: "", start: "", from: "BCN", to: "EZE" });
+  var hotel = { id: "it-h", type: "stay", title: "Hotel", start: "2026-03-11T14:00" };
+  var r = E.matchAgainstExisting(tarjeta(), [v1, v2, v3, hotel]);
+  eq(r.resultado, "sin-vuelo");
+  eq(r.caso, "varios-vuelos");
+  eq(r.candidatos.length, 3, "todos los vuelos del viaje, no sólo los del día de la tarjeta");
+  eq(r.candidatos.map(function (c) { return c.id; }).join(","), "it-b,it-a,it-c",
+    "ordenados por fecha de salida; el que no tiene fecha va al final");
+  assert(r.candidatos.every(function (c) { return "id" in c && "from" in c && "to" in c && "start" in c; }),
+    "ruta y fecha, que es lo que los distingue en la pantalla (V5)");
+  eq(r.opciones.join(","), "asociar,crear");
+});
+
+await test("una tarjeta sin fecha legible tampoco se convierte en un vuelo", function () {
+  var r = E.matchAgainstExisting(tarjeta({ start: "" }), []);
+  eq(r.resultado, "sin-vuelo", "sin fecha no hay con qué comparar, pero sigue sin ser un vuelo");
+  eq(r.caso, "sin-vuelos");
+});
+
+await test("primero el match, siempre: si coincide, no pregunta nada", function () {
+  var ya = existente({ id: "it-1", seat: "", gate: "", boardingTime: "" });
+  var r = E.matchAgainstExisting(tarjeta(), [ya]);
+  eq(r.resultado, "mismo", "el caso frecuente tiene que seguir siendo invisible");
+  eq(r.esTarjeta, true, "y la interfaz sigue pudiendo poner el chip");
+  eq(r.patch.seat, "14A");
+  eq(r.patch.gate, "22");
+  eq(r.patch.boardingTime, "21:10");
+  assert(r.motivo.indexOf("AR1140") >= 0, "deja registro de por qué coincidió");
+});
+
+await test("no todo vuelo es una tarjeta: un pasaje sin vuelos cargados sigue creando su reserva", function () {
+  var r = E.matchAgainstExisting(reservaVuelo(), []);
+  eq(r.resultado, "nuevo", "esto no se toca: es el camino de siempre de un pasaje");
+  eq(r.esTarjeta, false);
+  assert(!r.precarga, "un pasaje no necesita que le pregunten nada");
+});
+
+await test("un voucher de micro con asiento sigue siendo una reserva nueva", function () {
+  var r = E.matchAgainstExisting({ type: "transfer", title: "Lobos Bus", provider: "Lobos", seat: "12" }, []);
+  eq(r.resultado, "nuevo");
+  eq(r.esTarjeta, false);
+});
+
+/* ============================================================
+   VAL-60 · UN LOTE, UNA LLAMADA
+   ============================================================ */
+
+/** Un texto de comprobante que pasa el umbral de "texto suficiente" (120 car., 15 palabras, 4 dígitos). */
+function textoDe(codigo, ciudad) {
+  return "COMPROBANTE DE RESERVA " + codigo + "\nPasajero: Clara Sanchez\nSalida: 2026-03-10 19:01 desde " +
+    ciudad + "\nLlegada: 2026-03-10 20:31\nAsiento 14 · Documento 30123456 · Emitido el 2026-02-01";
+}
+
+/** extractPdfText falso que devuelve el texto que le corresponde a cada archivo. */
+function extractorPorArchivo(mapa) {
+  return async function (blob, info) {
+    var nombre = (info && info.name) || "";
+    if (!(nombre in mapa)) return { texto: "", paginas: 1 };
+    return { texto: mapa[nombre], paginas: 1 };
+  };
+}
+
+/** Espía de callModel: guarda cada prompt y cada opciones, y contesta lo que le digan. */
+function espiaCallModel(responder) {
+  var espia = { llamadas: 0, prompts: [], opciones: [] };
+  espia.fn = async function (prompt, o) {
+    espia.llamadas++;
+    espia.prompts.push(prompt);
+    espia.opciones.push(o);
+    return responder(prompt, o, espia.llamadas);
+  };
+  return espia;
+}
+
+function tresPdfsDeTexto() {
+  return [filePdf("uno.pdf"), filePdf("dos.pdf"), filePdf("tres.pdf")];
+}
+function textosDeLosTres() {
+  return extractorPorArchivo({
+    "uno.pdf": textoDe("AAA111", "Lobos"),
+    "dos.pdf": textoDe("BBB222", "Chascomus"),
+    "tres.pdf": textoDe("CCC333", "Dolores")
+  });
+}
+/** La respuesta que pide el prompt de lote: un arreglo con el número de documento. */
+function respuestaDeLote() {
+  return {
+    documentos: [
+      { documento: 1, items: [{ type: "transfer", title: "Micro a Lobos", provider: "Lobos Bus", confirmation: "AAA111" }] },
+      { documento: 2, items: [{ type: "transfer", title: "Micro a Chascomús", provider: "Lobos Bus", confirmation: "BBB222" }] },
+      { documento: 3, items: [{ type: "transfer", title: "Micro a Dolores", provider: "Lobos Bus", confirmation: "CCC333" }] }
+    ]
+  };
+}
+
+group("VAL-60 · un lote de textos se resuelve en UNA llamada");
+
+await test("tres PDFs con texto: UNA sola llamada al modelo, no tres", async function () {
+  var espia = espiaCallModel(function () { return respuestaDeLote(); });
+  var res = await E.interpretFiles(tresPdfsDeTexto(), {
+    callModel: espia.fn,
+    extractPdfText: textosDeLosTres()
+  });
+  eq(espia.llamadas, 1, "es lo que pide el contrato: ONE call that returns a JSON array");
+  eq(res.resumen.llamadas, 1);
+  eq(res.resumen.lotes, 1);
+  eq(res.resumen.ok, 3);
+  eq(res.reservas.length, 3);
+});
+
+await test("cada reserva del lote queda atribuida a SU archivo", async function () {
+  var espia = espiaCallModel(function () { return respuestaDeLote(); });
+  var res = await E.interpretFiles(tresPdfsDeTexto(), {
+    callModel: espia.fn,
+    extractPdfText: textosDeLosTres()
+  });
+  var porArchivo = {};
+  res.reservas.forEach(function (r) { porArchivo[r.archivo] = r.confirmation; });
+  eq(porArchivo["uno.pdf"], "AAA111");
+  eq(porArchivo["dos.pdf"], "BBB222");
+  eq(porArchivo["tres.pdf"], "CCC333");
+  res.archivos.forEach(function (a) {
+    assert(a.reservas.every(function (r) { return r.archivo === a.archivo; }),
+      "si se mezclan, la pantalla de revisión miente sobre de dónde salió cada dato");
+  });
+});
+
+await test("el prompt del lote lleva los tres textos, numerados, y pide un arreglo por documento", async function () {
+  var espia = espiaCallModel(function () { return respuestaDeLote(); });
+  await E.interpretFiles(tresPdfsDeTexto(), { callModel: espia.fn, extractPdfText: textosDeLosTres() });
+  var p = espia.prompts[0];
+  assert(p.indexOf("AAA111") >= 0 && p.indexOf("BBB222") >= 0 && p.indexOf("CCC333") >= 0,
+    "los tres documentos tienen que viajar enteros");
+  assert(p.indexOf("DOCUMENTO 1 de 3") >= 0 && p.indexOf("DOCUMENTO 3 de 3") >= 0, "numerados y delimitados");
+  assert(p.indexOf('"documentos"') >= 0, "el formato pedido es un arreglo con el número de documento");
+  assert(/NUNCA inventes/.test(p), "y la regla de no inventar sigue estando");
+  assert(!("images" in espia.opciones[0]), "el camino de texto nunca manda la clave images");
+  eq(espia.opciones[0].modo, "texto");
+  eq(espia.opciones[0].archivos.join(","), "uno.pdf,dos.pdf,tres.pdf");
+});
+
+await test("el progreso sigue siendo por fila: cada archivo avisa que se prepara, que se lee y que terminó", async function () {
+  var eventos = [];
+  var espia = espiaCallModel(function () { return respuestaDeLote(); });
+  await E.interpretFiles(tresPdfsDeTexto(), {
+    callModel: espia.fn,
+    extractPdfText: textosDeLosTres(),
+    onProgress: function (e) { eventos.push(e); }
+  });
+  ["uno.pdf", "dos.pdf", "tres.pdf"].forEach(function (nombre) {
+    var suyos = eventos.filter(function (e) { return e.archivo === nombre; }).map(function (e) { return e.evento; });
+    eq(suyos.join(","), "preparando,preparado,leyendo,terminado", "la fila de " + nombre + " recorre sus cuatro estados");
+  });
+  var preparado = eventos.find(function (e) { return e.evento === "preparado" && e.archivo === "dos.pdf"; });
+  eq(preparado.modo, "texto", "antes de llamar al modelo ya se sabe que se leyó del texto del PDF");
+  assert(preparado.caracteres > 0);
+  var leyendo = eventos.find(function (e) { return e.evento === "leyendo" && e.archivo === "dos.pdf"; });
+  eq(leyendo.lote.join(","), "uno.pdf,dos.pdf,tres.pdf", "la fila sabe con quién comparte la llamada");
+  var terminado = eventos.find(function (e) { return e.evento === "terminado" && e.archivo === "tres.pdf"; });
+  eq(terminado.resultado.reservas[0].confirmation, "CCC333");
+});
+
+await test("un onProgress que se rompe no tumba la importación", async function () {
+  var espia = espiaCallModel(function () { return respuestaDeLote(); });
+  var res = await E.interpretFiles(tresPdfsDeTexto(), {
+    callModel: espia.fn,
+    extractPdfText: textosDeLosTres(),
+    onProgress: function () { throw new Error("la pantalla se cayó"); }
+  });
+  eq(res.resumen.ok, 3, "el progreso es adorno: nunca decide si se importa o no");
+});
+
+await test("un archivo roto en el lote no tumba a los otros dos", async function () {
+  var espia = espiaCallModel(function () {
+    return {
+      documentos: [
+        { documento: 1, items: [{ type: "transfer", title: "Micro a Lobos", provider: "Lobos Bus", confirmation: "AAA111" }] },
+        { documento: 2, items: [{ type: "transfer", title: "Micro a Dolores", provider: "Lobos Bus", confirmation: "CCC333" }] }
+      ]
+    };
+  });
+  var res = await E.interpretFiles(
+    [filePdf("uno.pdf"), { name: "roto.zip", mimeType: "application/zip", blob: blob("z") }, filePdf("tres.pdf")],
+    {
+      callModel: espia.fn,
+      extractPdfText: extractorPorArchivo({ "uno.pdf": textoDe("AAA111", "Lobos"), "tres.pdf": textoDe("CCC333", "Dolores") })
+    }
+  );
+  eq(res.archivos.length, 3, "los tres aparecen en el resultado");
+  eq(res.resumen.errores, 1);
+  eq(res.resumen.ok, 2);
+  var roto = res.archivos.find(function (a) { return a.archivo === "roto.zip"; });
+  eq(roto.error.codigo, "tipo-no-soportado");
+  eq(espia.llamadas, 1, "el que no se podía leer ni siquiera entró en la llamada");
+  eq(res.reservas.length, 2);
+  eq(res.archivos[0].reservas[0].confirmation, "AAA111");
+  eq(res.archivos[2].reservas[0].confirmation, "CCC333");
+});
+
+await test("una foto en la misma carga sigue yendo sola: agrupar imágenes no ahorra nada", async function () {
+  var espia = espiaCallModel(function (prompt, o) {
+    if (o.images) return { items: [{ type: "stay", title: "Hotel", provider: "Booking" }] };
+    return {
+      documentos: [
+        { documento: 1, items: [{ type: "transfer", title: "Micro a Lobos", provider: "Lobos Bus", confirmation: "AAA111" }] },
+        { documento: 2, items: [{ type: "transfer", title: "Micro a Chascomus", provider: "Lobos Bus", confirmation: "BBB222" }] }
+      ]
+    };
+  });
+  var res = await E.interpretFiles(
+    [filePdf("uno.pdf"), filePdf("dos.pdf"), fileImg("foto.jpg")],
+    { callModel: espia.fn, extractPdfText: textosDeLosTres() }
+  );
+  eq(espia.llamadas, 2, "una llamada para los dos textos, una para la foto");
+  eq(res.resumen.lotes, 1);
+  eq(res.resumen.porTexto, 2);
+  eq(res.resumen.porImagenes, 1);
+  eq(res.archivos.find(function (a) { return a.archivo === "foto.jpg"; }).reservas[0].title, "Hotel");
+});
+
+await test("un solo archivo de texto usa el prompt de siempre, no el de lote", async function () {
+  var espia = espiaCallModel(function () { return { items: [{ type: "transfer", title: "Micro", provider: "Lobos Bus" }] }; });
+  var res = await E.interpretFiles([filePdf("uno.pdf")], {
+    callModel: espia.fn,
+    extractPdfText: extractorPorArchivo({ "uno.pdf": textoDe("AAA111", "Lobos") })
+  });
+  eq(espia.llamadas, 1);
+  assert(espia.prompts[0].indexOf("COMIENZA EL COMPROBANTE") >= 0, "con uno solo no hay nada que agrupar");
+  eq(res.resumen.ok, 1);
+});
+
+group("VAL-60 · cuando el lote no sale bien, nadie queda mal atribuido");
+
+await test("si la respuesta no dice de qué documento salió cada reserva, se relee archivo por archivo", async function () {
+  var espia = espiaCallModel(function (prompt) {
+    // El modelo contesta la forma plana, sin números: no hay forma de saber
+    // cuál es de cuál sin adivinar.
+    if (prompt.indexOf("DOCUMENTO 1 de 3") >= 0) {
+      return { items: [{ type: "transfer", title: "Micro", provider: "Lobos Bus", confirmation: "AAA111" },
+                       { type: "transfer", title: "Micro", provider: "Lobos Bus", confirmation: "BBB222" }] };
+    }
+    var cod = ["AAA111", "BBB222", "CCC333"].find(function (c) { return prompt.indexOf(c) >= 0; });
+    return { items: [{ type: "transfer", title: "Micro", provider: "Lobos Bus", confirmation: cod }] };
+  });
+  var res = await E.interpretFiles(tresPdfsDeTexto(), { callModel: espia.fn, extractPdfText: textosDeLosTres() });
+  eq(espia.llamadas, 4, "una del lote que no sirvió, más una por archivo");
+  eq(res.resumen.ok, 3);
+  eq(res.archivos[0].reservas[0].confirmation, "AAA111");
+  eq(res.archivos[1].reservas[0].confirmation, "BBB222");
+  eq(res.archivos[2].reservas[0].confirmation, "CCC333");
+});
+
+await test("parseBatchResponse nunca adivina: sin atribución clara devuelve null", function () {
+  eq(E.parseBatchResponse({ items: [{ type: "flight", title: "A" }] }, 3), null);
+  eq(E.parseBatchResponse("no es JSON", 2), null);
+  eq(E.parseBatchResponse({ documentos: [{ documento: 1, items: [] }, { items: [] }] }, 2), null,
+    "si unas entradas traen número y otras no, es mezcla");
+  var porOrden = E.parseBatchResponse({ documentos: [{ items: [{ type: "note", title: "A", provider: "X" }] }, { items: [] }] }, 2);
+  assert(porOrden && porOrden.length === 2 && porOrden[0][0].title === "A",
+    "sin ningún número y con una entrada por documento, el orden es la única lectura posible y es la que se pidió");
+});
+
+await test("un lote que falla por tamaño se reintenta archivo por archivo", async function () {
+  var espia = espiaCallModel(function (prompt, o, n) {
+    if (n === 1) throw Object.assign(new Error("muy largo"), { code: "prompt_too_large" });
+    if (prompt.indexOf("BBB222") >= 0) throw Object.assign(new Error("otra vez"), { code: "prompt_too_large" });
+    var cod = ["AAA111", "CCC333"].find(function (c) { return prompt.indexOf(c) >= 0; });
+    return { items: [{ type: "transfer", title: "Micro", provider: "Lobos Bus", confirmation: cod }] };
+  });
+  var res = await E.interpretFiles(tresPdfsDeTexto(), { callModel: espia.fn, extractPdfText: textosDeLosTres() });
+  eq(espia.llamadas, 4);
+  eq(res.resumen.ok, 2, "los dos que sí entraban se leen igual (VAL-41)");
+  eq(res.resumen.errores, 1);
+  eq(res.archivos[1].error.codigo, "prompt_too_large");
+});
+
+await test("un límite de cuota no se reintenta seis veces: el error se reparte y se dice", async function () {
+  var espia = espiaCallModel(function () {
+    throw Object.assign(new Error("pará un poco"), { code: "rate_limited" });
+  });
+  var res = await E.interpretFiles(tresPdfsDeTexto(), { callModel: espia.fn, extractPdfText: textosDeLosTres() });
+  eq(espia.llamadas, 1, "repetirlo no lo arregla y lo empeora");
+  eq(res.resumen.errores, 3);
+  res.archivos.forEach(function (a) {
+    eq(a.error.codigo, "rate_limited");
+    eq(a.error.mensaje, E.MODEL_ERROR_MESSAGES.rate_limited);
+  });
+});
+
+await test("sin callModel inyectado, el lote degrada con dignidad: cada archivo dice que la IA no está", async function () {
+  var res = await E.interpretFiles(tresPdfsDeTexto(), { extractPdfText: textosDeLosTres() });
+  eq(res.resumen.errores, 3);
+  eq(res.resumen.llamadas, 0);
+  res.archivos.forEach(function (a) { eq(a.error.codigo, "ia-no-disponible"); });
+});
+
+group("VAL-60 · el tope de 64 KiB se mira por lote, no sólo por archivo");
+
+await test("planBatches parte por cantidad de documentos", function () {
+  var ocho = [];
+  for (var i = 0; i < 8; i++) ocho.push({ texto: "corto" });
+  var lotes = E.planBatches(ocho);
+  eq(lotes.length, 2, "el techo de documentos por lote es " + E.LIMITES_LOTE.maxDocumentos);
+  eq(lotes[0].length, E.LIMITES_LOTE.maxDocumentos);
+  eq(lotes[1].length, 8 - E.LIMITES_LOTE.maxDocumentos);
+});
+
+await test("planBatches parte por caracteres, y respeta el orden de los archivos", function () {
+  var largo = new Array(E.MAX_CARACTERES_TEXTO + 1).join("x");   // 12000 caracteres, el tope de UN documento
+  var lotes = E.planBatches([
+    { texto: largo, n: 1 }, { texto: largo, n: 2 }, { texto: largo, n: 3 }
+  ]);
+  eq(lotes.length, 2, "dos documentos al tope ya llenan los " + E.LIMITES_LOTE.maxCaracteres + " del lote");
+  eq(lotes[0].map(function (e) { return e.n; }).join(","), "1,2");
+  eq(lotes[1].map(function (e) { return e.n; }).join(","), "3");
+});
+
+await test("cuatro PDFs largos de verdad salen en dos llamadas, no en una que no entra", async function () {
+  // Cada documento ocupa poco menos de la mitad del lote: entran de a dos.
+  var largo = textoDe("AAA111", "Lobos") + "\n" + new Array(11000).join("y");
+  var espia = espiaCallModel(function (prompt) {
+    var n = (prompt.match(/COMIENZA EL DOCUMENTO/g) || []).length;
+    var docs = [];
+    for (var i = 1; i <= n; i++) docs.push({ documento: i, items: [{ type: "transfer", title: "Micro", provider: "Lobos Bus" }] });
+    return { documentos: docs };
+  });
+  var archivos = ["a.pdf", "b.pdf", "c.pdf", "d.pdf"].map(function (n) { return filePdf(n); });
+  var mapa = {}; archivos.forEach(function (f) { mapa[f.name] = largo; });
+  var res = await E.interpretFiles(archivos, { callModel: espia.fn, extractPdfText: extractorPorArchivo(mapa) });
+  eq(res.resumen.lotes, 2);
+  eq(espia.llamadas, 2, "cuatro llamadas seguirían siendo cuatro; dos entran en el tope del prompt");
+  eq(res.resumen.ok, 4);
+  espia.prompts.forEach(function (p) {
+    assert(p.length < 32000, "cada prompt tiene que quedar cómodo abajo de los 64 KiB del contrato");
+  });
+});
+
 /* ---------- cierre ---------- */
 console.log("\n" + "=".repeat(52));
 console.log("  " + passed + " pasaron, " + failed + " fallaron");
