@@ -8069,16 +8069,20 @@ function docBlockHtml(estado, canWrite){
         ? "Queda adjunto cuando toques Guardar. " + espacio.frase
         : espacio.frase);
 
+  /* Sin permiso de edición la cuenta "1 de 3" sobra: nombra un cupo que el
+     visitante no puede usar. Se dice qué hay, nada más. */
+  const etiqueta = canWrite ? espacio.etiqueta
+    : (estado.lista.length === 1 ? "Documento" : "Documentos");
+
   return `<div class="f">
-    <label>${esc(espacio.etiqueta)}</label>
+    <label>${esc(etiqueta)}</label>
     ${hayFilas ? `<div class="imp-files">${filas}${prep}${fallo}</div>` : ""}
     ${(!hayFilas && canWrite) ? `<div class="empty sm">
       <p>Adjuntá el PDF que te mandaron o sacale una foto al papel. Queda guardado con la reserva, para tenerlo a mano sin ir a buscar el mail.</p>
       ${docPickerHtml(estado)}
     </div>` : ""}
     ${(hayFilas && canWrite && espacio.puedeSumar) ? docPickerHtml(estado) : ""}
-    <div id="doc-nopick" hidden></div>
-    ${canWrite ? `<span class="hint">${esc(hint)}</span>` : ""}
+    ${canWrite ? `<div id="doc-nopick" hidden></div><span class="hint">${esc(hint)}</span>` : ""}
   </div>
   ${estado.aviso ? `<div class="notice warn">${svg(I.info)}<span class="bd">${esc(estado.aviso)}</span></div>` : ""}`;
 }

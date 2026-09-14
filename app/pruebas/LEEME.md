@@ -28,7 +28,9 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `importar-botones.js` | Los tres botones de origen de archivo, tocados. Con el argumento `bloquear` simula un navegador que ignora la apertura, para probar que el aviso aparece | 11 y 12 aserciones |
 | `importar-sin-imagenes.js` | El motor de importación v2 desde la pantalla: una vista sin imágenes lo dice **antes** de subir nada, una vista con imágenes sigue igual, y un PDF con capa de texto se interpreta sin mandar ni una imagen | 45 aserciones |
 | `importar-arranque.js` | El arranque de la pantalla de importar (hallazgos A y B de la auditoría del 12/09): que el toque reaccione **en el acto** aunque la plataforma tarde, que lo que resuelve tarde no reabra ni pise nada, y que sin `pdf.js` se diga antes de subir nada | 59 aserciones |
-| `motores-desde-html.js` | Las pruebas de los dos motores corridas contra la copia **embebida en `valija.html`**, no contra `app/parts/` | 68 + 69 casos |
+| `adjuntar-documento.js` | VAL-58 desde la pantalla: adjuntar un documento que entra, una foto que **se recomprime de verdad** (canvas real) y un PDF que no entra —comprobando que **la reserva se guarda igual**—, la tira en la tarjeta, el visor, la descarga, el reemplazo, el tope de tres y el quitar | 81 aserciones |
+| `tarjeta-y-lote.js` | VAL-59 (los tres casos, el match que no pregunta nada y el descarte) y VAL-60 (tres textos, **una** llamada, aseverado sobre lo que recibió `sample.json`) | 77 aserciones |
+| `motores-desde-html.js` | Las pruebas de los **tres** motores corridas contra la copia **embebida en `valija.html`**, no contra `app/parts/` | 68 + 101 + 39 casos |
 | `tier-del-modelo.js` | Qué `modelTier` pide cada camino, aseverado sobre las opciones que **efectivamente recibe** `sample.json()`: texto `"default"`, imágenes `"complex"`, equipaje `"complex"`. Y qué queda registrado, incluido que `modelTierApplied` no llega por `json()` | 42 aserciones |
 
 `importar-botones.js` recibe la ruta del HTML como argumento:
@@ -49,6 +51,23 @@ sed 's/equipaje:"complex"/equipaje:"quick"/'   app/valija.html > /tmp/t3.html   
 NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/tier-del-modelo.js /tmp/t1.html
 ```
 
+`adjuntar-documento.js` y `tarjeta-y-lote.js` también aceptan la ruta del HTML, y por la
+misma razón. **El control negativo de la iteración 3** es el de la aserción que decide si
+VAL-60 sirvió —que tres documentos de texto salgan en UNA llamada—: se corre el mismo
+arnés contra una copia del HTML donde el lote se parte de a un documento.
+
+```
+sed 's/maxDocumentos: 6/maxDocumentos: 1/' app/valija.html > /tmp/un-doc-por-lote.html
+NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/tarjeta-y-lote.js /tmp/un-doc-por-lote.html
+→ FALLA  UNA llamada al modelo para los tres documentos (fueron 3)
+```
+
+Qué prueba ese control y qué no: prueba que la aserción **cuenta llamadas reales** y que
+falla cuando el agrupado no ocurre —que es exactamente lo que pasaba cuando la app
+llamaba a `interpretFile` en un bucle, y lo que volvería a pasar si alguien lo revirtiera—.
+Lo que no prueba es de cuál de los dos lados vino la regresión: para eso está el mensaje,
+que dice cuántas llamadas hubo.
+
 `importar-arranque.js` también acepta la ruta del HTML como argumento, y eso no es
 un adorno: es el **control negativo** de su aserción más importante. La medición del
 tiempo de reacción no sirve de nada si no puede fallar, así que se comprueba corriendo
@@ -60,9 +79,18 @@ NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-arranque.js /tm
 → FALLA  hubo un cambio visible en pantalla dentro de los 300 ms del toque
 ```
 
+## Una regla para correrlos: de a uno
+
+Los arneses de navegador **no se corren en paralelo**. El 14/09, corriendo
+`valija-bloque-b.js` en segundo plano mientras corría otro arnés, fallaron 3 aserciones
+del recálculo del plan; con la máquina libre, el mismo build dio 111 en verde y el
+diagnóstico de la corrida mala mostró un estado imposible (la lista de equipaje sin
+generar). Es el patrón que este archivo ya tenía anotado: esperas fijas que se quedan
+cortas cuando la máquina está cargada. Dos browsers a la vez es cargarla.
+
 ## Dónde sale el resultado
 
-En la **terminal**, en los nueve arneses. `valija-bloque-b.js` y
+En la **terminal**, en los once arneses. `valija-bloque-b.js` y
 `hallazgos-qa-bloque-b.js` escribían sólo en `os.tmpdir()/valija-qa.log` y correrlos
 como dice este archivo no mostraba nada; desde el 12/09 imprimen en pantalla y además
 dejan el log. Los dos tardan entre dos y tres minutos: un timeout corto los mata a
