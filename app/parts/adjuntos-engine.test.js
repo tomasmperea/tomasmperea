@@ -134,13 +134,16 @@ async function main() {
 /* ============================================================ */
 group("Los números del brief, sin recalcularlos distinto");
 
-await test("el tope de archivo crudo es 196.608 bytes y el de la base 256 KiB", function () {
-  eq(A.TOPE_ARCHIVO_BYTES, 196608);
+await test("el tope de archivo crudo es 194.560 bytes (190 KB) y el de la base 256 KiB", function () {
+  eq(A.TOPE_ARCHIVO_BYTES, 194560, "corregido el 13/09: 192 KB no dejaba lugar para el envoltorio");
   eq(A.TOPE_DOC_BASE_BYTES, 262144);
 });
 
-await test("codificar infla un tercio: 196.608 bytes crudos son 262.144 codificados", function () {
-  eq(A.bytesCodificados(196608), 262144);
+await test("codificar infla un tercio, y 190 KB dejan 2,7 KB de margen bajo el tope de la base", function () {
+  eq(A.bytesCodificados(194560), 259416);
+  assert(A.TOPE_DOC_BASE_BYTES - A.bytesCodificados(A.TOPE_ARCHIVO_BYTES) > 2048,
+         "el archivo más grande que el motor acepta tiene que dejar lugar para los nombres de campo");
+  eq(A.bytesCodificados(196608), 262144, "192 KB codificados ocupan el tope entero: por eso se bajó");
   eq(A.bytesCodificados(1), 4);
   eq(A.bytesCodificados(2), 4);
   eq(A.bytesCodificados(3), 4);
@@ -149,7 +152,7 @@ await test("codificar infla un tercio: 196.608 bytes crudos son 262.144 codifica
 });
 
 await test("el peso se muestra como lo muestra el diseño (KB de 1024, coma decimal)", function () {
-  eq(A.formatearBytes(196608), "192 KB", "el tope que dice la interfaz");
+  eq(A.formatearBytes(194560), "190 KB", "el tope que dice la interfaz");
   eq(A.formatearBytes(VOUCHER_MICRO), "20 KB", "el voucher del PM, igual que D10");
   eq(A.formatearBytes(182272), "178 KB", "la foto recomprimida de D5/D11");
   eq(A.formatearBytes(1258291), "1,2 MB", "el PDF que no entra, D12");
@@ -211,25 +214,27 @@ await test("una imagen que ya entra NO se toca: no se llama al recompresor", asy
 /* ============================================================ */
 group("El borde exacto");
 
-await test("196.608 bytes entran tal cual", async function () {
-  var r = await A.prepararDocumento(archivo("justo.pdf", "application/pdf", 196608), {
+await test("194.560 bytes entran tal cual", async function () {
+  var r = await A.prepararDocumento(archivo("justo.pdf", "application/pdf", 194560), {
     origen: "importar", ahora: AHORA, id: "d5"
   });
   eq(r.estado, "ok");
-  eq(r.doc.bytes, 196608);
+  eq(r.doc.bytes, 194560);
 });
 
-await test("196.608 bytes entran, pero el motor avisa que el documento queda al filo", async function () {
-  var r = await A.prepararDocumento(archivo("justo.pdf", "application/pdf", 196608), {
+await test("un archivo justo en el tope cabe ENTERO en un documento de la base", async function () {
+  var r = await A.prepararDocumento(archivo("justo.pdf", "application/pdf", 194560), {
     origen: "importar", ahora: AHORA, id: "d5"
   });
-  var filo = r.advertencias.find(function (a) { return a.codigo === "al-filo-del-tope"; });
-  assert(filo, "el cuerpo serializado pasa los 256 KiB por culpa del envoltorio JSON: hay que decirlo");
-  assert(A.bytesSerializados(r.cuerpo) > A.TOPE_DOC_BASE_BYTES, "y la medición tiene que ser real, no una estimación");
+  // Es la razón de ser de la corrección a 190 KB: con 192 KB el cuerpo
+  // serializado quedaba arriba de 256 KiB y la base lo rechazaba.
+  assert(A.bytesSerializados(r.cuerpo) <= A.TOPE_DOC_BASE_BYTES,
+         "el cuerpo serializado, con sus nombres de campo, tiene que entrar en 256 KiB");
+  eq(r.advertencias.length, 0, "y por eso ya no hay nada que advertir");
 });
 
-await test("196.609 bytes no entran: un byte más y es rechazo", async function () {
-  var r = await A.prepararDocumento(archivo("uno-mas.pdf", "application/pdf", 196609), {
+await test("194.561 bytes no entran: un byte más y es rechazo", async function () {
+  var r = await A.prepararDocumento(archivo("uno-mas.pdf", "application/pdf", 194561), {
     origen: "importar", ahora: AHORA, id: "d6"
   });
   eq(r.estado, "no-entra");
@@ -289,7 +294,7 @@ await test("un PDF de 1,2 MB no entra, y el mensaje trae los dos números", asyn
   eq(r.estado, "no-entra");
   eq(r.error.codigo, "no-entra-pdf");
   incluye(r.error.mensaje, "1,2 MB");
-  incluye(r.error.mensaje, "192 KB");
+  incluye(r.error.mensaje, "190 KB");
   eq(r.doc, null);
 });
 
@@ -335,7 +340,7 @@ await test("sin canvas no se rompe nada: el archivo no entra y se dice qué hace
   eq(r.estado, "no-entra");
   eq(r.error.codigo, "sin-recompresor");
   eq(r.bloqueaGuardado, false);
-  incluye(r.error.mensaje, "192 KB");
+  incluye(r.error.mensaje, "190 KB");
 });
 
 /* ============================================================ */
@@ -509,7 +514,7 @@ await test("la línea de datos del visor sale igual que en el muestrario", funct
 await test("el aviso de menor calidad trae los tres números y qué hacer", function () {
   var aviso = A.avisoMenorCalidad({ estado: "recomprimido", bytes: 182272, bytesOriginales: 3250586 });
   incluye(aviso, "3,1 MB");
-  incluye(aviso, "192 KB");
+  incluye(aviso, "190 KB");
   incluye(aviso, "178 KB");
   eq(A.avisoMenorCalidad({ estado: "ok", bytes: 1000 }), "", "sin recompresión no hay aviso");
 });
@@ -537,7 +542,7 @@ await test("un rechazo de la base se traduce a algo que la persona pueda hacer",
   var pesado = A.interpretarErrorDeLaBase({ code: "invalid_argument" });
   eq(pesado.codigo, "no-entra-en-la-base");
   eq(pesado.reintentable, false);
-  incluye(pesado.mensaje, "192 KB");
+  incluye(pesado.mensaje, "190 KB");
 
   var lleno = A.interpretarErrorDeLaBase({ code: "quota_exceeded" });
   eq(lleno.codigo, "base-llena");

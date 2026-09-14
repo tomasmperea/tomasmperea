@@ -754,6 +754,55 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .imp-choice .s{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2)}
 .imp-choice .sep{text-align:center;font-size:11px;color:var(--ink-3);padding:1px 0}
 
+/* ============================================================
+   ADJUNTAR EL DOCUMENTO — componentes nuevos (VAL-58, VAL-59)
+   Copiados de app/parts/adjuntar-ui.html, Bloque C (N1 a N4), sin
+   tokens nuevos: todo sale de los mismos :root de arriba.
+   ============================================================ */
+/* N1. El documento adjunto, dentro de la tarjeta de la reserva.
+
+   El problema a evitar: que la reserva se vuelva un depósito. La tarjeta se
+   lee de un vistazo (título, hora, troquelado) y un bloque de adjunto con
+   tamaño, estado de compresión y botón de descarga la convertiría en un
+   formulario. La tira dice sólo QUÉ ES el documento y CUÁNTO PESA; todo lo
+   demás vive en el visor, a un toque. El título y la hora siguen siendo lo
+   único en --ink. */
+.pass-docs{display:flex;flex-direction:column;background:var(--surface-2);border-top:1px solid var(--line-2)}
+/* Sin troquelado arriba (reserva sin datos en el talón) la tira toma el
+   corte perforado, para que el documento nunca quede pegado al título. */
+.pass-main + .pass-docs{border-top:1.5px dashed var(--line)}
+.pass-doc{display:flex;align-items:center;gap:9px;width:100%;text-align:left;min-height:36px;padding:8px 13px;background:none;border:0;border-top:1px solid var(--line-2);cursor:pointer;color:var(--ink-2)}
+.pass-doc:first-child{border-top:0}
+.pass-doc:hover{background:var(--surface);color:var(--ink)}
+.pass-doc>svg{width:14px;height:14px;flex:none;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pass-doc .nm{flex:1;min-width:0;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pass-doc .sz{flex:none;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-3);white-space:nowrap}
+.pass-doc:hover>svg{color:var(--accent)}
+
+/* N2. El visor: el documento en pantalla, lo más grande que se pueda. La
+   imagen manda; los datos del archivo van abajo, chicos y en mono. Cuando no
+   hay imagen que mostrar (PDF sin pdf.js, documento que no se pudo traer), el
+   mismo marco sostiene un texto centrado: nunca un hueco gris sin motivo. */
+.doc-view{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;display:grid;place-items:center;min-height:186px;padding:10px}
+.doc-view img{max-width:100%;max-height:52vh;display:block;border-radius:var(--r-s);box-shadow:var(--shadow)}
+.doc-view .ph{display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;color:var(--ink-2);font-size:12.5px;line-height:1.45;max-width:32ch;padding:20px 12px}
+.doc-view .ph svg{width:26px;height:26px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.doc-view .ph b{font-family:var(--f-display);font-size:14.5px;color:var(--ink);letter-spacing:-.005em}
+.doc-meta{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);line-height:1.5;overflow-wrap:anywhere;margin:0}
+
+/* N3. Bloque de adjunto vacío, adentro de la hoja de la reserva: el .empty de
+   siempre, más chico y sin título (la etiqueta "Documento" ya lo dice). */
+.empty.sm{padding:16px 14px;border-radius:var(--r-m);gap:11px}
+.empty.sm p{font-size:12.5px;max-width:34ch}
+
+/* N4. Acción secundaria de texto dentro de una tarjeta. La salida del caso
+   "coincide y se completa solo": no es un botón del pie —eso volvería a
+   preguntar lo que no hace falta preguntar—, es un enlace al pie de la
+   tarjeta para quien sabe que el match está mal. */
+.imp-card .card-acts{display:flex;gap:16px;flex-wrap:wrap;padding:0 13px 12px}
+.imp-card .act{font-size:12px;font-weight:700;color:var(--accent);background:none;border:0;padding:4px 0;cursor:pointer;text-decoration:underline}
+.imp-card .act.warn{color:var(--warn)}
+
 @media print{
   .hdr,.fab,.seg,.iconbtn,.btn{display:none !important}
   body,.shell{background:#fff}
@@ -831,7 +880,13 @@ const I = {
   mountain:'<path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/>',
   work:'<rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/>',
   adv:'<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/>',
-  mix:'<path d="M3.5 7h4l9 10h4"/><path d="M3.5 17h4l3-3.4"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/>'
+  mix:'<path d="M3.5 7h4l9 10h4"/><path d="M3.5 17h4l3-3.4"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/>',
+
+  /* ---------- adjuntar (VAL-58) ---------- */
+  /* El único glifo nuevo: un clip quiere decir "esto viene enganchado a otra
+     cosa", que es la relación entre el documento y la reserva. Para
+     "Descargar" se reusa I.pdf, que ya es una flecha hacia una línea. */
+  clip:'<path d="M20 11.5l-8.1 8.1a4.6 4.6 0 0 1-6.5-6.5l8.4-8.4a3 3 0 0 1 4.3 4.3l-8.4 8.4a1.5 1.5 0 0 1-2.1-2.1l7.4-7.4"/>'
 };
 const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p}</svg>`;
 
@@ -1124,11 +1179,21 @@ const Store = {
     }
   },
   async delTrip(id){
+    // Los cuerpos de los documentos cuelgan del viaje y no se ven desde
+    // ninguna pantalla: si no se borran acá, gastan cupo de la base para
+    // siempre (diseño de adjuntar, 7.2 punto 4).
+    const idsDocs = this.itemsOf(id).flatMap(it => (it.docs||[]).map(d=>d && d.id).filter(Boolean));
     this.trips.delete(id); this.items.delete(id); this.packing.delete(id);
     this.saveLocal(); this.emit();
+    idsDocs.forEach(docId => this.delDocBody(id, docId));
     if(this.db){
       const snap = await this.db.collection(`trips/${id}/items`).get();
       await Promise.all(snap.docs.map(d => this.db.doc(`trips/${id}/items/${d.id}`).delete()));
+      // Y los que hayan quedado huérfanos de un ítem que ya no está.
+      try{
+        const docs = await this.db.collection(`trips/${id}/docs`).get();
+        await Promise.all(docs.docs.map(d => this.db.doc(`trips/${id}/docs/${d.id}`).delete().catch(()=>{})));
+      }catch(e){}
       await this.db.doc(`trips/${id}/packing/lista`).delete().catch(()=>{});
       await this.db.doc(`trips/${id}`).delete();
     }
@@ -1146,8 +1211,57 @@ const Store = {
     }
   },
   async delItem(tripId, id){
+    const it = this.items.get(tripId)?.get(id) || null;
     this.items.get(tripId)?.delete(id); this.saveLocal(); this.emit();
+    // Borrar la reserva borra sus documentos: un cuerpo huérfano gasta cupo
+    // de la base y no hay pantalla desde la cual verlo.
+    ((it && it.docs) || []).forEach(d => { if(d && d.id) this.delDocBody(tripId, d.id); });
     if(this.db){ await this.db.doc(`trips/${tripId}/items/${id}`).delete(); }
+  },
+
+  /* --- VAL-58: el cuerpo de un documento adjunto ---
+     Los METADATOS (nombre, tipo, peso, estado) viajan adentro del ítem, en su
+     array `docs`: son unas decenas de bytes y así la tira de la reserva se
+     pinta sin traer nada. El CUERPO —el archivo codificado como texto— vive en
+     su propio documento, `trips/{tripId}/docs/{docId}`, y NO se espeja en el
+     snapshot de ítems: 190 KB por documento harían lento el arranque para
+     todos. Es el modelo de docs/design/adjuntar.md § 7.2.
+
+     Sin base compartida el cuerpo va a `localStorage`, en una clave propia por
+     documento —nunca adentro de `valija.v1`— para que el arranque siga leyendo
+     lo mismo de siempre y el archivo se lea recién cuando alguien lo abre.
+     Nada fuera de `Store` sabe cuál de los dos caminos se usó. */
+  DOC_KEY(tripId, docId){ return `valija.doc.v1.${tripId}.${docId}`; },
+
+  async saveDocBody(tripId, cuerpo){
+    if(this.db){
+      await this.db.doc(AdjuntosEngine.rutaDelCuerpo(tripId, cuerpo.id)).set(cuerpo);
+      return;
+    }
+    // `localStorage` tiene su propia cuota y puede rechazar: se propaga igual
+    // que un rechazo de la base, para que la reserva se guarde lo mismo.
+    localStorage.setItem(this.DOC_KEY(tripId, cuerpo.id), JSON.stringify(cuerpo));
+  },
+
+  /** El cuerpo, o `null` si no está. Un fallo de red se propaga: el visor lo
+      muestra como "no pude traerlo" y ofrece reintentar (estado D4). */
+  async loadDocBody(tripId, docId){
+    if(this.db){
+      const d = await this.db.doc(AdjuntosEngine.rutaDelCuerpo(tripId, docId)).get();
+      return (d && d.exists) ? (d.data()||null) : null;
+    }
+    try{
+      const raw = localStorage.getItem(this.DOC_KEY(tripId, docId));
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  },
+
+  /** Borrar un cuerpo nunca puede tumbar lo que lo pidió. */
+  async delDocBody(tripId, docId){
+    try{ localStorage.removeItem(this.DOC_KEY(tripId, docId)); }catch(e){}
+    if(this.db){
+      try{ await this.db.doc(AdjuntosEngine.rutaDelCuerpo(tripId, docId)).delete(); }catch(e){}
+    }
   },
 
   /* --- valija inteligente: un documento por viaje, trips/{tripId}/packing/lista ---
@@ -3323,9 +3437,12 @@ function srcChip(it, trip){
 }
 
 /* ============================================================
-   MOTOR DE IMPORTACIÓN DE DOCUMENTOS — VAL-40, VAL-41, VAL-42
-   Versión 2 del motor: PRIMERO TEXTO, IMÁGENES COMO ÚLTIMO RECURSO.
-   Embebido tal cual desde app/parts/import-engine.js (69 pruebas en
+   MOTOR DE IMPORTACIÓN DE DOCUMENTOS — VAL-40, VAL-41, VAL-42,
+   VAL-59 y VAL-60.
+   Versión 3 del motor: PRIMERO TEXTO, IMÁGENES COMO ÚLTIMO RECURSO;
+   la tarjeta de embarque se desprende de un vuelo ("sin-vuelo") y un
+   lote de textos sale en UNA llamada (`interpretFiles`).
+   Embebido tal cual desde app/parts/import-engine.js (101 pruebas en
    verde, node app/parts/import-engine.test.js), sin el envoltorio
    UMD/module.exports que sólo servía para correrlo con node: acá
    vive directo como ImportEngine, mismo patrón que PackingEngine
@@ -3351,10 +3468,19 @@ function srcChip(it, trip){
 const ImportEngine = (function () {
 "use strict";
 
-var VERSION = 2;
+var VERSION = 3;
 
 /** Tipos de reserva que la app conoce (mismas claves que TYPES en valija.html). */
 var RESERVATION_TYPES = ["flight", "stay", "car", "transfer", "act", "note"];
+
+/**
+ * QUÉ CLASE DE DOCUMENTO SE LEYÓ (VAL-59). Lo declara el modelo en el campo
+ * `docType`, y es una lista cerrada: cualquier otra cosa que conteste se
+ * descarta y queda "". Un valor vacío NO es un error: es la respuesta
+ * honesta cuando el documento no dice qué es, y el criterio local de
+ * `REGLAS_TARJETA` sigue funcionando sin él (ver `esTarjetaDeEmbarque`).
+ */
+var TIPOS_DOCUMENTO = ["boarding-pass", "ticket", "voucher", "booking", "other"];
 
 /** Campos de texto de una reserva interpretada. Todos son string, "" si no se supo. */
 var STRING_FIELDS = [
@@ -3369,6 +3495,95 @@ var STRING_FIELDS = [
  * es agregar una entrada acá, no tocar la lógica del patch.
  */
 var CAMPOS_COMPLETABLES = ["gate", "terminal", "seat", "boardingTime"];
+
+/**
+ * Los campos de un vuelo que la interfaz muestra al crear uno nuevo a partir
+ * de una tarjeta de embarque (VAL-59, estado V3 de docs/design/adjuntar.md:
+ * "8 campos · de la tarjeta" / "3 campos · vacíos"). Son once, y el orden es
+ * el del formulario. El motor NO pone las etiquetas: devuelve los nombres de
+ * campo y la app les pone el nombre que usa un viajero.
+ */
+var CAMPOS_VUELO = [
+  "from", "to", "provider", "flightNumber", "start", "end",
+  "seat", "terminal", "gate", "boardingTime", "confirmation"
+];
+
+/**
+ * ¿ESTO ES UNA TARJETA DE EMBARQUE? (VAL-59)
+ *
+ * Declarado como datos y evaluado EN ORDEN: gana la primera regla que
+ * aplica, y cada una deja escrito su motivo. Agregar un criterio es agregar
+ * una entrada.
+ *
+ * Por qué hace falta un criterio explícito: la sección 7.6 de
+ * docs/design/adjuntar.md pide que el dato salga del motor y NO se infiera en
+ * la interfaz, con una advertencia textual — "si la app adivina 'es una
+ * tarjeta porque trae asiento', va a tratar como tarjeta a un pasaje con
+ * asiento asignado". Por eso el asiento solo NUNCA alcanza (regla
+ * `asiento-solo-no-alcanza`), y por eso el criterio vive en un solo lugar:
+ * el mismo `esTarjetaDeEmbarque` que decide el flujo es el que la interfaz
+ * usa para poner su chip.
+ *
+ * Las señales, en orden de fuerza:
+ *
+ *  1. `declarada-por-el-modelo` — el documento dice qué es y el modelo lo
+ *     copió en `docType`. Es la única señal de primera mano; si está, manda.
+ *     También manda en negativo: si el modelo dijo "ticket", no es tarjeta.
+ *  2. `hora-de-embarque` — `boardingTime` es un dato que sólo se imprime en
+ *     una tarjeta de embarque (y el prompt lo dice: "si el documento no es
+ *     una tarjeta de embarque, dejalo vacío").
+ *  3. `puerta-de-embarque` — la puerta se asigna el día del vuelo, no cuando
+ *     se compra el pasaje.
+ *  4. `sin-titulo-ni-proveedor` — el perfil que `sanitizeReservation` ya
+ *     contemplaba: un vuelo sin título ni aerolínea pero con asiento, puerta
+ *     o terminal. Un pasaje siempre nombra a la aerolínea; una tarjeta
+ *     fotografiada o recortada, a veces no.
+ */
+var REGLAS_TARJETA = [
+  {
+    id: "no-es-vuelo",
+    aplica: function (r) { return !r || r.type !== "flight"; },
+    esTarjeta: false,
+    motivo: "No es un vuelo: una tarjeta de embarque siempre lo es."
+  },
+  {
+    id: "declarada-por-el-modelo",
+    aplica: function (r) { return TIPOS_DOCUMENTO.indexOf(r.docType) >= 0; },
+    esTarjeta: function (r) { return r.docType === "boarding-pass"; },
+    certeza: "declarada",
+    motivo: function (r) { return "El documento se identifica como \"" + r.docType + "\"."; }
+  },
+  {
+    id: "hora-de-embarque",
+    aplica: function (r) { return !!norm(r.boardingTime); },
+    esTarjeta: true,
+    certeza: "inferida",
+    motivo: "Trae hora de embarque, un dato que sólo se imprime en una tarjeta de embarque."
+  },
+  {
+    id: "puerta-de-embarque",
+    aplica: function (r) { return !!norm(r.gate); },
+    esTarjeta: true,
+    certeza: "inferida",
+    motivo: "Trae puerta de embarque, que se asigna el día del vuelo y no figura en un pasaje."
+  },
+  {
+    id: "sin-titulo-ni-proveedor",
+    aplica: function (r) {
+      return !norm(r.title) && !norm(r.provider) &&
+        (!!norm(r.seat) || !!norm(r.terminal) || !!norm(r.gate) || !!norm(r.boardingTime));
+    },
+    esTarjeta: true,
+    certeza: "inferida",
+    motivo: "Es un vuelo sin título ni aerolínea, con datos de embarque: el perfil de una tarjeta recortada o borrosa."
+  },
+  {
+    id: "asiento-solo-no-alcanza",
+    aplica: function () { return true; },
+    esTarjeta: false,
+    motivo: "No hay ningún dato de embarque que la distinga de un pasaje: un asiento asignado también lo trae un pasaje."
+  }
+];
 
 /** Versión fija de pdf.js, cargada desde cdnjs por la app (ver nota de integración). */
 var PDFJS_VERSION = "3.11.174";
@@ -3423,6 +3638,79 @@ var REGLAS_TEXTO_SUFICIENTE = {
  * páginas de voucher: ningún comprobante real se acerca.
  */
 var MAX_CARACTERES_TEXTO = 12000;
+
+/**
+ * UN LOTE, UNA LLAMADA (VAL-60). El contrato lo pide textual: "For a list of
+ * items prefer ONE call that returns a JSON array over one call per item".
+ * Subir cuatro PDFs con texto era hasta acá cuatro llamadas al modelo.
+ *
+ * El tope de 64 KiB del contrato es para TODO el input, así que con un lote
+ * hay que mirar la suma, no cada archivo por separado. Los tres números,
+ * declarados como datos:
+ *
+ *   maxCaracteresPorDocumento — es `MAX_CARACTERES_TEXTO` y no cambia: lo
+ *     que entra de UN comprobante. El recorte de `clipText` sigue pasando
+ *     archivo por archivo, antes de agrupar.
+ *
+ *   maxCaracteres 24000 — la suma de todos los documentos de una misma
+ *     llamada. La cuenta: 64 KiB son 65536 bytes; un texto en español con
+ *     acentos puede pesar hasta ~2 bytes por carácter, así que 24000
+ *     caracteres son como mucho ~48000 bytes, más ~3000 del andamiaje del
+ *     prompt (reglas, formato, encabezado de cada documento): ~51000, con
+ *     margen. Y está muy por encima de cualquier lote real: el voucher de
+ *     micro del PM tiene 625 caracteres, así que entran cuarenta.
+ *
+ *   maxDocumentos 6 — techo por prudencia, no por tamaño: cuanto más largo
+ *     el lote, más caro sale reintentar si la respuesta viene mal. Con seis
+ *     documentos ya se bajó de seis llamadas a una.
+ *
+ * Un documento que solo ya llena el lote viaja solo. El orden de los
+ * archivos nunca se altera.
+ */
+var LIMITES_LOTE = {
+  maxDocumentos: 6,
+  maxCaracteres: 24000,
+  maxCaracteresPorDocumento: MAX_CARACTERES_TEXTO
+};
+
+/**
+ * Los eventos que `interpretFiles` le avisa a la app por `opts.onProgress`,
+ * declarados como datos. Es la forma de conservar el progreso por fila
+ * (VAL-60) ahora que varios archivos comparten una llamada.
+ *
+ *   preparando — empezó a prepararse este archivo (extraer la capa de texto
+ *                de un PDF, ver si la vista acepta imágenes). Es trabajo por
+ *                archivo y sigue siendo por archivo.
+ *   preparado  — ya se sabe cómo se va a leer: `modo`, `paginas`,
+ *                `caracteres`. La fila puede decir "leído del texto del PDF"
+ *                antes de que el modelo conteste.
+ *   leyendo    — salió la llamada que incluye a este archivo. Si va en lote,
+ *                `lote` trae los nombres de todos los archivos de esa misma
+ *                llamada: todas esas filas arrancan juntas.
+ *   terminado  — este archivo tiene su resultado (`fileResult`), haya salido
+ *                bien, vacío o con error.
+ */
+var EVENTOS_PROGRESO = ["preparando", "preparado", "leyendo", "terminado"];
+
+/**
+ * Cuando la llamada de un lote falla, ¿conviene reintentar cada archivo por
+ * separado? Declarado como datos, porque la respuesta depende del código y
+ * no es obvia:
+ *
+ *   true  — el problema puede ser del lote en sí (demasiado largo, respuesta
+ *           cortada a la mitad). Cada archivo solo tiene chance de andar, y
+ *           es la única forma de cumplir la garantía de VAL-41: un archivo
+ *           que falla no invalida a los demás.
+ *   false (o ausente) — el problema es de la vista o de la cuota, y no lo
+ *           arregla repetirlo: reintentar seis veces lo empeora. El error se
+ *           reparte tal cual a todos los archivos del lote.
+ */
+var ERRORES_QUE_SE_REINTENTAN_SUELTOS = {
+  prompt_too_large: true,
+  invalid_json: true,
+  empty_completion: true,
+  desconocido: true
+};
 
 /* ============================================================
    UTILIDADES
@@ -3829,8 +4117,18 @@ var REGLAS_PROMPT = {
     "Para alojamiento, \"start\" es el check-in y \"end\" el check-out.",
     "Un micro, colectivo, tren, ferry, combi o traslado por tierra es type \"transfer\"; un avión es \"flight\". En un transfer, \"from\" y \"to\" son el lugar de salida y el de llegada tal como están escritos, sin códigos IATA.",
     "\"boardingTime\" es la hora de embarque impresa en una tarjeta de embarque, distinta de la hora de salida. Si el documento no es una tarjeta de embarque, dejalo vacío.",
-    "Si no reconocés ninguna reserva en el documento, devolvé {\"items\":[]}. Es preferible eso a inventar una.",
+    "\"docType\" dice qué clase de documento leíste, y sólo acepta uno de estos cinco valores: \"boarding-pass\" si es una tarjeta de embarque (dice BOARDING PASS o TARJETA DE EMBARQUE, o trae puerta y hora de embarque); \"ticket\" si es un pasaje, e-ticket o billete; \"voucher\" si es un voucher o comprobante de un servicio; \"booking\" si es una reserva de alojamiento o de alquiler; \"other\" para cualquier otra cosa. Si el documento no dice qué es y no estás seguro, dejalo VACÍO: vacío es una respuesta válida y correcta, y es mejor que elegir uno al azar.",
     "Nada de comentarios ni texto fuera del JSON."
+  ],
+  /* Cierre del formato cuando la llamada lleva UN solo documento. */
+  unDocumento: [
+    "Si no reconocés ninguna reserva en el documento, devolvé {\"items\":[]}. Es preferible eso a inventar una."
+  ],
+  /* Cierre del formato cuando la llamada lleva VARIOS documentos (VAL-60). */
+  lote: [
+    "Hay varios documentos numerados. Devolvé UNA entrada por cada uno, con su número en \"documento\", incluso si no encontraste nada en él: en ese caso su \"items\" va vacío.",
+    "Cada reserva va en el documento del que salió. NUNCA mezcles datos de un documento con los de otro, ni repitas en uno lo que leíste en el otro: son comprobantes distintos y sin relación entre sí.",
+    "Un documento ilegible o que no sea una reserva no cancela a los demás: dejá su \"items\" vacío y seguí con el resto."
   ],
   texto: [
     "El texto de arriba es la capa de texto del PDF, tal como está guardada: puede venir con las columnas mezcladas, con espacios de más o con una etiqueta pegada a su valor. Interpretá lo que dice; no completes lo que no está.",
@@ -3843,10 +4141,8 @@ var REGLAS_PROMPT = {
   ]
 };
 
-/** El JSON que se le pide al modelo. Es el mismo, se lea por texto o por imagen. */
-var FORMATO_JSON_PROMPT = [
-  "Devolvé este JSON exacto:",
-  '{"items":[{',
+/** Los campos de una reserva, tal como se le piden al modelo. */
+var CAMPOS_JSON_PROMPT = [
   '"type":"flight|stay|car|transfer|act|note",',
   '"title":"texto corto y humano, ej: Buenos Aires → Madrid",',
   '"start":"YYYY-MM-DDTHH:mm o vacío",',
@@ -3856,9 +4152,19 @@ var FORMATO_JSON_PROMPT = [
   '"provider":"aerolínea, hotel, plataforma, empresa de micro o rentadora",',
   '"flightNumber":"","confirmation":"código de reserva","seat":"","terminal":"","gate":"",',
   '"boardingTime":"HH:mm o vacío",',
-  '"address":"","phone":"","cost":"","currency":"","notes":""',
-  "}]}"
+  '"docType":"boarding-pass|ticket|voucher|booking|other, o vacío si el documento no lo dice",',
+  '"address":"","phone":"","cost":"","currency":"","notes":""'
 ];
+
+/** El JSON de una llamada con UN documento. */
+var FORMATO_JSON_PROMPT = ["Devolvé este JSON exacto:", '{"items":[{']
+  .concat(CAMPOS_JSON_PROMPT).concat(["}]}"]);
+
+/** El JSON de una llamada con VARIOS documentos (VAL-60): un arreglo, como pide el contrato. */
+var FORMATO_JSON_LOTE = ["Devolvé este JSON exacto, con una entrada por documento y en el mismo orden:",
+  '{"documentos":[{"documento":1,"items":[{']
+  .concat(CAMPOS_JSON_PROMPT)
+  .concat(["}]},", '{"documento":2,"items":[…]}', "]}"]);
 
 /**
  * Arma el prompt para un archivo, según cómo se lo va a mandar.
@@ -3881,15 +4187,9 @@ var FORMATO_JSON_PROMPT = [
 function buildImportPrompt(ctx) {
   ctx = ctx || {};
   var modo = ctx.modo === "texto" ? "texto" : "imagenes";
-  var trip = ctx.trip || {};
-  var hoy = ctx.now ? String(ctx.now).slice(0, 10) : new Date().toISOString().slice(0, 10);
   var paginas = ctx.paginas;
   var nombreArchivo = ctx.archivo ? " (\"" + ctx.archivo + "\")" : "";
-
-  var contexto = "El viaje se llama \"" + (trip.name || "") + "\"" +
-    (trip.destination ? ", destino " + trip.destination : "") +
-    (trip.startDate ? ", entre " + trip.startDate + " y " + (trip.endDate || "?") : "") +
-    ". Hoy es " + hoy + ".";
+  var contexto = contextoDelViaje(ctx.trip, ctx.now);
 
   var encabezado, cuerpo;
 
@@ -3912,15 +4212,80 @@ function buildImportPrompt(ctx) {
       : "La imagen adjunta" + nombreArchivo + " es un comprobante de viaje: tarjeta de embarque, voucher de hotel, contrato de auto, o la captura de un mail de confirmación."];
   }
 
-  var reglas = REGLAS_PROMPT.comunes.concat(REGLAS_PROMPT[modo] || []);
-  var reglasNumeradas = reglas.map(function (r, i) { return (i + 1) + ". " + r; });
+  var reglas = REGLAS_PROMPT.comunes
+    .concat(REGLAS_PROMPT.unDocumento)
+    .concat(REGLAS_PROMPT[modo] || []);
 
   return [encabezado, ""]
     .concat(cuerpo)
     .concat(["", "Contexto: " + contexto, ""])
     .concat(FORMATO_JSON_PROMPT)
     .concat(["", "Reglas que no se rompen:"])
-    .concat(reglasNumeradas)
+    .concat(numerar(reglas))
+    .join("\n");
+}
+
+/** Las reglas del prompt, numeradas. Se usa igual en el prompt de uno y en el de lote. */
+function numerar(reglas) {
+  return reglas.map(function (r, i) { return (i + 1) + ". " + r; });
+}
+
+/** El contexto del viaje, igual para el prompt de uno y para el de lote. */
+function contextoDelViaje(trip, now) {
+  trip = trip || {};
+  var hoy = now ? String(now).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  return "El viaje se llama \"" + (trip.name || "") + "\"" +
+    (trip.destination ? ", destino " + trip.destination : "") +
+    (trip.startDate ? ", entre " + trip.startDate + " y " + (trip.endDate || "?") : "") +
+    ". Hoy es " + hoy + ".";
+}
+
+/**
+ * VAL-60 · El prompt de UNA llamada con VARIOS documentos de texto.
+ *
+ * Cada documento va numerado y delimitado, y el JSON que se pide es un
+ * arreglo con esos mismos números: de ahí sale la atribución de cada reserva
+ * a SU archivo. Si esa atribución no llega, el motor no adivina — reparte los
+ * archivos en llamadas sueltas (ver `interpretarLote`).
+ *
+ * El prompt de un solo documento (`buildImportPrompt`) no cambia, y se sigue
+ * usando cuando el lote tiene un solo archivo: no hay nada que agrupar y no
+ * hay razón para pedirle al modelo un formato más difícil.
+ *
+ * @param {Object} ctx
+ * @param {Array<{archivo:string, texto:string, paginas:number|null}>} ctx.documentos
+ * @param {Object} [ctx.trip] {name, destination, startDate, endDate}
+ * @param {string} [ctx.now]
+ * @returns {string}
+ */
+function buildBatchImportPrompt(ctx) {
+  ctx = ctx || {};
+  var docs = (ctx.documentos || []).filter(Boolean);
+  var total = docs.length;
+
+  var cuerpo = ["Abajo están los textos de " + total + " comprobantes de viaje DISTINTOS, numerados. " +
+    "Cada uno puede ser un pasaje, un voucher, una tarjeta de embarque, una reserva de hotel o un contrato de alquiler, " +
+    "y cada uno puede describir una reserva, varias o ninguna.", ""];
+
+  docs.forEach(function (d, i) {
+    var n = i + 1;
+    cuerpo.push("--- COMIENZA EL DOCUMENTO " + n + " de " + total + " (\"" + d.archivo + "\")" +
+      (d.paginas && d.paginas > 1 ? ", " + d.paginas + " páginas en orden" : "") + " ---");
+    cuerpo.push(String(d.texto == null ? "" : d.texto));
+    cuerpo.push("--- TERMINA EL DOCUMENTO " + n + " ---");
+    cuerpo.push("");
+  });
+
+  var reglas = REGLAS_PROMPT.comunes
+    .concat(REGLAS_PROMPT.lote)
+    .concat(REGLAS_PROMPT.texto);
+
+  return ["Extraés datos de reservas de viaje a partir del TEXTO de varios comprobantes y devolvés SOLO JSON, sin texto alrededor.", ""]
+    .concat(cuerpo)
+    .concat(["Contexto: " + contextoDelViaje(ctx.trip, ctx.now), ""])
+    .concat(FORMATO_JSON_LOTE)
+    .concat(["", "Reglas que no se rompen:"])
+    .concat(numerar(reglas))
     .join("\n");
 }
 
@@ -3940,6 +4305,10 @@ function sanitizeReservation(x) {
   STRING_FIELDS.forEach(function (f) {
     out[f] = typeof x[f] === "string" ? x[f].trim() : "";
   });
+  // Qué clase de documento dijo el modelo que era (VAL-59). Lista cerrada:
+  // cualquier otra cosa queda en "", que es un valor legítimo — el criterio
+  // de `esTarjetaDeEmbarque` no depende de que esto venga.
+  out.docType = TIPOS_DOCUMENTO.indexOf(x.docType) >= 0 ? x.docType : "";
   // Sin título ni proveedor no hay nada que mostrarle a la persona para revisar
   // — EXCEPTO una tarjeta de embarque (VAL-42): ahí el título lo termina
   // aportando el vuelo ya cargado que se va a completar, no la tarjeta. El
@@ -3966,12 +4335,88 @@ function parseImportResponse(raw) {
     try { data = JSON.parse(data); } catch (e) { return []; }
   }
   if (!data || typeof data !== "object" || !Array.isArray(data.items)) return [];
+  return sanitizeList(data.items);
+}
+
+function sanitizeList(items) {
   var out = [];
-  data.items.forEach(function (x) {
+  (Array.isArray(items) ? items : []).forEach(function (x) {
     var r = sanitizeReservation(x);
     if (r) out.push(r);
   });
   return out;
+}
+
+/**
+ * VAL-60 · La respuesta de una llamada con VARIOS documentos, repartida por
+ * documento. **Nunca adivina a qué archivo pertenece una reserva:** si la
+ * atribución no se puede establecer sin suponer, devuelve `null` y el motor
+ * cae a llamadas sueltas. Una reserva atribuida al archivo equivocado hace
+ * que la pantalla de revisión mienta sobre de dónde salió cada dato, y eso es
+ * peor que gastar una llamada de más.
+ *
+ * Acepta tres formas, en este orden:
+ *   1. `{"documentos":[{"documento":1,"items":[…]}]}` — la que pide el prompt.
+ *   2. `{"items":[{"documento":1, …}]}` — plana, con el número en cada ítem.
+ *   3. `{"documentos":[{"items":[…]}, {"items":[…]}]}` — sin números, PERO
+ *      sólo si hay exactamente una entrada por documento y NINGUNA trae
+ *      número: ahí el orden es la única lectura posible y es la que el prompt
+ *      pidió. Si algunas traen número y otras no, es `null`: mezcla.
+ *
+ * @param {*} raw lo que devolvió `callModel`
+ * @param {number} cantidad cuántos documentos iban en la llamada
+ * @returns {Array<Array<Object>>|null} una lista de reservas por documento, en orden
+ */
+function parseBatchResponse(raw, cantidad) {
+  var data = raw;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch (e) { return null; }
+  }
+  if (!data || typeof data !== "object") return null;
+
+  var porDocumento = [];
+  var i;
+  for (i = 0; i < cantidad; i++) porDocumento.push([]);
+
+  function indiceDe(x) {
+    var n = x && x.documento;
+    if (typeof n === "string" && /^\d+$/.test(n.trim())) n = parseInt(n, 10);
+    if (typeof n !== "number" || !isFinite(n)) return -1;
+    n = Math.round(n) - 1;                       // los documentos se numeran desde 1
+    return (n >= 0 && n < cantidad) ? n : -1;
+  }
+
+  if (Array.isArray(data.documentos)) {
+    var entradas = data.documentos.filter(function (d) { return d && typeof d === "object"; });
+    var conNumero = entradas.filter(function (d) { return indiceDe(d) >= 0; });
+
+    if (conNumero.length === entradas.length && entradas.length) {
+      entradas.forEach(function (d) {
+        porDocumento[indiceDe(d)] = porDocumento[indiceDe(d)].concat(sanitizeList(d.items));
+      });
+      return porDocumento;
+    }
+    // Sin ningún número, y una entrada por documento: el orden que pidió el prompt.
+    if (!conNumero.length && entradas.length === cantidad) {
+      entradas.forEach(function (d, n) { porDocumento[n] = sanitizeList(d.items); });
+      return porDocumento;
+    }
+    return null;                                  // mezcla: no se atribuye adivinando
+  }
+
+  if (Array.isArray(data.items)) {
+    if (cantidad === 1) return [sanitizeList(data.items)];
+    var todos = data.items.filter(function (x) { return x && typeof x === "object"; });
+    if (!todos.length) return porDocumento;       // "no encontré nada", y es una respuesta válida
+    if (!todos.every(function (x) { return indiceDe(x) >= 0; })) return null;
+    todos.forEach(function (x) {
+      var r = sanitizeReservation(x);
+      if (r) porDocumento[indiceDe(x)].push(r);
+    });
+    return porDocumento;
+  }
+
+  return null;
 }
 
 /* ============================================================
@@ -4180,38 +4625,218 @@ function interpretFile(file, opts, sesion) {
     });
 }
 
+/* ============================================================
+   UN LOTE, UNA LLAMADA — VAL-60
+   ============================================================ */
+
+/**
+ * Reparte los documentos de texto en lotes que entren en una llamada, sin
+ * alterar el orden de los archivos. Pura y sincrónica: recibe entradas con su
+ * texto ya recortado y devuelve grupos.
+ *
+ * @param {Array<{texto:string}>} entradas
+ * @param {Object} [limites] por defecto `LIMITES_LOTE`
+ * @returns {Array<Array>} los mismos objetos, agrupados
+ */
+function planBatches(entradas, limites) {
+  limites = limites || LIMITES_LOTE;
+  var lotes = [], actual = [], largo = 0;
+  (entradas || []).forEach(function (e) {
+    var n = String((e && e.texto) || "").length;
+    var noEntra = actual.length &&
+      (actual.length >= limites.maxDocumentos || largo + n > limites.maxCaracteres);
+    if (noEntra) { lotes.push(actual); actual = []; largo = 0; }
+    actual.push(e);
+    largo += n;
+  });
+  if (actual.length) lotes.push(actual);
+  return lotes;
+}
+
+/** Avisa el progreso sin poder romper nada: si la app se cae adentro, el motor sigue. */
+function avisar(opts, evento) {
+  if (typeof opts.onProgress !== "function") return;
+  try { opts.onProgress(evento); } catch (e) { /* el progreso es adorno: nunca tumba una importación */ }
+}
+
+/**
+ * Interpreta UN lote de documentos de texto en UNA sola llamada (VAL-60).
+ * Nunca rechaza: devuelve un `fileResult` por entrada, en orden.
+ *
+ * Tres cosas que no se negocian y por eso están acá y no repartidas:
+ *   · cada reserva sale atribuida a SU archivo, o no sale;
+ *   · si la atribución no se puede establecer, se reintenta archivo por
+ *     archivo en vez de adivinar;
+ *   · un error del lote que pueda ser del lote (ver
+ *     ERRORES_QUE_SE_REINTENTAN_SUELTOS) también cae a llamadas sueltas, para
+ *     que un documento roto no se lleve puestos a los demás (VAL-41).
+ */
+function interpretBatch(lote, opts, cuenta) {
+  var nombres = lote.map(function (e) { return e.nombre; });
+  cuenta = cuenta || { llamadas: 0 };
+
+  function extraDe(e) { return { paginas: e.fuente.paginas, modo: e.fuente.modo, caracteres: e.fuente.caracteres }; }
+
+  function sueltos(motivo) {
+    cuenta.llamadas += lote.length;
+    return Promise.all(lote.map(function (e) {
+      avisar(opts, { evento: "leyendo", archivo: e.nombre, modo: e.fuente.modo, lote: null, motivo: motivo });
+      return callModelForSource(e.fuente, e.nombre, opts).then(function (r) {
+        avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+        return r;
+      });
+    }));
+  }
+
+  if (typeof opts.callModel !== "function") {
+    return Promise.all(lote.map(function (e) {
+      var r = fileResult(e.nombre, "error", [], errorInfo("ia-no-disponible", ERRORES_PROPIOS["ia-no-disponible"]), extraDe(e));
+      avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+      return r;
+    }));
+  }
+
+  // Un solo documento no es un lote: va con el prompt de siempre, que es más
+  // simple de contestar y es el que ya está probado de punta a punta.
+  if (lote.length === 1) return sueltos(null);
+
+  var prompt = buildBatchImportPrompt({
+    trip: opts.trip, now: opts.now,
+    documentos: lote.map(function (e) {
+      return { archivo: e.nombre, texto: e.fuente.texto, paginas: e.fuente.paginas };
+    })
+  });
+  var opciones = { modo: "texto", archivo: nombres[0], archivos: nombres.slice(), paginas: null, lote: lote.length };
+
+  lote.forEach(function (e) {
+    avisar(opts, { evento: "leyendo", archivo: e.nombre, modo: "texto", lote: nombres.slice() });
+  });
+  cuenta.llamadas += 1;
+
+  return Promise.resolve()
+    .then(function () { return opts.callModel(prompt, opciones); })
+    .then(function (raw) {
+      var porDocumento = parseBatchResponse(raw, lote.length);
+      if (!porDocumento) return sueltos("la respuesta del lote no dejaba claro de qué documento salía cada reserva");
+      return lote.map(function (e, i) {
+        var reservas = porDocumento[i].map(function (r) { return Object.assign({}, r, { archivo: e.nombre }); });
+        var r = fileResult(e.nombre, reservas.length ? "ok" : "vacio", reservas, null, extraDe(e));
+        avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+        return r;
+      });
+    })
+    .catch(function (err) {
+      var info = friendlyModelError(err);
+      if (ERRORES_QUE_SE_REINTENTAN_SUELTOS[info.codigo]) return sueltos(info.codigo);
+      return lote.map(function (e) {
+        var r = fileResult(e.nombre, "error", [], info, extraDe(e));
+        avisar(opts, { evento: "terminado", archivo: e.nombre, resultado: r });
+        return r;
+      });
+    });
+}
+
 /**
  * Interpreta varios archivos a la vez (VAL-41), mezclando fotos y PDFs.
  * La promesa se resuelve siempre: cada archivo lleva su propio resultado.
  * `limits()` se consulta como mucho UNA vez por corrida, y sólo si algún
  * archivo necesita imágenes.
  *
+ * VAL-60 · Los archivos que se leen COMO TEXTO se agrupan y se resuelven en
+ * una sola llamada por lote, como pide el contrato ("For a list of items
+ * prefer ONE call that returns a JSON array over one call per item"). Los que
+ * necesitan imágenes siguen sueltos: sus imágenes se reenvían en cada ronda y
+ * agruparlas sería exactamente lo contrario de ahorrar.
+ *
+ * El progreso por fila se conserva por `opts.onProgress` (ver
+ * EVENTOS_PROGRESO). Es la única función impura del motor y el motivo tiene
+ * nombre: sin ella la persona mira una pantalla quieta mientras se leen
+ * cuatro documentos.
+ *
  * @param {Array<{name:string, blob:Blob, mimeType?:string}>} files
  * @param {Object} opts ver `interpretFile`
+ * @param {Function} [opts.onProgress] (evento) => void; nunca puede romper la corrida
  * @returns {Promise<{archivos:Array, reservas:Array, resumen:Object}>}
  */
 function interpretFiles(files, opts) {
   opts = opts || {};
   var sesion = newSession(opts);
   files = (files || []).filter(Boolean);
-  return Promise.all(files.map(function (f) { return interpretFile(f, opts, sesion); }))
-    .then(function (archivos) {
-      var reservas = [];
-      archivos.forEach(function (a) { reservas = reservas.concat(a.reservas); });
-      function cuantos(campo, valor) {
-        return archivos.filter(function (a) { return a[campo] === valor; }).length;
-      }
-      var resumen = {
-        total: archivos.length,
-        ok: cuantos("estado", "ok"),
-        vacios: cuantos("estado", "vacio"),
-        errores: cuantos("estado", "error"),
-        reservas: reservas.length,
-        porTexto: cuantos("modo", "texto"),
-        porImagenes: cuantos("modo", "imagenes")
-      };
-      return { archivos: archivos, reservas: reservas, resumen: resumen };
+
+  var cuenta = { llamadas: 0 };
+  var lotes = 0;
+
+  // 1. Preparar TODO primero: es trabajo por archivo (extraer la capa de
+  //    texto, mirar si la vista acepta imágenes) y se avisa por archivo.
+  var preparados = files.map(function (f, i) {
+    var nombre = (f && f.name) || "archivo";
+    avisar(opts, { evento: "preparando", archivo: nombre, indice: i, total: files.length });
+    return Promise.resolve().then(function () {
+      return prepareSource(f, opts, sesion);
+    }).then(function (fuente) {
+      avisar(opts, {
+        evento: "preparado", archivo: nombre, indice: i,
+        modo: fuente.modo, paginas: fuente.paginas, caracteres: fuente.caracteres
+      });
+      return { nombre: nombre, indice: i, fuente: fuente, resultado: null };
+    }, function (e) {
+      var info = (e && e.__importError) ? e.info
+        : errorInfo("desconocido", (e && e.message) || "No pude interpretar el archivo.");
+      var r = fileResult(nombre, "error", [], info, null);
+      avisar(opts, { evento: "terminado", archivo: nombre, indice: i, resultado: r });
+      return { nombre: nombre, indice: i, fuente: null, resultado: r };
     });
+  });
+
+  return Promise.all(preparados).then(function (entradas) {
+    var porImagen = entradas.filter(function (e) { return e.fuente && e.fuente.modo === "imagenes"; });
+    var porTexto  = entradas.filter(function (e) { return e.fuente && e.fuente.modo === "texto"; });
+
+    var tareas = [];
+
+    // 2. Las imágenes, una llamada cada una: agruparlas no ahorraría nada.
+    porImagen.forEach(function (e) {
+      if (typeof opts.callModel === "function") cuenta.llamadas++;
+      avisar(opts, { evento: "leyendo", archivo: e.nombre, modo: "imagenes", lote: null });
+      tareas.push(callModelForSource(e.fuente, e.nombre, opts).then(function (r) {
+        e.resultado = r;
+        avisar(opts, { evento: "terminado", archivo: e.nombre, indice: e.indice, resultado: r });
+      }));
+    });
+
+    // 3. Los textos, en lotes.
+    planBatches(porTexto.map(function (e) { return { texto: e.fuente.texto, e: e }; }))
+      .forEach(function (grupo) {
+        var deLote = grupo.map(function (g) { return g.e; });
+        lotes++;
+        tareas.push(interpretBatch(deLote, opts, cuenta).then(function (rs) {
+          rs.forEach(function (r, i) { deLote[i].resultado = r; });
+        }));
+      });
+
+    return Promise.all(tareas).then(function () { return entradas; });
+  }).then(function (entradas) {
+    var archivos = entradas.map(function (e) { return e.resultado; });
+    var reservas = [];
+    archivos.forEach(function (a) { reservas = reservas.concat(a.reservas); });
+    function cuantos(campo, valor) {
+      return archivos.filter(function (a) { return a[campo] === valor; }).length;
+    }
+    var resumen = {
+      total: archivos.length,
+      ok: cuantos("estado", "ok"),
+      vacios: cuantos("estado", "vacio"),
+      errores: cuantos("estado", "error"),
+      reservas: reservas.length,
+      porTexto: cuantos("modo", "texto"),
+      porImagenes: cuantos("modo", "imagenes"),
+      // Cuántas llamadas al modelo salieron y cuántos lotes hubo. Es el número
+      // que VAL-60 viene a bajar: sin él, no hay forma de saber si sirvió.
+      llamadas: cuenta.llamadas,
+      lotes: lotes
+    };
+    return { archivos: archivos, reservas: reservas, resumen: resumen };
+  });
 }
 
 /* ============================================================
@@ -4273,10 +4898,135 @@ function buildFlightPatch(candidato, existente) {
   return patch;
 }
 
+/* ============================================================
+   LA TARJETA DE EMBARQUE SE DESPRENDE DE UN VUELO — VAL-59
+   ============================================================ */
+
+/**
+ * ¿Esta reserva interpretada es una tarjeta de embarque? Recorre
+ * `REGLAS_TARJETA` en orden y devuelve la primera que aplica, con su motivo.
+ * Pura y sincrónica.
+ *
+ * Es el ÚNICO criterio del proyecto: el mismo que decide el flujo de VAL-59
+ * es el que la interfaz usa para poner su chip "Tarjeta de embarque"
+ * (docs/design/adjuntar.md §7.6.1). Si algún día hay que aflojarlo o
+ * apretarlo, se toca la tabla y cambian los dos a la vez.
+ *
+ * @param {Object} reserva
+ * @returns {{esTarjeta:boolean, regla:string, certeza:"declarada"|"inferida"|"descartada", motivo:string}}
+ */
+function clasificarTarjetaDeEmbarque(reserva) {
+  for (var i = 0; i < REGLAS_TARJETA.length; i++) {
+    var regla = REGLAS_TARJETA[i];
+    if (!regla.aplica(reserva)) continue;
+    var es = typeof regla.esTarjeta === "function" ? !!regla.esTarjeta(reserva) : !!regla.esTarjeta;
+    return {
+      esTarjeta: es,
+      regla: regla.id,
+      certeza: es ? (regla.certeza || "inferida") : "descartada",
+      motivo: typeof regla.motivo === "function" ? regla.motivo(reserva) : regla.motivo
+    };
+  }
+  return { esTarjeta: false, regla: "ninguna", certeza: "descartada", motivo: "No hay ninguna regla que la reconozca como tarjeta de embarque." };
+}
+
+/** El sí o no de `clasificarTarjetaDeEmbarque`, para el chip de la interfaz. */
+function esTarjetaDeEmbarque(reserva) {
+  return clasificarTarjetaDeEmbarque(reserva).esTarjeta;
+}
+
+/**
+ * Todos los vuelos del viaje, ordenados por fecha de salida (los que no
+ * tienen fecha van al final, sin alterar su orden entre sí). Son los
+ * candidatos que la interfaz ofrece cuando hay que preguntar contra cuál
+ * asociar una tarjeta — todos, no sólo los del día: si la tarjeta perdió la
+ * fecha, filtrar por fecha esconde justamente el candidato correcto
+ * (docs/design/adjuntar.md, V5).
+ */
+function flightCandidates(existentes) {
+  var vuelos = (existentes || []).filter(function (it) { return it && it.type === "flight"; });
+  return vuelos.map(function (v, i) { return { v: v, i: i }; })
+    .sort(function (a, b) {
+      var da = dateOnly(a.v.start) ? String(a.v.start) : "";
+      var db = dateOnly(b.v.start) ? String(b.v.start) : "";
+      if (da && db && da !== db) return da < db ? -1 : 1;
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      return a.i - b.i;
+    })
+    .map(function (x) { return x.v; });
+}
+
+/**
+ * Lo que la tarjeta aporta para precargar un vuelo nuevo (VAL-59).
+ *
+ * `vuelo` trae todos los campos de una reserva, con lo que la tarjeta traía y
+ * con "" en lo que no traía: **un campo vacío no se rellena adivinando**. No
+ * se compone el título con la ruta, no se deduce la terminal del aeropuerto,
+ * no se calcula la hora de llegada. `desdeLaTarjeta` y `vacios` son los
+ * nombres de campo de cada grupo, en el orden de `CAMPOS_VUELO`, para que la
+ * interfaz pueda decir "8 de 11 campos" sin volver a mirar los datos.
+ *
+ * @param {Object} tarjeta reserva interpretada
+ * @returns {{vuelo:Object, desdeLaTarjeta:Array<string>, vacios:Array<string>, campos:number}}
+ */
+function preloadFlightFromBoardingPass(tarjeta) {
+  tarjeta = tarjeta || {};
+  var vuelo = { type: "flight" };
+  STRING_FIELDS.forEach(function (f) { vuelo[f] = norm(tarjeta[f]); });
+  if (tarjeta.archivo) vuelo.archivo = tarjeta.archivo;
+
+  var desdeLaTarjeta = [], vacios = [];
+  CAMPOS_VUELO.forEach(function (f) { (vuelo[f] ? desdeLaTarjeta : vacios).push(f); });
+
+  return { vuelo: vuelo, desdeLaTarjeta: desdeLaTarjeta, vacios: vacios, campos: CAMPOS_VUELO.length };
+}
+
+/**
+ * El caso de VAL-59: una tarjeta de embarque que no coincidió con ningún
+ * vuelo cargado. El motor decide CUÁL de los tres casos es y devuelve los
+ * datos; la app dibuja. Acá adentro no hay una sola línea de texto de
+ * interfaz.
+ *
+ *   caso "sin-vuelos"    — el viaje no tiene ningún vuelo: no hay con qué
+ *                          matchear. Única salida: crear uno, precargado.
+ *   caso "un-vuelo"      — hay uno y no coincide. DOS salidas, y ninguna es
+ *                          la correcta: que el número no coincida puede ser
+ *                          un número mal leído o una reserva cargada a mano
+ *                          sin número. Por eso `opciones` las lista a las dos
+ *                          y el motor no marca ninguna preferida.
+ *   caso "varios-vuelos" — hay varios y ninguno coincide: van todos como
+ *                          candidatos, más la salida de crear uno nuevo.
+ */
+function resultadoSinVuelo(candidato, existentes, motivoDelMatch, clasificacion) {
+  var candidatos = flightCandidates(existentes);
+  var caso = !candidatos.length ? "sin-vuelos" : (candidatos.length === 1 ? "un-vuelo" : "varios-vuelos");
+  return {
+    resultado: "sin-vuelo",
+    caso: caso,
+    motivo: motivoDelMatch,
+    porQueEsTarjeta: clasificacion.motivo,
+    certeza: clasificacion.certeza,
+    candidato: candidato,
+    esTarjeta: true,
+    candidatos: candidatos,
+    opciones: candidatos.length ? ["asociar", "crear"] : ["crear"],
+    precarga: preloadFlightFromBoardingPass(candidato)
+  };
+}
+
 /**
  * VAL-42. Decide si una reserva de vuelo interpretada es nueva, es un
  * vuelo ya cargado (y con qué se completa), o hay más de un candidato
  * y hace falta preguntar. El criterio es número de vuelo y fecha.
+ *
+ * VAL-59 agrega un cuarto resultado, y sólo para tarjetas de embarque:
+ * donde antes decía "nuevo" —o sea, "creá una reserva de vuelo con esto"—
+ * ahora dice "sin-vuelo", porque **una tarjeta de embarque no es un vuelo:
+ * es un documento que se desprende de uno**. Un pasaje, un voucher o
+ * cualquier otra reserva de vuelo siguen dando "nuevo" y se cargan como
+ * hasta hoy; el orden tampoco cambia: primero el match, siempre, y recién
+ * después la pregunta.
  *
  * Ante la duda, nunca decide. Eso incluye el caso en que la tarjeta no
  * trae número de vuelo: sin número no hay certeza, así que si la fecha
@@ -4290,25 +5040,32 @@ function buildFlightPatch(candidato, existente) {
  *
  * @param {Object} candidato    reserva interpretada (de `interpretFiles`)
  * @param {Array}  existentes   reservas que el viaje ya tiene
- * @returns {{resultado:"nuevo"|"mismo"|"ambiguo", motivo:string, candidato:Object,
- *            existente?:Object, patch?:Object, candidatos?:Array}}
+ * @returns {{resultado:"nuevo"|"mismo"|"ambiguo"|"sin-vuelo", motivo:string, candidato:Object,
+ *            existente?:Object, patch?:Object, candidatos?:Array,
+ *            caso?:"sin-vuelos"|"un-vuelo"|"varios-vuelos", opciones?:Array, precarga?:Object}}
  */
 function matchFlightReservation(candidato, existentes) {
   existentes = (existentes || []).filter(Boolean);
 
+  /* El único punto por donde se sale sin match. Una tarjeta de embarque no se
+     convierte en reserva de vuelo (VAL-59): se devuelve el caso y la app
+     pregunta. Cualquier otra reserva de vuelo sigue siendo "nuevo", igual que
+     antes. */
+  function sinMatch(motivo) {
+    var clase = clasificarTarjetaDeEmbarque(candidato);
+    if (clase.esTarjeta) return resultadoSinVuelo(candidato, existentes, motivo, clase);
+    return { resultado: "nuevo", motivo: motivo, candidato: candidato, esTarjeta: false };
+  }
+
   if (!candidato || candidato.type !== "flight") {
-    return { resultado: "nuevo", motivo: "No es un vuelo.", candidato: candidato };
+    return { resultado: "nuevo", motivo: "No es un vuelo.", candidato: candidato, esTarjeta: false };
   }
 
   var numero = candidato.flightNumber;
   var fecha = dateOnly(candidato.start);
 
   if (!fecha) {
-    return {
-      resultado: "nuevo",
-      motivo: "No se pudo determinar la fecha del vuelo: no hay con qué comparar, se carga como reserva nueva.",
-      candidato: candidato
-    };
+    return sinMatch("No se pudo determinar la fecha del vuelo: no hay con qué comparar.");
   }
 
   var vuelosEseDia = existentes.filter(function (it) {
@@ -4317,11 +5074,7 @@ function matchFlightReservation(candidato, existentes) {
 
   if (!numero) {
     if (!vuelosEseDia.length) {
-      return {
-        resultado: "nuevo",
-        motivo: "La tarjeta no trae número de vuelo, pero no hay ningún vuelo cargado ese día: se carga como reserva nueva.",
-        candidato: candidato
-      };
+      return sinMatch("La tarjeta no trae número de vuelo, y no hay ningún vuelo cargado ese día.");
     }
     return {
       resultado: "ambiguo",
@@ -4329,6 +5082,7 @@ function matchFlightReservation(candidato, existentes) {
         (vuelosEseDia.length === 1 ? " vuelo cargado" : " vuelos cargados") +
         " ese mismo día: sin número no hay forma de distinguir sin adivinar.",
       candidato: candidato,
+      esTarjeta: esTarjetaDeEmbarque(candidato),
       candidatos: vuelosEseDia
     };
   }
@@ -4336,7 +5090,7 @@ function matchFlightReservation(candidato, existentes) {
   var candidatos = vuelosEseDia.filter(function (it) { return sameFlightNumber(it.flightNumber, numero); });
 
   if (!candidatos.length) {
-    return { resultado: "nuevo", motivo: "Ningún vuelo cargado coincide en número y fecha.", candidato: candidato };
+    return sinMatch("Ningún vuelo cargado coincide en número (" + numero + ") y fecha (" + fecha + ").");
   }
 
   if (candidatos.length > 1) {
@@ -4344,6 +5098,7 @@ function matchFlightReservation(candidato, existentes) {
       resultado: "ambiguo",
       motivo: "Hay " + candidatos.length + " vuelos cargados con el mismo número y la misma fecha.",
       candidato: candidato,
+      esTarjeta: esTarjetaDeEmbarque(candidato),
       candidatos: candidatos
     };
   }
@@ -4354,6 +5109,7 @@ function matchFlightReservation(candidato, existentes) {
     motivo: "Mismo número de vuelo (" + numero + ") y misma fecha (" + fecha + ").",
     candidato: candidato,
     existente: existente,
+    esTarjeta: esTarjetaDeEmbarque(candidato),
     patch: buildFlightPatch(candidato, existente)
   };
 }
@@ -4369,7 +5125,7 @@ function matchFlightReservation(candidato, existentes) {
  */
 function matchAgainstExisting(reserva, existentes) {
   if (reserva && reserva.type === "flight") return matchFlightReservation(reserva, existentes);
-  return { resultado: "nuevo", motivo: "No es un vuelo: se carga como reserva nueva.", candidato: reserva };
+  return { resultado: "nuevo", motivo: "No es un vuelo: se carga como reserva nueva.", candidato: reserva, esTarjeta: false };
 }
 
 /* ============================================================
@@ -4379,11 +5135,17 @@ return {
   VERSION: VERSION,
   RESERVATION_TYPES: RESERVATION_TYPES,
   STRING_FIELDS: STRING_FIELDS,
+  TIPOS_DOCUMENTO: TIPOS_DOCUMENTO,
   CAMPOS_COMPLETABLES: CAMPOS_COMPLETABLES,
+  CAMPOS_VUELO: CAMPOS_VUELO,
+  REGLAS_TARJETA: REGLAS_TARJETA,
   PDFJS_VERSION: PDFJS_VERSION,
   PDFJS_CDN_BASE: PDFJS_CDN_BASE,
   REGLAS_TEXTO_SUFICIENTE: REGLAS_TEXTO_SUFICIENTE,
   MAX_CARACTERES_TEXTO: MAX_CARACTERES_TEXTO,
+  LIMITES_LOTE: LIMITES_LOTE,
+  EVENTOS_PROGRESO: EVENTOS_PROGRESO,
+  ERRORES_QUE_SE_REINTENTAN_SUELTOS: ERRORES_QUE_SE_REINTENTAN_SUELTOS,
   ERRORES_PROPIOS: ERRORES_PROPIOS,
   MODEL_ERROR_MESSAGES: MODEL_ERROR_MESSAGES,
   MENSAJE_SIN_IMAGENES: MENSAJE_SIN_IMAGENES,
@@ -4413,14 +5175,1018 @@ return {
   interpretFile: interpretFile,
   interpretFiles: interpretFiles,
 
+  // VAL-60: un lote, una llamada
+  buildBatchImportPrompt: buildBatchImportPrompt,
+  parseBatchResponse: parseBatchResponse,
+  planBatches: planBatches,
+
   // VAL-42: reconocer un vuelo ya cargado
   matchFlightReservation: matchFlightReservation,
   matchAgainstExisting: matchAgainstExisting,
   buildFlightPatch: buildFlightPatch,
+
+  // VAL-59: la tarjeta de embarque se desprende de un vuelo
+  esTarjetaDeEmbarque: esTarjetaDeEmbarque,
+  clasificarTarjetaDeEmbarque: clasificarTarjetaDeEmbarque,
+  preloadFlightFromBoardingPass: preloadFlightFromBoardingPass,
+  flightCandidates: flightCandidates,
   normalizeFlightNumber: normalizeFlightNumber,
   sameFlightNumber: sameFlightNumber,
   sameFlightDate: sameFlightDate,
   dateOnly: dateOnly
+};
+})();
+
+/* ============================================================
+   MOTOR DE ADJUNTOS — VAL-58
+   El documento original queda en la reserva y se puede descargar.
+   Embebido tal cual desde app/parts/adjuntos-engine.js (39 pruebas
+   en verde, node app/parts/adjuntos-engine.test.js), sin el
+   envoltorio UMD, mismo patrón que los otros dos motores.
+
+   Recibe un archivo y devuelve DOS cosas listas para guardar: los
+   metadatos (`doc`, que viajan adentro del ítem) y el cuerpo
+   (`cuerpo`, que va a su propio documento de la base, ver
+   `Store.saveDocBody`). No escribe nada, no sabe que existe una
+   pantalla y no llama a `claude.use`.
+
+   El tope por documento es 190 KB de archivo crudo: 256 KiB de la
+   base menos lo que agrega codificarlo como texto y menos el
+   envoltorio del propio documento. Ver docs/design/adjuntar.md 5.4.
+
+   La única función que toca el DOM es `recomprimirImagenConCanvas`,
+   aislada igual que `renderPdfPagesToImages` del motor de arriba.
+   ============================================================ */
+const AdjuntosEngine = (function () {
+"use strict";
+
+var VERSION = 1;
+
+/* ============================================================
+   TOPES — los números del brief, en un solo lugar
+   ============================================================ */
+
+/** Tope de un documento de la base, serializado. Contrato de `db`. */
+var TOPE_DOC_BASE_BYTES = 262144;          // 256 KiB
+
+/** Archivo crudo más grande que entra codificado. 190 KB, el número de la interfaz.
+    Corregido el 13/09: 192 KB (196.608) no dejaba lugar para el envoltorio del
+    cuerpo. 194.560 bytes codificados son 259.416 caracteres: 2,7 KB de margen. */
+var TOPE_ARCHIVO_BYTES = 194560;
+
+/**
+ * A cuánto apunta la recompresión. NO es el tope: es el tope menos un
+ * margen, por dos razones concretas.
+ *   1. El cuerpo del documento no es sólo el archivo: lleva sus
+ *      nombres de campo, el id y la fecha. Un archivo exactamente en
+ *      el tope deja el documento serializado arriba de 256 KiB.
+ *   2. Una foto que queda a diez bytes del tope no tiene margen para
+ *      nada, y es lo único que el motor puede elegir.
+ * 2 KB de archivo crudo son ~2,7 KB de texto: sobra para el envoltorio.
+ */
+var OBJETIVO_RECOMPRESION_BYTES = TOPE_ARCHIVO_BYTES - 2048;   // 192.512
+
+/** Tope de documentos por reserva (diseño 5.2). Decisión nuestra, no de la base. */
+var MAX_DOCS_POR_RESERVA = 3;
+
+/** Documentos que admite la base ENTERA. Del contrato de `db`, no inventado. */
+var MAX_DOCS_BASE = 5000;
+
+/** Desde qué porcentaje de la base conviene avisar. */
+var AVISO_BASE_DESDE = 0.9;
+
+/* ============================================================
+   TIPOS DE ARCHIVO — declarados como datos
+   Agregar un tipo es agregar una entrada, no tocar la lógica.
+   ============================================================ */
+
+var TIPOS = [
+  { mime: "application/pdf", alias: [], ext: ["pdf"],
+    familia: "pdf", etiqueta: "PDF", recomprimible: false },
+  { mime: "image/jpeg", alias: ["image/jpg", "image/pjpeg"], ext: ["jpg", "jpeg"],
+    familia: "imagen", etiqueta: "JPG", recomprimible: true },
+  { mime: "image/png", alias: [], ext: ["png"],
+    familia: "imagen", etiqueta: "PNG", recomprimible: true },
+  { mime: "image/webp", alias: [], ext: ["webp"],
+    familia: "imagen", etiqueta: "WEBP", recomprimible: true },
+  // HEIC es lo que sale de la cámara de un iPhone con "alta eficiencia".
+  // Safari lo puede dibujar en un canvas; otros navegadores no, y ahí el
+  // recompresor falla y el archivo cae en "no entra", que es honesto.
+  { mime: "image/heic", alias: ["image/heif"], ext: ["heic", "heif"],
+    familia: "imagen", etiqueta: "HEIC", recomprimible: true }
+];
+
+/* ============================================================
+   LA ESCALERA DE RECOMPRESIÓN — la decisión más discutible del módulo
+   ============================================================
+
+   POR QUÉ HAY UN PISO, Y POR QUÉ ESTÁ DONDE ESTÁ.
+
+   El caso que manda es una tarjeta de embarque fotografiada, porque
+   es el documento que hay que poder LEER y, encima, pasarle a un
+   lector de códigos. Su código de barras (PDF417 de la BCBP) tiene
+   del orden de 300 a 400 módulos de ancho. Para decodificar desde una
+   foto hacen falta al menos ~2 píxeles por módulo, y el código rara
+   vez ocupa más de dos tercios del ancho de la foto:
+
+       350 módulos × 2 px ÷ 0,66 ≈ 1.060 px de lado mayor
+
+   Redondeando para arriba, el piso es 1.200 px. Por debajo de eso el
+   documento deja de servir para lo único que motiva guardarlo, y
+   guardar una tarjeta ilegible es peor que decir que no entró: la
+   persona se entera en el mostrador.
+
+   POR QUÉ PRIMERO BAJA LA RESOLUCIÓN Y DESPUÉS LA CALIDAD.
+   Una foto de 12 MP tiene diez veces la resolución que hace falta:
+   el primer paso es gratis en legibilidad y es el que más pesa. De
+   ahí en adelante conviene bajar calidad antes que resolución,
+   porque los píxeles que se tiran no vuelven, y sólo al final se
+   toca de nuevo el lado mayor.
+
+   POR QUÉ LA CALIDAD NO BAJA DE 0,55.
+   Debajo de ~0,5 el JPEG mete anillado en los bordes de alto
+   contraste, que es exactamente de lo que está hecho un código de
+   barras: ensucia la binarización más de lo que ayuda el peso que
+   ahorra.
+
+   POR QUÉ CINCO PASOS Y NO DIEZ.
+   Cada paso es un decode + encode en un teléfono, con la pantalla
+   mostrando "Reduciendo la foto para que entre…" (D9). Cinco acota
+   el peor caso; si ninguno entra, la respuesta honesta es D12.
+
+   Lo que NO está verificado: cuánto pesa de verdad cada paso. Eso
+   depende del encoder del navegador y sólo se puede medir con una
+   foto real en el teléfono. La escalera está armada para que el caso
+   típico (foto de cámara de 3 MB) entre en el primer o segundo paso.
+*/
+var PISO_LADO_MAYOR = 1200;
+var PISO_CALIDAD = 0.55;
+
+var ESCALERA_RECOMPRESION = [
+  { ladoMayor: 2048, calidad: 0.82 },
+  { ladoMayor: 1600, calidad: 0.78 },
+  { ladoMayor: 1600, calidad: 0.65 },
+  { ladoMayor: 1400, calidad: 0.60 },
+  { ladoMayor: PISO_LADO_MAYOR, calidad: PISO_CALIDAD }
+];
+
+/** A qué formato se recomprime. JPEG porque es el único con control de calidad continuo. */
+var MIME_RECOMPRIMIDO = "image/jpeg";
+
+/* ============================================================
+   DE DÓNDE VINO EL DOCUMENTO
+   ============================================================ */
+
+var ORIGENES = [
+  { id: "importar", frase: "desde Importar" },
+  { id: "archivo",  frase: "desde Archivo" },
+  { id: "manual",   frase: "" },
+  { id: "camara",   frase: "" }
+];
+
+/* ============================================================
+   EL NOMBRE CORTO (diseño 5.3) — la tabla, tal cual
+   La tira y el visor dicen QUÉ ES el documento, no cómo se llama el
+   archivo. `genero` está acá porque de él dependen "adjuntada el 20
+   sep" y "adjuntado el 12 sep": es un dato de la regla, no un if.
+   ============================================================ */
+
+var REGLAS_NOMBRE_CORTO = [
+  { id: "tarjeta",     nombre: "Tarjeta de embarque", genero: "f",
+    cuando: function (c) { return c.interpretado && !!c.esTarjeta; } },
+  { id: "pasaje",      nombre: "Pasaje", genero: "m",
+    cuando: function (c) { return c.interpretado && c.tipoReserva === "flight"; } },
+  { id: "comprobante", nombre: "Comprobante", genero: "m",
+    cuando: function (c) { return c.interpretado; } },
+  { id: "manual",      nombre: null, genero: "m",
+    cuando: function () { return true; } }   // el nombre del archivo, sin extensión
+];
+
+/* ============================================================
+   ERRORES PROPIOS — código, y un mensaje que dice qué pasó y qué hacer
+   Ninguno pide disculpas ni culpa a la persona.
+   ============================================================ */
+
+var ERRORES = {
+  "tope-de-reserva": function () {
+    return "Esta reserva ya tiene " + MAX_DOCS_POR_RESERVA + " documentos, que es el tope. " +
+           "Para sumar otro, quitá uno de estos.";
+  },
+  "tipo-no-soportado": function (c) {
+    return "No puedo guardar un archivo " + (c.extension ? "." + c.extension : "de ese tipo") + ". " +
+           "Sirven PDF y fotos (JPG, PNG, WEBP, HEIC).";
+  },
+  "archivo-vacio": function () {
+    return "Ese archivo está vacío: no tiene nada adentro. Probá bajarlo de nuevo del mail y elegilo otra vez.";
+  },
+  "no-entra-pdf": function (c) {
+    return "Pesa " + formatearBytes(c.bytes) + " y el tope es " + formatearBytes(TOPE_ARCHIVO_BYTES) + ". " +
+           "Un PDF no lo puedo reducir sin romperlo, así que este no lo puedo guardar.";
+  },
+  "no-entra-ni-reducida": function (c) {
+    return "La foto pesa " + formatearBytes(c.bytes) + " y ni reducida baja de " +
+           formatearBytes(TOPE_ARCHIVO_BYTES) + " sin quedar ilegible. " +
+           "Sacale una foto más de cerca, sólo al papel, y probá de nuevo.";
+  },
+  "sin-recompresor": function (c) {
+    return "Esta foto pesa " + formatearBytes(c.bytes) + " y el tope es " + formatearBytes(TOPE_ARCHIVO_BYTES) +
+           ", pero desde acá no puedo reducirla. Guardala más chica desde el teléfono y probá de nuevo.";
+  },
+  "no-se-pudo-leer": function () {
+    return "No pude leer ese archivo. Probá elegirlo de nuevo; si sigue, bajalo otra vez del mail.";
+  },
+  "no-se-pudo-reducir": function () {
+    return "No pude reducir esa foto en este teléfono. Probá con el PDF si lo tenés, o sacale una foto más chica.";
+  }
+};
+
+/** Advertencias: no impiden nada, se informan. */
+var ADVERTENCIAS = {
+  "al-filo-del-tope": function (c) {
+    return "Este archivo queda justo en el tope (" + formatearBytes(c.bytes) + "). " +
+           "Si la base lo rechaza, la reserva se guarda igual y el documento no.";
+  }
+};
+
+/* ============================================================
+   ERRORES DE LA BASE — traducidos según el contrato de `db`
+   La app los usa al ESCRIBIR, que es lo que este motor no hace.
+   `reintentable` sale del contrato, no de la intuición.
+   ============================================================ */
+
+var ERRORES_BASE = {
+  invalid_argument: { codigo: "no-entra-en-la-base", reintentable: false,
+    mensaje: "El documento no entró: el tope por documento es " + formatearBytes(TOPE_ARCHIVO_BYTES) +
+             " y este lo pasa. La reserva se guardó igual." },
+  transform_error: { codigo: "no-entra-en-la-base", reintentable: false,
+    mensaje: "El documento no entró: el tope por documento es " + formatearBytes(TOPE_ARCHIVO_BYTES) +
+             " y este lo pasa. La reserva se guardó igual." },
+  quota_exceeded: { codigo: "base-llena", reintentable: false,
+    mensaje: "La valija llegó al tope de documentos guardados. Quitá algún documento adjunto " +
+             "de otra reserva y probá de nuevo. La reserva se guardó igual." },
+  resource_exhausted: { codigo: "demasiadas-operaciones", reintentable: true,
+    mensaje: "Se están guardando muchas cosas a la vez. Esperá unos segundos y probá de nuevo." },
+  unavailable: { codigo: "base-no-disponible", reintentable: true,
+    mensaje: "No pude guardar el documento ahora. Probá de nuevo cuando tengas señal." },
+  revoked: { codigo: "sin-permiso", reintentable: false,
+    mensaje: "Ya no tenés permiso para escribir en este viaje. Pedile el enlace de nuevo a quien te lo compartió." },
+  not_granted: { codigo: "sin-base", reintentable: false,
+    mensaje: "Desde esta vista no puedo guardar documentos. Abrí la valija en el navegador y probá de nuevo." },
+  capability_disabled: { codigo: "sin-base", reintentable: false,
+    mensaje: "Desde esta vista no puedo guardar documentos. Abrí la valija en el navegador y probá de nuevo." },
+  capability_removed: { codigo: "sin-base", reintentable: false,
+    mensaje: "Desde esta vista no puedo guardar documentos. Abrí la valija en el navegador y probá de nuevo." }
+};
+
+/* ============================================================
+   UTILIDADES PURAS
+   ============================================================ */
+
+var MES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+function norm(s) { return String(s == null ? "" : s).trim(); }
+
+/** Cuántos bytes de texto ocupa un archivo de `n` bytes codificado en base64. */
+function bytesCodificados(n) {
+  n = Math.max(0, Math.floor(Number(n) || 0));
+  return Math.ceil(n / 3) * 4;
+}
+
+/** Largo en bytes UTF-8 de un string (la base mide bytes, no caracteres). */
+function bytesDeTexto(s) {
+  var n = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xD800 && c <= 0xDBFF) { n += 4; i++; }
+    else n += 3;
+  }
+  return n;
+}
+
+/**
+ * Cuánto ocupa un objeto como documento de la base. Se MIDE, no se
+ * estima: es la única forma de saber si un cuerpo pasa los 256 KiB
+ * antes de que la base lo rechace con `invalid_argument`.
+ */
+function bytesSerializados(obj) {
+  try { return bytesDeTexto(JSON.stringify(obj)); }
+  catch (e) { return Infinity; }
+}
+
+/**
+ * El peso como lo muestra la interfaz (diseño 5.4): KB de 1024 y coma
+ * decimal. Con este criterio el tope da exactamente "190 KB", que es
+ * el número que la persona tiene que poder comparar con lo que ve en
+ * su teléfono.
+ */
+function formatearBytes(n) {
+  n = Math.max(0, Math.floor(Number(n) || 0));
+  if (n < 1024) return n + " bytes";
+  if (n < 1048576) return Math.round(n / 1024) + " KB";
+  var mb = Math.round((n / 1048576) * 10) / 10;
+  return String(mb).replace(".", ",") + " MB";
+}
+
+/**
+ * "20 sep", con la zona horaria del dispositivo, que es la que la
+ * persona vio cuando adjuntó el documento.
+ *
+ * Borde conocido y asumido: `at` se guarda en UTC, así que un documento
+ * adjuntado cerca de medianoche y abierto desde otro huso puede mostrar
+ * el día de al lado. Guardar el huso para arreglarlo cuesta un campo en
+ * cada documento y el dato es una etiqueta, no un cálculo.
+ */
+function fechaCorta(iso) {
+  var d = iso ? new Date(iso) : null;
+  if (!d || isNaN(d.getTime())) return "";
+  return d.getDate() + " " + MES[d.getMonth()];
+}
+
+function extensionDe(nombre) {
+  var n = norm(nombre);
+  var i = n.lastIndexOf(".");
+  if (i <= 0 || i === n.length - 1) return "";
+  return n.slice(i + 1).toLowerCase();
+}
+
+function sinExtension(nombre) {
+  var n = norm(nombre);
+  var ext = extensionDe(n);
+  return ext ? n.slice(0, n.length - ext.length - 1) : n;
+}
+
+/** Para armar un nombre de archivo cuando el original no sirve: sin tildes ni espacios. */
+function slug(s) {
+  var t = norm(s).toLowerCase();
+  if (typeof t.normalize === "function") t = t.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  t = t.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return t || "documento";
+}
+
+/* ---------- base64, sin dependencias y sin navegador ---------- */
+
+var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/** Uint8Array → base64. Funciona igual en node y en el navegador. */
+function bytesABase64(u8) {
+  var out = [], i = 0, len = u8.length, n;
+  for (; i + 2 < len; i += 3) {
+    n = (u8[i] << 16) | (u8[i + 1] << 8) | u8[i + 2];
+    out.push(B64[(n >> 18) & 63] + B64[(n >> 12) & 63] + B64[(n >> 6) & 63] + B64[n & 63]);
+  }
+  var resto = len - i;
+  if (resto === 1) {
+    out.push(B64[u8[i] >> 2] + B64[(u8[i] << 4) & 63] + "==");
+  } else if (resto === 2) {
+    out.push(B64[u8[i] >> 2] + B64[((u8[i] << 4) | (u8[i + 1] >> 4)) & 63] + B64[(u8[i + 1] << 2) & 63] + "=");
+  }
+  return out.join("");
+}
+
+/** base64 → Uint8Array. La usa el visor para rearmar el archivo. */
+function base64ABytes(b64) {
+  var s = String(b64 || "").replace(/[^A-Za-z0-9+/=]/g, "");
+  var pad = s.indexOf("=") >= 0 ? s.length - s.indexOf("=") : 0;
+  var len = Math.floor((s.length * 3) / 4) - pad;
+  var out = new Uint8Array(Math.max(0, len));
+  var p = 0, i = 0, a, b, c, d;
+  for (; i + 3 < s.length; i += 4) {
+    a = B64.indexOf(s[i]); b = B64.indexOf(s[i + 1]);
+    c = B64.indexOf(s[i + 2]); d = B64.indexOf(s[i + 3]);
+    if (p < out.length) out[p++] = (a << 2) | (b >> 4);
+    if (c >= 0 && p < out.length) out[p++] = ((b & 15) << 4) | (c >> 2);
+    if (d >= 0 && p < out.length) out[p++] = ((c & 3) << 6) | d;
+  }
+  return out;
+}
+
+/* ============================================================
+   CLASIFICAR EL ARCHIVO
+   ============================================================ */
+
+/**
+ * Qué es este archivo. Primero por mime, después por extensión: algunos
+ * selectores de Android devuelven mime vacío, y es el mismo criterio
+ * que ya usa `ImportEngine.fileKind`.
+ *
+ * @param {{name?:string, mimeType?:string, type?:string}} file
+ * @returns {{mime:string, familia:"pdf"|"imagen"|"desconocida", etiqueta:string,
+ *            extension:string, recomprimible:boolean, soportado:boolean}}
+ */
+function clasificarArchivo(file) {
+  var mime = norm((file && (file.mimeType || file.type)) || "").toLowerCase();
+  var ext = extensionDe((file && file.name) || "");
+  var hit = null;
+  TIPOS.forEach(function (t) {
+    if (hit) return;
+    if (mime && (mime === t.mime || t.alias.indexOf(mime) >= 0)) hit = t;
+  });
+  if (!hit) {
+    TIPOS.forEach(function (t) {
+      if (hit) return;
+      if (ext && t.ext.indexOf(ext) >= 0) hit = t;
+    });
+  }
+  if (!hit) {
+    return { mime: mime, familia: "desconocida", etiqueta: (ext || "").toUpperCase(),
+             extension: ext, recomprimible: false, soportado: false };
+  }
+  return { mime: hit.mime, familia: hit.familia, etiqueta: hit.etiqueta,
+           extension: ext || hit.ext[0], recomprimible: hit.recomprimible, soportado: true };
+}
+
+/** La etiqueta que muestra la interfaz para un mime guardado ("JPG", "PDF"). */
+function etiquetaTipo(mime) {
+  var c = clasificarArchivo({ mimeType: mime });
+  return c.soportado ? c.etiqueta : (norm(mime).split("/").pop() || "").toUpperCase();
+}
+
+function extensionDeMime(mime) {
+  var m = norm(mime).toLowerCase();
+  var hit = null;
+  TIPOS.forEach(function (t) { if (!hit && (t.mime === m || t.alias.indexOf(m) >= 0)) hit = t; });
+  return hit ? hit.ext[0] : "";
+}
+
+/* ============================================================
+   EL NOMBRE CORTO
+   ============================================================ */
+
+function reglaDeNombre(ctx) {
+  var c = {
+    interpretado: (ctx && ctx.origen) === "importar",
+    esTarjeta: !!(ctx && ctx.esTarjeta),
+    tipoReserva: ctx && ctx.tipoReserva
+  };
+  for (var i = 0; i < REGLAS_NOMBRE_CORTO.length; i++) {
+    if (REGLAS_NOMBRE_CORTO[i].cuando(c)) return REGLAS_NOMBRE_CORTO[i];
+  }
+  return REGLAS_NOMBRE_CORTO[REGLAS_NOMBRE_CORTO.length - 1];
+}
+
+/**
+ * Cómo se llama el documento en la tira y en el visor (diseño 5.3).
+ * No se le pregunta nada a la persona: sale del contexto.
+ *
+ * @param {{origen:string, esTarjeta?:boolean, tipoReserva?:string, nombre?:string}} ctx
+ * @returns {string}
+ */
+function nombreCorto(ctx) {
+  var regla = reglaDeNombre(ctx);
+  if (regla.nombre) return regla.nombre;
+  return sinExtension((ctx && ctx.nombre) || "") || "Documento";
+}
+
+/** Femenino sólo "la tarjeta de embarque"; el resto, masculino. Sale de la tabla. */
+function generoDe(nombreCortoDelDoc) {
+  var g = "m";
+  REGLAS_NOMBRE_CORTO.forEach(function (r) { if (r.nombre && r.nombre === nombreCortoDelDoc) g = r.genero; });
+  return g;
+}
+
+/* ============================================================
+   EL CUPO POR RESERVA (diseño 5.2 y D13)
+   ============================================================ */
+
+var FRASES_CUPO = [
+  { quedan: 3, frase: "Hasta " + formatearBytes(TOPE_ARCHIVO_BYTES) + " por documento, y hasta tres por reserva. " +
+                      "Si la foto pesa más, la reduzco yo y te aviso." },
+  { quedan: 2, frase: "Podés sumar hasta dos documentos más." },
+  { quedan: 1, frase: "Podés sumar un documento más." },
+  { quedan: 0, frase: "Llegaste al tope de tres documentos en esta reserva. Para sumar otro, quitá uno de estos." }
+];
+
+/**
+ * Cuántos documentos entran todavía en esta reserva, con la etiqueta y
+ * la frase que muestra el bloque "Documento".
+ * @param {Array} docs documentos ya adjuntos
+ */
+function espacioParaDocumentos(docs) {
+  var usados = (docs || []).length;
+  var quedan = Math.max(0, MAX_DOCS_POR_RESERVA - usados);
+  var frase = "";
+  FRASES_CUPO.forEach(function (f) { if (f.quedan === quedan) frase = f.frase; });
+  return {
+    usados: usados,
+    tope: MAX_DOCS_POR_RESERVA,
+    quedan: quedan,
+    puedeSumar: quedan > 0,
+    etiqueta: usados === 0 ? "Documento" : ("Documentos · " + usados + " de " + MAX_DOCS_POR_RESERVA),
+    frase: frase
+  };
+}
+
+/** Suma un documento respetando el tope. Pura: devuelve una lista nueva. */
+function agregarDocumento(docs, doc) {
+  var lista = (docs || []).slice();
+  if (lista.length >= MAX_DOCS_POR_RESERVA) {
+    return { docs: lista, error: errorInfo("tope-de-reserva", {}) };
+  }
+  lista.push(doc);
+  return { docs: lista, error: null };
+}
+
+/** Quita un documento por id. Pura. */
+function quitarDocumento(docs, id) {
+  var lista = (docs || []).filter(function (d) { return d && d.id !== id; });
+  var quitado = (docs || []).filter(function (d) { return d && d.id === id; })[0] || null;
+  return { docs: lista, quitado: quitado };
+}
+
+/* ============================================================
+   LA BASE: cuánto queda y qué hacer cuando rechaza
+   ============================================================ */
+
+/**
+ * Cuántos documentos quedan en la base. El tope sale del contrato
+ * (5.000 en total), y lo consume TODO lo que la app guarda: viajes,
+ * reservas, listas de equipaje y cada cuerpo de documento adjunto.
+ * La app sabe cuántos usa; este motor sólo hace la cuenta.
+ */
+function presupuestoDeLaBase(usados) {
+  usados = Math.max(0, Math.floor(Number(usados) || 0));
+  var quedan = Math.max(0, MAX_DOCS_BASE - usados);
+  var nivel = quedan <= 0 ? "lleno" : (usados >= MAX_DOCS_BASE * AVISO_BASE_DESDE ? "aviso" : "ok");
+  return { tope: MAX_DOCS_BASE, usados: usados, quedan: quedan, nivel: nivel };
+}
+
+/**
+ * Traduce un rechazo de la base a algo que la persona pueda hacer.
+ * Un código que no conocemos se trata como `unavailable`, que es lo
+ * que manda el contrato ("treat unknown codes as unavailable").
+ */
+function interpretarErrorDeLaBase(e) {
+  var code = (e && (e.code || e.codigo)) || "";
+  var conocido = ERRORES_BASE[code];
+  if (conocido) return { codigo: conocido.codigo, mensaje: conocido.mensaje, reintentable: conocido.reintentable, code: code };
+  var fallback = ERRORES_BASE.unavailable;
+  return { codigo: fallback.codigo, mensaje: fallback.mensaje, reintentable: true, code: code };
+}
+
+/* ============================================================
+   TEXTOS DERIVADOS DEL DOCUMENTO GUARDADO
+   Todo sale de los metadatos: nunca hace falta traer el archivo.
+   Los textos son los del diseño (sección 6), sin marcado.
+   ============================================================ */
+
+/** La tira de la tarjeta de la reserva (D1): "JPG · 178 KB". Sin estado de compresión, a propósito. */
+function textoTira(doc) {
+  if (!doc) return "";
+  return etiquetaTipo(doc.mime) + " · " + formatearBytes(doc.bytes);
+}
+
+/** La fila del bloque de adjuntar y de la cola del importador (D10, D11, D14). */
+function textoFila(doc) {
+  if (!doc) return "";
+  var partes = [etiquetaTipo(doc.mime)];
+  if (doc.paginas) partes.push(doc.paginas + (doc.paginas === 1 ? " página" : " páginas"));
+  partes.push(formatearBytes(doc.bytes));
+  if (doc.estado === "recomprimido") partes.push("menor calidad");
+  return partes.join(" · ");
+}
+
+/** La línea de datos del visor (D2, D3, D5, D6). */
+function lineaDeDatos(doc, opts) {
+  if (!doc) return "";
+  opts = opts || {};
+  var partes = [doc.nombre || "documento", etiquetaTipo(doc.mime)];
+  if (doc.paginas) partes.push(doc.paginas + (doc.paginas === 1 ? " página" : " páginas"));
+  partes.push(formatearBytes(doc.bytes));
+  var g = generoDe(doc.nombreCorto);
+  if (doc.estado === "recomprimido" && doc.bytesOriginales) {
+    partes.push((g === "f" ? "reducida" : "reducido") + " de " + formatearBytes(doc.bytesOriginales));
+  }
+  if (opts.compartido) {
+    partes.push("lo adjuntó quien te compartió el viaje");
+  } else {
+    var cola = (g === "f" ? "adjuntada" : "adjuntado") + " el " + fechaCorta(doc.at);
+    var frase = "";
+    ORIGENES.forEach(function (o) { if (o.id === doc.origen) frase = o.frase; });
+    if (frase) cola += " " + frase;
+    partes.push(cola);
+  }
+  return partes.join(" · ");
+}
+
+var AVISOS_CALIDAD = {
+  visor: function (c) {
+    return "Guardada en menor calidad. La foto pesaba " + c.antes + " y el tope por documento es " +
+           c.tope + ", así que la reduje a " + c.despues + ". Se lee bien en pantalla; " +
+           "si un código de barras no te pasa el lector, usá el original del mail.";
+  },
+  adjuntar: function (c) {
+    return "La guardé más chica. La foto pesaba " + c.antes + " y el tope por documento es " +
+           c.tope + ": la reduje a " + c.despues + ". Se lee bien en pantalla. " +
+           "Si necesitás la original tal cual, guardala también en las fotos del teléfono.";
+  }
+};
+
+/** El aviso de menor calidad (D5 en el visor, D11 al adjuntar). "" si no se recomprimió. */
+function avisoMenorCalidad(doc, opts) {
+  if (!doc || doc.estado !== "recomprimido") return "";
+  var momento = (opts && opts.momento) === "adjuntar" ? "adjuntar" : "visor";
+  return AVISOS_CALIDAD[momento]({
+    antes: formatearBytes(doc.bytesOriginales || 0),
+    despues: formatearBytes(doc.bytes),
+    tope: formatearBytes(TOPE_ARCHIVO_BYTES)
+  });
+}
+
+/**
+ * Con qué nombre baja el archivo (diseño 7.5). Se usa el original, con
+ * una corrección: si el documento se guardó recomprimido a JPEG, la
+ * extensión tiene que decir JPEG, o el archivo que queda en el teléfono
+ * miente sobre lo que es.
+ */
+function nombreDeDescarga(doc, opts) {
+  opts = opts || {};
+  var ext = extensionDeMime(doc && doc.mime) || extensionDe((doc && doc.nombre) || "") || "bin";
+  var base = sinExtension((doc && doc.nombre) || "");
+  if (!base) base = "valija-" + slug(opts.reserva || "documento");
+  return base + "." + ext;
+}
+
+/** Dónde vive el cuerpo del documento (diseño 7.2). Cuatro segmentos: es un documento. */
+function rutaDelCuerpo(tripId, docId) {
+  return "trips/" + tripId + "/docs/" + docId;
+}
+
+/* ============================================================
+   LA ÚNICA FUNCIÓN QUE TOCA EL DOM
+   ============================================================
+
+   Mismo trato que `renderPdfPagesToImages` en import-engine.js: vive
+   acá, aislada, y el resto del módulo la recibe inyectada
+   (`opts.recomprimirImagen`). Así la escalera —que es la decisión que
+   importa— se prueba entera con `node`.
+
+   CONTRATO, para quien quiera escribir otra implementación:
+     recomprimirImagen(file, paso) → Promise<{bytes:Uint8Array, mime, ancho, alto}>
+     paso = { ladoMayor:number, calidad:number, mime:string }
+   Opcionalmente puede exponer `.liberar(file)`, que el motor llama
+   cuando termina, para soltar la imagen decodificada.
+
+   NO VERIFICADO: esto no corrió nunca en un teléfono. En iOS hay
+   topes de área de canvas y decodificación de HEIC que pueden
+   devolver una imagen vacía; si la foto sale negra, es acá.
+*/
+var _decodificadas = typeof WeakMap !== "undefined" ? new WeakMap() : null;
+
+function _blobDe(file) {
+  return (file && file.blob) || file;
+}
+
+function _decodificar(file) {
+  var cache = _decodificadas && _decodificadas.get(file);
+  if (cache) return cache;
+  var blob = _blobDe(file);
+  var p;
+  if (typeof createImageBitmap === "function") {
+    p = createImageBitmap(blob);
+  } else {
+    p = new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("no-se-pudo-decodificar")); };
+      img.src = url;
+    });
+  }
+  if (_decodificadas) _decodificadas.set(file, p);
+  return p;
+}
+
+/**
+ * Un paso de la escalera, con canvas. Necesita navegador.
+ * @param {Object} file  el archivo elegido (o {blob})
+ * @param {{ladoMayor:number, calidad:number, mime?:string}} paso
+ * @returns {Promise<{bytes:Uint8Array, mime:string, ancho:number, alto:number}>}
+ */
+function recomprimirImagenConCanvas(file, paso) {
+  if (typeof document === "undefined") {
+    return Promise.reject(new Error("recomprimirImagenConCanvas necesita un navegador: usa canvas."));
+  }
+  var mime = (paso && paso.mime) || MIME_RECOMPRIMIDO;
+  return _decodificar(file).then(function (img) {
+    var w = img.width || img.naturalWidth;
+    var h = img.height || img.naturalHeight;
+    if (!w || !h) throw new Error("no-se-pudo-decodificar");
+    // Nunca se agranda: si la foto ya es más chica que el paso, se
+    // reencoda al mismo tamaño y sólo baja la calidad.
+    var escala = Math.min(1, paso.ladoMayor / Math.max(w, h));
+    var ancho = Math.max(1, Math.round(w * escala));
+    var alto = Math.max(1, Math.round(h * escala));
+    var canvas = document.createElement("canvas");
+    canvas.width = ancho;
+    canvas.height = alto;
+    var ctx = canvas.getContext("2d");
+    // Fondo blanco: un PNG con transparencia sobre JPEG queda negro,
+    // y una captura de pantalla de un mail suele tener transparencia.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, ancho, alto);
+    ctx.drawImage(img, 0, 0, ancho, alto);
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (b) {
+        if (!b) { reject(new Error("no-se-pudo-reducir")); return; }
+        b.arrayBuffer().then(function (buf) {
+          resolve({ bytes: new Uint8Array(buf), mime: mime, ancho: ancho, alto: alto });
+        }, reject);
+      }, mime, paso.calidad);
+    });
+  });
+}
+
+/** Suelta la imagen decodificada de un archivo (la llama el motor al terminar). */
+recomprimirImagenConCanvas.liberar = function (file) {
+  if (!_decodificadas) return;
+  var p = _decodificadas.get(file);
+  _decodificadas["delete"](file);
+  if (p && p.then) p.then(function (img) { if (img && typeof img.close === "function") img.close(); }, function () {});
+};
+
+/* ============================================================
+   PREPARAR EL DOCUMENTO — la puerta de entrada del motor
+   ============================================================ */
+
+function errorInfo(codigo, ctx) {
+  var f = ERRORES[codigo];
+  return { codigo: codigo, mensaje: f ? f(ctx || {}) : "No pude guardar el documento." };
+}
+
+function advertenciaInfo(codigo, ctx) {
+  var f = ADVERTENCIAS[codigo];
+  return { codigo: codigo, mensaje: f ? f(ctx || {}) : "" };
+}
+
+function resultadoFallido(codigo, ctx) {
+  return {
+    estado: "no-entra", ok: false, bloqueaGuardado: false,
+    doc: null, cuerpo: null, recompresion: null,
+    error: errorInfo(codigo, ctx), advertencias: []
+  };
+}
+
+/**
+ * Un id para el documento. Impura por una razón nombrada: un id tiene
+ * que ser único y no hay nada en la entrada de donde derivarlo. Se
+ * puede pasar `opts.id` y la función vuelve a ser determinista, que
+ * es lo que hacen las pruebas.
+ */
+function generarId() {
+  return "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizarBytes(x) {
+  if (!x) return new Uint8Array(0);
+  if (x instanceof Uint8Array) return x;
+  if (typeof ArrayBuffer !== "undefined" && x instanceof ArrayBuffer) return new Uint8Array(x);
+  if (x.buffer) return new Uint8Array(x.buffer, x.byteOffset || 0, x.byteLength);
+  return new Uint8Array(x);
+}
+
+function leerBytes(file, opts) {
+  if (opts && typeof opts.leerBytes === "function") {
+    return Promise.resolve(opts.leerBytes(file)).then(normalizarBytes);
+  }
+  if (file && file.bytes) return Promise.resolve(normalizarBytes(file.bytes));
+  var blob = _blobDe(file);
+  if (blob && typeof blob.arrayBuffer === "function") {
+    return blob.arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  return Promise.reject(new Error("no-se-pudo-leer"));
+}
+
+function tamañoDe(file) {
+  if (file && typeof file.size === "number") return file.size;
+  if (file && file.bytes && typeof file.bytes.length === "number") return file.bytes.length;
+  var blob = _blobDe(file);
+  if (blob && typeof blob.size === "number") return blob.size;
+  return null;
+}
+
+/** El recompresor que corresponde: el inyectado, el de canvas, o ninguno. */
+function resolverRecompresor(opts) {
+  if (opts && Object.prototype.hasOwnProperty.call(opts, "recomprimirImagen")) return opts.recomprimirImagen || null;
+  if (typeof document !== "undefined") return recomprimirImagenConCanvas;
+  return null;
+}
+
+/**
+ * Prepara un archivo para guardarlo junto a la reserva. NO escribe
+ * nada: el documento se guarda cuando se toca Guardar (diseño 5.5).
+ *
+ * @param {{name?:string, mimeType?:string, size?:number, blob?:Blob, bytes?:Uint8Array}} file
+ * @param {Object} [opts]
+ * @param {"importar"|"manual"|"archivo"|"camara"} [opts.origen]
+ * @param {boolean} [opts.esTarjeta]   lo dice el motor de importación, no se adivina acá
+ * @param {string}  [opts.tipoReserva] "flight", "stay", ...
+ * @param {number}  [opts.paginas]     páginas del PDF, si se conocen
+ * @param {Array}   [opts.docsActuales] documentos que la reserva ya tiene
+ * @param {string}  [opts.id]          id del documento (si no, se genera)
+ * @param {string}  [opts.itemId]      reserva a la que se engancha
+ * @param {string}  [opts.ahora]       fecha ISO (si no, ahora)
+ * @param {Function}[opts.recomprimirImagen] contrato arriba; null = no hay canvas
+ * @param {Function}[opts.leerBytes]   para leer el archivo (por defecto, blob.arrayBuffer)
+ * @returns {Promise<Object>} ver el encabezado del archivo
+ */
+function prepararDocumento(file, opts) {
+  opts = opts || {};
+  var espacio = espacioParaDocumentos(opts.docsActuales);
+  if (!espacio.puedeSumar) return Promise.resolve(resultadoFallido("tope-de-reserva", {}));
+
+  var clas = clasificarArchivo(file);
+  if (!clas.soportado) return Promise.resolve(resultadoFallido("tipo-no-soportado", { extension: clas.extension }));
+
+  var tam = tamañoDe(file);
+  if (tam === 0) return Promise.resolve(resultadoFallido("archivo-vacio", {}));
+
+  var ctx = {
+    id: opts.id || generarId(),
+    itemId: opts.itemId || null,
+    at: opts.ahora || new Date().toISOString(),
+    nombre: norm(file && file.name) || ("documento." + (clas.extension || "bin")),
+    origen: opts.origen || "manual",
+    paginas: typeof opts.paginas === "number" ? opts.paginas : null,
+    clas: clas
+  };
+  ctx.nombreCorto = nombreCorto({
+    origen: ctx.origen, esTarjeta: opts.esTarjeta, tipoReserva: opts.tipoReserva, nombre: ctx.nombre
+  });
+
+  // Camino 1: el tamaño ya se conoce y entra → se lee y se codifica tal cual.
+  if (tam !== null && tam <= TOPE_ARCHIVO_BYTES) {
+    return leerBytes(file, opts).then(function (bytes) {
+      if (!bytes.length) return resultadoFallido("archivo-vacio", {});
+      if (bytes.length > TOPE_ARCHIVO_BYTES) return rutaGrande(file, opts, ctx, bytes.length);
+      return armar(ctx, bytes, clas.mime, "ok", null);
+    }, function () { return resultadoFallido("no-se-pudo-leer", {}); });
+  }
+
+  // Camino 2: no se conoce el tamaño → hay que leer para saberlo.
+  if (tam === null) {
+    return leerBytes(file, opts).then(function (bytes) {
+      if (!bytes.length) return resultadoFallido("archivo-vacio", {});
+      if (bytes.length <= TOPE_ARCHIVO_BYTES) return armar(ctx, bytes, clas.mime, "ok", null);
+      return rutaGrande(file, opts, ctx, bytes.length);
+    }, function () { return resultadoFallido("no-se-pudo-leer", {}); });
+  }
+
+  // Camino 3: pesa más que el tope.
+  return rutaGrande(file, opts, ctx, tam);
+}
+
+/** Qué se hace con un archivo que no entra tal cual. */
+function rutaGrande(file, opts, ctx, bytes) {
+  if (!ctx.clas.recomprimible) {
+    return Promise.resolve(resultadoFallido("no-entra-pdf", { bytes: bytes }));
+  }
+  var rec = resolverRecompresor(opts);
+  if (typeof rec !== "function") {
+    return Promise.resolve(resultadoFallido("sin-recompresor", { bytes: bytes }));
+  }
+  return bajarLaEscalera(file, rec, bytes).then(function (r) {
+    if (typeof rec.liberar === "function") { try { rec.liberar(file); } catch (e) {} }
+    if (!r.ok) return resultadoFallido(r.codigo, { bytes: bytes });
+    return armar(ctx, r.bytes, r.mime, "recomprimido", {
+      desdeBytes: bytes,
+      aBytes: r.bytes.length,
+      pasos: r.pasos,
+      ladoMayor: r.paso.ladoMayor,
+      calidad: r.paso.calidad
+    });
+  }, function () {
+    if (typeof rec.liberar === "function") { try { rec.liberar(file); } catch (e) {} }
+    return resultadoFallido("no-se-pudo-reducir", { bytes: bytes });
+  });
+}
+
+/**
+ * Prueba los pasos de la escalera en orden y se queda con el PRIMERO
+ * que entra. No sigue achicando de gusto: cada paso de más es calidad
+ * tirada a la basura en el documento que después hay que leer.
+ */
+function bajarLaEscalera(file, recomprimir, bytesOriginales) {
+  var pasos = 0;
+  function intentar(i) {
+    if (i >= ESCALERA_RECOMPRESION.length) {
+      return Promise.resolve({ ok: false, codigo: "no-entra-ni-reducida", pasos: pasos });
+    }
+    var paso = { ladoMayor: ESCALERA_RECOMPRESION[i].ladoMayor,
+                 calidad: ESCALERA_RECOMPRESION[i].calidad,
+                 mime: MIME_RECOMPRIMIDO };
+    return Promise.resolve(recomprimir(file, paso)).then(function (salida) {
+      pasos++;
+      var bytes = normalizarBytes(salida && salida.bytes);
+      if (bytes.length && bytes.length <= OBJETIVO_RECOMPRESION_BYTES && bytes.length < bytesOriginales) {
+        return { ok: true, bytes: bytes, mime: (salida && salida.mime) || MIME_RECOMPRIMIDO, paso: paso, pasos: pasos };
+      }
+      return intentar(i + 1);
+    });
+  }
+  return intentar(0);
+}
+
+/** Arma el resultado bueno: metadatos para el ítem y cuerpo para su documento. */
+function armar(ctx, bytes, mime, estado, recompresion) {
+  var doc = {
+    id: ctx.id,
+    nombre: ctx.nombre,
+    nombreCorto: ctx.nombreCorto,
+    mime: mime,
+    bytes: bytes.length,
+    paginas: ctx.paginas,
+    estado: estado,
+    origen: ctx.origen,
+    at: ctx.at
+  };
+  if (estado === "recomprimido") doc.bytesOriginales = recompresion.desdeBytes;
+
+  var cuerpo = {
+    id: ctx.id,
+    itemId: ctx.itemId,
+    mime: mime,
+    bytes: bytes.length,
+    at: ctx.at,
+    b64: bytesABase64(bytes)
+  };
+
+  var advertencias = [];
+  if (bytesSerializados(cuerpo) > TOPE_DOC_BASE_BYTES) {
+    advertencias.push(advertenciaInfo("al-filo-del-tope", { bytes: bytes.length }));
+  }
+
+  return {
+    estado: estado,
+    ok: true,
+    bloqueaGuardado: false,
+    doc: doc,
+    cuerpo: cuerpo,
+    recompresion: recompresion,
+    error: null,
+    advertencias: advertencias
+  };
+}
+
+/* ============================================================
+   EXPORTA
+   ============================================================ */
+return {
+  VERSION: VERSION,
+
+  // Topes (los del brief y los del contrato de la base)
+  TOPE_ARCHIVO_BYTES: TOPE_ARCHIVO_BYTES,
+  TOPE_DOC_BASE_BYTES: TOPE_DOC_BASE_BYTES,
+  OBJETIVO_RECOMPRESION_BYTES: OBJETIVO_RECOMPRESION_BYTES,
+  MAX_DOCS_POR_RESERVA: MAX_DOCS_POR_RESERVA,
+  MAX_DOCS_BASE: MAX_DOCS_BASE,
+
+  // Reglas declaradas como datos
+  TIPOS: TIPOS,
+  ORIGENES: ORIGENES,
+  REGLAS_NOMBRE_CORTO: REGLAS_NOMBRE_CORTO,
+  ESCALERA_RECOMPRESION: ESCALERA_RECOMPRESION,
+  PISO_LADO_MAYOR: PISO_LADO_MAYOR,
+  PISO_CALIDAD: PISO_CALIDAD,
+  MIME_RECOMPRIMIDO: MIME_RECOMPRIMIDO,
+  ERRORES: ERRORES,
+  ERRORES_BASE: ERRORES_BASE,
+
+  // Cuentas
+  bytesCodificados: bytesCodificados,
+  bytesSerializados: bytesSerializados,
+  bytesABase64: bytesABase64,
+  base64ABytes: base64ABytes,
+  formatearBytes: formatearBytes,
+  fechaCorta: fechaCorta,
+
+  // Clasificación y nombres
+  clasificarArchivo: clasificarArchivo,
+  etiquetaTipo: etiquetaTipo,
+  nombreCorto: nombreCorto,
+  nombreDeDescarga: nombreDeDescarga,
+  rutaDelCuerpo: rutaDelCuerpo,
+
+  // Cupo
+  espacioParaDocumentos: espacioParaDocumentos,
+  agregarDocumento: agregarDocumento,
+  quitarDocumento: quitarDocumento,
+  presupuestoDeLaBase: presupuestoDeLaBase,
+  interpretarErrorDeLaBase: interpretarErrorDeLaBase,
+
+  // Textos derivados de los metadatos
+  textoTira: textoTira,
+  textoFila: textoFila,
+  lineaDeDatos: lineaDeDatos,
+  avisoMenorCalidad: avisoMenorCalidad,
+
+  // Preparar (la puerta de entrada)
+  prepararDocumento: prepararDocumento,
+  bajarLaEscalera: bajarLaEscalera,
+
+  // La única que toca el DOM
+  recomprimirImagenConCanvas: recomprimirImagenConCanvas
 };
 })();
 
@@ -4715,6 +6481,15 @@ function renderTrip(trip){
       if(it) sheetItem(trip, it);
     };
   });
+  /* D1 → D2/D3: la tira del documento abre el visor. Un toque, sin submenús:
+     es el camino del mostrador de embarque. */
+  $main.querySelectorAll("[data-doc]").forEach(b=>{
+    b.onclick = e=>{
+      e.stopPropagation();
+      const it = Store.itemsOf(trip.id).find(x=>x.id===b.dataset.docItem);
+      if(it) sheetDoc(trip, it, b.dataset.doc);
+    };
+  });
 
   $fab.innerHTML = `<div class="fab">
     <button class="btn primary" id="additem" style="flex:2">${svg(I.plus)} Agregar</button>
@@ -4821,6 +6596,19 @@ function cardItem(it){
     <span class="v ${v?"":"miss"}">${v?esc(v):"pendiente"}</span></div>`).join("")}</div>` : "";
 
 
+  /* D1 · el documento adjunto, una tira por documento debajo del troquelado.
+     Si la reserva no tiene documentos, `.pass-docs` NO se renderiza: la
+     tarjeta queda exactamente igual que antes. En la tira va sólo lo que hace
+     falta para decidir tocarla —qué es y cuánto pesa—; el nombre del archivo,
+     las páginas, la fecha, la compresión y la descarga viven en el visor. */
+  const docs = Array.isArray(it.docs) ? it.docs.filter(Boolean) : [];
+  const docsHtml = docs.length ? `<div class="pass-docs">${docs.map(d=>`
+    <button class="pass-doc" data-doc="${esc(d.id)}" data-doc-item="${esc(it.id)}">
+      ${svg(I.clip)}
+      <span class="nm">${esc(d.nombreCorto || d.nombre || "Documento")}</span>
+      <span class="sz">${esc(AdjuntosEngine.textoTira(d))}</span>
+    </button>`).join("")}</div>` : "";
+
   return `<div class="pass">
     <button class="pass-main" data-item="${esc(it.id)}">
       <span class="pass-icon ${T.cls}">${svg(T.icon)}</span>
@@ -4832,6 +6620,7 @@ function cardItem(it){
       ${t1?`<span class="pass-time">${t1}${t2?`<small>a ${t2}</small>`:""}</span>`:""}
     </button>
     ${stubHtml}
+    ${docsHtml}
   </div>`;
 }
 
@@ -5990,8 +7779,18 @@ function sheetItem(trip, item, prefill){
       <button type="button" data-t="${k}" aria-pressed="${it.type===k}">${svg(v.icon)} ${v.label}</button>`).join("")}
   </div></div>`;
 
+  /* VAL-58 · el documento de la reserva. `lista` mezcla los que ya están
+     guardados con los recién preparados (`nuevo:true`, todavía sin escribir);
+     `quitados` son los guardados que se van al tocar Guardar. Nada de esto
+     toca `Store` hasta ese momento. */
+  const DOC = {
+    lista: ((it.docs)||[]).filter(Boolean).map(d=>({doc:d, cuerpo:null, nuevo:false})),
+    quitados: [], preparando:null, fallo:null, aviso:""
+  };
+
   openSheet(item?"Editar reserva":"Nueva reserva",
     picker + `<div id="fields">${fieldsFor(it.type)}</div>` +
+    `<div id="doc-block"></div>` +
     (item?`<hr class="hr"><button class="btn danger block" id="delitem">${svg(I.trash)} Eliminar</button>`:""),
     `<button class="btn ghost" id="cancel">Cancelar</button>
      <button class="btn primary" id="save">Guardar</button>`);
@@ -6023,14 +7822,97 @@ function sheetItem(trip, item, prefill){
   };
   bind();
 
+  /* ---------- el bloque "Documento" ---------- */
+  const docVivo = ()=> !!document.getElementById("doc-block");
+  function pintarDoc(){
+    const root = document.getElementById("doc-block");
+    if(!root) return;
+    root.innerHTML = docBlockHtml(DOC, Store.canWrite);
+    // Guardar a mitad de preparar dejaría la reserva sin el documento sin que
+    // nadie lo pida (D9).
+    const sv = document.getElementById("save");
+    if(sv) sv.disabled = !!DOC.preparando;
+    bindDoc();
+  }
+  function bindDoc(){
+    const root = document.getElementById("doc-block");
+    if(!root) return;
+    const avisarMudo = ()=>{
+      const caja = document.getElementById("doc-nopick");
+      if(!caja || !caja.hidden) return;
+      caja.hidden = false;
+      caja.innerHTML = `<div class="notice warn">${svg(I.info)}<span class="bd">No se abrió el selector de archivos. Es un problema del navegador, no tuyo. Probá de nuevo, o subí el documento desde <b>Importar</b>.</span></div>`;
+    };
+    wireFilePick("doc_file", {alive:docVivo, onMudo:avisarMudo, onFiles:f=>elegirAdjunto(f[0], "archivo")});
+    wireFilePick("doc_cam",  {alive:docVivo, onMudo:avisarMudo, onFiles:f=>elegirAdjunto(f[0], "camara")});
+    root.querySelectorAll("[data-docrm]").forEach(b=>{
+      b.onclick = ()=>{
+        const id = b.dataset.docrm;
+        const e = DOC.lista.find(x=>x.doc.id===id);
+        DOC.lista = DOC.lista.filter(x=>x.doc.id!==id);
+        if(e && !e.nuevo) DOC.quitados.push(id);   // se borra recién al Guardar
+        DOC.aviso = "";
+        pintarDoc();
+      };
+    });
+    const fallo = root.querySelector("[data-docfallo]");
+    if(fallo) fallo.onclick = ()=>{ DOC.fallo = null; pintarDoc(); };
+    const otro = root.querySelector("#doc-otro");
+    if(otro) otro.onclick = ()=>{
+      DOC.fallo = null; pintarDoc();
+      // El selector se abre en el MISMO gesto: es lo único que funciona en el
+      // teléfono (ver wireFilePick).
+      const inp = document.getElementById("doc_file");
+      if(inp) inp.click();
+    };
+    root.querySelectorAll("[data-docopen]").forEach(b=>{
+      b.onclick = ()=>{ closeSheet(); sheetDoc(trip, it, b.dataset.docopen); };
+    });
+  }
+  async function elegirAdjunto(file, origen){
+    if(!file) return;
+    const esImagen = AdjuntosEngine.clasificarArchivo({name:file.name, mimeType:file.type}).familia === "imagen";
+    DOC.fallo = null; DOC.aviso = "";
+    DOC.preparando = {nombre:file.name, imagen:esImagen};
+    pintarDoc();
+    const r = await prepararAdjunto(file, {
+      origen, tipoReserva: it.type, docsActuales: DOC.lista.map(e=>e.doc), itemId: it.id
+    });
+    if(!docVivo()) return;            // la hoja se cerró mientras tanto
+    DOC.preparando = null;
+    if(!r.ok){
+      DOC.fallo = {nombre:file.name, imagen:esImagen, mensaje:r.error.mensaje};
+    }else{
+      DOC.lista.push({doc:r.doc, cuerpo:r.cuerpo, nuevo:true});
+      DOC.aviso = AdjuntosEngine.avisoMenorCalidad(r.doc, {momento:"adjuntar"});
+    }
+    pintarDoc();
+  }
+  pintarDoc();
+
   document.getElementById("cancel").onclick = closeSheet;
   document.getElementById("save").onclick = async ()=>{
     collect();
     if(!it.title){ toast("Poné un título", true); return; }
     if(it.start && it.end && it.end < it.start){ toast("La fecha de fin es anterior a la de inicio", true); return; }
+    if(DOC.preparando){ toast("Esperá a que termine de prepararse el documento", true); return; }
     try{
+      /* Primero los cuerpos de los documentos nuevos. Si alguno no entra, la
+         RESERVA SE GUARDA IGUAL y ese documento no queda en el array del ítem:
+         el dato vale por sí mismo (criterio de VAL-58). */
+      const fallados = [];
+      for(const e of DOC.lista){
+        if(!e.nuevo || !e.cuerpo) continue;
+        try{ await Store.saveDocBody(trip.id, e.cuerpo); e.nuevo = false; }
+        catch(err){ fallados.push({e, info: AdjuntosEngine.interpretarErrorDeLaBase(err)}); }
+      }
+      it.docs = DOC.lista.filter(e=> !fallados.some(f=>f.e===e)).map(e=>e.doc);
       await Store.saveItem(trip.id, it);
-      closeSheet(); toast(item?"Reserva actualizada":"Reserva guardada");
+      DOC.quitados.forEach(id=> Store.delDocBody(trip.id, id));
+      DOC.quitados = [];
+      closeSheet();
+      if(fallados.length) toast(fallados[0].info.mensaje, true);
+      else toast(item?"Reserva actualizada":"Reserva guardada");
       checkPackingPlan(trip);   // VAL-46: ¿la lista quedó vieja?
     }catch(e){ toast(writeErr(e), true); }
   };
@@ -6043,6 +7925,343 @@ function sheetItem(trip, item, prefill){
     }
     catch(e){ di.disabled = false; toast(writeErr(e), true); }
   };
+}
+
+/* ============================================================
+   DOCUMENTOS ADJUNTOS — VAL-58
+   El archivo que se importó, o el que se adjuntó a mano, queda en la
+   reserva y se puede abrir y descargar. Diseño: docs/design/adjuntar.md
+   (estados D1 a D14). El motor es AdjuntosEngine, embebido más arriba:
+   acá no se calcula ningún tope ni se arma ningún texto de peso a mano.
+   ============================================================ */
+
+/** El archivo, rearmado a partir del cuerpo guardado. */
+function docBlob(doc, cuerpo){
+  const bytes = AdjuntosEngine.base64ABytes((cuerpo && cuerpo.b64) || "");
+  return new Blob([bytes], {type:(cuerpo && cuerpo.mime) || (doc && doc.mime) || "application/octet-stream"});
+}
+
+/** La capacidad de descarga, o `null` si esta vista no la tiene. Nunca lanza. */
+async function capDescargas(){
+  try{ return await claude.use("downloads"); }catch(e){ return null; }
+}
+
+/** Deja el archivo en el teléfono. Mismo manejo de errores que el PDF del
+    resumen: `declined` no dice nada (la persona ya decidió), `rate_limited`
+    pide esperar, cualquier otro es un error con nombre. */
+async function bajarDocumento(dl, filename, blob){
+  try{
+    await dl.save({filename, data:blob});
+    toast("Documento guardado");
+  }catch(e){
+    const c = e && e.code;
+    if(c === "declined") return;
+    if(c === "rate_limited"){ toast("Esperá un momento y probá de nuevo", true); return; }
+    toast("No se pudo guardar el documento", true);
+  }
+}
+
+/** El patrón de origen de archivo que YA funciona en el teléfono: un
+    `<button data-pick>` y un `<input type="file">` HERMANOS, y el toque del
+    botón llama `input.click()` en el mismo gesto. No envolver el campo adentro
+    del botón, no esconderlo con display:none, no ponerlo encima: así fue como
+    los botones de importar quedaron muertos en el teléfono.
+
+    Si el selector no se abre, la persona se queda sin saber qué pasó. No lo
+    podemos preguntar: lo medimos. Abrir el selector le saca el foco a la
+    página en todos los navegadores; si después de tocar el foco nunca se fue y
+    tampoco llegó ningún archivo, no se abrió nada. */
+function wireFilePick(id, opts){
+  opts = opts || {};
+  const input = document.getElementById(id);
+  if(!input) return;
+  const vivo = opts.alive || (()=>true);
+  const boton = document.querySelector(`[data-pick="${id}"]`);
+  if(boton) boton.onclick = ()=>{
+    let seFue = false;
+    const salio = ()=>{ seFue = true; };
+    window.addEventListener("blur", salio, {once:true});
+    document.addEventListener("visibilitychange", salio, {once:true});
+    input.click();
+    setTimeout(()=>{
+      window.removeEventListener("blur", salio);
+      document.removeEventListener("visibilitychange", salio);
+      if(!seFue && !(input.files && input.files.length) && vivo() && opts.onMudo) opts.onMudo();
+    }, 1500);
+  };
+  input.onchange = ()=>{
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if(files.length && opts.onFiles) opts.onFiles(files);
+  };
+}
+
+/** Prepara un archivo elegido, sin escribir nada (diseño 5.5): lo codifica y,
+    si es una foto que no entra, la reduce. Nunca rechaza: un archivo que no se
+    puede preparar vuelve como `estado:"no-entra"` con su motivo. */
+function prepararAdjunto(file, opts){
+  return AdjuntosEngine.prepararDocumento(file, opts).catch(e=>{
+    console.warn("prepararDocumento", e);
+    return {estado:"no-entra", ok:false, bloqueaGuardado:false, doc:null, cuerpo:null,
+      recompresion:null, advertencias:[],
+      error:{codigo:"no-se-pudo-leer", mensaje:"No pude leer ese archivo. Probá elegirlo de nuevo; si sigue, bajalo otra vez del mail."}};
+  });
+}
+
+/* ---------- D8 a D13: el bloque "Documento" de la hoja de la reserva ----------
+   Elegir el archivo lo PREPARA (lo codifica, lo reduce si hace falta y muestra
+   el resultado) pero no lo escribe: escribe el mismo "Guardar" del formulario
+   (diseño 5.5). Consecuencia buena: "no entró" (D12) aparece ANTES de guardar,
+   así que se puede elegir otro sin haber dejado nada a medias. */
+function docPickerHtml(estado){
+  return `<div class="tp imp-pick" style="width:100%">
+    <button class="tpbtn" type="button" data-pick="doc_file" ${estado.preparando?"disabled":""}>${svg(I.doc)} Archivo <span class="n">PDF o imagen</span></button>
+    <button class="tpbtn" type="button" data-pick="doc_cam" ${estado.preparando?"disabled":""}>${svg(I.cam)} Sacar foto <span class="n">con la cámara</span></button>
+    <input id="doc_file" type="file" accept="application/pdf,image/*">
+    <input id="doc_cam" type="file" accept="image/*" capture="environment">
+  </div>`;
+}
+function docRowHtml(e, canWrite){
+  const clas = AdjuntosEngine.clasificarArchivo({name:e.doc.nombre, mimeType:e.doc.mime});
+  const cls = clas.familia==="pdf" ? "pdf" : (clas.familia==="imagen" ? "img" : "");
+  const icon = clas.familia==="imagen" ? "img" : "doc";
+  const nombre = e.doc.nombreCorto || e.doc.nombre;
+  /* Sin permiso de edición la cruz no queda deshabilitada: no está. Lo que sí
+     está es abrir el documento, que es el sentido de compartir un viaje. */
+  const acts = canWrite
+    ? `<button class="rm" aria-label="Quitar ${esc(nombre)}" data-docrm="${esc(e.doc.id)}">${svg(I.x)}</button>`
+    : (e.nuevo ? "" : `<button class="act" data-docopen="${esc(e.doc.id)}">Ver</button>`);
+  return `<div class="imp-file">
+    <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
+    <span class="bd"><span class="nm">${esc(nombre)}</span>
+      <span class="meta">${esc(AdjuntosEngine.textoFila(e.doc))}</span></span>
+    ${acts ? `<span class="row-acts">${acts}</span>` : ""}
+  </div>`;
+}
+function docBlockHtml(estado, canWrite){
+  const espacio = AdjuntosEngine.espacioParaDocumentos(estado.lista.map(e=>e.doc));
+  // 5.6: sin permiso de edición y sin documentos, el bloque no existe. Un
+  // bloque vacío que no ofrece ninguna acción es ruido en todas las reservas
+  // de un viaje compartido.
+  if(!canWrite && !estado.lista.length) return "";
+
+  const filas = estado.lista.map(e=> docRowHtml(e, canWrite)).join("");
+  const prep = estado.preparando ? `<div class="imp-file">
+      <span class="imp-thumb ${estado.preparando.imagen?"img":"pdf"}">${svg(I[estado.preparando.imagen?"img":"doc"])}</span>
+      <span class="bd"><span class="nm">${esc(estado.preparando.nombre)}</span>
+        <span class="meta"><span class="spin"></span> ${estado.preparando.imagen?"Reduciendo la foto para que entre…":"Preparando el archivo…"}</span></span>
+    </div>` : "";
+  const fallo = estado.fallo ? `<div class="imp-file err">
+      <span class="imp-thumb ${estado.fallo.imagen?"img":"pdf"}">${svg(I[estado.fallo.imagen?"img":"doc"])}</span>
+      <span class="bd"><span class="nm">${esc(estado.fallo.nombre)}</span>
+        <span class="meta err">${esc(estado.fallo.mensaje)}</span></span>
+      <span class="row-acts">
+        <button class="act" id="doc-otro">Elegir otro</button>
+        <button class="rm" aria-label="Sacar de la lista" data-docfallo="1">${svg(I.x)}</button>
+      </span>
+    </div>` : "";
+
+  const hayFilas = !!(filas || prep || fallo);
+  // D12: el motivo de que no haya entrado manda sobre el recordatorio del cupo.
+  const hint = estado.fallo
+    ? "La reserva no cambia: lo único que no entró es el archivo. Si en el mail viene también la página sola de tu pasaje, esa suele entrar."
+    : (estado.lista.some(e=>e.nuevo)
+        ? "Queda adjunto cuando toques Guardar. " + espacio.frase
+        : espacio.frase);
+
+  return `<div class="f">
+    <label>${esc(espacio.etiqueta)}</label>
+    ${hayFilas ? `<div class="imp-files">${filas}${prep}${fallo}</div>` : ""}
+    ${(!hayFilas && canWrite) ? `<div class="empty sm">
+      <p>Adjuntá el PDF que te mandaron o sacale una foto al papel. Queda guardado con la reserva, para tenerlo a mano sin ir a buscar el mail.</p>
+      ${docPickerHtml(estado)}
+    </div>` : ""}
+    ${(hayFilas && canWrite && espacio.puedeSumar) ? docPickerHtml(estado) : ""}
+    <div id="doc-nopick" hidden></div>
+    ${canWrite ? `<span class="hint">${esc(hint)}</span>` : ""}
+  </div>
+  ${estado.aviso ? `<div class="notice warn">${svg(I.info)}<span class="bd">${esc(estado.aviso)}</span></div>` : ""}`;
+}
+
+/* ---------- D2 a D7: el visor del documento ----------
+   El cuerpo del archivo no vive en el teléfono (ver Store.loadDocBody): hay
+   que traerlo. Con señal el estado de carga pasa de largo; sin señal se queda,
+   y ahí está D4 con el reintento. Por eso Descargar es la acción primaria: es
+   la única que deja el archivo en el teléfono para cuando no haya señal. */
+let docSheetSeq = 0;
+function sheetDoc(trip, item, docId){
+  const it = Store.itemsOf(trip.id).find(x=>x.id===item.id) || item;
+  const doc = ((it && it.docs) || []).find(d=>d && d.id===docId);
+  if(!doc){ toast("Ese documento ya no está en la reserva", true); return; }
+
+  const titulo = doc.nombreCorto || doc.nombre || "Documento";
+  const marker = `<span id="doc-live" hidden></span>`;
+  const miTurno = ++docSheetSeq;
+  const alive = ()=> miTurno === docSheetSeq && !!document.getElementById("doc-live");
+  const clas = AdjuntosEngine.clasificarArchivo({name:doc.nombre, mimeType:doc.mime});
+  /* "la tarjeta de embarque" / "el pasaje": el género sale de la misma tabla
+     del motor que decide el nombre corto, no de un if acá. */
+  const genero = (AdjuntosEngine.REGLAS_NOMBRE_CORTO.find(r=>r.nombre === doc.nombreCorto) || {}).genero || "m";
+  const elLa = genero === "f" ? "la" : "el";
+  const laLo = genero === "f" ? "la" : "lo";
+
+  const st = {
+    vista:"trayendo",     // trayendo | imagen | render | sin-previa | error | nohay
+    cuerpo:null, url:null,
+    dl:null, dlResuelto:false,
+    confirmando:false, preparando:false
+  };
+  const soltarUrl = ()=>{ if(st.url){ try{ URL.revokeObjectURL(st.url); }catch(e){} st.url = null; } };
+
+  // La capacidad se pregunta una vez por apertura y se maneja el null: si no
+  // está, el botón no se muestra apagado, se reemplaza por la explicación.
+  capDescargas().then(d=>{ st.dl = d; st.dlResuelto = true; if(alive()) pintar(); });
+
+  function traer(){
+    st.vista = "trayendo"; st.cuerpo = null; soltarUrl(); pintar();
+    Store.loadDocBody(trip.id, docId).then(cuerpo=>{
+      if(!alive()) return;
+      if(!cuerpo || !cuerpo.b64){ st.vista = "nohay"; pintar(); return; }
+      st.cuerpo = cuerpo;
+      const blob = docBlob(doc, cuerpo);
+      if(clas.familia === "imagen"){
+        soltarUrl(); st.url = URL.createObjectURL(blob); st.vista = "imagen"; pintar(); return;
+      }
+      // PDF: la primera página, con el mismo pdf.js que usa la importación.
+      // Si no cargó —se baja de un CDN y pasa— se dice y la descarga sigue.
+      if(!pdfEngineReady()){ st.vista = "sin-previa"; pintar(); return; }
+      st.vista = "render"; pintar();
+      ImportEngine.renderPdfPagesToImages(blob, {scale:1.6}).then(imgs=>{
+        if(!alive()) return;
+        if(imgs && imgs[0]){ soltarUrl(); st.url = URL.createObjectURL(imgs[0]); st.vista = "imagen"; }
+        else st.vista = "sin-previa";
+        pintar();
+      }, ()=>{ if(alive()){ st.vista = "sin-previa"; pintar(); } });
+    }, e=>{
+      console.warn("loadDocBody", e);
+      if(!alive()) return;
+      st.vista = "error"; pintar();
+    });
+  }
+
+  function vistaHtml(){
+    if(st.vista === "imagen") return `<img src="${esc(st.url)}" alt="${esc(titulo)}">`;
+    if(st.vista === "trayendo") return `<span class="ph"><span class="spin"></span> Trayendo el documento…</span>`;
+    if(st.vista === "render") return `<span class="ph"><span class="spin"></span> Armando la vista del PDF…</span>`;
+    if(st.vista === "sin-previa") return `<span class="ph">${svg(I.doc)}
+      <b>No puedo mostrarte el PDF acá</b>
+      Está guardado y lo podés descargar. Para verlo en pantalla, abrilo después de bajarlo.</span>`;
+    if(st.vista === "nohay") return `<span class="ph">${svg(I.doc)}
+      <b>No encuentro el archivo</b>
+      La reserva tiene anotado este documento, pero el archivo no está en la valija. Quitalo de la reserva y adjuntalo de nuevo.</span>`;
+    return `<span class="ph">${svg(I.doc)}
+      <b>No pude traer el documento</b>
+      Está guardado en la valija y no se perdió: para abrirlo hace falta conexión.</span>`;
+  }
+
+  function pintar(){
+    const aviso = AdjuntosEngine.avisoMenorCalidad(doc, {momento:"visor"});
+    const puedeEditar = Store.canWrite;
+    const hayCuerpo = !!st.cuerpo;
+
+    const cuerpoHtml = st.confirmando
+      // D7: la confirmación va en la MISMA hoja, sin un modal encima de otro.
+      ? `${marker}
+        <div class="doc-view" style="min-height:120px">${vistaHtml()}</div>
+        <div class="notice warn">${svg(I.info)}<span class="bd"><b>¿Quito ${elLa} ${esc(titulo.toLowerCase())}?</b>
+          Se borra el archivo de la valija y, si no lo tenés en el mail, no hay de dónde volver a sacarlo.
+          La reserva y todos sus datos quedan como están.</span></div>`
+      : `${marker}
+        ${puedeEditar ? "" : `<div class="chips"><span class="chip soon">sólo lectura</span></div>`}
+        <div class="doc-view">${vistaHtml()}</div>
+        ${st.vista === "error" ? `<div class="notice warn">${svg(I.info)}<span class="bd">Probá de nuevo cuando tengas señal. Y si vas a estar sin señal justo cuando lo necesitás, descargalo antes de salir: así queda en el teléfono.
+          <button class="act" id="doc-retry">Probar de nuevo</button></span></div>` : ""}
+        ${aviso ? `<div class="notice warn">${svg(I.info)}<span class="bd">${esc(aviso)}</span></div>` : ""}
+        ${(st.dlResuelto && !st.dl) ? `<div class="notice">${svg(I.info)}<span class="bd">Desde esta vista no puedo guardar archivos en el teléfono. Abrí la valija en el navegador y probá de nuevo, o pedile el archivo a quien te lo mandó.</span></div>` : ""}
+        <p class="doc-meta">${esc(AdjuntosEngine.lineaDeDatos(doc, {compartido: !puedeEditar}))}</p>
+        ${puedeEditar ? `<hr class="hr">
+        <div class="tp imp-pick" style="width:100%">
+          <button class="tpbtn" type="button" data-pick="doc_repl" ${st.preparando?"disabled":""}>${svg(I.edit)} Reemplazar <span class="n">por otro archivo</span></button>
+          <input id="doc_repl" type="file" accept="application/pdf,image/*">
+        </div>
+        <button class="btn ghost block" id="doc-rm" ${st.preparando?"disabled":""}>${svg(I.trash)} Quitar</button>
+        ${st.preparando ? `<div class="imp-files"><div class="imp-file"><span class="imp-thumb"></span>
+          <span class="bd"><span class="nm">Reemplazando el documento</span>
+          <span class="meta"><span class="spin"></span> Preparando el archivo…</span></span></div></div>` : ""}` : ""}`;
+
+    const pie = st.confirmando
+      ? `<button class="btn ghost" id="doc-keep">No, dejá${laLo}</button>
+         <button class="btn danger" id="doc-rmok">${svg(I.trash)} Quitar ${elLa} ${esc(titulo.toLowerCase())}</button>`
+      : (st.dlResuelto && !st.dl)
+        ? `<button class="btn ghost block" id="doc-close">Cerrar</button>`
+        : `<button class="btn ghost" id="doc-close">Cerrar</button>
+           <button class="btn primary" id="doc-dl" ${hayCuerpo && st.dl ? "" : "disabled"}>${svg(I.pdf)} Descargar</button>`;
+
+    openSheet(titulo, cuerpoHtml, pie);
+    bind();
+  }
+
+  function bind(){
+    const cerrar = document.getElementById("doc-close");
+    if(cerrar) cerrar.onclick = ()=>{ soltarUrl(); closeSheet(); };
+    const retry = document.getElementById("doc-retry");
+    if(retry) retry.onclick = traer;
+
+    const dlBtn = document.getElementById("doc-dl");
+    if(dlBtn) dlBtn.onclick = ()=>{
+      if(!st.cuerpo || !st.dl) return;
+      const nombre = AdjuntosEngine.nombreDeDescarga(doc, {reserva: it.title || ""});
+      bajarDocumento(st.dl, nombre, docBlob(doc, st.cuerpo));
+    };
+
+    const rm = document.getElementById("doc-rm");
+    if(rm) rm.onclick = ()=>{ st.confirmando = true; pintar(); };
+    const keep = document.getElementById("doc-keep");
+    if(keep) keep.onclick = ()=>{ st.confirmando = false; pintar(); };
+    const rmok = document.getElementById("doc-rmok");
+    if(rmok) rmok.onclick = async ()=>{
+      rmok.disabled = true;
+      const docs = AdjuntosEngine.quitarDocumento(it.docs || [], docId).docs;
+      try{
+        await Store.saveItem(trip.id, Object.assign({}, it, {docs}));
+        Store.delDocBody(trip.id, docId);
+        soltarUrl(); closeSheet(); toast("Documento quitado");
+      }catch(e){ rmok.disabled = false; toast(writeErr(e), true); }
+    };
+
+    if(Store.canWrite && !st.confirmando) wireFilePick("doc_repl", {
+      alive,
+      onFiles: files => reemplazar(files[0])
+    });
+  }
+
+  /** Reemplazar es preparar + escribir: el documento ya existe, así que no hay
+      un "Guardar" del formulario donde esperar. Si el archivo nuevo no entra,
+      el viejo queda como estaba. */
+  async function reemplazar(file){
+    st.preparando = true; pintar();
+    const otros = (it.docs || []).filter(d=>d && d.id !== docId);
+    const r = await prepararAdjunto(file, {
+      origen:"archivo", tipoReserva: it.type, docsActuales: otros, itemId: it.id
+    });
+    if(!alive()) return;
+    st.preparando = false;
+    if(!r.ok){ pintar(); toast(r.error.mensaje, true); return; }
+    try{
+      await Store.saveDocBody(trip.id, r.cuerpo);
+      const docs = (it.docs || []).map(d=> (d && d.id === docId) ? r.doc : d);
+      await Store.saveItem(trip.id, Object.assign({}, it, {docs}));
+      Store.delDocBody(trip.id, docId);
+      soltarUrl(); closeSheet();
+      toast(r.estado === "recomprimido" ? "Documento reemplazado, guardado en menor calidad" : "Documento reemplazado");
+    }catch(e){
+      const info = AdjuntosEngine.interpretarErrorDeLaBase(e);
+      pintar(); toast(info.mensaje, true);
+    }
+  }
+
+  pintar();
+  traer();
 }
 
 /* ---------- importador con IA ---------- */
@@ -6370,16 +8589,20 @@ async function sheetImport(trip){
 
   // Estado de la hoja: nada de esto toca `Store` hasta el guardado final
   // (el botón "Guardar" de la pantalla de revisión). Eso incluye las
-  // decisiones de completar un vuelo (`pendingMatches`): se acumulan acá
-  // mientras se resuelve la cola de coincidencias, y recién se escriben
-  // junto con el resto del lote. Cancelar en cualquier punto —incluso
-  // después de haber elegido "Completar vuelo" para alguna tarjeta de
-  // embarque— no deja nada escrito, porque hasta ese momento todo vive
-  // sólo en este objeto.
+  // decisiones sobre una tarjeta de embarque —completar un vuelo, crear uno
+  // nuevo, elegir entre varios—: viven como tarjetas de `reviewList` y recién
+  // se escriben junto con el resto del lote. Cancelar en cualquier punto no
+  // deja nada escrito, porque hasta ese momento todo vive sólo en este objeto.
+  // Los documentos son lo mismo: se preparan al guardar y ni siquiera existen
+  // antes de ese toque.
   const st = {
     queue:[], pastedText:"", sources:[],
-    archivos:[], reviewList:[], matchQueue:[], pendingMatches:[],
-    matchDone:0, savedTotal:0, acceptPartial:null
+    archivos:[], reviewList:[], matchQueue:[],
+    matchDone:0, savedTotal:0, acceptPartial:null,
+    // VAL-59: tarjetas que la persona descartó, para que el cierre lo diga.
+    descartadas:0,
+    // VAL-58: qué documento quedó adjunto a qué reserva, y cuál no entró (D14).
+    adjuntos:[], adjuntosFuera:[]
   };
   const tripCtx = ()=> ({name:trip.name, destination:trip.destination, startDate:trip.startDate, endDate:trip.endDate});
 
@@ -6402,26 +8625,48 @@ async function sheetImport(trip){
     renderElegir();
   }, ()=>{});   // no rechaza nunca, pero si algún día lo hiciera no se cae nada
 
-  function makeCard(reserva, chip, meta){ return {id:uid(), reserva, chip, meta:meta||{}}; }
+  function makeCard(reserva, chip, meta){ return {id:uid(), kind:"nueva", reserva, chip, meta:meta||{}}; }
+  /* V1 · la coincidencia deja de ser un paso propio y pasa a ser una tarjeta
+     de la pantalla de revisión: se MUESTRA lo que se va a completar (VAL-42)
+     y no se pregunta nada (VAL-59). Se aplica con el mismo botón del lote. */
+  function matchCard(reserva, match, meta){
+    return {id:uid(), kind:"match", reserva, match, chip:"Tarjeta de embarque", meta:meta||{}};
+  }
+  /* V3 · el vuelo precargado con lo que trae la tarjeta. Es una tarjeta de
+     revisión editable como las demás —nada se guarda sin revisar— con los
+     campos partidos en dos grupos: lo que vino de la tarjeta y lo que quedó
+     vacío. Un campo que la tarjeta no trae NO se rellena adivinando. */
+  function cardVueloDeTarjeta(precarga, meta){
+    const c = makeCard(Object.assign({}, precarga.vuelo), "Vuelo nuevo", meta);
+    c.kind = "vuelo-nuevo";
+    c.precarga = precarga;
+    return c;
+  }
 
-  function runOne(source){
-    /* Las cuatro funciones que el motor v2 necesita. El motor nunca llama a
-       `claude.use` ni importa pdf.js: las recibe de acá.
-         · extractPdfText    — el camino bueno: un PDF con capa de texto se
-                               interpreta SIN imágenes y sin mirar limits().
-         · renderPdfToImages — el último recurso, sólo si la vista acepta.
-         · limits            — para que el motor sepa si puede. `null` si la
-                               plataforma no lo expone: degrada a "no sé". */
-    const opts = {
+  /* Las cuatro funciones que el motor necesita. El motor nunca llama a
+     `claude.use` ni importa pdf.js: las recibe de acá.
+       · extractPdfText    — el camino bueno: un PDF con capa de texto se
+                             interpreta SIN imágenes y sin mirar limits().
+       · renderPdfToImages — el último recurso, sólo si la vista acepta.
+       · limits            — para que el motor sepa si puede. `null` si la
+                             plataforma no lo expone: degrada a "no sé". */
+  function opcionesDelMotor(){
+    return {
       callModel,
       limits: viewLimits,
       extractPdfText: b=>ImportEngine.extractPdfText(b),
       renderPdfToImages: b=>ImportEngine.renderPdfPagesToImages(b),
       trip:tripCtx()
     };
-    const p = source.kind==="texto"
-      ? interpretPastedText(source.text, source.name, opts)
-      : ImportEngine.interpretFile({name:source.name, blob:source.blob, mimeType:source.mimeType}, opts);
+  }
+
+  /* El texto pegado NO pasa por el motor de archivos: se resuelve acá mismo,
+     con su propio prompt (ver `interpretPastedText`). Los archivos van todos
+     juntos por `interpretFiles` — si alguno volviera a pasar por acá, de a
+     uno, el agrupado de VAL-60 dejaría de ocurrir. */
+  function runTextoPegado(source){
+    const opts = opcionesDelMotor();
+    const p = interpretPastedText(source.text, source.name, opts);
     return p.then(result=>{
       result.kind = source.kind;
       const idx = st.archivos.findIndex(a=>a.archivo===result.archivo);
@@ -6437,8 +8682,14 @@ async function sheetImport(trip){
       const meta = { archivo:r.archivo||(ctx&&ctx.archivo)||"", kind:(ctx&&ctx.kind)||"img", page:assignPage?(i+1):null };
       if(r.type==="flight"){
         const m = ImportEngine.matchAgainstExisting(r, existentes);
+        /* Que esto sea una tarjeta de embarque lo dice el MOTOR (`esTarjeta`),
+           no la interfaz: si la app adivinara "es tarjeta porque trae asiento"
+           trataría como tarjeta a un pasaje con asiento asignado. */
+        meta.esTarjeta = !!m.esTarjeta;
+        // Cada resultado tiene su pantalla, y son cuatro desde VAL-59.
         if(m.resultado==="nuevo") st.reviewList.push(makeCard(r,"Vuelo",meta));
-        else st.matchQueue.push({reserva:r, match:m, meta});
+        else if(m.resultado==="mismo") st.reviewList.push(matchCard(r, m, meta));   // V1
+        else st.matchQueue.push({reserva:r, match:m, meta});   // "ambiguo" → V5 · "sin-vuelo" → V2/V4/V5
       } else {
         st.reviewList.push(makeCard(r, TYPES[r.type]?.label || "Nota", meta));
       }
@@ -6459,35 +8710,25 @@ async function sheetImport(trip){
     if(det) det.open = true;
   }
 
+  /* El cableado es el compartido (`wireFilePick`, definido con el visor del
+     documento): mismo gesto, mismo aviso de selector mudo, un solo lugar. */
   function wireFileInput(id, forcedKind){
-    const input = document.getElementById(id);
-    if(!input) return;
-    const boton = document.querySelector(`[data-pick="${id}"]`);
-    if(boton) boton.onclick = ()=>{
-      let seFue = false;
-      const salio = ()=>{ seFue = true; };
-      window.addEventListener("blur", salio, {once:true});
-      document.addEventListener("visibilitychange", salio, {once:true});
-      input.click();
-      setTimeout(()=>{
-        window.removeEventListener("blur", salio);
-        document.removeEventListener("visibilitychange", salio);
-        if(!seFue && !(input.files && input.files.length) && alive()) avisarSelectorMudo();
-      }, 1500);
-    };
-    input.onchange = ()=>{
-      Array.from(input.files||[]).forEach(file=>{
-        const engineKind = ImportEngine.fileKind({name:file.name, mimeType:file.type});
-        const entrada = {
-          id:uid(), name:file.name, mimeType:file.type, blob:file, size:file.size,
-          kind: forcedKind || (engineKind==="pdf" ? "pdf" : "img"),
-          forced: !!forcedKind
-        };
-        st.queue.push(Object.assign(entrada, flagsDeArchivo(entrada)));
-      });
-      input.value = "";
-      renderElegir();
-    };
+    wireFilePick(id, {
+      alive,
+      onMudo: avisarSelectorMudo,
+      onFiles: files => {
+        files.forEach(file=>{
+          const engineKind = ImportEngine.fileKind({name:file.name, mimeType:file.type});
+          const entrada = {
+            id:uid(), name:file.name, mimeType:file.type, blob:file, size:file.size,
+            kind: forcedKind || (engineKind==="pdf" ? "pdf" : "img"),
+            forced: !!forcedKind
+          };
+          st.queue.push(Object.assign(entrada, flagsDeArchivo(entrada)));
+        });
+        renderElegir();
+      }
+    });
   }
   /* Los motivos por los que un archivo no se va a poder leer, calculados en
      un solo lugar: al encolarlo, y otra vez si `limits()` contesta tarde.
@@ -6669,25 +8910,96 @@ async function sheetImport(trip){
     const b = document.getElementById("im-acceptpartial");
     if(b) b.onclick = ()=>{ if(st.acceptPartial) st.acceptPartial(); };
   }
+  /* ---------- VAL-60: TODOS los archivos en UNA llamada ----------
+     El motor v3 agrupa los que se leen como texto y los resuelve en una sola
+     llamada por lote; las imágenes siguen sueltas, porque juntarlas no ahorra
+     nada (se reenvían en cada ronda). Por eso acá se llama a `interpretFiles`
+     UNA vez con todos los archivos, y no a `interpretFile` en un bucle: con el
+     bucle el agrupado no ocurría nunca.
+
+     El progreso por fila —la razón válida por la que se llamaba una vez por
+     archivo— se conserva con `onProgress`: cada fila recorre sus estados igual
+     que antes. Lo que se pierde, y está dicho en el diseño del motor § 7.5: en
+     un lote las filas dejan de terminar de a una, porque hay una sola
+     respuesta.
+
+     El texto pegado no pasa por el motor (lo resuelve `interpretPastedText`),
+     así que va aparte, como siempre. */
   function runInterpretation(sources){
     const rows = sources.map((s,i)=>({rowId:`im-row-${i}-${uid()}`, name:s.name, kind:s.kind, status:"queued", found:0}));
     renderLeyendo(rows);
-    let doneCount = 0, finished = false;
+    let finished = false;
     const slowTimer = setTimeout(()=>{ if(!finished && alive()) showSlowNotice(); }, 7000);
     function finishRun(){ if(finished) return; finished = true; clearTimeout(slowTimer); advance(); }
     st.acceptPartial = finishRun;
-    sources.forEach((s,i)=>{
-      rows[i].status = "leyendo";
-      if(alive()) updateRow(rows[i]);
-      runOne(s).then(result=>{
-        doneCount++;
-        rows[i].status = result.estado; rows[i].found = result.reservas.length;
-        rows[i].modo = result.modo;   // "texto" | "imagenes": de dónde salió (§4.5 del diseño)
-        if(alive()) updateRow(rows[i]);
+
+    const filaDe = nombre => rows.find(r=>r.name===nombre) || null;
+    function pintarFila(r){ if(r && alive()) updateRow(r); }
+    function anotarResultado(result, kind){
+      result.kind = kind;
+      const idx = st.archivos.findIndex(a=>a.archivo===result.archivo);
+      if(idx>=0) st.archivos[idx] = result; else st.archivos.push(result);
+      classifyAndQueue(result.reservas, {archivo:result.archivo, kind, paginas:result.paginas});
+    }
+
+    const archivos = sources.filter(s=>s.kind!=="texto");
+    const textos   = sources.filter(s=>s.kind==="texto");
+    const tareas = [];
+
+    if(archivos.length){
+      /* Los cuatro eventos del motor (§7.5), mapeados a los estados de la fila.
+         Un onProgress que lanza no puede romper la importación: el motor lo
+         envuelve, pero acá tampoco se hace nada que pueda fallar. */
+      const onProgress = ev => {
+        const fila = filaDe(ev.archivo);
+        if(!fila) return;
+        if(ev.evento==="preparado"){ fila.modo = ev.modo; }
+        else if(ev.evento==="leyendo"){ fila.status = "leyendo"; pintarFila(fila); }
+        else if(ev.evento==="terminado"){
+          const r = ev.resultado || {};
+          fila.status = r.estado || "error";
+          fila.found = (r.reservas||[]).length;
+          fila.modo = r.modo || fila.modo;
+          pintarFila(fila);
+        }
+      };
+      const opts = Object.assign(opcionesDelMotor(), {onProgress});
+      tareas.push(
+        ImportEngine.interpretFiles(archivos.map(f=>({name:f.name, mimeType:f.mimeType, blob:f.blob})), opts)
+          .then(res=>{
+            /* El número que decide si VAL-60 sirvió: cuántas llamadas salieron
+               de verdad. No se puede leer desde el teléfono sin consola, y está
+               declarado como brecha en la entrega. */
+            try{ console.info("[valija] importación", res.resumen); }catch(e){}
+            res.archivos.forEach(result=>{
+              const src = archivos.find(a=>a.name===result.archivo);
+              anotarResultado(result, src ? src.kind : "img");
+            });
+          }, e=>{
+            /* `interpretFiles` no rechaza: un archivo que falla vuelve como
+               `estado:"error"`. Si igual pasara algo raro, cada fila lo dice en
+               vez de dejar la pantalla quieta para siempre. */
+            console.warn("interpretFiles", e);
+            archivos.forEach(a=>{
+              anotarResultado({archivo:a.name, estado:"error", reservas:[], paginas:null,
+                error:ImportEngine.friendlyModelError(e)}, a.kind);
+              const fila = filaDe(a.name);
+              if(fila){ fila.status = "error"; pintarFila(fila); }
+            });
+          })
+      );
+    }
+
+    textos.forEach(s=>{
+      const fila = filaDe(s.name);
+      if(fila){ fila.status = "leyendo"; pintarFila(fila); }
+      tareas.push(runTextoPegado(s).then(result=>{
+        if(fila){ fila.status = result.estado; fila.found = result.reservas.length; fila.modo = result.modo; pintarFila(fila); }
         classifyAndQueue(result.reservas, {archivo:result.archivo, kind:result.kind, paginas:result.paginas});
-        if(doneCount>=sources.length) finishRun();
-      });
+      }));
     });
+
+    Promise.all(tareas).then(finishRun, finishRun);
   }
   function advance(){
     if(!alive()) return;
@@ -6702,7 +9014,10 @@ async function sheetImport(trip){
     // con problemas) también pasa por la revisión final: ahí vive el único
     // botón que de verdad escribe, y el único punto donde cancelar todavía
     // sirve para no dejar nada aplicado.
-    if(st.reviewList.length || st.pendingMatches.length || st.archivos.some(a=>a.estado!=="ok")){ renderReview(); return; }
+    if(st.reviewList.length || st.archivos.some(a=>a.estado!=="ok")){ renderReview(); return; }
+    // V6 · descartaste la tarjeta y era lo único que había: el cierre no puede
+    // ser una pantalla en blanco ni un "listo" que no pasó.
+    if(st.descartadas && !st.savedTotal && !st.matchDone){ renderNadaGuardado(); return; }
     finish();
   }
 
@@ -6746,12 +9061,65 @@ async function sheetImport(trip){
     bindIssuesActions();
   }
 
-  /* ---------- 06/07/07B: tarjeta de embarque ---------- */
+  /* ---------- VAL-59: la tarjeta de embarque se desprende de un vuelo ----------
+     La regla que atraviesa los tres casos: primero el match, siempre; después
+     preguntar; nunca inventar. El motor decide CUÁL es el caso y devuelve los
+     datos (`resultado:"sin-vuelo"` con su `caso`); acá se dibuja.
+
+       "mismo"           → V1, una tarjeta de la revisión. No pregunta nada.
+       "ambiguo"         → V5, el mismo componente de la iteración 2.
+       "sin-vuelo" ·  sin-vuelos    → V2 · avisa y ofrece crear el vuelo
+                   ·  un-vuelo      → V4 · dos salidas, ninguna preferida
+                   ·  varios-vuelos → V5 · contra cuál la asocio */
+  const CAMPO_ES = {
+    from:"Origen", to:"Destino", provider:"Aerolínea", flightNumber:"Nº de vuelo",
+    start:"Sale", end:"Llega", seat:"Asiento", terminal:"Terminal",
+    gate:"Puerta", boardingTime:"Embarque", confirmation:"Código de reserva"
+  };
+  function valorCampo(r, f){
+    const v = r[f] || "";
+    if((f==="start" || f==="end") && v){
+      const h = fmtTime(v);
+      return fmtDate(v) + (h ? ` ${h}` : "");
+    }
+    return v;
+  }
+  /** "Lo que leí de la tarjeta": sólo lo que la tarjeta trae, sin rellenar. */
+  function tarjetaDiffHtml(reserva, campos){
+    const filas = campos.filter(f=>reserva[f]).map(f=>
+      `<div class="field"><span class="k">${esc(CAMPO_ES[f]||f)}</span><span class="v">${esc(valorCampo(reserva,f))}</span></div>`).join("");
+    return filas ? `<div class="imp-diff">${filas}</div>` : `<p class="tiny muted" style="margin:0">La tarjeta no trae ningún dato legible.</p>`;
+  }
+  function tituloTarjeta(reserva){
+    if(reserva.flightNumber) return `Vuelo ${reserva.flightNumber}${reserva.start?`, ${fmtDateLong(reserva.start)}`:""}`;
+    return "Tarjeta de embarque";
+  }
+  /** La tira del documento adentro de una tarjeta: a qué vuelo va a quedar
+      enganchado el archivo. Cierra el círculo entre VAL-59 y VAL-58. */
+  function tiraAdjuntoHtml(meta, frase){
+    if(!meta || !meta.archivo) return "";
+    const icon = kindIcon(meta.kind);
+    return `<div class="imp-files"><div class="imp-file">
+      <span class="imp-thumb ${kindThumbCls(meta.kind)}">${svg(I[icon])}</span>
+      <span class="bd"><span class="nm">${esc(meta.archivo)}</span>
+        <span class="meta">${esc(frase)}</span></span>
+    </div></div>`;
+  }
+
   function renderMatchStep(){
     if(!alive() || !st.matchQueue.length) return;
     const step = st.matchQueue[0];
-    if(step.match.resultado==="mismo") renderMatchMismo(step);
-    else renderMatchAmbiguo(step);
+    const res = step.match.resultado;
+    if(res==="ambiguo"){ renderMatchAmbiguo(step); return; }
+    if(res==="sin-vuelo"){
+      if(step.match.caso==="sin-vuelos") renderTarjetaSinVuelos(step);
+      else if(step.match.caso==="un-vuelo") renderTarjetaUnVuelo(step);
+      else renderTarjetaVarios(step);
+      return;
+    }
+    // "mismo" y "nuevo" ya no abren paso propio: se resuelven en la revisión.
+    st.matchQueue.shift();
+    proceed();
   }
   function srcChipForMeta(meta){
     if(!meta || !meta.archivo) return "";
@@ -6759,89 +9127,94 @@ async function sheetImport(trip){
   }
   function flightLineHtml(f){
     const parts = [];
-    if(f.provider) parts.push(esc(f.provider));
-    if(f.flightNumber) parts.push(esc(f.flightNumber));
-    let line = parts.join(" ");
-    if(f.start) line += `${line?" · ":""}sale ${esc(fmtDateLong(f.start))}${fmtTime(f.start)?` ${esc(fmtTime(f.start))}`:""}`;
-    return line || "Vuelo";
+    if(f.from || f.to) parts.push(`${esc(f.from||"—")} → ${esc(f.to||"—")}`);
+    if(f.start) parts.push(`${esc(fmtDate(f.start))}${fmtTime(f.start)?` ${esc(fmtTime(f.start))}`:""}`);
+    const quien = [f.provider, f.flightNumber].filter(Boolean).join(" ");
+    if(quien) parts.push(esc(quien));
+    return parts.join(" · ") || "Vuelo";
   }
-  function renderMatchMismo(step){
+
+  /* ---------- V2: no hay ningún vuelo cargado ---------- */
+  function renderTarjetaSinVuelos(step){
     const {reserva, match, meta} = step;
-    const ex = match.existente;
-    const patchFields = [["gate","Puerta"],["terminal","Terminal"],["seat","Asiento"],["boardingTime","Embarque"]]
-      .filter(([k])=> match.patch[k]);
-    const title = reserva.flightNumber
-      ? `Vuelo ${esc(reserva.flightNumber)}${reserva.start?`, ${esc(fmtDateLong(reserva.start))}`:""}`
-      : "Tarjeta de embarque";
+    const campos = match.precarga.desdeLaTarjeta;
+    const vacios = match.precarga.vacios.map(f=>(CAMPO_ES[f]||f).toLowerCase());
     const body = `${marker}
+      <div class="notice warn">${svg(I.info)}<span class="bd"><b>Esta tarjeta de embarque no tiene vuelo al que engancharse.</b>
+        En este viaje no tenés ningún vuelo cargado, y una tarjeta sola no es una reserva: se desprende de un vuelo.
+        ¿Creo el vuelo con lo que dice la tarjeta?</span></div>
       <div class="imp-card">
         <div class="imp-card-hd">
           <span class="pass-icon">${svg(TYPES.flight.icon)}</span>
           <span class="ttl">
-            <span style="font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em">${title}</span>
+            <span style="font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em">${esc(tituloTarjeta(reserva))}</span>
             <span class="imp-src"><span class="chip accent">Tarjeta de embarque</span>${srcChipForMeta(meta)}</span>
           </span>
         </div>
         <div class="imp-card-bd">
-          <div class="f">
-            <label>Ya tenías cargado</label>
-            <div class="imp-existing">
-              <span class="pass-icon">${svg(TYPES.flight.icon)}</span>
-              <span class="info">
-                <span class="pass-title">${esc(ex.title||"Vuelo")}</span>
-                <span class="pass-when">${esc(flightLineHtml(ex))}</span>
-              </span>
-            </div>
-          </div>
-          ${patchFields.length?`
-          <div class="f">
-            <label>Se completa con</label>
-            <div class="imp-diff">
-              ${patchFields.map(([k,label])=>`<div class="field"><span class="k">${esc(label)}</span><span class="v">${esc(match.patch[k])}</span></div>`).join("")}
-            </div>
-          </div>`:""}
-          <p class="tiny muted" style="margin:0">${esc(match.motivo)}</p>
+          <div class="f"><label>Lo que leí de la tarjeta</label>${tarjetaDiffHtml(reserva, campos)}</div>
+          ${vacios.length?`<p class="tiny muted" style="margin:0">${esc(vacios.join(", "))} no ${vacios.length===1?"está":"están"} en la tarjeta. Si creás el vuelo, ${vacios.length===1?"ese campo queda vacío y lo completás":"esos campos quedan vacíos y los completás"} cuando quieras.</p>`:""}
         </div>
-      </div>`;
+      </div>
+      <p class="tiny muted" style="margin:0;text-align:center">Si la descartás no queda nada: ni el vuelo ni el archivo.</p>`;
     openSheet("Importar reservas", body, `
-      <button class="btn ghost" id="im-asnew">Cargar como nuevo</button>
-      <button class="btn primary" id="im-complete">${svg(I.check2)} Completar vuelo</button>`);
-    document.getElementById("im-asnew").onclick = ()=>{
+      <button class="btn ghost" id="im-descartar">Descartar la tarjeta</button>
+      <button class="btn primary" id="im-crear">${svg(I.plus)} Crear el vuelo</button>`);
+    document.getElementById("im-descartar").onclick = ()=> renderDescartarTarjeta(step);
+    document.getElementById("im-crear").onclick = ()=>{
       st.matchQueue.shift();
-      st.reviewList.push(makeCard(reserva, "Tarjeta de embarque", meta));
-      proceed();
-    };
-    document.getElementById("im-complete").onclick = ()=>{
-      // No se escribe acá: la decisión se acumula y se aplica recién con el
-      // guardado final, junto con el resto del lote (ver comentario de `st`
-      // más arriba). Si la persona cancela después de este toque, esto no
-      // queda escrito en ningún lado.
-      st.pendingMatches.push({existente:ex, patch:match.patch});
-      st.matchQueue.shift();
+      st.reviewList.push(cardVueloDeTarjeta(match.precarga, meta));
       proceed();
     };
   }
-  function renderMatchAmbiguo(step){
-    const {reserva, match, meta} = step;
-    const cand = match.candidatos;
-    let selected = null;
+
+  /* ---------- V6: descartar la tarjeta se dice ---------- */
+  function renderDescartarTarjeta(step){
     const body = `${marker}
-      <div class="notice warn">${svg(I.info)}
-        <span class="bd">${esc(match.motivo)} ¿A cuál corresponde?</span>
-      </div>
-      <div class="imp-choice" id="im-choice">
-        ${cand.map((c,i)=>`
-          <button type="button" aria-pressed="false" data-c="${i}">
+      <div class="notice warn">${svg(I.info)}<span class="bd"><b>¿Descarto la tarjeta de embarque?</b>
+        No se crea el vuelo y el archivo tampoco queda: se va todo. Siempre podés volver a importarla.</span></div>`;
+    openSheet("Importar reservas", body, `
+      <button class="btn ghost" id="im-volver">Volver</button>
+      <button class="btn danger" id="im-descartar-ok">${svg(I.trash)} Sí, descartala</button>`);
+    document.getElementById("im-volver").onclick = ()=> renderMatchStep();
+    document.getElementById("im-descartar-ok").onclick = ()=>{
+      st.matchQueue.shift();
+      st.descartadas++;
+      // El archivo de esa tarjeta no se adjunta a nada: ya no queda ninguna
+      // tarjeta que salga de él.
+      proceed();
+    };
+  }
+
+  /* ---------- V4: hay UN vuelo cargado y no coincide ---------- */
+  function renderTarjetaUnVuelo(step){
+    const {reserva, match, meta} = step;
+    const cand = match.candidatos[0];
+    let selected = null;
+    const nT = reserva.flightNumber ? `<b class="n">${esc(reserva.flightNumber)}</b>` : "no trae número de vuelo";
+    const nV = cand.flightNumber ? `<b class="n">${esc(cand.flightNumber)}</b>` : "no tiene número cargado";
+    const aviso = reserva.flightNumber
+      ? `La tarjeta dice ${nT} y el único vuelo que tenés cargado ${cand.flightNumber?`dice ${nV}`:nV}. Puede ser que haya leído mal un número, o que sea otro vuelo. No lo decido yo: si tenés dudas, mirá el número impreso en la tarjeta.`
+      : `La tarjeta ${nT}, así que no puedo compararla con el vuelo que tenés cargado sin adivinar. No lo decido yo: mirá la tarjeta y decime cuál es.`;
+    const body = `${marker}
+      <div class="notice warn">${svg(I.info)}<span class="bd">${aviso}</span></div>
+      <div class="f"><label>Lo que leí de la tarjeta</label>${tarjetaDiffHtml(reserva, match.precarga.desdeLaTarjeta)}</div>
+      <div class="f">
+        <label>¿Qué hago con ella?</label>
+        <div class="imp-choice" id="im-choice">
+          <button type="button" aria-pressed="false" data-c="ex">
             <span class="radio"></span>
-            <span class="info"><span class="t">${esc(c.title||"Vuelo")}</span>
-              <span class="s">${esc(flightLineHtml(c))}</span></span>
-          </button>`).join("")}
-        <div class="sep">o</div>
-        <button type="button" aria-pressed="false" data-c="n">
-          <span class="radio"></span>
-          <span class="info"><span class="t">Ninguno de los dos</span>
-            <span class="s">Es un vuelo nuevo, no lo tenía cargado</span></span>
-        </button>
+            <span class="info"><span class="t">Es este vuelo</span>
+              <span class="s">${flightLineHtml(cand)}</span>
+              <span class="tiny muted">Le sumo lo que trae la tarjeta y le adjunto el archivo</span></span>
+          </button>
+          <button type="button" aria-pressed="false" data-c="new">
+            <span class="radio"></span>
+            <span class="info"><span class="t">Es otro vuelo</span>
+              <span class="s">${flightLineHtml(reserva)}</span>
+              <span class="tiny muted">Creo un vuelo nuevo con lo que dice la tarjeta y le adjunto el archivo</span></span>
+          </button>
+        </div>
       </div>`;
     openSheet("Importar reservas", body, `
       <button class="btn ghost" id="im-cancel">Cancelar</button>
@@ -6854,28 +9227,186 @@ async function sheetImport(trip){
       choiceEl.querySelectorAll("[data-c]").forEach(x=>x.setAttribute("aria-pressed", x===b));
       selected = b.dataset.c;
       saveBtn.disabled = false;
-      saveBtn.textContent = selected==="n" ? "Guardar como vuelo nuevo" : "Completar vuelo";
+      saveBtn.textContent = selected==="new" ? "Crear el vuelo nuevo" : "Completar ese vuelo";
     });
     saveBtn.onclick = ()=>{
       if(selected===null) return;
-      if(selected==="n"){
-        st.matchQueue.shift();
-        st.reviewList.push(makeCard(reserva, "Tarjeta de embarque", meta));
-        proceed();
-        return;
-      }
-      // Igual que en "Completar vuelo" del caso sin ambigüedad: se acumula,
-      // no se escribe. El guardado final es el único lugar que toca `Store`.
-      const ex = cand[Number(selected)];
-      const patch = ImportEngine.buildFlightPatch(reserva, ex);
-      st.pendingMatches.push({existente:ex, patch});
       st.matchQueue.shift();
+      if(selected==="new") st.reviewList.push(cardVueloDeTarjeta(match.precarga, meta));
+      else st.reviewList.push(matchCard(reserva, {
+        resultado:"mismo", existente:cand, patch:ImportEngine.buildFlightPatch(reserva, cand),
+        motivo:"Lo elegiste vos: dijiste que la tarjeta es de este vuelo. No se toca ningún dato que ya tuvieras."
+      }, meta));
       proceed();
     };
   }
 
+  /* ---------- V5: varios vuelos, contra cuál la asocio ----------
+     Dos disparadores, un solo componente: el "ambiguo" de la iteración 2 y el
+     "sin-vuelo" con más de un vuelo cargado. Lo único que cambia es el aviso
+     de arriba, porque cambia el motivo. */
+  function renderElegirVuelo(step, opts){
+    const {reserva, match, meta} = step;
+    const cand = opts.candidatos;
+    let selected = null;
+    const body = `${marker}
+      <div class="notice warn">${svg(I.info)}<span class="bd">${opts.aviso}</span></div>
+      ${opts.diff ? `<div class="f"><label>Lo que leí de la tarjeta</label>${tarjetaDiffHtml(reserva, opts.diff)}</div>` : ""}
+      <div class="imp-choice" id="im-choice">
+        ${cand.map((c,i)=>`
+          <button type="button" aria-pressed="false" data-c="${i}">
+            <span class="radio"></span>
+            <span class="info"><span class="t">${esc(c.title||"Vuelo")}</span>
+              <span class="s">${flightLineHtml(c)}</span></span>
+          </button>`).join("")}
+        <div class="sep">o</div>
+        <button type="button" aria-pressed="false" data-c="n">
+          <span class="radio"></span>
+          <span class="info"><span class="t">${esc(opts.ninguno)}</span>
+            <span class="s">${esc(opts.ningunoSub)}</span></span>
+        </button>
+      </div>
+      ${meta && meta.archivo ? `<p class="tiny muted" style="margin:0">La tarjeta queda adjunta al vuelo que elijas, sea uno de estos o el nuevo.</p>` : ""}`;
+    openSheet("Importar reservas", body, `
+      <button class="btn ghost" id="im-cancel">Cancelar</button>
+      <button class="btn primary" id="im-choicesave" disabled>Elegí una opción</button>`);
+    document.getElementById("im-cancel").onclick = closeSheet;
+    const choiceEl = document.getElementById("im-choice");
+    const saveBtn = document.getElementById("im-choicesave");
+    choiceEl.addEventListener("click", e=>{
+      const b = e.target.closest("[data-c]"); if(!b) return;
+      choiceEl.querySelectorAll("[data-c]").forEach(x=>x.setAttribute("aria-pressed", x===b));
+      selected = b.dataset.c;
+      saveBtn.disabled = false;
+      saveBtn.textContent = selected==="n" ? opts.botonNuevo : "Completar ese vuelo";
+    });
+    saveBtn.onclick = ()=>{
+      if(selected===null) return;
+      st.matchQueue.shift();
+      if(selected==="n"){
+        // Una tarjeta nunca se guarda como reserva suelta: se crea el vuelo
+        // precargado (V3). Un pasaje que no es tarjeta sí es una reserva nueva.
+        if(match.esTarjeta){
+          const precarga = match.precarga || ImportEngine.preloadFlightFromBoardingPass(reserva);
+          st.reviewList.push(cardVueloDeTarjeta(precarga, meta));
+        }else{
+          st.reviewList.push(makeCard(reserva, "Vuelo", meta));
+        }
+        proceed();
+        return;
+      }
+      const ex = cand[Number(selected)];
+      st.reviewList.push(matchCard(reserva, {
+        resultado:"mismo", existente:ex, patch:ImportEngine.buildFlightPatch(reserva, ex),
+        motivo:"Lo elegiste vos: dijiste que la tarjeta es de este vuelo. No se toca ningún dato que ya tuvieras."
+      }, meta));
+      proceed();
+    };
+  }
+  function renderTarjetaVarios(step){
+    const {reserva, match} = step;
+    const n = match.candidatos.length;
+    const aviso = reserva.flightNumber
+      ? `La tarjeta dice <b class="n">${esc(reserva.flightNumber)}</b> y ninguno de los ${n} vuelos que tenés cargados tiene ese número. Puede ser un número mal leído, o un vuelo que todavía no cargaste. ¿A cuál la asocio?`
+      : `La tarjeta no trae número de vuelo y tenés ${n} vuelos cargados: sin número no hay forma de distinguir sin adivinar. ¿A cuál la asocio?`;
+    renderElegirVuelo(step, {
+      candidatos: match.candidatos,
+      aviso,
+      diff: match.precarga.desdeLaTarjeta,
+      ninguno:"Ninguno de estos",
+      ningunoSub:"Creá el vuelo con lo que dice la tarjeta",
+      botonNuevo:"Crear el vuelo nuevo"
+    });
+  }
+  function renderMatchAmbiguo(step){
+    const {match} = step;
+    renderElegirVuelo(step, {
+      candidatos: match.candidatos,
+      aviso: `${esc(match.motivo)} ¿A cuál corresponde?`,
+      diff: match.esTarjeta ? ImportEngine.preloadFlightFromBoardingPass(step.reserva).desdeLaTarjeta : null,
+      ninguno: match.candidatos.length===2 ? "Ninguno de los dos" : "Ninguno de estos",
+      ningunoSub: match.esTarjeta ? "Creá el vuelo con lo que dice la tarjeta" : "Es un vuelo nuevo, no lo tenía cargado",
+      botonNuevo: match.esTarjeta ? "Crear el vuelo nuevo" : "Guardar como vuelo nuevo"
+    });
+  }
+
   /* ---------- 04/05: revisión ---------- */
+  /** V1 · la tarjeta de una coincidencia: muestra lo que se va a completar y
+      el motivo, y NO pregunta nada. La única salida es un enlace al pie, para
+      quien sabe que el match está mal. */
+  function matchCardHtml(card){
+    const {reserva, match, meta} = card;
+    const ex = match.existente;
+    const patchFields = [["gate","Puerta"],["terminal","Terminal"],["seat","Asiento"],["boardingTime","Embarque"]]
+      .filter(([k])=> match.patch[k]);
+    return `<div class="imp-card" data-card="${card.id}">
+      <div class="imp-card-hd">
+        <span class="pass-icon">${svg(TYPES.flight.icon)}</span>
+        <span class="ttl">
+          <span style="font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em">Se completa ${esc(ex.title||"tu vuelo")}</span>
+          <span class="imp-src"><span class="chip accent">${esc(card.chip)}</span>${srcChipForMeta(meta)}</span>
+        </span>
+      </div>
+      <div class="imp-card-bd">
+        <div class="f">
+          <label>Ya tenías cargado</label>
+          <div class="imp-existing">
+            <span class="pass-icon">${svg(TYPES.flight.icon)}</span>
+            <span class="info">
+              <span class="pass-title">${esc(ex.title||"Vuelo")}</span>
+              <span class="pass-when">${flightLineHtml(ex)}</span>
+            </span>
+          </div>
+        </div>
+        ${patchFields.length?`
+        <div class="f">
+          <label>Se completa con</label>
+          <div class="imp-diff">
+            ${patchFields.map(([k,label])=>`<div class="field"><span class="k">${esc(label)}</span><span class="v">${esc(match.patch[k])}</span></div>`).join("")}
+          </div>
+        </div>`:""}
+        <p class="tiny muted" style="margin:0">${esc(match.motivo)}</p>
+        ${tiraAdjuntoHtml(meta, "Queda adjunta a este vuelo")}
+      </div>
+      <div class="card-acts">
+        <button class="act warn" data-notthis="${card.id}">No es este vuelo</button>
+      </div>
+    </div>`;
+  }
+  /** V3 · el vuelo precargado, en dos grupos con su cuenta. Los valores son
+      inputs de verdad (corregir una letra mal leída es escribir encima) y lo
+      que la tarjeta no trajo queda vacío y visible. */
+  function vueloNuevoCardHtml(card){
+    const r = card.reserva, p = card.precarga;
+    const campoHtml = (f, vacio) => {
+      const tipo = (f==="start"||f==="end") ? `type="datetime-local"` : "";
+      const mono = (f==="start"||f==="end") ? "" : `class="mono"`;
+      return `<div class="f"><label>${esc(CAMPO_ES[f]||f)}</label>
+        <input data-f="${f}" ${tipo} ${mono} value="${esc(r[f]||"")}" ${vacio?`placeholder="No lo encontré"`:""}></div>`;
+    };
+    return `<div class="imp-card" data-card="${card.id}">
+      <div class="imp-card-hd">
+        <span class="pass-icon">${svg(TYPES.flight.icon)}</span>
+        <span class="ttl">
+          <input class="imp-title" data-f="title" value="${esc(r.title||"")}" placeholder="Sin título">
+          <span class="imp-src"><span class="chip accent">${esc(card.chip)}</span>${srcChipForMeta(card.meta)}</span>
+        </span>
+        <button class="imp-discard" aria-label="Descartar esta reserva" data-discard="${card.id}">${svg(I.x)}</button>
+      </div>
+      <div class="imp-card-bd">
+        <div class="notice">${svg(I.info)}<span class="bd">Armé el vuelo con lo que trae la tarjeta: <b class="n">${p.desdeLaTarjeta.length}</b> de <b class="n">${p.campos}</b> campos. Los otros no están impresos en la tarjeta, así que quedan vacíos — completalos ahora o cuando los tengas.</span></div>
+        <div class="imp-src"><span class="chip accent src">${p.desdeLaTarjeta.length} campos · de la tarjeta</span></div>
+        ${p.desdeLaTarjeta.map(f=>campoHtml(f,false)).join("")}
+        ${p.vacios.length?`<hr class="hr">
+        <div class="imp-src"><span class="chip src">${svg(I.dash)}${p.vacios.length} campos · vacíos, no están en la tarjeta</span></div>
+        ${p.vacios.map(f=>campoHtml(f,true)).join("")}`:""}
+        ${tiraAdjuntoHtml(card.meta, "Queda adjunta a este vuelo")}
+      </div>
+    </div>`;
+  }
   function reviewCardHtml(card){
+    if(card.kind==="match") return matchCardHtml(card);
+    if(card.kind==="vuelo-nuevo") return vueloNuevoCardHtml(card);
     const r = card.reserva;
     const T = TYPES[r.type] || TYPES.note;
     const pageTxt = card.meta.page ? ` · pág. ${card.meta.page}` : "";
@@ -6894,36 +9425,40 @@ async function sheetImport(trip){
   }
   function syncReviewInputsToState(){
     st.reviewList.forEach(c=>{
+      if(c.kind==="match") return;   // no tiene inputs: no se edita un vuelo que ya existe
       const el = document.querySelector(`[data-card="${c.id}"]`);
       if(!el) return;
       el.querySelectorAll("[data-f]").forEach(inp=>{ c.reserva[inp.dataset.f] = inp.value.trim(); });
     });
   }
   /** Texto del único botón que de verdad escribe: nombra las dos cosas que
-      puede llegar a hacer (guardar reservas nuevas, completar vuelos por
-      tarjeta de embarque), nunca un "Guardar" genérico que esconda la mitad
-      de lo que va a pasar. */
+      puede llegar a hacer (guardar reservas nuevas, completar vuelos con la
+      tarjeta de embarque), nunca un "Guardar" genérico. Con lote mixto el
+      sustantivo es "cambios", porque "reservas" no describe a un vuelo que se
+      completa. */
   function saveReviewLabel(n, m){
-    if(n && m) return `Guardar ${n} ${n===1?"reserva":"reservas"} y completar ${m} ${m===1?"vuelo":"vuelos"}`;
+    if(n && m) return `Guardar ${n+m} cambios`;
     if(m) return `Completar ${m} ${m===1?"vuelo":"vuelos"}`;
     if(n) return `Guardar ${n} ${n===1?"reserva":"reservas"}`;
     return "Nada para guardar";
   }
   function renderReview(){
     if(!alive()) return;
-    const cards = st.reviewList;
-    const matches = st.pendingMatches;
+    const matches = st.reviewList.filter(c=>c.kind==="match");
+    const nuevas  = st.reviewList.filter(c=>c.kind!=="match");
     const issues = st.archivos.filter(a=>a.estado!=="ok");
-    const n = cards.length, m = matches.length, totalArchivos = st.archivos.length;
+    const n = nuevas.length, m = matches.length, totalArchivos = st.archivos.length;
     const encontrados = [];
     if(n) encontrados.push(`${n} ${n===1?"reserva":"reservas"}`);
     if(m) encontrados.push(`${m} ${m===1?"vuelo":"vuelos"} para completar con la tarjeta de embarque`);
     const noticeTxt = encontrados.length
       ? `Encontré ${encontrados.join(" y ")}${totalArchivos>1?` en ${totalArchivos} archivos`:""}. ${issues.length?"Los que no aportaron nada, mirá el detalle más abajo. ":""}${n?"Revisá los datos y corregí lo que haga falta antes de guardar.":"Nada de esto se aplicó todavía: se escribe recién al confirmar."}`
       : "Ya no queda ninguna reserva para revisar. Mirá el detalle de los archivos más abajo.";
+    // Las coincidencias primero: es lo que ya está decidido y sólo se muestra.
+    const cards = matches.concat(nuevas);
     const body = `${marker}
       <div class="notice">${svg(I.info)}<span class="bd">${esc(noticeTxt)}</span></div>
-      ${n?`<div class="stack">${cards.map(reviewCardHtml).join("")}</div>
+      ${cards.length?`<div class="stack">${cards.map(reviewCardHtml).join("")}</div>
         <p class="tiny muted" style="margin:0">Costo, teléfono y notas se completan después, abriendo la reserva ya guardada. Acá sólo lo que la lectura automática suele errar: fechas, rutas y códigos.</p>`:""}
       ${issues.length?issuesListHtml(issues):""}`;
     const total = n + m;
@@ -6938,28 +9473,90 @@ async function sheetImport(trip){
         renderReview();
       };
     });
+    /* "No es este vuelo": la app no estaba pidiendo una decisión, estaba
+       ofreciendo una corrección. Se vuelve a preguntar con los vuelos que
+       quedan —sin el que la persona acaba de descartar— y de ahí sale V2, V4
+       o V5 según cuántos haya. */
+    document.querySelectorAll("[data-notthis]").forEach(b=>{
+      b.onclick = ()=>{
+        syncReviewInputsToState();
+        const card = st.reviewList.find(c=>c.id===b.dataset.notthis);
+        if(!card) return;
+        st.reviewList = st.reviewList.filter(c=>c.id!==card.id);
+        st.matchQueue.unshift(pasoSinVuelo(card.reserva, card.meta, card.match.existente.id));
+        proceed();
+      };
+    });
     bindIssuesActions();
     if(total) document.getElementById("im-save").onclick = doSaveReview;
   }
+  /** Vuelve a plantear la pregunta de VAL-59 con los vuelos que quedan. El
+      motor ya sabe cuáles son candidatos y en qué orden; acá no se ordena. */
+  function pasoSinVuelo(reserva, meta, excluirId){
+    const existentes = Store.itemsOf(trip.id).filter(x=> !excluirId || x.id!==excluirId);
+    const candidatos = ImportEngine.flightCandidates(existentes);
+    return {reserva, meta, match:{
+      resultado:"sin-vuelo",
+      caso: !candidatos.length ? "sin-vuelos" : (candidatos.length===1 ? "un-vuelo" : "varios-vuelos"),
+      candidatos, esTarjeta:true,
+      opciones: candidatos.length ? ["asociar","crear"] : ["crear"],
+      precarga: ImportEngine.preloadFlightFromBoardingPass(reserva),
+      motivo:"Dijiste que no es ese vuelo."
+    }};
+  }
+
   async function doSaveReview(){
     if(!alive()) return;
     syncReviewInputsToState();
     const cards = st.reviewList.slice();
-    const matches = st.pendingMatches.slice();
-    if(!cards.length && !matches.length) return;
+    if(!cards.length) return;
+    const matches = cards.filter(c=>c.kind==="match");
+    const nuevas  = cards.filter(c=>c.kind!=="match");
     const saveBtn = document.getElementById("im-save");
     saveBtn.disabled = true; saveBtn.innerHTML = `<span class="spin"></span> Guardando…`;
+    // Cada tarjeta ya sabe a qué reserva va: la que se completa, o una nueva.
+    cards.forEach(c=>{ c.destinoId = c.kind==="match" ? c.match.existente.id : uid(); });
+
     try{
-      // Primero los vuelos que se completan (acumulados desde 06/07/07B, sin
-      // haber tocado `Store` hasta ahora), después las reservas nuevas.
-      for(const pm of matches){
-        await Store.saveItem(trip.id, {...pm.existente, ...pm.patch});
+      /* 1. Los documentos (VAL-58): UNO por archivo, al destino de la primera
+         reserva que salió de ese archivo. Se prepara sin escribir nada, y si
+         no entra, la reserva se guarda igual: el dato vale por sí mismo. */
+      const trabajos = [];
+      for(const src of st.sources){
+        if(src.kind==="texto" || !src.blob) continue;
+        const card = cards.find(c=>c.meta && c.meta.archivo===src.name);
+        if(!card) continue;   // ese archivo no dejó ninguna reserva, o se descartó
+        const info = st.archivos.find(a=>a.archivo===src.name) || null;
+        const existente = card.kind==="match" ? card.match.existente : null;
+        const r = await prepararAdjunto(src.blob, {
+          origen:"importar",
+          esTarjeta: !!(card.meta && card.meta.esTarjeta),
+          tipoReserva: card.reserva.type,
+          paginas: info ? info.paginas : null,
+          docsActuales: (existente && existente.docs) || [],
+          itemId: card.destinoId
+        });
+        trabajos.push({src, card, r, guardado:false});
       }
-      for(const c of cards){
-        const r = c.reserva;
+      for(const t of trabajos){
+        if(!t.r.ok){ st.adjuntosFuera.push({nombre:t.src.name, mensaje:t.r.error.mensaje}); continue; }
+        try{ await Store.saveDocBody(trip.id, t.r.cuerpo); t.guardado = true; }
+        catch(e){ st.adjuntosFuera.push({nombre:t.src.name, mensaje:AdjuntosEngine.interpretarErrorDeLaBase(e).mensaje}); }
+      }
+      const docDe = card => { const t = trabajos.find(x=>x.card===card && x.guardado); return t ? t.r.doc : null; };
+
+      // 2. Primero los vuelos que se completan, después las reservas nuevas.
+      for(const c of matches){
+        const ex = c.match.existente, doc = docDe(c);
+        const docs = ((ex.docs)||[]).concat(doc?[doc]:[]);
+        await Store.saveItem(trip.id, Object.assign({}, ex, c.match.patch, {docs}));
+        if(doc) st.adjuntos.push({doc, destino: ex.title || "el vuelo"});
+      }
+      for(const c of nuevas){
+        const r = c.reserva, doc = docDe(c);
         const type = TYPES[r.type] ? r.type : "note";
         await Store.saveItem(trip.id, {
-          id: uid(), type,
+          id: c.destinoId, type,
           title:r.title||"", start:r.start||"", end:r.end||"",
           from:(r.from||"").toUpperCase(), to:(r.to||"").toUpperCase(),
           provider:r.provider||"", flightNumber:(r.flightNumber||"").toUpperCase(),
@@ -6967,39 +9564,90 @@ async function sheetImport(trip){
           terminal:(r.terminal||"").toUpperCase(), gate:(r.gate||"").toUpperCase(),
           boardingTime:r.boardingTime||"",
           address:r.address||"", phone:r.phone||"", cost:r.cost||"",
-          currency:(r.currency||"").toUpperCase(), notes:r.notes||"", source:"import"
+          currency:(r.currency||"").toUpperCase(), notes:r.notes||"", source:"import",
+          docs: doc?[doc]:[]
         });
+        if(doc) st.adjuntos.push({doc, destino: r.title || (TYPES[type]||TYPES.note).label});
       }
-      st.savedTotal += cards.length;
+      st.savedTotal += nuevas.length;
       st.matchDone += matches.length;
       st.reviewList = [];
-      st.pendingMatches = [];
       finish();
     }catch(e){
       // Si falla a mitad de camino puede quedar parte del lote ya escrito
-      // (algunos `Store.saveItem` resolvieron antes del que falló) — mismo
-      // comportamiento que ya tenía el guardado de reservas nuevas frente a
-      // un error de red a mitad de lote. Se muestra qué falló para que la
-      // persona reintente sabiendo que puede haber quedado algo aplicado.
+      // (algunos `Store.saveItem` resolvieron antes del que falló). Se muestra
+      // qué falló para que la persona reintente sabiendo que puede haber
+      // quedado algo aplicado.
       toast(writeErr(e), true);
-      saveBtn.disabled = false; saveBtn.innerHTML = `${svg(I.spark)} ${saveReviewLabel(cards.length, matches.length)}`;
+      saveBtn.disabled = false; saveBtn.innerHTML = `${svg(I.spark)} ${saveReviewLabel(nuevas.length, matches.length)}`;
     }
   }
 
-  /* ---------- 09: guardado ---------- */
-  function finish(){
+  /* ---------- V6 (segunda parte): descartaste lo único que había ---------- */
+  function renderNadaGuardado(){
     if(!alive()) return;
-    closeSheet();
-    const n = st.savedTotal, m = st.matchDone;
-    let msg;
-    if(n && m) msg = `Guardado. Agregué ${n} ${n===1?"reserva":"reservas"} y completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.`;
-    else if(m) msg = `Guardado. Completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.`;
-    else if(n) msg = `${n} ${n===1?"reserva agregada":"reservas agregadas"}`;
-    else msg = "Listo";
-    toast(msg);
-    if(n || m) checkPackingPlan(trip);   // VAL-46: importar también hace crecer el viaje
+    const body = `${marker}
+      <div class="empty">
+        <h3>No quedó nada guardado</h3>
+        <p>Descartaste la tarjeta de embarque y era lo único que había en esta carga. Ni el vuelo ni el archivo quedaron en la valija.</p>
+      </div>`;
+    openSheet("Importar reservas", body, `
+      <button class="btn ghost" id="im-close">Cerrar</button>
+      <button class="btn primary" id="im-manual">${svg(I.plus)} Cargar a mano</button>`);
+    document.getElementById("im-close").onclick = closeSheet;
+    document.getElementById("im-manual").onclick = ()=>{ closeSheet(); sheetItem(trip, null); };
   }
 
+  /* ---------- 09 / D14: el cierre nombra qué quedó adjunto y qué no ---------- */
+  function finish(){
+    if(!alive()) return;
+    const n = st.savedTotal, m = st.matchDone;
+    const adj = st.adjuntos, fuera = st.adjuntosFuera;
+    const partes = [];
+    if(n) partes.push(`${n} ${n===1?"reserva agregada":"reservas agregadas"}`);
+    if(m) partes.push(`${m} ${m===1?"vuelo completado":"vuelos completados"} con la tarjeta de embarque`);
+    if(adj.length) partes.push(`${adj.length} ${adj.length===1?"documento adjunto":"documentos adjuntos"}`);
+    if(fuera.length) partes.push(`${fuera.length} ${fuera.length===1?"documento no entró":"documentos no entraron"}`);
+    const resumen = partes.length ? partes.join(" · ") : "Listo";
+
+    // Sin documentos de por medio, el cierre es el de siempre: un toast y
+    // afuera. Una hoja más para decir lo mismo sería un paso de más.
+    if(!adj.length && !fuera.length){
+      closeSheet();
+      let msg;
+      if(n && m) msg = `Guardado. Agregué ${n} ${n===1?"reserva":"reservas"} y completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.`;
+      else if(m) msg = `Guardado. Completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.`;
+      else if(n) msg = `${n} ${n===1?"reserva agregada":"reservas agregadas"}`;
+      else msg = "Listo";
+      toast(msg);
+      if(n || m) checkPackingPlan(trip);
+      return;
+    }
+
+    const okTxt = [
+      "Guardado.",
+      n ? `Agregué ${n} ${n===1?"reserva":"reservas"}.` : "",
+      m ? `Completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.` : "",
+      adj.length ? `${adj.length===1?"El documento quedó adjunto":"Los documentos quedaron adjuntos"} a ${adj.length===1?"su reserva":"sus reservas"}.` : ""
+    ].filter(Boolean).join(" ");
+    const body = `${marker}
+      <div class="notice ok">${svg(I.check2)}<span class="bd">${esc(okTxt)}</span></div>
+      ${fuera.map(f=>`<div class="notice warn">${svg(I.info)}<span class="bd"><b>Un documento quedó afuera:</b> <b>${esc(f.nombre)}</b> — ${esc(f.mensaje)} Sus reservas sí se guardaron; lo que no quedó es el archivo.</span></div>`).join("")}
+      ${adj.length?`<div class="imp-files">${adj.map(a=>{
+        const clas = AdjuntosEngine.clasificarArchivo({name:a.doc.nombre, mimeType:a.doc.mime});
+        const icon = clas.familia==="imagen" ? "img" : "doc";
+        const cls = clas.familia==="pdf" ? "pdf" : (clas.familia==="imagen" ? "img" : "");
+        return `<div class="imp-file">
+          <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
+          <span class="bd"><span class="nm">${esc(a.doc.nombreCorto||a.doc.nombre)}</span>
+            <span class="meta ok">${esc(`Adjunto a ${a.destino} · ${AdjuntosEngine.textoFila(a.doc)}`)}</span></span>
+        </div>`;
+      }).join("")}</div>`:""}`;
+    openSheet("Importar reservas", body, `<button class="btn primary block" id="im-done">Listo</button>`);
+    document.getElementById("im-done").onclick = closeSheet;
+    toast(resumen, !!fuera.length);
+    if(n || m) checkPackingPlan(trip);
+  }
   renderElegir();
 }
 

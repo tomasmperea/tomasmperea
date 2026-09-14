@@ -28,9 +28,12 @@
      BODIES ... at most 256 KiB serialized and 32 levels deep") y el
      rechazo llega como `invalid_argument`, que NO es reintentable.
    · Codificar en base64 infla exactamente un tercio (4 bytes de texto
-     cada 3 de archivo), así que el archivo crudo más grande que entra
-     es 196.608 bytes = **192 KB**, que es el número que muestra la
-     interfaz (diseño 5.4).
+     cada 3 de archivo). Dividir el tope por cuatro tercios da 196.608
+     bytes (192 KB) y **deja cero lugar** para los nombres de campo del
+     propio documento, así que el número bueno —corregido por el PO el
+     13/09 y el que muestra la interfaz (diseño 5.4)— es 194.560 bytes
+     = **190 KB**, que codificado ocupa 259.416 caracteres y deja
+     2,7 KB de margen.
    · La base entera admite **5.000 documentos** (`db.d.ts`: "CAPACITY:
      an artifact's database holds at most 5,000 documents in total"),
      y cuando se llena, crear uno más rechaza con `quota_exceeded`.
@@ -44,17 +47,17 @@
      pasaje de Aerolíneas  123.129 bytes → entra con margen
      foto de cámara       ~3.250.586 bytes → hay que reducirla
 
-   UNA ACLARACIÓN QUE NO SE PUEDE CALLAR, y que el motor mide en vez
-   de suponer: base64 de 196.608 bytes ocupa 262.144 caracteres, o
-   sea el tope entero, sin dejar lugar para los nombres de campo del
-   propio documento (`{"b64":"…","mime":"…"}`). Un archivo justo en el
-   tope entra por el criterio del brief y se acepta, PERO el cuerpo
-   serializado queda unos cien bytes arriba de 256 KiB y la base lo
-   puede rechazar. El motor no cambia el número del brief: mide el
-   cuerpo de verdad con `bytesSerializados` y devuelve la advertencia
-   `al-filo-del-tope` para que la app lo trate y el PO lo pueda medir
-   en el teléfono. Por eso, además, lo que el motor SÍ controla —la
-   recompresión— apunta a `OBJETIVO_RECOMPRESION_BYTES`, con margen.
+   POR QUÉ EL MOTOR MIDE EN VEZ DE SUPONER. Con el número viejo
+   (192 KB) el cuerpo de un archivo justo en el tope quedaba unos cien
+   bytes ARRIBA de 256 KiB una vez serializado con sus nombres de campo
+   (`{"b64":"…","mime":"…"}`), y la base lo habría rechazado con
+   `invalid_argument`. Lo encontró `bytesSerializados`, midiendo el
+   cuerpo de verdad, y de ahí salió la corrección a 190 KB. La medición
+   se queda igual: la advertencia `al-filo-del-tope` es la red por si
+   algún día el envoltorio del cuerpo crece, y con 190 KB no la dispara
+   ningún archivo que el motor acepte. Por eso, además, lo que el motor
+   SÍ controla —la recompresión— apunta a `OBJETIVO_RECOMPRESION_BYTES`,
+   con más margen todavía.
 
    ============================================================
    LOS TRES ESTADOS (diseño sección 2)
@@ -112,8 +115,10 @@ var VERSION = 1;
 /** Tope de un documento de la base, serializado. Contrato de `db`. */
 var TOPE_DOC_BASE_BYTES = 262144;          // 256 KiB
 
-/** Archivo crudo más grande que entra codificado. 192 KB, el número de la interfaz. */
-var TOPE_ARCHIVO_BYTES = 196608;
+/** Archivo crudo más grande que entra codificado. 190 KB, el número de la interfaz.
+    Corregido el 13/09: 192 KB (196.608) no dejaba lugar para el envoltorio del
+    cuerpo. 194.560 bytes codificados son 259.416 caracteres: 2,7 KB de margen. */
+var TOPE_ARCHIVO_BYTES = 194560;
 
 /**
  * A cuánto apunta la recompresión. NO es el tope: es el tope menos un
@@ -125,7 +130,7 @@ var TOPE_ARCHIVO_BYTES = 196608;
  *      nada, y es lo único que el motor puede elegir.
  * 2 KB de archivo crudo son ~2,7 KB de texto: sobra para el envoltorio.
  */
-var OBJETIVO_RECOMPRESION_BYTES = TOPE_ARCHIVO_BYTES - 2048;   // 194.560
+var OBJETIVO_RECOMPRESION_BYTES = TOPE_ARCHIVO_BYTES - 2048;   // 192.512
 
 /** Tope de documentos por reserva (diseño 5.2). Decisión nuestra, no de la base. */
 var MAX_DOCS_POR_RESERVA = 3;
@@ -358,7 +363,7 @@ function bytesSerializados(obj) {
 
 /**
  * El peso como lo muestra la interfaz (diseño 5.4): KB de 1024 y coma
- * decimal. Con este criterio el tope da exactamente "192 KB", que es
+ * decimal. Con este criterio el tope da exactamente "190 KB", que es
  * el número que la persona tiene que poder comparar con lo que ve en
  * su teléfono.
  */

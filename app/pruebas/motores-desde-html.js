@@ -44,7 +44,8 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "valija-motores-"));
 
 const MOTORES = [
   { nombre: "PackingEngine", archivo: "packing-engine.js", prueba: "packing-engine.test.js" },
-  { nombre: "ImportEngine",  archivo: "import-engine.js",  prueba: "import-engine.test.js"  }
+  { nombre: "ImportEngine",  archivo: "import-engine.js",  prueba: "import-engine.test.js"  },
+  { nombre: "AdjuntosEngine", archivo: "adjuntos-engine.js", prueba: "adjuntos-engine.test.js" }
 ];
 
 /* Cada motor extraído se escribe como módulo CommonJS con el mismo
