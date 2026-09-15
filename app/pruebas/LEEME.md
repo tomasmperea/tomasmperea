@@ -128,7 +128,35 @@ inyectan un pdf.js escrito contra la API documentada. Un simulador replica el co
 verifica: que `page.getTextContent()` del pdf.js real devuelva esa forma en un
 teléfono se comprueba con los pasos de `docs/design/import-engine.md` §5.
 
-## Intermitencia conocida
+## Controles negativos de la ronda del 14/09
+
+Tres arneses se tocaron ese día. Cada cambio viene con la corrida que demuestra que la
+aserción sigue pudiendo fallar, porque **una prueba que no puede fallar no prueba nada** y
+ese día encontramos dos que estaban justo así.
+
+```
+# H5 — la guarda del selector mudo. Con la guarda vieja, el aviso aparece
+# encima de la pantalla que ya está leyendo el documento.
+sed 's/!seFue \&\& !llegaron/!seFue \&\& !(input.files \&\& input.files.length)/' \
+    app/valija.html > /tmp/guarda-muerta.html
+node app/pruebas/importar-botones.js /tmp/guarda-muerta.html
+→ FALLA  un archivo que SÍ llegó no dispara el aviso de selector mudo 1500 ms después
+
+# tier-del-modelo.js — las tres esperas fijas pasaron a esperar la señal.
+# La espera no afloja la exigencia:
+sed 's/equipaje:"complex"/equipaje:"quick"/' app/valija.html > /tmp/tier-quick.html
+node app/pruebas/tier-del-modelo.js /tmp/tier-quick.html
+→ 2 FALLAS, las dos aserciones del tier
+
+# adjuntar-documento.js — la aserción de la etiqueta esperaba un instante fijo
+# y fallaba sola con la máquina cargada. El sabotaje tiene que tocar SÓLO la
+# etiqueta: bajar el tope de documentos rompe antes y no aísla nada.
+sed 's/usados + " de " + MAX_DOCS_POR_RESERVA/""/' app/valija.html > /tmp/sin-cuenta.html
+node app/pruebas/adjuntar-documento.js /tmp/sin-cuenta.html
+→ 1 FALLA, exactamente la aserción de la etiqueta
+```
+
+## Intermitencia conocida — RESUELTA el 14/09
 
 `tier-del-modelo.js` falló **una aserción en una de siete corridas** el 12/09, y en las
 otras seis dio 42 en verde. No se pudo identificar cuál fue: se perdió la salida de esa
@@ -140,6 +168,11 @@ convive con esperas reales de la app —el techo de 4 s de `limits()`, el aviso 
 7 s— y una espera fija se queda corta cuando la máquina está cargada. Es el mismo patrón
 que ya tumbó `valija-bloque-b.js` antes de cortarle la red externa.
 
-**Qué hacer si vuelve a aparecer:** correrlo cinco veces guardando la salida completa de
-cada una (`> /tmp/t$i.txt 2>&1`, no por tubería), y buscar la línea con `FALLA`. Con eso
-se sabe si es una espera fija y se reemplaza por una condición.
+**Qué se hizo:** la sospecha era correcta. Las tres esperas fijas después de `#pk-build`
+y `#save` se reemplazaron por esperar la señal real —que la llamada del equipaje haya
+llegado, y que guardar haya producido una llamada nueva—. El control negativo está arriba.
+
+**Si vuelve a aparecer intermitencia en cualquier arnés:** correrlo cinco veces guardando
+la salida completa de cada una (`> /tmp/t$i.txt 2>&1`, no por tubería), y buscar la línea
+con `FALLA`. Y antes de tocar el producto, correr el mismo arnés contra la versión
+commiteada: el 14/09 eso separó en dos minutos una falla de la máquina de una del código.

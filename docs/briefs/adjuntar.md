@@ -253,10 +253,21 @@ riesgo. Cada uno dice qué mirar y qué significa si sale mal.
    abrí el visor. **Si la imagen sale negra o vacía, es el tope de área del canvas o el
    formato HEIC**, no el tope de tamaño: el mensaje de error va a mentir.
 
-3. **VAL-60 con un lote real.** Subí tres PDFs con texto de una y abrí la consola: el
-   registro dice `resumen.llamadas`. **Si dice 1, la iteración ahorró lo que prometía. Si
-   dice 3, el modelo no contesta el formato de lote** y hay que ajustar el prompt antes de
-   dar VAL-60 por cerrado. Es lo único que un simulador no puede responder.
+3. **VAL-60 con un lote real — este se hace desde una computadora, no desde el
+   teléfono.** Lo que mide es si el modelo contesta el formato de lote, y eso no depende
+   del teléfono; el número vive en la consola del navegador, que no es un gesto al
+   alcance del pulgar. Abrí el Artifact en una computadora, subí tres PDFs con texto de
+   una sola vez, y en la consola buscá la línea que empieza con `[valija] importación`.
+   El campo es `llamadas`.
+
+   **Si dice 1, la iteración ahorró lo que prometía. Si dice 3, el modelo no contesta el
+   formato de lote** y hay que ajustar el prompt antes de dar VAL-60 por cerrado. Es lo
+   único que ningún simulador puede responder, porque el simulador contesta lo que el
+   prompt pide por estar escrito contra el mismo contrato.
+
+   Que este número no se pueda ver desde el teléfono es una limitación conocida. Si
+   después de esta prueba resulta que hay que seguirlo de cerca, mostrarlo en la app es
+   trabajo de backlog, no de esta iteración.
 
 4. **VAL-59 con una tarjeta de embarque real.** Con un vuelo ya cargado, importá la
    tarjeta. Tiene que ofrecer completarlo, no crear un vuelo nuevo.
