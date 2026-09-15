@@ -219,12 +219,52 @@ número**.
   resuelve con el JSON ya parseado. Verificado contra el contrato por el PO y por la
   auditoría. Lo que sí se registra: tier pedido, tarea, duración y código de error.
 
-**Deuda de prueba que viene con esto:** `app/pruebas/tier-del-modelo.js` falló una
-aserción en una de siete corridas del PO; la auditoría lo corrió diez veces más sin
-reproducirlo, y por inspección señaló el sospechoso: tres esperas fijas después de tocar
-`#pk-build` y `#save`, en lugar de esperar una señal real de que el recálculo terminó. Es
-el mismo patrón que ya tumbó otro arnés. Se arregla en esta iteración: una prueba que
-falla una de cada siete no garantiza lo que dice.
+**Deuda de prueba que venía con esto — SALDADA el 14/09.**
+`app/pruebas/tier-del-modelo.js` falló una aserción en una de siete corridas del PO; la
+auditoría lo corrió diez veces más sin reproducirlo, y por inspección señaló el
+sospechoso: tres esperas fijas después de tocar `#pk-build` y `#save`, en lugar de
+esperar una señal real de que el recálculo terminó. Es el mismo patrón que ya tumbó otro
+arnés.
+
+Las tres esperas fijas se reemplazaron por esperar la señal: que la llamada del equipaje
+haya llegado, y que después de guardar haya aparecido una llamada nueva. La espera no
+afloja la exigencia —si la señal no llega, la aserción falla igual por tiempo— y se
+comprobó con un control negativo: pidiendo `quick` en vez de `complex` para el equipaje,
+las dos aserciones del tier fallan.
+
+**La auditoría del 14/09 lo había marcado como promesa incumplida y sin retractar.** Tenía
+razón: estuvo escrito acá como "se arregla en esta iteración" desde el 12/09 y no se
+había tocado.
+
+---
+
+## Lo que sólo se puede comprobar en el teléfono
+
+Nada de esta iteración corrió en el Artifact publicado ni en un teléfono, así que en los
+términos de `CLAUDE.md` **nada de esto está verificado**. Estos son los pasos, en orden de
+riesgo. Cada uno dice qué mirar y qué significa si sale mal.
+
+1. **El aviso de selector mudo después de una selección que funcionó.** Es la duda de H5.
+   Tocá "Archivo" en Importar, elegí un PDF y esperá tres segundos con la pantalla a la
+   vista. **Si aparece "No se abrió el selector de archivos" con el documento ya cargado,
+   el arreglo no alcanzó** y hay que dejar de decidirlo por temporizador.
+
+2. **La recompresión de una foto de cámara real.** Adjuntá una foto sacada en el momento y
+   abrí el visor. **Si la imagen sale negra o vacía, es el tope de área del canvas o el
+   formato HEIC**, no el tope de tamaño: el mensaje de error va a mentir.
+
+3. **VAL-60 con un lote real.** Subí tres PDFs con texto de una y abrí la consola: el
+   registro dice `resumen.llamadas`. **Si dice 1, la iteración ahorró lo que prometía. Si
+   dice 3, el modelo no contesta el formato de lote** y hay que ajustar el prompt antes de
+   dar VAL-60 por cerrado. Es lo único que un simulador no puede responder.
+
+4. **VAL-59 con una tarjeta de embarque real.** Con un vuelo ya cargado, importá la
+   tarjeta. Tiene que ofrecer completarlo, no crear un vuelo nuevo.
+
+5. **El visor de PDF con la página dibujada.** Acá el CDN está bloqueado, así que sólo
+   corrió la variante sin previsualización.
+
+6. **Tema oscuro y tipografías reales** en la tira del documento y en el visor.
 
 ---
 

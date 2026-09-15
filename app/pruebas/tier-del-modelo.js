@@ -300,7 +300,14 @@ function assertClavesLimpias(ls, donde) {
   await test("armar la lista de la valija sigue pidiendo \"complex\"", async () => {
     const page = await nuevaPagina(browser, { hash: "#/trip/t1/valija" });
     await page.locator("#pk-build").click();
-    await page.waitForTimeout(1200);
+    /* Esperar la SEÑAL, no un reloj: que la llamada del equipaje haya llegado.
+       Las esperas fijas de acá son el patrón que ya tumbó otro arnés y que hizo
+       fallar éste en una de siete corridas. Si la llamada nunca llega, esto
+       revienta por tiempo y la aserción de abajo falla igual: la espera saca la
+       fragilidad, no la exigencia. */
+    await page.waitForFunction(
+      () => (window.__CALLS__ || []).some(l => l.esEquipaje), null, { timeout: 15000 }
+    ).catch(()=>{});
 
     const ls = (await llamadas(page)).filter(l => l.esEquipaje);
     assert(ls.length >= 1, `la capa inteligente del equipaje se consultó (${ls.length})`);
@@ -315,7 +322,9 @@ function assertClavesLimpias(ls, donde) {
   await test("guardar una reserva con la lista armada recalcula el plan en \"complex\"", async () => {
     const page = await nuevaPagina(browser, { hash: "#/trip/t1/valija" });
     await page.locator("#pk-build").click();
-    await page.waitForTimeout(1200);
+    await page.waitForFunction(
+      () => (window.__CALLS__ || []).some(l => l.esEquipaje), null, { timeout: 15000 }
+    ).catch(()=>{});
     const antes = (await llamadas(page)).length;
 
     // El gesto: se vuelve al viaje, se toca "Agregar", se elige "Auto" y se guarda.
@@ -327,7 +336,10 @@ function assertClavesLimpias(ls, donde) {
     await page.waitForTimeout(150);
     await page.locator("#i_title").fill("Auto en Madrid");
     await page.locator("#save").click();
-    await page.waitForTimeout(1500);
+    /* Misma idea: la señal es que apareció una llamada nueva después de `antes`. */
+    await page.waitForFunction(
+      n => (window.__CALLS__ || []).length > n, antes, { timeout: 15000 }
+    ).catch(()=>{});
 
     const nuevas = (await llamadas(page)).slice(antes);
     assert(nuevas.length >= 1, `guardar la reserva disparó el recálculo del plan (${nuevas.length} llamada/s)`);
