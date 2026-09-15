@@ -84,7 +84,7 @@ salió la capa de auditoría (`docs/auditoria/`).
 
 ---
 
-## Iteración 3 — Adjuntar
+## Iteración 3 — Adjuntar (entregada, con alcance recortado)
 
 **Objetivo:** que el documento no se interprete y se tire, sino que quede. Y que la
 captura del correo sirva, porque la mayoría de las confirmaciones no traen PDF.
@@ -96,18 +96,30 @@ mano. Ninguna cantidad de avisos reemplaza eso.
 
 **Alcance:** VAL-57 a VAL-60, especificados en `docs/briefs/adjuntar.md`.
 
-- Leer la captura del correo reconociendo el texto en el propio teléfono, sin depender
-  de la capacidad de imágenes que la plataforma hoy no da.
+**Entregado (VAL-58, VAL-59, VAL-60):**
+
 - El documento original queda adjunto a la reserva y se puede descargar.
 - La tarjeta de embarque deja de crear un vuelo suelto: se desprende de uno que existe,
   o se avisa y se ofrece crearlo.
-- Dejar de pedir el modelo más caro para extraer datos de un texto limpio.
+- Dejar de pedir el modelo más caro para extraer datos de un texto limpio, y mandar los
+  textos de un lote en una sola llamada.
 
-**Riesgo que decide la iteración:** la librería de reconocimiento tiene que bajar del
-único CDN permitido, el mismo que ya falló en el teléfono del PM. Si no baja, VAL-57 no
-existe. Es el paso cero, antes de diseñar nada.
+**NO entregado: VAL-57.** Pasa a la iteración 4 como primera prioridad. Decisión del PM
+el 14/09, con la recomendación en contra del PO anotada acá: el brief llama a VAL-57 "la
+prueba que define el éxito" de esta iteración, así que la 3 cierra **sin responder su
+propia pregunta**. Se cierra igual porque lo entregado son dos mejoras reales y probadas,
+y porque conviene ponerlas en el teléfono del PM antes de seguir construyendo encima.
+
+**El riesgo que decidía la iteración ya se resolvió, y en contra:** el paso cero mostró
+que la librería de reconocimiento carga pero el diccionario del idioma no baja de ningún
+host que el visor permita (`docs/investigacion/paso-cero-leer-una-foto.md`). VAL-57 se
+replanteó: deja de ser leer la captura y pasa a ser **llevar a la persona a pegar el
+texto del correo**, que ya funciona y es estrictamente mejor. Lo que falta no es
+tecnología: es que la app hoy esconde esa vía adentro de un desplegable, como si fuera
+el plan de contingencia.
 
 **Pregunta que responde:** ¿sirve también cuando la confirmación es sólo un correo?
+**Queda sin responder**, porque eso era exactamente VAL-57.
 
 ---
 
@@ -118,6 +130,11 @@ la primera que necesita infraestructura propia.
 
 **Alcance:**
 
+- **VAL-57, que viene de la iteración 3 y va primero.** Pegar el texto de una
+  confirmación deja de ser la vía de escape y pasa a ser uno de los dos caminos
+  principales, a la par de subir el PDF. Se explica en una línea cómo traer un correo sin
+  adjunto, y si la única fuente es una captura, se dice que el propio teléfono sabe
+  sacarle el texto. Especificado en `docs/briefs/adjuntar.md`.
 - **Correos de aviso.** Un proceso diario evalúa las reglas de pendientes y manda un correo solo cuando hay
   algo nuevo que decir. Nunca un correo vacío.
 - **Cadencia por cercanía.** Semanal a 30 días, repaso a 7, check-in a 48 horas, hoja de ruta el día previo.

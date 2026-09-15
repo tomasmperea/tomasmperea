@@ -1,10 +1,32 @@
 # Brief de iteración 3 — Adjuntar
 
 **Escribe:** Product Owner
-**Estado:** en definición
+**Estado:** cerrado el 14/09 con alcance recortado
 **Consumen este brief:** diseño UX/UI, motor, frontend, QA, auditoría
 
 Contrato de la iteración. Todo se valida contra los criterios de acá abajo.
+
+---
+
+## Qué se entregó y qué no
+
+| Historia | Estado |
+|---|---|
+| VAL-57 · Que la confirmación del correo entre sin tipear | **NO entregada.** Pasa a la iteración 4, primera prioridad. |
+| VAL-58 · El documento queda adjunto y se puede descargar | Entregada. |
+| VAL-59 · La tarjeta de embarque se desprende de un vuelo | Entregada. |
+| VAL-60 · Un lote sale en una sola llamada al modelo | Entregada. El formato nunca lo contestó un modelo real. |
+
+**Por qué se cierra sin VAL-57.** QA lo reportó como bloqueante (H3 de
+`docs/qa/2026-09-14-iteracion-3.md`) y tiene razón: es P0 y este mismo brief lo llama
+más abajo "la prueba que define el éxito". El PO recomendó construirlo antes de
+publicar. **El PM decidió cerrar la 3 sin VAL-57 y publicar**, para poner en el teléfono
+las dos mejoras que sí están probadas antes de seguir construyendo encima. Queda escrito
+que la iteración 3 cierra sin responder su propia pregunta.
+
+**Hallazgo que queda abierto a propósito:** H4, menor. El motor expone
+`presupuestoDeLaBase()` y la interfaz nunca la llama, así que no hay aviso de cupo antes
+de que la base se llene. El error reactivo sí existe y está bien traducido. Va al backlog.
 
 ---
 

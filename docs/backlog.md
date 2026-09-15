@@ -353,7 +353,46 @@ llevan a ningún lado. "Falta el vuelo de vuelta" te informa y te deja solo.
 - Elegir la salida ajusta el límite del regreso en el momento, y descarta un regreso que quedó inválido.
 - Si igual se fuerza, el mensaje dice qué pasa y no guarda.
 
-## Iteración 3 — Avisar
+## Lo que la iteración 3 dejó abierto
+
+### VAL-57 · Que la confirmación del correo entre sin tipear — P0, PRIMERA DE LA PRÓXIMA
+
+Como viajero quiero cargar una confirmación que llegó por correo sin PDF adjunto, sin
+tipear los datos a mano.
+
+**Especificada en `docs/briefs/adjuntar.md` y NO construida.** La iteración 3 cerró sin
+ella por decisión del PM el 14/09, para publicar antes las dos mejoras que sí estaban
+probadas. Queda anotado que el brief la llamaba "la prueba que define el éxito" de esa
+iteración, así que la 3 cerró sin responder su propia pregunta.
+
+**Lo que falta no es tecnología: es jerarquía.** Pegar el texto ya funciona y ya se
+interpreta con el mismo motor que un PDF. El problema es que la app lo esconde adentro de
+un `<details>` colapsado, como si fuera el plan de contingencia. Criterios:
+
+- Pegar el texto es uno de los dos caminos principales, a la par de subir el PDF.
+- Una línea explica cómo traer un correo que no tiene adjunto, sin tecnicismos y sin dar
+  por sentado qué teléfono usa la persona.
+- Si la única fuente es una captura, se dice que el propio teléfono sabe sacarle el
+  texto. No lo reimplementamos peor que el sistema operativo.
+- Varias reservas pegadas juntas se separan solas. Ya funciona; falta verificarlo con
+  correos reales del PM, que es lo que nunca se hizo.
+
+### VAL-62 · Avisar del cupo de la base antes de que se llene — P2
+
+Como viajero querría saber que me estoy quedando sin lugar para documentos antes de que
+un guardado falle.
+
+**Viene del hallazgo H4 de QA** (`docs/qa/2026-09-14-iteracion-3.md`). El motor ya expone
+`presupuestoDeLaBase()` y la interfaz nunca la llama. Hoy sólo existe el error reactivo,
+que está bien traducido y le dice a la persona qué hacer. Se dejó abierto a propósito
+para no inventar una pantalla nueva sobre el cierre de la iteración.
+
+- El aviso aparece antes de que un guardado falle, no después.
+- No aparece cuando falta mucho: molestar con un cupo lejano es peor que no avisar.
+
+---
+
+## Iteración 4 — Avisar
 
 ### VAL-10 · Recibir avisos por correo — P0
 Como viajero quiero que me avisen por correo cuando falta algo o se acerca una fecha, sin tener que abrir la
@@ -419,7 +458,7 @@ Como viajero quiero que los hitos del viaje aparezcan en el calendario de mi tel
 
 ---
 
-## Iteración 4 — Acompañar y mapas
+## Iteración 5 — Acompañar y mapas
 
 ### VAL-20 · Subir cualquier documento — P0
 Como viajero quiero subir el PDF del voucher o la foto del contrato y que se interprete solo.
