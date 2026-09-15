@@ -1256,6 +1256,25 @@ const Store = {
     }catch(e){ return null; }
   },
 
+  /** Cuántos documentos de la base compartida están en uso, para poder avisar
+      ANTES de que se llene (el tope de 5.000 lo consume todo lo que la app
+      guarda: viajes, reservas, listas de equipaje y cuerpos de documentos).
+      Devuelve `null` cuando no hay base compartida: ese tope es de ella, y
+      afuera de `Store` nadie tiene por qué saber cuál de los dos caminos se
+      está usando. Cuenta lo que esta sesión tiene cargado, así que puede
+      quedarse corto —nunca de más—: un aviso que no aparece es mejor que uno
+      que asusta sin motivo. */
+  usoDeLaBase(){
+    if(!this.db) return null;
+    let n = this.trips.size;
+    this.items.forEach(m=>{
+      n += m.size;
+      m.forEach(it=>{ n += ((it && it.docs) || []).length; });
+    });
+    this.packing.forEach(p=>{ if(p) n += 1; });
+    return n;
+  },
+
   /** Borrar un cuerpo nunca puede tumbar lo que lo pidió. */
   async delDocBody(tripId, docId){
     try{ localStorage.removeItem(this.DOC_KEY(tripId, docId)); }catch(e){}
@@ -7827,7 +7846,7 @@ function sheetItem(trip, item, prefill){
   function pintarDoc(){
     const root = document.getElementById("doc-block");
     if(!root) return;
-    root.innerHTML = docBlockHtml(DOC, Store.canWrite);
+    root.innerHTML = docBlockHtml(DOC, Store.canWrite, Store.usoDeLaBase());
     // Guardar a mitad de preparar dejaría la reserva sin el documento sin que
     // nadie lo pida (D9).
     const sv = document.getElementById("save");
@@ -7843,8 +7862,12 @@ function sheetItem(trip, item, prefill){
       caja.hidden = false;
       caja.innerHTML = `<div class="notice warn">${svg(I.info)}<span class="bd">No se abrió el selector de archivos. Es un problema del navegador, no tuyo. Probá de nuevo, o subí el documento desde <b>Importar</b>.</span></div>`;
     };
-    wireFilePick("doc_file", {alive:docVivo, onMudo:avisarMudo, onFiles:f=>elegirAdjunto(f[0], "archivo")});
-    wireFilePick("doc_cam",  {alive:docVivo, onMudo:avisarMudo, onFiles:f=>elegirAdjunto(f[0], "camara")});
+    const retirarMudo = ()=>{
+      const caja = document.getElementById("doc-nopick");
+      if(caja){ caja.hidden = true; caja.innerHTML = ""; }
+    };
+    wireFilePick("doc_file", {alive:docVivo, onMudo:avisarMudo, onRetirar:retirarMudo, onFiles:f=>elegirAdjunto(f[0], "archivo")});
+    wireFilePick("doc_cam",  {alive:docVivo, onMudo:avisarMudo, onRetirar:retirarMudo, onFiles:f=>elegirAdjunto(f[0], "camara")});
     root.querySelectorAll("[data-docrm]").forEach(b=>{
       b.onclick = ()=>{
         const id = b.dataset.docrm;
@@ -7976,9 +7999,19 @@ function wireFilePick(id, opts){
   const input = document.getElementById(id);
   if(!input) return;
   const vivo = opts.alive || (()=>true);
+  /* Que el archivo haya llegado se anota ACÁ y no se lee de `input.files`.
+     Durante tres iteraciones la guarda fue `!(input.files && input.files.length)`
+     y nunca pudo ser verdadera: `onchange` limpia `input.value` —hay que
+     limpiarlo para poder volver a elegir el mismo archivo— y eso vacía
+     `input.files` al instante, mucho antes de que corra el temporizador. Era
+     código muerto. En escritorio no se notaba porque el `blur` tapa el caso;
+     el respaldo sólo hace falta donde el `blur` no llega, que es justo el
+     teléfono. Lo destapó el hallazgo H5 de QA el 14/09. */
+  let llegaron = false;
   const boton = document.querySelector(`[data-pick="${id}"]`);
   if(boton) boton.onclick = ()=>{
     let seFue = false;
+    llegaron = false;
     const salio = ()=>{ seFue = true; };
     window.addEventListener("blur", salio, {once:true});
     document.addEventListener("visibilitychange", salio, {once:true});
@@ -7986,13 +8019,22 @@ function wireFilePick(id, opts){
     setTimeout(()=>{
       window.removeEventListener("blur", salio);
       document.removeEventListener("visibilitychange", salio);
-      if(!seFue && !(input.files && input.files.length) && vivo() && opts.onMudo) opts.onMudo();
+      if(!seFue && !llegaron && vivo() && opts.onMudo) opts.onMudo();
     }, 1500);
   };
   input.onchange = ()=>{
     const files = Array.from(input.files || []);
+    llegaron = files.length > 0;
     input.value = "";
-    if(files.length && opts.onFiles) opts.onFiles(files);
+    if(files.length){
+      /* El aviso se RETRACTA si el archivo llega tarde. Elegir una foto en la
+         galería tarda más de 1,5 segundos casi siempre, así que en un navegador
+         donde el foco no se va el aviso aparece mientras el selector sigue
+         abierto. Decirle a alguien que algo falló cuando funcionó es peor que
+         no decir nada: si el archivo llega, el aviso se va. */
+      if(opts.onRetirar) opts.onRetirar();
+      if(opts.onFiles) opts.onFiles(files);
+    }
   };
 }
 
@@ -8038,7 +8080,21 @@ function docRowHtml(e, canWrite){
     ${acts ? `<span class="row-acts">${acts}</span>` : ""}
   </div>`;
 }
-function docBlockHtml(estado, canWrite){
+/** H4 · el aviso del cupo TOTAL de la base, dicho antes de gastarlo y no
+    recién cuando rechaza. `usados` viene de `Store.usoDeLaBase()` y es `null`
+    cuando no hay base compartida: ahí no hay tope de 5.000 que avisar y esto
+    no existe. Se dice qué pasa y qué hacer: sacar documentos que ya no se
+    usan libera lugar. */
+function avisoCupoBaseHtml(usados){
+  if(usados === null || usados === undefined) return "";
+  const p = AdjuntosEngine.presupuestoDeLaBase(usados);
+  if(p.nivel === "ok") return "";
+  const txt = p.nivel === "lleno"
+    ? `La valija llegó al tope de ${p.tope} documentos guardados. Para adjuntar uno nuevo, quitá antes alguno que ya no necesites —el de un viaje que terminó, por ejemplo—: eso libera el lugar.`
+    : `Va quedando poco lugar: ${p.quedan} de ${p.tope} documentos. Si alguno ya no te sirve —los de un viaje que terminó—, quitalo y ese lugar vuelve a estar libre.`;
+  return `<div class="notice warn">${svg(I.info)}<span class="bd">${esc(txt)}</span></div>`;
+}
+function docBlockHtml(estado, canWrite, usadosDeLaBase){
   const espacio = AdjuntosEngine.espacioParaDocumentos(estado.lista.map(e=>e.doc));
   // 5.6: sin permiso de edición y sin documentos, el bloque no existe. Un
   // bloque vacío que no ofrece ninguna acción es ruido en todas las reservas
@@ -8084,6 +8140,7 @@ function docBlockHtml(estado, canWrite){
     ${(hayFilas && canWrite && espacio.puedeSumar) ? docPickerHtml(estado) : ""}
     ${canWrite ? `<div id="doc-nopick" hidden></div><span class="hint">${esc(hint)}</span>` : ""}
   </div>
+  ${canWrite ? avisoCupoBaseHtml(usadosDeLaBase) : ""}
   ${estado.aviso ? `<div class="notice warn">${svg(I.info)}<span class="bd">${esc(estado.aviso)}</span></div>` : ""}`;
 }
 
@@ -8408,7 +8465,24 @@ function cardFieldsHtml(r, chip){
 
 /** Lista de archivos que no aportaron nada (05/10): vacío ≠ error, nunca el
     mismo tratamiento (ver docs/design/importar.md sección 3.2). */
+/** Cómo se nombra una reserva cuando hay que señalarla en un texto: con lo
+    que la persona reconocería en la lista. Un vuelo sin título se nombra por
+    su número —"Vuelo G3 1245"—, que es lo único que lo distingue del otro
+    tramo del mismo itinerario. Devuelve texto pelado: lo escapa quien lo pinta. */
+function nombreDeReserva(r){
+  r = r || {};
+  const T = TYPES[r.type] || TYPES.note;
+  const titulo = String(r.title||"").trim();
+  const vuelo  = String(r.flightNumber||"").trim();
+  if(titulo && vuelo && titulo.toUpperCase().indexOf(vuelo.toUpperCase())<0) return `${titulo} (${vuelo})`;
+  if(titulo) return titulo;
+  if(vuelo) return `${T.label} ${vuelo}`;
+  return T.label;
+}
 function issuesListHtml(issues){
+  // La clave de los botones es la IDENTIDAD de la fuente, no su nombre: dos
+  // archivos homónimos tienen que poder reintentarse y sacarse por separado.
+  const clave = a => a.srcId || a.archivo;
   return `<div class="imp-files">${issues.map(a=>{
     const cls = kindThumbCls(a.kind), icon = kindIcon(a.kind);
     if(a.estado==="error") return `<div class="imp-file err">
@@ -8416,15 +8490,15 @@ function issuesListHtml(issues){
         <span class="bd"><span class="nm">${esc(a.archivo)}</span>
           <span class="meta err">${esc((a.error&&a.error.mensaje)||"No pude leer este archivo.")}</span></span>
         <span class="row-acts">
-          <button class="act" data-retry="${esc(a.archivo)}">Reintentar</button>
-          <button class="rm" aria-label="Sacar ${esc(a.archivo)}" data-rmfile="${esc(a.archivo)}">${svg(I.x)}</button>
+          <button class="act" data-retry="${esc(clave(a))}">Reintentar</button>
+          <button class="rm" aria-label="Sacar ${esc(a.archivo)}" data-rmfile="${esc(clave(a))}">${svg(I.x)}</button>
         </span>
       </div>`;
     return `<div class="imp-file">
         <span class="imp-thumb ${cls}">${svg(I[icon])}</span>
         <span class="bd"><span class="nm">${esc(a.archivo)}</span>
           <span class="meta info">Se leyó bien, pero no encontré ninguna reserva ahí. Puede ser una foto borrosa o un documento que no es de viaje.</span></span>
-        <span class="row-acts"><button class="rm" aria-label="Sacar ${esc(a.archivo)}" data-rmfile="${esc(a.archivo)}">${svg(I.x)}</button></span>
+        <span class="row-acts"><button class="rm" aria-label="Sacar ${esc(a.archivo)}" data-rmfile="${esc(clave(a))}">${svg(I.x)}</button></span>
       </div>`;
   }).join("")}</div>`;
 }
@@ -8606,7 +8680,10 @@ async function sheetImport(trip){
     // VAL-59: tarjetas que la persona descartó, para que el cierre lo diga.
     descartadas:0,
     // VAL-58: qué documento quedó adjunto a qué reserva, y cuál no entró (D14).
-    adjuntos:[], adjuntosFuera:[]
+    adjuntos:[], adjuntosFuera:[],
+    // D14: un archivo con varias reservas deja el documento en una sola. Acá
+    // queda cuál se lo llevó y cuáles se guardaron sin comprobante.
+    sinComprobante:[]
   };
   const tripCtx = ()=> ({name:trip.name, destination:trip.destination, startDate:trip.startDate, endDate:trip.endDate});
 
@@ -8673,7 +8750,8 @@ async function sheetImport(trip){
     const p = interpretPastedText(source.text, source.name, opts);
     return p.then(result=>{
       result.kind = source.kind;
-      const idx = st.archivos.findIndex(a=>a.archivo===result.archivo);
+      result.srcId = source.id;
+      const idx = st.archivos.findIndex(a=>a.srcId===source.id);
       if(idx>=0) st.archivos[idx] = result; else st.archivos.push(result);
       return result;
     });
@@ -8683,7 +8761,12 @@ async function sheetImport(trip){
     const existentes = Store.itemsOf(trip.id);
     const assignPage = ctx && ctx.kind==="pdf" && ctx.paginas>1 && reservas.length===ctx.paginas;
     reservas.forEach((r,i)=>{
-      const meta = { archivo:r.archivo||(ctx&&ctx.archivo)||"", kind:(ctx&&ctx.kind)||"img", page:assignPage?(i+1):null };
+      const meta = {
+        // `srcId` identifica la FUENTE; `archivo` es sólo el nombre que se muestra.
+        srcId:(ctx&&ctx.srcId)||null,
+        archivo:r.archivo||(ctx&&ctx.archivo)||"", kind:(ctx&&ctx.kind)||"img",
+        page:assignPage?(i+1):null
+      };
       if(r.type==="flight"){
         const m = ImportEngine.matchAgainstExisting(r, existentes);
         /* Que esto sea una tarjeta de embarque lo dice el MOTOR (`esTarjeta`),
@@ -8713,6 +8796,11 @@ async function sheetImport(trip){
     const det = document.querySelector(".imp-more");
     if(det) det.open = true;
   }
+  /* Ver `wireFilePick`: si el archivo llega después del aviso, el aviso se va. */
+  function retirarSelectorMudo(){
+    const caja = document.getElementById("im-nopick");
+    if(caja){ caja.hidden = true; caja.innerHTML = ""; }
+  }
 
   /* El cableado es el compartido (`wireFilePick`, definido con el visor del
      documento): mismo gesto, mismo aviso de selector mudo, un solo lugar. */
@@ -8720,6 +8808,7 @@ async function sheetImport(trip){
     wireFilePick(id, {
       alive,
       onMudo: avisarSelectorMudo,
+      onRetirar: retirarSelectorMudo,
       onFiles: files => {
         files.forEach(file=>{
           const engineKind = ImportEngine.fileKind({name:file.name, mimeType:file.type});
@@ -8870,11 +8959,18 @@ async function sheetImport(trip){
     };
     document.getElementById("im-run").onclick = startInterpret;
   }
+  /* Cada fuente lleva su propio `id` y NADA de acá para adelante se identifica
+     por el nombre del archivo. El nombre lo elige el navegador y se repite:
+     varias cámaras de teléfono le ponen el mismo nombre genérico a dos fotos
+     distintas, y con dos fuentes homónimas un `find` por string devolvía
+     siempre la misma —el documento iba a la reserva equivocada y el otro
+     cuerpo quedaba escrito sin que ningún ítem lo nombrara—. El nombre sigue
+     sirviendo para mostrar; para atribuir, manda el id. */
   function startInterpret(){
     const fileSources = st.queue.filter(legible)
-      .map(f=>({name:f.name, mimeType:f.mimeType, blob:f.blob, kind:f.kind}));
+      .map(f=>({id:f.id, name:f.name, mimeType:f.mimeType, blob:f.blob, kind:f.kind}));
     const sources = fileSources.slice();
-    if(st.pastedText && st.pastedText.trim()) sources.push({name:"Texto pegado", kind:"texto", text:st.pastedText.trim()});
+    if(st.pastedText && st.pastedText.trim()) sources.push({id:"src-texto-pegado", name:"Texto pegado", kind:"texto", text:st.pastedText.trim()});
     if(!sources.length) return;
     st.sources = sources;
     runInterpretation(sources);
@@ -8937,13 +9033,29 @@ async function sheetImport(trip){
     function finishRun(){ if(finished) return; finished = true; clearTimeout(slowTimer); advance(); }
     st.acceptPartial = finishRun;
 
-    const filaDe = nombre => rows.find(r=>r.name===nombre) || null;
+    /* El motor avisa el progreso por NOMBRE de archivo (es lo único que tiene
+       en su contrato). Con dos fuentes homónimas eso pintaría siempre la misma
+       fila, así que entre las filas que comparten nombre se elige la que está
+       en la etapa que corresponde. Con nombres distintos —el caso normal— se
+       comporta exactamente igual que antes. */
+    function filaDe(nombre, etapa){
+      const mismas = rows.filter(r=>r.name===nombre);
+      if(mismas.length<2) return mismas[0] || null;
+      const terminal = r => r.status==="ok" || r.status==="vacio" || r.status==="error";
+      const buscada = etapa==="terminado"
+        ? mismas.find(r=>r.status==="leyendo")
+        : mismas.find(r=>r.status==="queued");
+      return buscada || mismas.find(r=>!terminal(r)) || mismas[0];
+    }
     function pintarFila(r){ if(r && alive()) updateRow(r); }
-    function anotarResultado(result, kind){
+    /* `srcId` es la identidad de la fuente y viaja hasta `meta` de cada
+       tarjeta: es lo que después decide a qué reserva va el documento. */
+    function anotarResultado(result, kind, srcId){
       result.kind = kind;
-      const idx = st.archivos.findIndex(a=>a.archivo===result.archivo);
+      result.srcId = srcId;
+      const idx = st.archivos.findIndex(a=>a.srcId===srcId);
       if(idx>=0) st.archivos[idx] = result; else st.archivos.push(result);
-      classifyAndQueue(result.reservas, {archivo:result.archivo, kind, paginas:result.paginas});
+      classifyAndQueue(result.reservas, {archivo:result.archivo, kind, paginas:result.paginas, srcId});
     }
 
     const archivos = sources.filter(s=>s.kind!=="texto");
@@ -8955,7 +9067,7 @@ async function sheetImport(trip){
          Un onProgress que lanza no puede romper la importación: el motor lo
          envuelve, pero acá tampoco se hace nada que pueda fallar. */
       const onProgress = ev => {
-        const fila = filaDe(ev.archivo);
+        const fila = filaDe(ev.archivo, ev.evento);
         if(!fila) return;
         if(ev.evento==="preparado"){ fila.modo = ev.modo; }
         else if(ev.evento==="leyendo"){ fila.status = "leyendo"; pintarFila(fila); }
@@ -8975,9 +9087,12 @@ async function sheetImport(trip){
                de verdad. No se puede leer desde el teléfono sin consola, y está
                declarado como brecha en la entrega. */
             try{ console.info("[valija] importación", res.resumen); }catch(e){}
-            res.archivos.forEach(result=>{
-              const src = archivos.find(a=>a.name===result.archivo);
-              anotarResultado(result, src ? src.kind : "img");
+            /* `interpretFiles` devuelve UN resultado por entrada y EN ORDEN
+               (así está escrito su contrato): se empareja por posición, no por
+               nombre, que es lo que se repite. */
+            res.archivos.forEach((result,i)=>{
+              const src = archivos[i] || null;
+              anotarResultado(result, src ? src.kind : "img", src ? src.id : null);
             });
           }, e=>{
             /* `interpretFiles` no rechaza: un archivo que falla vuelve como
@@ -8986,8 +9101,8 @@ async function sheetImport(trip){
             console.warn("interpretFiles", e);
             archivos.forEach(a=>{
               anotarResultado({archivo:a.name, estado:"error", reservas:[], paginas:null,
-                error:ImportEngine.friendlyModelError(e)}, a.kind);
-              const fila = filaDe(a.name);
+                error:ImportEngine.friendlyModelError(e)}, a.kind, a.id);
+              const fila = filaDe(a.name, "terminado");
               if(fila){ fila.status = "error"; pintarFila(fila); }
             });
           })
@@ -8995,11 +9110,11 @@ async function sheetImport(trip){
     }
 
     textos.forEach(s=>{
-      const fila = filaDe(s.name);
+      const fila = filaDe(s.name, "leyendo");
       if(fila){ fila.status = "leyendo"; pintarFila(fila); }
       tareas.push(runTextoPegado(s).then(result=>{
         if(fila){ fila.status = result.estado; fila.found = result.reservas.length; fila.modo = result.modo; pintarFila(fila); }
-        classifyAndQueue(result.reservas, {archivo:result.archivo, kind:result.kind, paginas:result.paginas});
+        classifyAndQueue(result.reservas, {archivo:result.archivo, kind:result.kind, paginas:result.paginas, srcId:s.id});
       }));
     });
 
@@ -9029,12 +9144,17 @@ async function sheetImport(trip){
   function bindIssuesActions(){
     document.querySelectorAll("[data-retry]").forEach(b=>{
       b.onclick = ()=>{
-        const source = st.sources.find(s=>s.name===b.dataset.retry);
+        const k = b.dataset.retry;
+        const source = st.sources.find(s=>s.id===k) || st.sources.find(s=>s.name===k);
         if(source) runInterpretation([source]);
       };
     });
     document.querySelectorAll("[data-rmfile]").forEach(b=>{
-      b.onclick = ()=>{ st.archivos = st.archivos.filter(a=>a.archivo!==b.dataset.rmfile); proceed(); };
+      b.onclick = ()=>{
+        const k = b.dataset.rmfile;
+        st.archivos = st.archivos.filter(a=>(a.srcId||a.archivo)!==k);
+        proceed();
+      };
     });
   }
   function renderTotalEmpty(){
@@ -9058,8 +9178,8 @@ async function sheetImport(trip){
     document.getElementById("im-manual").onclick = ()=>{ closeSheet(); sheetItem(trip, null); };
     const retryAll = document.getElementById("im-retryall");
     if(retryAll) retryAll.onclick = ()=>{
-      const errNames = new Set(st.archivos.filter(a=>a.estado==="error").map(a=>a.archivo));
-      const errSources = st.sources.filter(s=>errNames.has(s.name));
+      const errIds = new Set(st.archivos.filter(a=>a.estado==="error").map(a=>a.srcId||a.archivo));
+      const errSources = st.sources.filter(s=>errIds.has(s.id) || errIds.has(s.name));
       if(errSources.length) runInterpretation(errSources);
     };
     bindIssuesActions();
@@ -9520,17 +9640,23 @@ async function sheetImport(trip){
     saveBtn.disabled = true; saveBtn.innerHTML = `<span class="spin"></span> Guardando…`;
     // Cada tarjeta ya sabe a qué reserva va: la que se completa, o una nueva.
     cards.forEach(c=>{ c.destinoId = c.kind==="match" ? c.match.existente.id : uid(); });
+    // Vive afuera del `try` porque el `catch` lo necesita para barrer cuerpos.
+    const trabajos = [];
 
     try{
       /* 1. Los documentos (VAL-58): UNO por archivo, al destino de la primera
          reserva que salió de ese archivo. Se prepara sin escribir nada, y si
-         no entra, la reserva se guarda igual: el dato vale por sí mismo. */
-      const trabajos = [];
+         no entra, la reserva se guarda igual: el dato vale por sí mismo.
+
+         La fuente se reconoce por su `id`, NUNCA por el nombre del archivo:
+         dos archivos homónimos del mismo lote son dos fuentes distintas y cada
+         una tiene que quedarse con su documento. */
       for(const src of st.sources){
         if(src.kind==="texto" || !src.blob) continue;
-        const card = cards.find(c=>c.meta && c.meta.archivo===src.name);
+        const delSrc = cards.filter(c=>c.meta && c.meta.srcId===src.id);
+        const card = delSrc[0];
         if(!card) continue;   // ese archivo no dejó ninguna reserva, o se descartó
-        const info = st.archivos.find(a=>a.archivo===src.name) || null;
+        const info = st.archivos.find(a=>a.srcId===src.id) || null;
         const existente = card.kind==="match" ? card.match.existente : null;
         const r = await prepararAdjunto(src.blob, {
           origen:"importar",
@@ -9540,24 +9666,36 @@ async function sheetImport(trip){
           docsActuales: (existente && existente.docs) || [],
           itemId: card.destinoId
         });
-        trabajos.push({src, card, r, guardado:false});
+        // `hermanas`: las otras reservas que salieron del MISMO archivo. Son
+        // las que se van a guardar sin comprobante, y el cierre las nombra.
+        trabajos.push({src, card, r, guardado:false, referenciado:false, hermanas:delSrc.slice(1)});
       }
       for(const t of trabajos){
         if(!t.r.ok){ st.adjuntosFuera.push({nombre:t.src.name, mensaje:t.r.error.mensaje}); continue; }
         try{ await Store.saveDocBody(trip.id, t.r.cuerpo); t.guardado = true; }
         catch(e){ st.adjuntosFuera.push({nombre:t.src.name, mensaje:AdjuntosEngine.interpretarErrorDeLaBase(e).mensaje}); }
       }
-      const docDe = card => { const t = trabajos.find(x=>x.card===card && x.guardado); return t ? t.r.doc : null; };
+      /* Un cuerpo escrito que no termine referenciado por su ítem sería un
+         huérfano: ocupa cupo de la base y ninguna pantalla lo puede borrar,
+         porque `delItem`/`delTrip` sólo borran lo que está en `item.docs`. Por
+         eso cada trabajo se marca `referenciado` en el mismo paso en que su
+         ítem se guarda con el documento adentro, y lo que no llegó a
+         referenciarse se borra en el `catch`. El orden no se invierte a
+         propósito: guardar el ítem primero y el cuerpo después dejaría a la
+         reserva prometiendo un documento que puede no existir, que es peor
+         —se ve— que un cuerpo de más. */
+      const trabajoDe = card => trabajos.find(x=>x.card===card && x.guardado) || null;
 
       // 2. Primero los vuelos que se completan, después las reservas nuevas.
       for(const c of matches){
-        const ex = c.match.existente, doc = docDe(c);
+        const ex = c.match.existente, t = trabajoDe(c), doc = t ? t.r.doc : null;
         const docs = ((ex.docs)||[]).concat(doc?[doc]:[]);
         await Store.saveItem(trip.id, Object.assign({}, ex, c.match.patch, {docs}));
+        if(t) t.referenciado = true;
         if(doc) st.adjuntos.push({doc, destino: ex.title || "el vuelo"});
       }
       for(const c of nuevas){
-        const r = c.reserva, doc = docDe(c);
+        const r = c.reserva, t = trabajoDe(c), doc = t ? t.r.doc : null;
         const type = TYPES[r.type] ? r.type : "note";
         await Store.saveItem(trip.id, {
           id: c.destinoId, type,
@@ -9571,17 +9709,37 @@ async function sheetImport(trip){
           currency:(r.currency||"").toUpperCase(), notes:r.notes||"", source:"import",
           docs: doc?[doc]:[]
         });
+        if(t) t.referenciado = true;
         if(doc) st.adjuntos.push({doc, destino: r.title || (TYPES[type]||TYPES.note).label});
       }
+      /* D14 · un archivo que trajo varias reservas deja su documento en UNA
+         sola, a propósito (un archivo, un documento). Las otras se guardan sin
+         comprobante, y eso se dice: si no, la única forma de enterarse es
+         abrir esa reserva y ver que no tiene la tira del documento. */
+      trabajos.forEach(t=>{
+        if(!t.referenciado || !t.hermanas.length) return;
+        st.sinComprobante.push({
+          archivo: t.src.name,
+          conDoc: nombreDeReserva(t.card.kind==="match" ? t.card.match.existente : t.card.reserva),
+          sinDoc: t.hermanas.map(h=> nombreDeReserva(h.kind==="match" ? h.match.existente : h.reserva))
+        });
+      });
       st.savedTotal += nuevas.length;
       st.matchDone += matches.length;
       st.reviewList = [];
       finish();
     }catch(e){
-      // Si falla a mitad de camino puede quedar parte del lote ya escrito
-      // (algunos `Store.saveItem` resolvieron antes del que falló). Se muestra
-      // qué falló para que la persona reintente sabiendo que puede haber
-      // quedado algo aplicado.
+      /* Si falla a mitad de camino puede quedar parte del lote ya escrito
+         (algunos `Store.saveItem` resolvieron antes del que falló). Dos cosas:
+         se dice qué falló, y se barren los cuerpos que se escribieron pero
+         cuyo ítem no llegó a guardarse. Sin ese barrido, un `saveItem` que
+         falla justo después de un `saveDocBody` que anduvo deja el mismo
+         huérfano que el cruce de nombres, por otra puerta. */
+      try{
+        for(const t of trabajos){
+          if(t.guardado && !t.referenciado) await Store.delDocBody(trip.id, t.r.doc.id);
+        }
+      }catch(_){}
       toast(writeErr(e), true);
       saveBtn.disabled = false; saveBtn.innerHTML = `${svg(I.spark)} ${saveReviewLabel(nuevas.length, matches.length)}`;
     }
@@ -9606,17 +9764,21 @@ async function sheetImport(trip){
   function finish(){
     if(!alive()) return;
     const n = st.savedTotal, m = st.matchDone;
-    const adj = st.adjuntos, fuera = st.adjuntosFuera;
+    const adj = st.adjuntos, fuera = st.adjuntosFuera, sinComp = st.sinComprobante;
+    const sinCompN = sinComp.reduce((k,s)=>k+s.sinDoc.length, 0);
     const partes = [];
     if(n) partes.push(`${n} ${n===1?"reserva agregada":"reservas agregadas"}`);
     if(m) partes.push(`${m} ${m===1?"vuelo completado":"vuelos completados"} con la tarjeta de embarque`);
     if(adj.length) partes.push(`${adj.length} ${adj.length===1?"documento adjunto":"documentos adjuntos"}`);
+    if(sinCompN) partes.push(`${sinCompN} ${sinCompN===1?"reserva sin comprobante":"reservas sin comprobante"}`);
     if(fuera.length) partes.push(`${fuera.length} ${fuera.length===1?"documento no entró":"documentos no entraron"}`);
     const resumen = partes.length ? partes.join(" · ") : "Listo";
+    /** "A", "A y B", "A, B y C" — con las partes ya escapadas por quien llama. */
+    const unir = ps => ps.length<=1 ? (ps[0]||"") : (ps.slice(0,-1).join(", ") + " y " + ps[ps.length-1]);
 
     // Sin documentos de por medio, el cierre es el de siempre: un toast y
     // afuera. Una hoja más para decir lo mismo sería un paso de más.
-    if(!adj.length && !fuera.length){
+    if(!adj.length && !fuera.length && !sinComp.length){
       closeSheet();
       let msg;
       if(n && m) msg = `Guardado. Agregué ${n} ${n===1?"reserva":"reservas"} y completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.`;
@@ -9632,11 +9794,21 @@ async function sheetImport(trip){
       "Guardado.",
       n ? `Agregué ${n} ${n===1?"reserva":"reservas"}.` : "",
       m ? `Completé ${m} ${m===1?"vuelo":"vuelos"} con los datos de la tarjeta de embarque.` : "",
-      adj.length ? `${adj.length===1?"El documento quedó adjunto":"Los documentos quedaron adjuntos"} a ${adj.length===1?"su reserva":"sus reservas"}.` : ""
+      adj.length ? (sinComp.length
+        ? `${adj.length===1?"El documento quedó adjunto":"Los documentos quedaron adjuntos"} a una reserva de cada archivo.`
+        : `${adj.length===1?"El documento quedó adjunto":"Los documentos quedaron adjuntos"} a ${adj.length===1?"su reserva":"sus reservas"}.`) : ""
     ].filter(Boolean).join(" ");
     const body = `${marker}
       <div class="notice ok">${svg(I.check2)}<span class="bd">${esc(okTxt)}</span></div>
       ${fuera.map(f=>`<div class="notice warn">${svg(I.info)}<span class="bd"><b>Un documento quedó afuera:</b> <b>${esc(f.nombre)}</b> — ${esc(f.mensaje)} Sus reservas sí se guardaron; lo que no quedó es el archivo.</span></div>`).join("")}
+      ${sinComp.map(s=>{
+        const k = s.sinDoc.length, total = k + 1;
+        const nombres = unir(s.sinDoc.map(x=>`<b>${esc(x)}</b>`));
+        return `<div class="notice warn">${svg(I.info)}<span class="bd"><b>El comprobante quedó en una sola reserva.</b>
+          <b>${esc(s.archivo)}</b> trajo ${total} reservas y el archivo se guarda una vez: quedó adjunto a <b>${esc(s.conDoc)}</b>.
+          ${k===1?`${nombres} se guardó con todos sus datos, pero sin el comprobante`:`${nombres} se guardaron con todos sus datos, pero sin el comprobante`}.
+          Si lo querés ahí también, abrí ${k===1?"esa reserva":"cada una"} y adjuntá el mismo archivo desde <b>Documento</b>.</span></div>`;
+      }).join("")}
       ${adj.length?`<div class="imp-files">${adj.map(a=>{
         const clas = AdjuntosEngine.clasificarArchivo({name:a.doc.nombre, mimeType:a.doc.mime});
         const icon = clas.familia==="imagen" ? "img" : "doc";
@@ -9649,7 +9821,7 @@ async function sheetImport(trip){
       }).join("")}</div>`:""}`;
     openSheet("Importar reservas", body, `<button class="btn primary block" id="im-done">Listo</button>`);
     document.getElementById("im-done").onclick = closeSheet;
-    toast(resumen, !!fuera.length);
+    toast(resumen, !!fuera.length || !!sinCompN);
     if(n || m) checkPackingPlan(trip);
   }
   renderElegir();

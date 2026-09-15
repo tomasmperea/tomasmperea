@@ -387,6 +387,15 @@ const itemsDe = page => page.evaluate(() => Store.itemsOf("t1"));
       );
     }
     assert(await page.locator("#doc-block .imp-file").count() === 3, "los tres están en la lista");
+    /* La etiqueta se asienta DESPUÉS que la lista: el `waitForFunction` de arriba
+       espera a las tres filas, y en ese instante la cuenta puede decir todavía 2.
+       La aserción leía el texto en ese hueco y fallaba sola cada tanto, con la
+       máquina cargada. Esperarla acá saca la carrera sin aflojar lo que mide:
+       si la cuenta nunca llega a 3, esto revienta por tiempo igual. */
+    await page.waitForFunction(
+      () => /documentos · 3 de 3/i.test(document.querySelector("#doc-block label").innerText),
+      null, { timeout: 10000 }
+    ).catch(()=>{});
     assert(/documentos · 3 de 3/i.test(await page.locator("#doc-block label").innerText()),   // innerText devuelve el texto renderizado: las etiquetas van en versalitas
       "la etiqueta lleva la cuenta: " + JSON.stringify(await page.locator("#doc-block label").innerText()));
     assert(await page.locator('[data-pick="doc_file"]').count() === 0,

@@ -48,7 +48,43 @@ const BLOQUEAR = process.argv[3] === "bloquear";
     ok(!!vis, "cuando el selector no abre, la app lo dice en vez de quedarse muda: " + JSON.stringify(vis));
     ok(await p.$eval(".imp-more", e => e.open), "y abre sola la vía de pegar el texto");
   } else {
-    ok(await p.$eval("#im-nopick", e => e.hidden), "no aparece ningún aviso falso cuando el selector sí abre");
+    /* QUÉ SE PUEDE PROBAR ACÁ Y QUÉ NO — y por qué esta prueba está escrita así.
+
+       El aviso de selector mudo se dispara a los 1500 ms si el foco nunca se
+       fue y no llegó ningún archivo. Bajo Playwright el selector no es un
+       diálogo del sistema, así que `blur` y `visibilitychange` NO se disparan
+       nunca. Entonces "no aparece el aviso cuando el selector abre" mide la
+       herramienta y no la app, y encima se aseveraba sin esperar los 1500 ms,
+       o sea sin haber tenido nunca oportunidad de fallar.
+
+       Lo que sí distingue un build bueno de uno roto es este caso, que además
+       es el del teléfono: el archivo LLEGA, y el temporizador corre igual
+       después. Con la guarda vieja —`!(input.files && input.files.length)`—
+       el aviso aparecía encima de la pantalla que ya estaba leyendo el
+       documento, porque `onchange` limpia `input.value` y eso vacía
+       `input.files` antes de que el temporizador lo mire. Comprobado
+       corriendo los dos builds: con la guarda vieja el aviso aparece a los
+       2200 ms; con la guarda arreglada, no. */
+    /* Pantalla limpia: los tres toques del bucle de arriba dejaron cada uno su
+       temporizador corriendo y su aviso pintado. Sin recargar, lo que se
+       mediría es ese aviso viejo y no el de este archivo. */
+    await p.reload();
+    await p.waitForTimeout(1200);
+    const c2 = await p.$(".tag-card"); if(c2){ await c2.click(); await p.waitForTimeout(600); }
+    await p.click("#imp"); await p.waitForTimeout(1000);
+    ok(await p.evaluate(()=>{ const c=document.getElementById("im-nopick"); return !c || c.hidden; }),
+       "la pantalla arranca sin ningún aviso, para que lo que se mida sea este archivo");
+
+    p.once("filechooser", fc => fc.setFiles({
+      name: "confirmacion.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 texto\n")
+    }));
+    await p.$eval('[data-pick="im_doc"]', e => e.click());
+    await p.waitForTimeout(2200);          // pasado el temporizador de 1500 ms
+    const miente = await p.evaluate(() => {
+      const c = document.getElementById("im-nopick");
+      return !!c && !c.hidden && /No se abri/.test(c.textContent || "");
+    });
+    ok(!miente, "un archivo que SÍ llegó no dispara el aviso de selector mudo 1500 ms después");
   }
   console.log(fallos ? `\n${fallos} FALLARON` : "\nTodo en verde");
   await b.close();
