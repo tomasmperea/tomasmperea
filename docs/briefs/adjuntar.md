@@ -240,42 +240,86 @@ había tocado.
 
 ## Lo que sólo se puede comprobar en el teléfono
 
-Nada de esta iteración corrió en el Artifact publicado ni en un teléfono, así que en los
-términos de `CLAUDE.md` **nada de esto está verificado**. Estos son los pasos, en orden de
-riesgo. Cada uno dice qué mirar y qué significa si sale mal.
+**Reauditado el 16/09, a pedido del PM.** La lista anterior tenía seis puntos y
+cuatro de ellos no eran suyos: se los habíamos delegado por comodidad, no porque
+no se pudieran hacer acá. Uno llegaba a pedirle que abriera la consola del
+navegador en el teléfono. Se probaron los cuatro (ver "Lo que se probó acá" más
+abajo) y quedan **tres**, que son los que dependen de tener el aparato en la mano.
 
-1. **El aviso de selector mudo después de una selección que funcionó.** Es la duda de H5.
-   Tocá "Archivo" en Importar, elegí un PDF y esperá tres segundos con la pantalla a la
-   vista. **Si aparece "No se abrió el selector de archivos" con el documento ya cargado,
-   el arreglo no alcanzó** y hay que dejar de decidirlo por temporizador.
+Ninguno pide abrir nada raro. Son tres cosas que se tocan.
 
-2. **La recompresión de una foto de cámara real.** Adjuntá una foto sacada en el momento y
-   abrí el visor. **Si la imagen sale negra o vacía, es el tope de área del canvas o el
-   formato HEIC**, no el tope de tamaño: el mensaje de error va a mentir.
+### 1. Elegir un archivo y quedarse mirando
 
-3. **VAL-60 con un lote real — este se hace desde una computadora, no desde el
-   teléfono.** Lo que mide es si el modelo contesta el formato de lote, y eso no depende
-   del teléfono; el número vive en la consola del navegador, que no es un gesto al
-   alcance del pulgar. Abrí el Artifact en una computadora, subí tres PDFs con texto de
-   una sola vez, y en la consola buscá la línea que empieza con `[valija] importación`.
-   El campo es `llamadas`.
+Entrá a un viaje, tocá **Importar**, tocá **Archivo** y elegí un PDF cualquiera.
+Quedate mirando la pantalla unos segundos después de que el archivo aparezca.
 
-   **Si dice 1, la iteración ahorró lo que prometía. Si dice 3, el modelo no contesta el
-   formato de lote** y hay que ajustar el prompt antes de dar VAL-60 por cerrado. Es lo
-   único que ningún simulador puede responder, porque el simulador contesta lo que el
-   prompt pide por estar escrito contra el mismo contrato.
+**Qué tiene que pasar:** el archivo se carga y no aparece ningún cartel de error.
 
-   Que este número no se pueda ver desde el teléfono es una limitación conocida. Si
-   después de esta prueba resulta que hay que seguirlo de cerca, mostrarlo en la app es
-   trabajo de backlog, no de esta iteración.
+**Si aparece "No se abrió el selector de archivos" con el archivo ya cargado,**
+avisá. Significa que el arreglo del 14/09 no alcanzó en ese navegador. Es el
+único punto donde el teléfono puede comportarse distinto a todo lo que se probó.
 
-4. **VAL-59 con una tarjeta de embarque real.** Con un vuelo ya cargado, importá la
-   tarjeta. Tiene que ofrecer completarlo, no crear un vuelo nuevo.
+### 2. Adjuntar una foto sacada en el momento
 
-5. **El visor de PDF con la página dibujada.** Acá el CDN está bloqueado, así que sólo
-   corrió la variante sin previsualización.
+En una reserva, tocá **Adjuntar** y **Sacar foto**. Sacá una foto de cualquier
+papel y abrí el documento adjunto para verlo.
 
-6. **Tema oscuro y tipografías reales** en la tira del documento y en el visor.
+**Qué tiene que pasar:** la foto se ve.
+
+**Si sale negra, en blanco, o no se ve,** avisá y decí qué teléfono es. En iPhone
+hay dos límites del sistema —el tamaño máximo que puede procesar y el formato
+HEIC— que sólo se manifiestan ahí. **El mensaje de error te va a hablar de
+tamaño, y en ese caso va a estar mintiendo:** por eso hace falta que lo mires vos
+y no que lo deduzcamos del mensaje.
+
+### 3. Bajar el documento y abrirlo
+
+En una reserva con un documento adjunto, abrilo y tocá **Descargar**. Después
+buscá el archivo en el teléfono y abrilo.
+
+**Qué tiene que pasar:** el archivo aparece donde caen tus descargas y se abre
+bien.
+
+**Si no aparece, o aparece roto,** avisá. Acá se prueba contra un doble que
+registra lo que recibe, nunca contra el sistema de archivos real del teléfono.
+
+---
+
+## Lo que se probó acá, y que antes figuraba como imposible
+
+Cuatro cosas salieron de la lista del PM porque se pudieron probar, no porque se
+hayan dado por buenas:
+
+**El lector de PDF real.** cdnjs está bloqueado en este entorno, pero la misma
+librería —`pdfjs-dist` 3.11.174, la versión exacta que la app fija— se baja de
+npm, que sí está permitido. Con eso se hacen dos cosas que no se podían:
+servírsela a la app dentro del navegador en vez de bloquearla, y correr el motor
+contra la librería de verdad. Resultado: la forma que el motor supone
+(`{str, hasEOL}`) es la que devuelve pdf.js, y **el visor dibuja la página** —
+9.884 píxeles con tinta, no una hoja en blanco—. El PDF tampoco es inventado: lo
+genera jsPDF con los datos de una tarjeta de embarque. Arnés: `app/pruebas/pdf-real.js`.
+
+**El formato de lote, contestado por un modelo real.** Era la trampa conocida:
+el simulador devolvía lo que el prompt pedía porque estaba escrito contra el
+mismo contrato. Se generó el prompt real de tres documentos y se le pasó a un
+modelo que **no vio el parser ni un solo archivo del repositorio**. Contestó
+bien: tres documentos, ningún dato cruzado entre ellos, el micro como traslado y
+no como vuelo, y 13/9/2026 leído como 13 de septiembre. Su respuesta cruda quedó
+guardada en `fixtures/respuesta-lote-modelo-real.json`. Arnés:
+`app/pruebas/lote-modelo-real.js`. **Sigue sin probarse que el modelo del visor
+del teléfono conteste igual** — es otro modelo — pero deja de ser cierto que
+ninguno contestó nunca este formato.
+
+**La base compartida.** Se simuló siguiendo el contrato, no la memoria, con el
+mismo cuidado que `app/parts/db-mock.js`. Ejercita el rechazo real por 256 KiB
+(`invalid_argument`, no reintentable), `quota_exceeded`, el fallo al traer el
+archivo (D4) y **el borrado en cascada**: borrar la reserva y borrar el viaje
+entero borran los cuerpos, que es lo que impide que cada documento quede
+ocupando cupo de los 5.000 para siempre. Arnés: `app/pruebas/base-compartida.js`.
+
+**Las tipografías reales y los dos temas.** `fonts.googleapis.com` sí es
+alcanzable: las tres fuentes cargan de verdad y la jerarquía de color se sostiene
+en claro y en oscuro, con capturas.
 
 ---
 

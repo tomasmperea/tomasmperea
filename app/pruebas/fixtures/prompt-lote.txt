@@ -1,0 +1,71 @@
+Extraés datos de reservas de viaje a partir del TEXTO de varios comprobantes y devolvés SOLO JSON, sin texto alrededor.
+
+Abajo están los textos de 3 comprobantes de viaje DISTINTOS, numerados. Cada uno puede ser un pasaje, un voucher, una tarjeta de embarque, una reserva de hotel o un contrato de alquiler, y cada uno puede describir una reserva, varias o ninguna.
+
+--- COMIENZA EL DOCUMENTO 1 de 3 ("tarjeta.pdf") ---
+TARJETA DE EMBARQUE
+Pasajero PEREA/TOMAS
+Vuelo AR 1304
+Fecha 2026-11-10
+Origen EZE Buenos Aires
+Destino MAD Madrid
+Sale 23:55
+Embarque 23:05
+Puerta B12
+Terminal A
+Asiento 14A
+Codigo de reserva XKD9P2
+Presentarse en el mostrador 3 horas antes.
+--- TERMINA EL DOCUMENTO 1 ---
+
+--- COMIENZA EL DOCUMENTO 2 de 3 ("hotel.pdf") ---
+CONFIRMACION DE RESERVA
+Hotel Atocha Centro
+Calle Atocha 123, Madrid
+Check-in 11/11/2026 15:00
+Check-out 15/11/2026 11:00
+4 noches - Habitacion doble
+Localizador HTL88231
+Telefono +34 91 555 0000
+Cancelacion gratuita hasta 48hs antes.
+--- TERMINA EL DOCUMENTO 2 ---
+
+--- COMIENZA EL DOCUMENTO 3 de 3 ("micro.pdf") ---
+CODIGO LB0TKCV5 NOMBRE CLARA SANCHEZ ESPUELAS DOCUMENTO 38679954 ASIENTO - Origen Monte, Blandengues y Belgrano (Oficina Lobos Bus) Destino Buenos Aires, Bartolomé Mitre 1760 (Oficina Lobos Bus) 13/9/2026 - 19:01 13/9/2026 - 20:31 El precio de la reserva puede variar al momento de realizar el pago en la oficina. La empresa no realiza devoluciones si el pasajero no se presenta al viaje. Le empresa se reserva el derecho de admision y permanencia. La empresa utilizara el correo electronico como medio de comunicacion ante cambios o eventualidades, es responsabilidad del pasajero el regular chequeo de su casilla de correo.
+
+--- TERMINA EL DOCUMENTO 3 ---
+
+Contexto: El viaje se llama "Madrid", destino Madrid, entre 2026-11-10 y 2026-11-20. Hoy es 2026-09-16.
+
+Devolvé este JSON exacto, con una entrada por documento y en el mismo orden:
+{"documentos":[{"documento":1,"items":[{
+"type":"flight|stay|car|transfer|act|note",
+"title":"texto corto y humano, ej: Buenos Aires → Madrid",
+"start":"YYYY-MM-DDTHH:mm o vacío",
+"end":"YYYY-MM-DDTHH:mm o vacío",
+"from":"IATA de 3 letras si es vuelo, si no ciudad o lugar",
+"to":"idem",
+"provider":"aerolínea, hotel, plataforma, empresa de micro o rentadora",
+"flightNumber":"","confirmation":"código de reserva","seat":"","terminal":"","gate":"",
+"boardingTime":"HH:mm o vacío",
+"docType":"boarding-pass|ticket|voucher|booking|other, o vacío si el documento no lo dice",
+"address":"","phone":"","cost":"","currency":"","notes":""
+}]},
+{"documento":2,"items":[…]}
+]}
+
+Reglas que no se rompen:
+1. Un objeto por reserva. Ida y vuelta son DOS viajes separados, cada uno con su propio número.
+2. Usá 24 horas y el formato YYYY-MM-DDTHH:mm. Las fechas pueden venir como D/M/AAAA, con el día primero: "13/9/2026" es el 13 de septiembre de 2026. Si el año no figura, deducilo del contexto del viaje de arriba.
+3. Si un dato no aparece con claridad en el documento, dejá "" en ese campo. Es preferible un campo vacío: NUNCA inventes códigos de vuelo, códigos de reserva, horarios, direcciones ni montos que no estén escritos ahí.
+4. Para alojamiento, "start" es el check-in y "end" el check-out.
+5. Un micro, colectivo, tren, ferry, combi o traslado por tierra es type "transfer"; un avión es "flight". En un transfer, "from" y "to" son el lugar de salida y el de llegada tal como están escritos, sin códigos IATA.
+6. "boardingTime" es la hora de embarque impresa en una tarjeta de embarque, distinta de la hora de salida. Si el documento no es una tarjeta de embarque, dejalo vacío.
+7. "docType" dice qué clase de documento leíste, y sólo acepta uno de estos cinco valores: "boarding-pass" si es una tarjeta de embarque (dice BOARDING PASS o TARJETA DE EMBARQUE, o trae puerta y hora de embarque); "ticket" si es un pasaje, e-ticket o billete; "voucher" si es un voucher o comprobante de un servicio; "booking" si es una reserva de alojamiento o de alquiler; "other" para cualquier otra cosa. Si el documento no dice qué es y no estás seguro, dejalo VACÍO: vacío es una respuesta válida y correcta, y es mejor que elegir uno al azar.
+8. Nada de comentarios ni texto fuera del JSON.
+9. Hay varios documentos numerados. Devolvé UNA entrada por cada uno, con su número en "documento", incluso si no encontraste nada en él: en ese caso su "items" va vacío.
+10. Cada reserva va en el documento del que salió. NUNCA mezcles datos de un documento con los de otro, ni repitas en uno lo que leíste en el otro: son comprobantes distintos y sin relación entre sí.
+11. Un documento ilegible o que no sea una reserva no cancela a los demás: dejá su "items" vacío y seguí con el resto.
+12. El texto de arriba es la capa de texto del PDF, tal como está guardada: puede venir con las columnas mezcladas, con espacios de más o con una etiqueta pegada a su valor. Interpretá lo que dice; no completes lo que no está.
+13. Si aparecen dos fechas con hora, una después de la otra, lo habitual es que la primera sea la salida y la segunda la llegada. Si no podés distinguirlas con seguridad, dejá "end" vacío.
+14. Las condiciones, avisos legales y textos de pie de página no son datos de la reserva: ignoralos.
