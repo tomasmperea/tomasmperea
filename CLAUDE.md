@@ -128,6 +128,49 @@ Una entrega puede apoyarse en un sustituto. Lo que no puede hacer es **llamarlo 
 se probó, qué queda sin cubrir y cómo comprobarlo. Declarar una brecha nunca es una mala nota; afirmar sin
 respaldo sí.
 
+## Un defecto que sólo aparece en el teléfono del PM
+
+Tres arreglos seguidos fallaron sobre el mismo síntoma, en septiembre. No fue mala
+suerte: fue el mismo error de método tres veces.
+
+Cada arreglo nació de una hipótesis sobre qué hace el Android del PM. Para probarla se
+escribió un simulador **desde esa hipótesis**, el simulador reprodujo el síntoma, el
+arreglo lo puso en verde y se publicó. Pero un simulador escrito desde una hipótesis
+**sólo puede darle la razón a quien lo escribió**. Nunca puede avisar que la hipótesis
+es falsa. Las tres veces el arnés decía la verdad y la entrega estaba equivocada.
+
+La auditoría no lo habría frenado: el auditor corre en el mismo entorno ciego. Habría
+confirmado que la prueba pasa, que el control negativo falla y que las regresiones
+están verdes — todo cierto y todo irrelevante, porque el defecto vive donde ninguno de
+los dos puede mirar.
+
+**Entonces, para un defecto que no se puede reproducir acá:**
+
+1. **No se publica un arreglo que dependa de acertar la causa.** Si la causa no se
+   puede observar, cualquier arreglo es una apuesta, y el costo de perderla lo paga el
+   PM con una ronda de pruebas.
+
+2. **Se publica lo que convierte la próxima ronda en datos:** que la app diga qué
+   observó, en una línea que entre en una captura de pantalla, y que diga de qué
+   versión es. Un reporte con datos cierra el problema; tres reportes con síntomas, no.
+
+3. **Se puede publicar un arreglo que NO dependa de la causa.** Agotar los caminos
+   documentados —leer un archivo de las tres formas que existen, en vez de una— no es
+   una hipótesis: vale sin saber cuál falla. Eso sí se publica.
+
+4. **Nunca concluir de un dato lo que se puede determinar leyendo.** "El archivo
+   informa cero" no es "el archivo está vacío". Confundirlos costó tres iteraciones.
+
+5. **El mensaje de error no inventa una causa.** Dice qué pasó, y aparte muestra qué se
+   observó. Si no se sabe por qué, se dice que no se sabe.
+
+**Y una que vale para todo arnés, no sólo para estos:** un escenario que espera que
+todo salga bien puede pasar porque el sabotaje no se aplicó. Cuatro escenarios de
+`app/pruebas/tres-caminos-de-lectura.js` pasaron en falso porque la función de sabotaje
+se pasaba como closure y `addInitScript` no se lleva el closure. Lo destapó el único
+escenario que esperaba una falla. **Todo arnés que rompe algo a propósito necesita al
+menos un caso que falle si el sabotaje no llegó.**
+
 ## Antes de dar algo por resuelto
 
 Tres preguntas, en este orden. Si alguna no tiene respuesta, la entrega no está lista:

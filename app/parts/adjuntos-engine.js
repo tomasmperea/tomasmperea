@@ -262,8 +262,14 @@ var ERRORES = {
     return "No puedo guardar un archivo " + (c.extension ? "." + c.extension : "de ese tipo") + ". " +
            "Sirven PDF y fotos (JPG, PNG, WEBP, HEIC).";
   },
+  /* NO afirma que el archivo esté vacío: afirma lo único que se sabe, que
+     es que no se pudo sacar nada de él. Las dos cosas se parecen y no son
+     iguales, y confundirlas costó tres rondas de arreglos equivocados sobre
+     archivos que estaban enteros. El detalle observado va aparte, en
+     `error.detalle`, y la interfaz lo muestra. */
   "archivo-vacio": function () {
-    return "Ese archivo está vacío: no tiene nada adentro. Probá bajarlo de nuevo del mail y elegilo otra vez.";
+    return "No pude leer ese archivo: probé de tres formas distintas y ninguna trajo nada. " +
+           "Si vino por mail, bajalo al teléfono primero y después elegilo desde ahí.";
   },
   "no-entra-pdf": function (c) {
     return "Pesa " + formatearBytes(c.bytes) + " y el tope es " + formatearBytes(TOPE_ARCHIVO_BYTES) + ". " +
@@ -798,7 +804,12 @@ recomprimirImagenConCanvas.liberar = function (file) {
 
 function errorInfo(codigo, ctx) {
   var f = ERRORES[codigo];
-  return { codigo: codigo, mensaje: f ? f(ctx || {}) : "No pude guardar el documento." };
+  var e = { codigo: codigo, mensaje: f ? f(ctx || {}) : "No pude guardar el documento." };
+  /* Lo OBSERVADO viaja con el error, aparte del mensaje humano. El mensaje
+     dice qué hacer; el detalle dice qué se vio. Nunca se mezclan: el primero
+     es para la persona, el segundo para poder arreglar sin adivinar. */
+  if (ctx && ctx.detalle) e.detalle = ctx.detalle;
+  return e;
 }
 
 function advertenciaInfo(codigo, ctx) {
@@ -832,16 +843,122 @@ function normalizarBytes(x) {
   return new Uint8Array(x);
 }
 
-function leerBytes(file, opts) {
+/* ============================================================
+   LEER EL ARCHIVO: TODOS LOS CAMINOS, Y ANOTAR QUÉ PASÓ
+
+   Por qué existe esto. El PM reportó TRES veces el mismo error sobre
+   archivos que le llegan por mail a su Android, y las tres veces se
+   arregló una hipótesis distinta sin acertar. El problema común de los
+   tres fracasos no estuvo en el código: estuvo en el método. Cada
+   arreglo se probó contra un simulador escrito DESDE la hipótesis, y un
+   simulador así sólo puede darle la razón a quien lo escribió. Nunca
+   puede avisar que la hipótesis es falsa.
+
+   Así que acá se deja de suponer POR DÓNDE falla la lectura y se
+   prueban, en orden, los tres caminos que un navegador ofrece, hasta
+   que uno traiga bytes:
+
+     1. blob.arrayBuffer()          el moderno, el único que se usaba;
+     2. blob.slice(0).arrayBuffer() fuerza una copia nueva — en varios
+                                    Android el original lo sirve un
+                                    proveedor y la rebanada no;
+     3. FileReader                  la API vieja, que sigue andando en
+                                    vistas donde las otras dos no.
+
+   Esto no es otra hipótesis: es agotar los caminos documentados.
+
+   Y de cada intento se anota qué devolvió. Ese registro es lo que la
+   interfaz muestra cuando falla, para que el próximo reporte traiga el
+   dato observado en vez de obligar a adivinar una cuarta vez.
+   ============================================================ */
+function leerBytesConDiagnostico(file, opts) {
+  var intentos = [];
+  function anotar(via, bytes, e) {
+    intentos.push({
+      via: via,
+      bytes: bytes == null ? null : bytes.length,
+      error: e ? ((e.name || "Error") + (e.message ? " " + String(e.message).slice(0, 48) : "")) : null
+    });
+  }
+  function listo(bytes) { return { bytes: bytes || new Uint8Array(0), intentos: intentos }; }
+
   if (opts && typeof opts.leerBytes === "function") {
-    return Promise.resolve(opts.leerBytes(file)).then(normalizarBytes);
+    return Promise.resolve(opts.leerBytes(file)).then(normalizarBytes).then(
+      function (b) { anotar("inyectado", b, null); return listo(b); },
+      function (e) { anotar("inyectado", null, e); return listo(null); }
+    );
   }
-  if (file && file.bytes) return Promise.resolve(normalizarBytes(file.bytes));
+  if (file && file.bytes) {
+    var enMemoria = normalizarBytes(file.bytes);
+    anotar("memoria", enMemoria, null);
+    return Promise.resolve(listo(enMemoria));
+  }
+
   var blob = _blobDe(file);
-  if (blob && typeof blob.arrayBuffer === "function") {
-    return blob.arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  if (!blob) { anotar("archivo", null, new Error("no llegó ningún archivo")); return Promise.resolve(listo(null)); }
+
+  function viaArrayBuffer() {
+    if (typeof blob.arrayBuffer !== "function") { anotar("arrayBuffer", null, new Error("no existe")); return Promise.resolve(null); }
+    return Promise.resolve().then(function () { return blob.arrayBuffer(); }).then(
+      function (ab) { var b = new Uint8Array(ab); anotar("arrayBuffer", b, null); return b.length ? b : null; },
+      function (e) { anotar("arrayBuffer", null, e); return null; }
+    );
   }
-  return Promise.reject(new Error("no-se-pudo-leer"));
+  function viaSlice() {
+    if (typeof blob.slice !== "function") { anotar("slice", null, new Error("no existe")); return Promise.resolve(null); }
+    return Promise.resolve().then(function () {
+      var copia = blob.slice(0);
+      if (!copia || typeof copia.arrayBuffer !== "function") throw new Error("la copia no se puede leer");
+      return copia.arrayBuffer();
+    }).then(
+      function (ab) { var b = new Uint8Array(ab); anotar("slice", b, null); return b.length ? b : null; },
+      function (e) { anotar("slice", null, e); return null; }
+    );
+  }
+  function viaFileReader() {
+    if (typeof FileReader !== "function") { anotar("FileReader", null, new Error("no existe")); return Promise.resolve(null); }
+    return new Promise(function (res) {
+      try {
+        var fr = new FileReader();
+        fr.onload = function () {
+          var b;
+          try { b = normalizarBytes(fr.result); } catch (e) { anotar("FileReader", null, e); return res(null); }
+          anotar("FileReader", b, null); res(b.length ? b : null);
+        };
+        fr.onerror = function () { anotar("FileReader", null, fr.error || new Error("falló")); res(null); };
+        fr.readAsArrayBuffer(blob);
+      } catch (e) { anotar("FileReader", null, e); res(null); }
+    });
+  }
+
+  return viaArrayBuffer()
+    .then(function (b) { return b || viaSlice(); })
+    .then(function (b) { return b || viaFileReader(); })
+    .then(function (b) { return listo(b); });
+}
+
+/**
+ * Una línea corta con lo que se OBSERVÓ, no con lo que se supone. No
+ * explica ni interpreta: enumera. Está pensada para que entre en una
+ * captura de pantalla y para que un reporte traiga el dato en vez de
+ * una conjetura.
+ * @returns {string} p.ej. `informa 0 B · arrayBuffer 0 B · slice 5166 B`
+ */
+function detalleDeLectura(file, intentos) {
+  var partes = [];
+  var t = tamañoDe(file);
+  partes.push("informa " + (t === null ? "sin dato" : t + " B"));
+  (intentos || []).forEach(function (i) {
+    partes.push(i.via + " " + (i.error ? i.error : (i.bytes === null ? "—" : i.bytes + " B")));
+  });
+  var blob = _blobDe(file);
+  var tipo = norm((file && file.type) || (blob && blob.type));
+  if (tipo) partes.push(tipo);
+  return partes.join(" · ");
+}
+
+function leerBytes(file, opts) {
+  return leerBytesConDiagnostico(file, opts).then(function (r) { return r.bytes; });
 }
 
 function tamañoDe(file) {
@@ -916,22 +1033,21 @@ function prepararDocumento(file, opts) {
     origen: ctx.origen, esTarjeta: opts.esTarjeta, tipoReserva: opts.tipoReserva, nombre: ctx.nombre
   });
 
-  // Camino 1: el tamaño ya se conoce y entra → se lee y se codifica tal cual.
-  if (tam !== null && tam <= TOPE_ARCHIVO_BYTES) {
-    return leerBytes(file, opts).then(function (bytes) {
-      if (!bytes.length) return resultadoFallido("archivo-vacio", {});
+  /* Caminos 1 y 2, que ahora son el mismo. Antes se separaban porque con el
+     tamaño conocido se creía que no hacía falta leer para decidir; la
+     experiencia dijo lo contrario, así que siempre se lee. Lo que el archivo
+     informa sólo sirve para elegir el orden, nunca para concluir. */
+  if (tam === null || tam <= TOPE_ARCHIVO_BYTES) {
+    return leerBytesConDiagnostico(file, opts).then(function (r) {
+      var bytes = r.bytes;
+      if (!bytes.length) {
+        return resultadoFallido("archivo-vacio", { detalle: detalleDeLectura(file, r.intentos) });
+      }
       if (bytes.length > TOPE_ARCHIVO_BYTES) return rutaGrande(file, opts, ctx, bytes.length);
       return armar(ctx, bytes, clas.mime, "ok", null);
-    }, function () { return resultadoFallido("no-se-pudo-leer", {}); });
-  }
-
-  // Camino 2: no se conoce el tamaño → hay que leer para saberlo.
-  if (tam === null) {
-    return leerBytes(file, opts).then(function (bytes) {
-      if (!bytes.length) return resultadoFallido("archivo-vacio", {});
-      if (bytes.length <= TOPE_ARCHIVO_BYTES) return armar(ctx, bytes, clas.mime, "ok", null);
-      return rutaGrande(file, opts, ctx, bytes.length);
-    }, function () { return resultadoFallido("no-se-pudo-leer", {}); });
+    }, function (e) {
+      return resultadoFallido("no-se-pudo-leer", { detalle: detalleDeLectura(file, [{ via: "lectura", bytes: null, error: (e && e.name) || "Error" }]) });
+    });
   }
 
   // Camino 3: pesa más que el tope.
@@ -1075,6 +1191,8 @@ return {
   quitarDocumento: quitarDocumento,
   presupuestoDeLaBase: presupuestoDeLaBase,
   interpretarErrorDeLaBase: interpretarErrorDeLaBase,
+  leerBytesConDiagnostico: leerBytesConDiagnostico,
+  detalleDeLectura: detalleDeLectura,
 
   // Textos derivados de los metadatos
   textoTira: textoTira,
