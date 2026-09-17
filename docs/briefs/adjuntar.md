@@ -358,3 +358,54 @@ la reserva y se pueda volver a abrir.
 **El paso cero ya corrió y su resultado está incorporado arriba:** el reconocimiento de
 texto en el teléfono no es viable dentro de la app. VAL-57 quedó replanteada en
 consecuencia, no cancelada.
+
+---
+
+## Cierre de la iteración 3 — lo que la auditoría pidió que quede acá (17/09)
+
+Dos auditorías seguidas señalaron que este brief, que es el contrato de trabajo, no decía nada del trabajo
+de los días 16 y 17. Lo que pasó en esos dos días no cambia el alcance, pero cambia **qué se puede afirmar
+de la entrega**, y eso pertenece al contrato.
+
+### El defecto que definió la iteración
+
+El PM adjuntó un PDF que le llegó por mail, desde su Android, y la app dijo **"Ese archivo está vacío: no
+tiene nada adentro"**. No lo estaba. Lo vio por **dos gestos**: adjuntar directo a una reserva, e importar.
+En la misma sesión una foto de la cámara entró perfecta y se recomprimió sola.
+
+Se publicaron **tres arreglos y los tres fallaron**. No fue mala suerte: cada uno nació de una hipótesis
+sobre ese teléfono, y el simulador para probarla se escribió *desde* esa misma hipótesis. Un simulador así
+sólo puede darle la razón a quien lo escribió. El método está escrito en `CLAUDE.md`.
+
+### Qué se entrega, y con qué respaldo cada cosa
+
+| Cambio | ¿Depende de acertar la causa? | Dónde se probó |
+|---|---|---|
+| Leer el archivo por los tres caminos documentados, no por uno | **No** — agotar caminos vale sin saber cuál falla | `tres-caminos-de-lectura.js`, 5 escenarios |
+| Un `size` de cero es "no sé", no "está vacío" | **No** — corrige un error de lógica | `archivo-sin-tamano.js` |
+| El error dice qué observó, con la versión, en una línea que entra en una captura | **No** — es instrumentación | los dos gestos, en `tres-caminos-de-lectura.js` |
+| `prepararAdjunto` no se escapa por un throw sincrónico | **No** — defecto reproducible acá | `preparar-no-lanza.js`, con control negativo de 7 fallas |
+| Limpiar el campo al abrir el selector, no al elegir | Sí en el motivo, **no** en el efecto | `archivo-del-correo.js` — contra un simulador de la hipótesis |
+| Leer el archivo una vez y reusar los bytes | Sí en el motivo, **no** en el efecto | `archivo-de-una-lectura.js` — ídem |
+
+Las dos últimas se dejan porque son correctas igual: no hay momento en que convenga tocar el campo con un
+archivo en uso, ni leer dos veces donde alcanza una. Lo que **no** se puede decir es que arreglen el defecto
+del teléfono, porque el síntoma siguió después de publicar cada una.
+
+### Criterio de validación, precisado
+
+El brief ya decía que se valida contra la app publicada en el teléfono del PM. Se agrega la consecuencia que
+las auditorías hicieron explícita: **una entrega sobre este defecto no puede declararse cumplida desde acá,
+y tampoco tiene que quedarse sin publicar por eso.** Lo que se publica es lo que convierte la próxima ronda
+en datos — la línea de observación y el sello de versión —, más los arreglos que no dependen de la causa.
+
+El guion de la prueba del PM vive en `docs/qa/v18-como-lo-compruebo-en-el-telefono.md`: tres gestos, sin
+consola, con lo que la entrega NO afirma en su propia sección.
+
+### Lo que queda abierto al cerrar la iteración 3
+
+- **El defecto original sigue sin confirmarse arreglado.** Es lo único que la ronda del PM puede decidir.
+- **VAL-57** quedó fuera por decisión del PM el 17/09, con el desacuerdo del PO registrado.
+- **`doc_repl`** (reemplazar un documento) no tiene escenario propio. Se cubrió por propiedad en vez de por
+  escenario: `preparar-no-lanza.js` verifica que exista **una sola** llamada al motor y que esté blindada,
+  lo cual alcanza a todo gesto presente y futuro. Si mañana aparece una segunda llamada, ese caso falla.

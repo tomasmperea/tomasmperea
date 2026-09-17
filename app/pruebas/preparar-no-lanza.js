@@ -120,6 +120,14 @@ const info = m => console.log("  info   " + m);
      escenario no prueba nada — por eso abajo se verifica que llegó. */
   await page.evaluate(() => {
     window.__SABOTEADOS__ = 0;
+    /* Se cuenta acá, con la hoja abierta y ANTES de tocar el botón. La
+       primera versión contaba después de guardar, cuando la hoja ya estaba
+       cerrada y no quedaba gesto que contar: daba cero y el caso fallaba por
+       su propia premisa, no por la app. Es el mismo error de método que este
+       arnés existe para no repetir. */
+    window.__PORPREPARAR__ = 0;
+    const origPA = window.prepararAdjunto;
+    window.prepararAdjunto = function(){ window.__PORPREPARAR__++; return origPA.apply(this, arguments); };
     const inp = document.getElementById("doc_file");
     const hostil = { name:"del-mail.pdf", type:"application/pdf", size:100,
       bytes: { get length(){ throw new Error("hostil"); } } };
@@ -188,6 +196,39 @@ const info = m => console.log("  info   " + m);
      "\"Guardar\" no contesta \"esperá a que termine\" para siempre");
   ok(!!guardo && guardo.includes("Vuelo a Madrid"),
      "y la reserva se guardó igual, sin el documento que no se pudo leer");
+
+  /* ---------- parte D: TODOS los gestos, no sólo el que probé ----------
+
+     La auditoría marcó dos rondas seguidas que `doc_repl` —reemplazar un
+     documento ya adjunto— comparte este código y no tenía escenario propio.
+     Agregar un escenario más lo cubriría a él y dejaría al siguiente gesto
+     afuera otra vez.
+
+     Así que en vez de un escenario, la propiedad: que NADIE llame al motor
+     sin pasar por `prepararAdjunto`, que es la única función blindada contra
+     el throw sincrónico. Eso cubre `doc_file`, `doc_repl`, `im_doc` y
+     cualquier gesto que alguien agregue mañana, que es justo lo que un
+     escenario por gesto no puede hacer.
+
+     `reemplazar` importa por lo mismo que `elegirAdjunto`: pone
+     `st.preparando = true` antes de llamar, así que un throw en el medio deja
+     colgada la hoja del visor igual que la de la reserva. */
+  console.log("\n· ningún gesto llega al motor sin pasar por la función blindada");
+  const fuente = require("fs").readFileSync(APP, "utf8");
+  const llamadas = (fuente.match(/AdjuntosEngine\.prepararDocumento\s*\(/g) || []).length;
+  info(`llamadas a AdjuntosEngine.prepararDocumento en la app: ${llamadas}`);
+  ok(llamadas === 1,
+     `hay exactamente UNA, la de prepararAdjunto (${llamadas}): si aparece otra, este caso falla y hay que blindarla también`);
+
+  const blindada = /function prepararAdjunto\(file, opts\)\{\s*return Promise\.resolve\(\)\.then\(/.test(fuente);
+  ok(blindada, "y esa única llamada está dentro de la cadena de promesas, no suelta");
+
+  /* Las dos aserciones de arriba leen el código. Esta cuenta lo que pasó de
+     verdad cuando la parte C tocó el botón: el contador se instaló antes del
+     gesto, con la hoja abierta. */
+  const porAhi = await page.evaluate(() => window.__PORPREPARAR__);
+  ok(porAhi > 0,
+     `y el gesto de la parte C pasó por prepararAdjunto (${porAhi} llamada/s), no por el motor directo`);
 
   if (errores.length) { console.log("  >> PAGEERROR:", errores.join(" | ")); }
 

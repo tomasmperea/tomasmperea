@@ -60,12 +60,28 @@ reducirse sola, como el 16/09 (2,7 MB → 112 KB). Si eso sigue andando, no romp
 
 ---
 
+## Un cuarto síntoma, distinto, que también vale reportar
+
+Además de "está vacío", hay una forma de fallar que **no dice nada**, y es la peor porque no parece un
+error: el bloque del documento se queda en **"Preparando el archivo…"** y no cambia más, y el botón
+**Guardar queda apagado**. Si te pasa eso, la reserva queda trabada: no hay nada que tocar para salir
+salvo cancelar y perder lo que escribiste.
+
+Lo encontré hoy buscando otra cosa, y lo arreglé. Va acá por dos motivos: para que si aparece sepas que es
+**otro** problema y no el del archivo vacío, y porque el arreglo se probó solamente en este entorno.
+
+**Si lo ves, mandame la captura y decime "quedó colgado en preparando".** Con esas palabras ya sé que es
+éste y no el otro, y no perdemos una ronda averiguándolo.
+
+---
+
 ## Qué te mando de vuelta
 
 | Si pasó esto | Mandame |
 |---|---|
 | Los tres gestos andan | "anduvo" y cierro la iteración 3 |
 | Alguno falla | la captura con **la línea gris completa** |
+| Quedó en "Preparando el archivo…" con Guardar apagado | la captura y **"quedó colgado en preparando"** |
 | La app dice algo que no es ni una cosa ni la otra | la captura igual |
 | Arriba no dice `v18` | avisame antes de seguir |
 
