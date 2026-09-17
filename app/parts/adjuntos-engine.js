@@ -1004,19 +1004,24 @@ function prepararDocumento(file, opts) {
 
   /* CERO NO ES VACÍO: ES "NO SÉ".
 
-     Un archivo que en Android entrega un proveedor —el correo, Drive— puede
-     no traer el dato de cuánto mide, y el navegador informa `size: 0`. El
-     archivo está entero y se lee perfecto; lo único que falta es el número.
+     Esto NO depende de ninguna hipótesis sobre el teléfono del PM, y es la
+     diferencia con los otros dos arreglos de este defecto: se sostiene solo.
 
-     El motor concluía "está vacío" de ese cero y ni siquiera intentaba
-     leerlo. Por eso una foto de la cámara entraba —esa la crea el navegador
-     y sí trae su tamaño— y el PDF del mail no. El PM lo vio en su teléfono
-     tres veces seguidas, con dos arreglos míos en el medio que apuntaban a
-     otra cosa.
+     `size: 0` significa "no sé cuánto mide", no "no tiene nada adentro". Son
+     dos afirmaciones distintas y el motor las confundía: concluía "está
+     vacío" de ese cero y ni siquiera intentaba leer. Lo único que prueba que
+     un archivo está vacío es leerlo y que no venga nada.
 
-     Lo único que prueba que un archivo está vacío es leerlo y que no venga
-     nada. Así que un cero se trata como tamaño desconocido y se cae al
-     camino que lee para saber. Lo reproduce `app/pruebas/archivo-sin-tamano.js`. */
+     Que en Android un proveedor —el correo, Drive— pueda entregar un archivo
+     entero sin el dato de cuánto mide es plausible y encaja con lo que el PM
+     vio (el PDF del mail falló, la foto de la cámara entró y esa sí trae su
+     tamaño), pero es hipótesis y no está observada en el aparato. No importa:
+     el arreglo no la necesita. Tratar un cero como desconocido y caer al
+     camino que lee para saber es correcto en cualquier navegador, porque la
+     premisa que se corrige es un error de lógica, no una conjetura sobre una
+     plataforma.
+
+     Lo reproduce `app/pruebas/archivo-sin-tamano.js`. */
   var tam = tamañoDe(file);
   if (tam === 0) tam = null;
 
@@ -1051,12 +1056,27 @@ function prepararDocumento(file, opts) {
       if (bytes.length > TOPE_ARCHIVO_BYTES) return rutaGrande(file, opts, ctx, bytes.length);
       return armar(ctx, bytes, clas.mime, "ok", null);
     }, function (e) {
-      /* La última red. `leerBytesConDiagnostico` atrapa cada camino por
-         separado y no rechaza por una lectura fallida, así que esto casi nunca
-         se alcanza — pero no es código muerto: `normalizarBytes` puede lanzar
-         sobre un valor raro inyectado por `opts.leerBytes`, y ahí cae acá.
-         La auditoría del 17/09 lo marcó como rama muerta; se revisó y se deja,
-         con el motivo escrito, en vez de borrar una red que sí puede disparar. */
+      /* NO ENCONTRÉ CÓMO LLEGAR ACÁ, y lo digo así.
+
+         La auditoría del 17/09 marcó esta rama como código muerto. La primera
+         respuesta que escribí fue que sí se alcanzaba, "porque `normalizarBytes`
+         puede lanzar sobre un valor inyectado por `opts.leerBytes`". Era falso,
+         y la segunda auditoría lo agarró: esa rama de `leerBytesConDiagnostico`
+         tiene su propio manejador de rechazo y devuelve bytes vacíos, así que
+         nunca propaga. Inventé una justificación en vez de comprobarla — la
+         misma trampa que el proyecto tiene escrita, cometida al contestar una
+         auditoría.
+
+         Lo comprobé después, con cinco intentos de llegar (quedan en
+         `app/pruebas/preparar-no-lanza.js`): `opts.leerBytes` que rechaza, que
+         devuelve basura y que lanza sincrónico, y `file.bytes` con un valor
+         raro y con un objeto hostil. Ninguno cae acá.
+
+         Se queda de todos modos, y eso es una DECISIÓN, no un hecho
+         demostrado: el costo es una función anónima que no corre, y el
+         beneficio es que si mañana alguien agrega un camino de lectura que sí
+         rechace, el usuario ve un mensaje en vez de nada. Lo que no se puede
+         es seguir afirmando que dispara. */
       return resultadoFallido("no-se-pudo-leer", { detalle: detalleDeLectura(file, [{ via: "lectura", bytes: null, error: (e && e.name) || "Error" }]) });
     });
   }

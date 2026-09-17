@@ -6153,19 +6153,24 @@ function prepararDocumento(file, opts) {
 
   /* CERO NO ES VACÍO: ES "NO SÉ".
 
-     Un archivo que en Android entrega un proveedor —el correo, Drive— puede
-     no traer el dato de cuánto mide, y el navegador informa `size: 0`. El
-     archivo está entero y se lee perfecto; lo único que falta es el número.
+     Esto NO depende de ninguna hipótesis sobre el teléfono del PM, y es la
+     diferencia con los otros dos arreglos de este defecto: se sostiene solo.
 
-     El motor concluía "está vacío" de ese cero y ni siquiera intentaba
-     leerlo. Por eso una foto de la cámara entraba —esa la crea el navegador
-     y sí trae su tamaño— y el PDF del mail no. El PM lo vio en su teléfono
-     tres veces seguidas, con dos arreglos míos en el medio que apuntaban a
-     otra cosa.
+     `size: 0` significa "no sé cuánto mide", no "no tiene nada adentro". Son
+     dos afirmaciones distintas y el motor las confundía: concluía "está
+     vacío" de ese cero y ni siquiera intentaba leer. Lo único que prueba que
+     un archivo está vacío es leerlo y que no venga nada.
 
-     Lo único que prueba que un archivo está vacío es leerlo y que no venga
-     nada. Así que un cero se trata como tamaño desconocido y se cae al
-     camino que lee para saber. Lo reproduce `app/pruebas/archivo-sin-tamano.js`. */
+     Que en Android un proveedor —el correo, Drive— pueda entregar un archivo
+     entero sin el dato de cuánto mide es plausible y encaja con lo que el PM
+     vio (el PDF del mail falló, la foto de la cámara entró y esa sí trae su
+     tamaño), pero es hipótesis y no está observada en el aparato. No importa:
+     el arreglo no la necesita. Tratar un cero como desconocido y caer al
+     camino que lee para saber es correcto en cualquier navegador, porque la
+     premisa que se corrige es un error de lógica, no una conjetura sobre una
+     plataforma.
+
+     Lo reproduce `app/pruebas/archivo-sin-tamano.js`. */
   var tam = tamañoDe(file);
   if (tam === 0) tam = null;
 
@@ -6200,12 +6205,27 @@ function prepararDocumento(file, opts) {
       if (bytes.length > TOPE_ARCHIVO_BYTES) return rutaGrande(file, opts, ctx, bytes.length);
       return armar(ctx, bytes, clas.mime, "ok", null);
     }, function (e) {
-      /* La última red. `leerBytesConDiagnostico` atrapa cada camino por
-         separado y no rechaza por una lectura fallida, así que esto casi nunca
-         se alcanza — pero no es código muerto: `normalizarBytes` puede lanzar
-         sobre un valor raro inyectado por `opts.leerBytes`, y ahí cae acá.
-         La auditoría del 17/09 lo marcó como rama muerta; se revisó y se deja,
-         con el motivo escrito, en vez de borrar una red que sí puede disparar. */
+      /* NO ENCONTRÉ CÓMO LLEGAR ACÁ, y lo digo así.
+
+         La auditoría del 17/09 marcó esta rama como código muerto. La primera
+         respuesta que escribí fue que sí se alcanzaba, "porque `normalizarBytes`
+         puede lanzar sobre un valor inyectado por `opts.leerBytes`". Era falso,
+         y la segunda auditoría lo agarró: esa rama de `leerBytesConDiagnostico`
+         tiene su propio manejador de rechazo y devuelve bytes vacíos, así que
+         nunca propaga. Inventé una justificación en vez de comprobarla — la
+         misma trampa que el proyecto tiene escrita, cometida al contestar una
+         auditoría.
+
+         Lo comprobé después, con cinco intentos de llegar (quedan en
+         `app/pruebas/preparar-no-lanza.js`): `opts.leerBytes` que rechaza, que
+         devuelve basura y que lanza sincrónico, y `file.bytes` con un valor
+         raro y con un objeto hostil. Ninguno cae acá.
+
+         Se queda de todos modos, y eso es una DECISIÓN, no un hecho
+         demostrado: el costo es una función anónima que no corre, y el
+         beneficio es que si mañana alguien agrega un camino de lectura que sí
+         rechace, el usuario ve un mensaje en vez de nada. Lo que no se puede
+         es seguir afirmando que dispara. */
       return resultadoFallido("no-se-pudo-leer", { detalle: detalleDeLectura(file, [{ via: "lectura", bytes: null, error: (e && e.name) || "Error" }]) });
     });
   }
@@ -8180,20 +8200,27 @@ function wireFilePick(id, opts){
        después de elegir. Limpiarlo hace falta para poder volver a elegir el
        mismo archivo; el problema es cuándo.
 
-       Un archivo que el selector trae desde el correo o desde Drive no le
-       pertenece al navegador: en Android llega como `content://` y el sistema
-       se lo presta mientras el campo lo tenga. Limpiar el campo devuelve el
-       préstamo. Como se limpiaba ANTES de entregar el archivo a quien lo iba
-       a leer, el archivo llegaba ya vacío y la app decía "está vacío" sobre
-       algo que no lo estaba.
+       La HIPÓTESIS por la que se movió —y es una hipótesis, no un hecho
+       comprobado— es que un archivo que el selector trae del correo o de
+       Drive no le pertenece al navegador: en Android llegaría como
+       `content://`, prestado por un proveedor mientras el campo lo tenga, y
+       limpiar el campo devolvería el préstamo antes de que alguien lo lea.
 
-       En una computadora no pasa nunca —el archivo es del disco y sigue ahí—,
-       por eso no lo vio ningún arnés. Lo encontró el PM en su teléfono el
-       16/09, y en la misma sesión una foto de la cámara entró perfecta: esa
-       la crea el navegador y es suya. Esa diferencia fue la pista.
+       Se cree plausible por una diferencia que el PM vio el 16/09: el PDF del
+       mail falló y una foto de la cámara entró perfecta, y esa la crea el
+       navegador y es suya. Pero NADIE lo observó en el aparato: este entorno
+       no puede reproducirlo, y el síntoma siguió después de publicar este
+       arreglo, lo cual es evidencia CONTRA que sea la causa única.
 
-       Limpiando al abrir, el campo nunca se toca mientras hay un archivo suyo
-       en uso. Lo reproduce `app/pruebas/archivo-del-correo.js`. */
+       Entonces por qué se deja: limpiar al abrir es correcto sin importar si
+       la hipótesis es cierta. No hay ningún momento en que convenga tocar el
+       campo mientras hay un archivo suyo en uso. Vale como arreglo que no
+       depende de acertar la causa, que es lo único que este proyecto tiene
+       permitido publicar sobre este defecto.
+
+       Lo reproduce `app/pruebas/archivo-del-correo.js` — contra un simulador
+       escrito desde esta misma hipótesis, así que confirma que el código hace
+       lo que dice, NO que la hipótesis sea verdadera. */
     try{ input.value = ""; }catch(e){}
     input.click();
     setTimeout(()=>{
@@ -8220,9 +8247,31 @@ function wireFilePick(id, opts){
 
 /** Prepara un archivo elegido, sin escribir nada (diseño 5.5): lo codifica y,
     si es una foto que no entra, la reduce. Nunca rechaza: un archivo que no se
-    puede preparar vuelve como `estado:"no-entra"` con su motivo. */
+    puede preparar vuelve como `estado:"no-entra"` con su motivo.
+
+    "Nunca rechaza" incluye no lanzar SINCRÓNICAMENTE, y eso hasta el 17/09 no
+    era cierto. `prepararDocumento` llama a `normalizarBytes` fuera de toda
+    promesa, así que un valor hostil en `file.bytes` —uno cuyo `length` lanza—
+    salía disparado antes de que existiera la promesa a la que este `.catch`
+    se engancha. Un `.catch` no puede atrapar un throw que ocurrió antes de
+    que hubiera algo que encadenar.
+
+    El daño no era un mensaje equivocado: era la app MUDA. `elegirAdjunto`
+    deja puesto `DOC.preparando` antes de llamar acá y lo limpia después; si
+    el medio se va por un throw, el cartel de "preparando" se queda para
+    siempre y "Guardar" contesta "esperá a que termine" sin que nunca termine.
+    Justo el modo de falla que este proyecto ya pagó tres veces.
+
+    Lo encontré probando si la rama `"no-se-pudo-leer"` del motor era
+    alcanzable —la auditoría decía que era código muerto y tenía razón—. De
+    cinco intentos, ninguno llegó a esa rama y DOS se escaparon sincrónicos.
+    Queda en `app/pruebas/preparar-no-lanza.js`, con los cinco.
+
+    `Promise.resolve().then(...)` mete la llamada dentro de la cadena, así que
+    ahora un throw sincrónico llega a este mismo `.catch`. No depende de
+    adivinar nada: se reproduce acá. */
 function prepararAdjunto(file, opts){
-  return AdjuntosEngine.prepararDocumento(file, opts).catch(e=>{
+  return Promise.resolve().then(()=> AdjuntosEngine.prepararDocumento(file, opts)).catch(e=>{
     console.warn("prepararDocumento", e);
     return {estado:"no-entra", ok:false, bloqueaGuardado:false, doc:null, cuerpo:null,
       recompresion:null, advertencias:[],
@@ -9009,14 +9058,19 @@ async function sheetImport(trip){
     });
   }
   /* ---------- UNA SOLA LECTURA DEL ARCHIVO ELEGIDO ----------
-     Un archivo que el selector entrega desde el correo o desde Drive llega,
-     en Android, como `content://`: lo sirve un proveedor remoto y en la
-     práctica se puede leer UNA sola vez. La segunda lectura vuelve vacía y
-     `size` pasa a 0.
+     HIPÓTESIS, no hecho comprobado: que un archivo entregado desde el correo
+     o desde Drive llegue en Android como `content://`, servido por un
+     proveedor remoto, y se pueda leer UNA sola vez — la segunda vuelve vacía
+     y `size` pasa a 0. Nadie lo observó en el teléfono del PM; el síntoma
+     siguió después de publicar este arreglo.
 
-     La importación lo leía DOS veces: una para interpretarlo y otra, más
-     tarde, para adjuntarlo. Por eso la tarjeta de embarque del PM se
-     interpretó bien —el vuelo se completó— y el documento "estaba vacío".
+     Lo que la encajaba: la importación leía el archivo DOS veces, una para
+     interpretarlo y otra, más tarde, para adjuntarlo, y la tarjeta del PM se
+     interpretó bien —el vuelo se completó— mientras el documento "estaba
+     vacío". Calza con el síntoma, y calzar no es ser la causa.
+
+     Por qué se deja igual: leer una vez y reusar los bytes es mejor que leer
+     dos, sea cierta la hipótesis o no. Una lectura menos no puede fallar.
      En una computadora no pasa nunca, porque el archivo es del disco y se
      puede leer todas las veces que uno quiera: por eso no lo vio ningún
      arnés, ni siquiera el que corre con el pdf.js real. Lo encontró él, en
