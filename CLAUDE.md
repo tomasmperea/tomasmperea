@@ -227,3 +227,45 @@ Entonces, mecánica, y va antes de pedirle una prueba a nadie:
 
 Ninguno de los cuatro es una opinión: son cuatro `grep`. Pedir una prueba sin hacerlos es gastar una ronda
 del PM a cambio de nada.
+
+## La compuerta que convertía cualquier sorpresa en "archivo vacío"
+
+El 17/09 la línea de observación de la v18 cerró en UNA ronda lo que tres arreglos no habían movido en
+tres. La captura del PM decía:
+
+```
+informa 123129 B · memoria 0 B · application/pdf · v18
+```
+
+Un solo intento, sobre un archivo que informa 123 KB. Los tres caminos de lectura no aparecen porque nunca
+corrieron. La causa estaba arriba de ellos:
+
+```js
+if (file && file.bytes) { ...usar esos bytes...; return; }
+```
+
+`bytes` es el nombre de un **método de Blob**. `Blob.prototype.bytes()` existe en los navegadores nuevos y
+no en el Chromium de este entorno. En el teléfono del PM, `file.bytes` era esa función: verdadera, así que
+la guarda entraba, y normalizar una función da cero bytes. **Todo archivo devolvía vacío antes de que
+existiera cualquier otro camino.** Los tres arreglos anteriores tocaban código que ese `return` salteaba.
+
+Tres reglas salen de acá, y ninguna es sobre Android:
+
+**1. Una guarda que devuelve convierte cualquier sorpresa en su propio diagnóstico.** La compuerta no decía
+"no pude leer": decía "leí, y no había nada". Un atajo que corta el camino tiene que fallar hacia el camino
+largo, no hacia una conclusión. Si el atajo no sirvió, se anota por qué y se sigue probando.
+
+**2. No se pregunta por "verdadero" sobre un nombre que le pertenece a la plataforma.** `bytes`, `slice`,
+`text`, `stream`, `arrayBuffer` son métodos de Blob. Una propiedad nuestra que se llame igual va a chocar
+con la plataforma el día que la plataforma la implemente — y el choque no avisa: se ve como un dato vacío.
+Se pregunta por lo que se necesita (¿son bytes?), no por si existe algo.
+
+**3. Cuando un caso anda y otro falla, se enumeran TODAS las diferencias antes de elegir una.** La foto de
+la cámara entraba y el PDF del mail no. Elegí "el origen del archivo" y escribí tres arreglos sobre esa
+elección. La diferencia real era el **tamaño**: 2,7 MB está arriba del tope y se va a recomprimir por
+canvas sin pasar nunca por el lector; 123 KB está abajo y pasa. Estaba a un `if` de distancia, en nuestro
+propio código, y no lo miré porque ya tenía una explicación que me gustaba.
+
+**Y la que las paga todas:** la instrumentación valió más que los tres arreglos juntos. No hay que
+"arreglar y ver": hay que **publicar lo que hace hablar al defecto** y dejar que el dato elija. Está escrito
+como regla 2 más arriba; acá está la factura que lo demuestra.

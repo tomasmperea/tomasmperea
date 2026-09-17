@@ -1,6 +1,6 @@
-# v18 — cómo lo comprobás en tu teléfono
+# v19 — cómo lo comprobás en tu teléfono
 
-**Para:** Tomás (PM) · **Escrito el:** 17/09/2026 · **Versión que tiene que decir la app:** `v18`
+**Para:** Tomás (PM) · **Escrito el:** 17/09/2026 · **Versión que tiene que decir la app:** `v19`
 
 Son tres gestos y no hay que abrir ninguna consola. El único dato que necesito de vuelta es **una captura
 de pantalla**.
@@ -9,7 +9,7 @@ de pantalla**.
 
 ## Antes de empezar: mirá que sea la v18
 
-Abrí la app y fijate arriba, al lado del título: dice **`v18`**.
+Abrí la app y fijate arriba, al lado del título: dice **`v19`**.
 
 Si dice otra cosa, estás viendo una versión vieja y la prueba no sirve.
 
@@ -20,7 +20,7 @@ versión latest"— corrió contra un build al que le faltaban justo las dos cos
 diera datos. Yo te pedí una prueba sobre trabajo que nunca había salido.
 
 Esta vez lo verifiqué: leí el archivo publicado y busqué adentro cada uno de los cinco arreglos. Están.
-Igual, si arriba no dice `v18`, avisame antes de seguir y no gastes la ronda.
+Igual, si arriba no dice `v19`, avisame antes de seguir y no gastes la ronda.
 
 ---
 
@@ -37,7 +37,7 @@ Es el gesto con el que lo viste fallar la primera vez.
 **Si falla:** no va a decir "está vacío". Va a decir que no lo pudo leer, y **debajo una línea gris con
 números y palabras raras**, algo como:
 
-> `informa 0 B · arrayBuffer NotReadableError · slice 0 B · FileReader Error · application/pdf · v18`
+> `informa 0 B · arrayBuffer NotReadableError · slice 0 B · FileReader Error · application/pdf · v19`
 
 **Esa línea gris es todo lo que necesito.** Saca la captura de forma que entre completa. No hace falta que la
 entiendas: dice cuál de las tres formas de leer el archivo falló y cómo, y eso convierte el próximo intento
@@ -90,25 +90,45 @@ Lo encontré hoy buscando otra cosa, y lo arreglé. Va acá por dos motivos: par
 | Alguno falla | la captura con **la línea gris completa** |
 | Quedó en "Preparando el archivo…" con Guardar apagado | la captura y **"quedó colgado en preparando"** |
 | La app dice algo que no es ni una cosa ni la otra | la captura igual |
-| Arriba no dice `v18` | avisame antes de seguir |
+| Arriba no dice `v19` | avisame antes de seguir |
 
 ---
 
-## Lo que NO te estoy diciendo
+## Esta vez sí sé qué estaba roto
 
-Que esto está arreglado. **No lo sé, y no puedo saberlo desde acá.**
+Y es la primera vez en cuatro rondas que puedo decir eso, así que va con el respaldo.
 
-El defecto vive en tu teléfono y este entorno no lo puede reproducir: ni yo ni el auditor podemos mirar ahí.
-Los tres arreglos anteriores fallaron exactamente por dar por bueno lo que un simulador escrito por mí me
-confirmaba.
+**Tu captura lo resolvió.** La línea gris decía `informa 123129 B · memoria 0 B`. Un solo intento, sobre un
+archivo de 123 KB. Los tres caminos de lectura ni aparecían: nunca corrieron.
 
-Entonces lo que la v18 cambia es de otra clase:
+El motivo estaba en mi código, no en tu teléfono. Antes de leer el archivo había un atajo: "si este archivo
+ya trae los bytes puestos, usalos". La pregunta que hacía era "¿tiene algo llamado `bytes`?" — y resulta que
+`bytes` es el nombre de una función que los navegadores nuevos le agregaron a todos los archivos. Tu Chrome
+la tiene; el navegador con el que yo pruebo, no. Así que en tu teléfono el atajo respondía "sí, tiene bytes",
+agarraba una función en lugar de datos, sacaba cero, **y devolvía sin probar nada más.**
 
-- **La app ya no depende de una sola forma de leer un archivo.** Prueba las tres que existen, una tras otra.
-  Esto vale sin saber cuál falla en tu teléfono, y por eso se puede publicar.
-- **Ya no concluye "está vacío" de que el archivo no diga cuánto mide.** Son dos cosas distintas y las
-  confundía. Ese era un error de lógica, no una conjetura sobre Android.
-- **Y si falla, te dice qué observó** en vez de inventar un motivo. Esa es la línea gris.
+Todo archivo volvía vacío antes de que existiera cualquier otro camino. Los tres arreglos anteriores tocaban
+código que ese atajo salteaba. Por eso no cambió nada tres veces seguidas.
 
-Puede que igual falle. Lo que no va a pasar es que falle sin dejar datos: con esa captura, la próxima ronda
-la arreglo o te digo por qué no puedo, sin una cuarta apuesta.
+**Y explica lo de la foto de la cámara**, que yo había explicado mal. No entraba por ser "del navegador":
+entraba porque pesaba 2,7 MB. Arriba de 190 KB el archivo se va a recomprimir y nunca pasa por el atajo.
+Tus PDF pesaban 123 KB y 20 KB — debajo del tope, directo a la trampa. **La diferencia era el tamaño, no de
+dónde venía el archivo.** Sobre esa confusión mía se construyeron tres rondas tuyas.
+
+### Qué tan probado está
+
+Esta vez el defecto **se reproduce acá**. Le agregué al navegador de pruebas la misma función que tiene el
+tuyo, y con el código de la v18 el arnés falla **10 veces** mostrando exactamente lo que vos viste, en los
+dos gestos. Con el arreglo, verde.
+
+Eso es lo que no tuvimos las tres veces anteriores: un arnés que puede decir que **no**.
+
+### Lo que sigue sin estar probado
+
+Que en **tu** teléfono alcance. Sigo sin poder abrir tu Android, y puede haber más de una cosa rota. Si
+falla de nuevo, la línea gris va a decir otra cosa distinta de `memoria 0 B` — y esa diferencia ya es el
+próximo dato.
+
+Una cosa más, aparte: en tu última captura apareció abajo un cartel del sistema que dice **"Memoria
+insuficiente para completar la operación anterior"**. No es de la app, es de Android, y no tengo cómo
+mirarlo desde acá. Si vuelve a aparecer, decímelo: puede no ser nada, o puede ser un segundo problema.

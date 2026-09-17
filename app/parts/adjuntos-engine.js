@@ -268,7 +268,13 @@ var ERRORES = {
      archivos que estaban enteros. El detalle observado va aparte, en
      `error.detalle`, y la interfaz lo muestra. */
   "archivo-vacio": function () {
-    return "No pude leer ese archivo: probé de tres formas distintas y ninguna trajo nada. " +
+    /* NO dice cuántos caminos probó. Decía "probé de tres formas distintas" y
+       en el teléfono del PM era mentira: había probado uno —la compuerta de
+       `file.bytes` devolvía antes— y el mensaje afirmaba tres con total
+       aplomo. La cuenta verdadera está en la línea de observación, que
+       enumera cada intento; la prosa no la repite. Regla 5 del proyecto: el
+       mensaje dice qué pasó, y aparte se muestra qué se observó. */
+    return "No pude leer ese archivo: ninguno de los caminos que probé trajo nada. " +
            "Si vino por mail, bajalo al teléfono primero y después elegilo desde ahí.";
   },
   "no-entra-pdf": function (c) {
@@ -835,6 +841,22 @@ function generarId() {
   return "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+/** Bytes de verdad, o null. NO alcanza que sea verdadero: `bytes` es el
+    nombre de un método de Blob, así que un `file.bytes` puede ser una función
+    —verdadera y sin un solo byte adentro—. Un largo cero también devuelve
+    null: cero bytes no es una lectura, es una lectura que no trajo nada, y
+    quien pregunta tiene que poder seguir probando. */
+function bytesUtilizables(x) {
+  if (!x) return null;
+  if (typeof x === "function") return null;
+  var b = null;
+  if (x instanceof Uint8Array) b = x;
+  else if (typeof ArrayBuffer !== "undefined" && x instanceof ArrayBuffer) b = new Uint8Array(x);
+  else if (typeof x.byteLength === "number" && x.buffer) b = new Uint8Array(x.buffer, x.byteOffset || 0, x.byteLength);
+  else if (typeof x.length === "number") { try { b = new Uint8Array(x); } catch (e) { return null; } }
+  return (b && b.length) ? b : null;
+}
+
 function normalizarBytes(x) {
   if (!x) return new Uint8Array(0);
   if (x instanceof Uint8Array) return x;
@@ -888,10 +910,49 @@ function leerBytesConDiagnostico(file, opts) {
       function (e) { anotar("inyectado", null, e); return listo(null); }
     );
   }
-  if (file && file.bytes) {
-    var enMemoria = normalizarBytes(file.bytes);
-    anotar("memoria", enMemoria, null);
-    return Promise.resolve(listo(enMemoria));
+  /* BYTES YA LEÍDOS: SÓLO SI SON BYTES DE VERDAD, Y SIN CORTAR EL CAMINO.
+
+     Acá vivió el defecto que el PM reportó CUATRO veces. La guarda era
+     `if (file && file.bytes)` —o sea, "¿es verdadero?"— y encima devolvía.
+
+     `bytes` es el nombre de un MÉTODO de Blob (`blob.bytes()`, que existe en
+     los navegadores nuevos y no en el Chromium de este entorno). En el
+     teléfono del PM, entonces, `file.bytes` era una función: verdadera, así
+     que la guarda entraba; y `normalizarBytes` de una función da CERO bytes,
+     porque una función no tiene `.buffer` y `new Uint8Array(fn)` da vacío.
+
+     Resultado: todo archivo que pasaba por acá volvía vacío ANTES de que
+     existiera cualquier otro camino. Los tres caminos de lectura estaban
+     escritos justo abajo y nunca corrieron. Por eso tres arreglos seguidos
+     no cambiaron nada: los tres tocaban código que este `return` saltea.
+
+     Lo confirmó la línea de observación de la v18, en su pantalla:
+     `informa 123129 B · memoria 0 B · application/pdf · v18`. Un solo
+     intento, "memoria", cero bytes, sobre un archivo que informa 123 KB. El
+     dato lo dijo todo; no hubo que adivinar nada.
+
+     Y explica lo que yo había explicado mal. La foto de la cámara entraba no
+     porque "el navegador sea su dueño" —eso era una hipótesis falsa sobre la
+     que se construyeron tres arreglos— sino porque pesaba 2,7 MB, o sea más
+     que el tope, y un archivo así se va por `rutaGrande`, que recomprime con
+     canvas y nunca pasa por acá. La diferencia era el TAMAÑO, no el origen.
+
+     Dos cambios, y los dos son necesarios:
+
+       1. Se exige que sean bytes de verdad. `bytesUtilizables` devuelve null
+          para una función, para un objeto cualquiera y para un largo cero.
+       2. Si no lo son, NO se devuelve: se anota por qué y se sigue a los tres
+          caminos. Una guarda que corta el camino convierte cualquier
+          sorpresa en "archivo vacío", que es precisamente lo que pasó. */
+  if (file && typeof file.bytes !== "undefined") {
+    var enMemoria = bytesUtilizables(file.bytes);
+    if (enMemoria) {
+      anotar("memoria", enMemoria, null);
+      return Promise.resolve(listo(enMemoria));
+    }
+    /* No son bytes. Se anota QUÉ era —eso es el dato que faltó cuatro
+       rondas— y se sigue. `typeof` distingue la función del objeto vacío. */
+    anotar("memoria", null, { name: "no-son-bytes", message: typeof file.bytes });
   }
 
   var blob = _blobDe(file);
@@ -963,7 +1024,13 @@ function leerBytes(file, opts) {
 
 function tamañoDe(file) {
   if (file && typeof file.size === "number") return file.size;
-  if (file && file.bytes && typeof file.bytes.length === "number") return file.bytes.length;
+  /* Mismo cuidado que en la lectura: el `.length` de una función es su
+     cantidad de argumentos, no un tamaño. Sin este filtro, un `file.bytes`
+     que en realidad es el método de Blob informaría "0 B" con total
+     convicción. Hoy no se nota porque `file.size` se lee primero, pero es la
+     misma trampa esperando. */
+  var enMem = bytesUtilizables(file && file.bytes);
+  if (enMem) return enMem.length;
   var blob = _blobDe(file);
   if (blob && typeof blob.size === "number") return blob.size;
   return null;
