@@ -8015,6 +8015,25 @@ function wireFilePick(id, opts){
     const salio = ()=>{ seFue = true; };
     window.addEventListener("blur", salio, {once:true});
     document.addEventListener("visibilitychange", salio, {once:true});
+    /* El campo se limpia ACÁ, justo antes de abrir el selector, y NUNCA
+       después de elegir. Limpiarlo hace falta para poder volver a elegir el
+       mismo archivo; el problema es cuándo.
+
+       Un archivo que el selector trae desde el correo o desde Drive no le
+       pertenece al navegador: en Android llega como `content://` y el sistema
+       se lo presta mientras el campo lo tenga. Limpiar el campo devuelve el
+       préstamo. Como se limpiaba ANTES de entregar el archivo a quien lo iba
+       a leer, el archivo llegaba ya vacío y la app decía "está vacío" sobre
+       algo que no lo estaba.
+
+       En una computadora no pasa nunca —el archivo es del disco y sigue ahí—,
+       por eso no lo vio ningún arnés. Lo encontró el PM en su teléfono el
+       16/09, y en la misma sesión una foto de la cámara entró perfecta: esa
+       la crea el navegador y es suya. Esa diferencia fue la pista.
+
+       Limpiando al abrir, el campo nunca se toca mientras hay un archivo suyo
+       en uso. Lo reproduce `app/pruebas/archivo-del-correo.js`. */
+    try{ input.value = ""; }catch(e){}
     input.click();
     setTimeout(()=>{
       window.removeEventListener("blur", salio);
@@ -8025,7 +8044,7 @@ function wireFilePick(id, opts){
   input.onchange = ()=>{
     const files = Array.from(input.files || []);
     llegaron = files.length > 0;
-    input.value = "";
+    // OJO: acá NO se limpia `input.value`. Ver el comentario de arriba.
     if(files.length){
       /* El aviso se RETRACTA si el archivo llega tarde. Elegir una foto en la
          galería tarda más de 1,5 segundos casi siempre, así que en un navegador
