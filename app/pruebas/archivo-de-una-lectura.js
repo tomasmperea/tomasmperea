@@ -131,8 +131,12 @@ const info = m => console.log("  info   " + m);
   const guardar = await page.$("#im-save");
   if (guardar) { await guardar.click(); await page.waitForTimeout(2500); }
 
+  /* EL SABOTAJE LLEGÓ: si el envoltorio no se aplicó, no hay ninguna lectura
+     registrada y todo lo de abajo pasaría sin probar nada. Ver la regla en
+     CLAUDE.md, "todo arnés que rompe algo a propósito". */
   const lecturas = await page.evaluate(() => window.__LECTURAS__ || []);
-  info(`lecturas del archivo: ${lecturas.length} (${lecturas.map(l=>l.primera?"1ª":"posterior").join(", ")})`);
+  ok(lecturas.length > 0, `el envoltorio registró ${lecturas.length} lectura(s): el sabotaje se aplicó`);
+  info(`detalle: ${lecturas.map(l=>l.primera?"1ª":"posterior").join(", ")}`);
 
   const pantalla = await page.evaluate(() => document.body.innerText);
   const guardado = await page.evaluate(() => {

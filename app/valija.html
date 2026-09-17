@@ -6184,8 +6184,13 @@ function prepararDocumento(file, opts) {
 
   /* Caminos 1 y 2, que ahora son el mismo. Antes se separaban porque con el
      tamaño conocido se creía que no hacía falta leer para decidir; la
-     experiencia dijo lo contrario, así que siempre se lee. Lo que el archivo
-     informa sólo sirve para elegir el orden, nunca para concluir. */
+     experiencia dijo lo contrario.
+
+     Precisión que la auditoría del 17/09 pidió y corresponde: esto NO es
+     "siempre lee". Un archivo que informa un tamaño MAYOR al tope sigue yendo
+     al camino 3 sin leerse, y está bien: ahí el número alcanza para decidir
+     porque el error sería aceptar algo que no entra, no rechazar algo que sí.
+     Lo que cambió es que un tamaño chico —o cero— ya no concluye nada. */
   if (tam === null || tam <= TOPE_ARCHIVO_BYTES) {
     return leerBytesConDiagnostico(file, opts).then(function (r) {
       var bytes = r.bytes;
@@ -6195,6 +6200,12 @@ function prepararDocumento(file, opts) {
       if (bytes.length > TOPE_ARCHIVO_BYTES) return rutaGrande(file, opts, ctx, bytes.length);
       return armar(ctx, bytes, clas.mime, "ok", null);
     }, function (e) {
+      /* La última red. `leerBytesConDiagnostico` atrapa cada camino por
+         separado y no rechaza por una lectura fallida, así que esto casi nunca
+         se alcanza — pero no es código muerto: `normalizarBytes` puede lanzar
+         sobre un valor raro inyectado por `opts.leerBytes`, y ahí cae acá.
+         La auditoría del 17/09 lo marcó como rama muerta; se revisó y se deja,
+         con el motivo escrito, en vez de borrar una red que sí puede disparar. */
       return resultadoFallido("no-se-pudo-leer", { detalle: detalleDeLectura(file, [{ via: "lectura", bytes: null, error: (e && e.name) || "Error" }]) });
     });
   }

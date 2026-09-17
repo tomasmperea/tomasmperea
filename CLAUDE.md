@@ -179,3 +179,27 @@ Tres preguntas, en este orden. Si alguna no tiene respuesta, la entrega no está
 2. **¿Qué otra causa explicaría el mismo síntoma, y qué hice para descartarla?** Dos hipótesis vivas exigen
    un experimento que las separe antes de tocar código. Si acá no se puede correr, se le pregunta al PM.
 3. **¿Qué estoy afirmando que no comprobé?** Eso va escrito en la entrega, no en la cabeza.
+
+## La auditoría se hace contra el reporte, no contra el código
+
+El veto de 45/100 del 17/09 encontró un arreglo que funcionaba en un camino y mentía en el otro. El código
+estaba bien escrito y las pruebas estaban en verde. Lo que faltaba era una pregunta.
+
+El PM había reportado el mismo síntoma por **dos gestos distintos**: adjuntar un archivo a una reserva, e
+importar. El arreglo se probó sobre el primero. El segundo quedó diciendo "Este PDF es un escaneo" sobre un
+archivo que no se pudo leer — una causa inventada, exactamente lo que la regla anterior prohíbe, en el
+camino que nadie miró.
+
+Entonces la auditoría no arranca leyendo el diff. Arranca leyendo el reporte:
+
+1. **Listar los gestos con los que la persona vio el síntoma.** Textual, de su mensaje o su captura. Si
+   reportó dos caminos, son dos, aunque el código los comparta.
+2. **Para cada gesto, señalar la prueba que lo ejercita.** Si un gesto no tiene prueba propia, no está
+   cubierto. "Comparten el motor" no alcanza: el bug de importar vivía arriba del motor.
+3. **Recién entonces, el código.**
+
+Un gesto sin prueba es un hallazgo bloqueante, no una observación.
+
+**Y no se commitea mientras el auditor está auditando.** El 17/09 la primera ronda se vetó en 70 en parte
+porque llegó un commit nuevo encima del árbol que el auditor estaba puntuando. Hizo bien en no puntuarlo: un
+puntaje sobre un árbol que se movió no vale. El árbol se queda quieto hasta que vuelve el puntaje.

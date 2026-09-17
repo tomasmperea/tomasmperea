@@ -27,6 +27,12 @@
      · adjuntar directo a una reserva;
      · importar y que el documento quede adjunto.
 
+   Con la app arreglada —limpia el campo al ABRIR el selector, no al
+   elegir— el sistema ya no llega a soltar nada, así que el arnés no
+   puede medirse por "cuántos soltó". Mide otra cosa: que la app limpia,
+   que ninguna limpieza pescó un archivo vivo, y —provocándolo a mano al
+   final— que el sabotaje sigue funcionando. Ver el bloque de cierre.
+
        node app/pruebas/archivo-del-correo.js [ruta/al/valija.html]
    ============================================================ */
 "use strict";
@@ -48,7 +54,8 @@ const info = m => console.log("  info   " + m);
 const simularAndroid = () => {
   /* El préstamo del sistema: cada File del selector se vacía en cuanto
      alguien limpia el `value` del campo del que salió. */
-  window.__SOLTADOS__ = 0;
+  window.__SOLTADOS__ = 0;   // archivos que el sistema retiró de las manos de la app
+  window.__LIMPIEZAS__ = 0;  // veces que la app limpió el campo del archivo
   const vivos = new Map();   // input -> [proxies]
   const descF = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files");
   const descV = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
@@ -58,6 +65,7 @@ const simularAndroid = () => {
     get(){ return descV.get.call(this); },
     set(v){
       if (this.type === "file" && v === "") {
+        window.__LIMPIEZAS__++;
         (vivos.get(this) || []).forEach(p => { if(!p.__muerto){ p.__muerto = true; window.__SOLTADOS__++; } });
         vivos.delete(this);
       }
@@ -199,8 +207,64 @@ const simularAndroid = () => {
      `el vuelo se completó con el asiento y la puerta de la tarjeta (${v2.seat} / ${v2.gate})`);
   ok(v2.docs === 2, `y quedó con sus DOS documentos, el de antes y el de la tarjeta (${v2.docs})`);
 
-  const soltados = await page.evaluate(() => window.__SOLTADOS__);
-  info(`el sistema soltó ${soltados} archivo(s) durante toda la corrida — y ninguno se perdió`);
+  /* ---------- que el sabotaje SÍ llegó ----------
+
+     Acá hay una trampa, y la pisamos. La primera versión de este bloque
+     exigía `__SOLTADOS__ > 0`: "si el sistema no soltó ningún archivo, el
+     sabotaje no se aplicó y el arnés no probó nada". Era la regla correcta
+     mal aplicada, porque mide la cosa equivocada.
+
+     Cuando el arnés se escribió, la app limpiaba el campo DESPUÉS de elegir,
+     con el archivo en la mano, así que el sistema soltaba y el contador
+     subía. Arreglada la app —limpia al ABRIR—, ya no hay ningún momento en
+     que una limpieza caiga sobre un archivo vivo, y `__SOLTADOS__` queda en
+     cero. Cero es exactamente lo que queremos que pase. Exigirlo mayor que
+     cero convierte el arreglo en una falla.
+
+     Lo que hay que demostrar son tres cosas distintas, y ninguna es
+     "soltados > 0":
+
+       1. la app limpia el campo  → `__LIMPIEZAS__ > 0`. Si no limpiara
+          nunca, este arnés no estaría pasando por el tramo del bug;
+       2. ninguna limpieza pescó un archivo vivo → `__SOLTADOS__ === 0`;
+       3. y el sabotaje funciona de verdad → se prueba abajo, provocándolo.
+
+     El (3) es el caso que falla si el parche al navegador no llegó, que es
+     lo que pedía la regla de `tres-caminos-de-lectura.js`. Antes venía
+     gratis del propio bug; ahora hay que provocarlo a mano, porque la app
+     dejó de provocarlo. */
+  const limpiezas = await page.evaluate(() => window.__LIMPIEZAS__);
+  const soltados  = await page.evaluate(() => window.__SOLTADOS__);
+  info(`limpiezas del campo: ${limpiezas} · archivos soltados: ${soltados}`);
+  ok(limpiezas > 0, `la app limpió el campo ${limpiezas} vez/veces: el arnés pasó por el tramo del bug`);
+  ok(soltados === 0, `y ninguna limpieza cayó sobre un archivo vivo (${soltados} soltados)`);
+
+  /* (3) El control: un campo propio, un archivo adentro, leído —para que el
+     envoltorio lo registre como vivo— y recién entonces limpiado. Si el
+     parche al navegador está puesto, el archivo se suelta y el contador
+     sube. Si `addInitScript` no llegó, no sube, y este caso FALLA. */
+  await page.evaluate(() => {
+    const i = document.createElement("input");
+    i.type = "file"; i.id = "__control__"; i.style.display = "none";
+    document.body.appendChild(i);
+  });
+  const chC = page.waitForEvent("filechooser", {timeout:10000});
+  await page.$eval("#__control__", e => e.click());
+  (await chC).setFiles(PDF);
+  await page.waitForTimeout(400);
+  const control = await page.evaluate(() => {
+    const i = document.getElementById("__control__");
+    const antes = window.__SOLTADOS__;
+    const f = (i.files || [])[0];          // leerlo lo registra como vivo
+    const pesoAntes = f ? f.size : null;
+    i.value = "";                          // y esto se lo tiene que llevar
+    return { antes, despues: window.__SOLTADOS__, pesoAntes, pesoDespues: f ? f.size : null };
+  });
+  info("control del sabotaje: " + JSON.stringify(control));
+  ok(control.despues > control.antes,
+     `limpiar el campo con un archivo vivo adentro SÍ lo suelta (${control.antes} → ${control.despues}): el parche al navegador llegó`);
+  ok(control.pesoAntes > 0 && control.pesoDespues === 0,
+     `y el archivo soltado queda vacío, que es el síntoma del PM (${control.pesoAntes} B → ${control.pesoDespues} B)`);
 
   console.log("\n====================================================");
   console.log(fallos ? `  ${fallos} FALLARON` : "  Todo en verde — con archivos prestados por el sistema");

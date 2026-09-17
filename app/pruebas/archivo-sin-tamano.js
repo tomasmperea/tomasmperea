@@ -57,7 +57,10 @@ const info = m => console.log("  info   " + m);
   page.on("pageerror", e => { console.log("  >> PAGEERROR:", e.message); fallos++; });
 
   await page.addInitScript(() => {
-    /* El proveedor que no informa el tamaño: `size` es 0, todo lo demás anda. */
+    /* El proveedor que no informa el tamaño: `size` es 0, todo lo demás anda.
+       El contador existe para poder ASEVERAR que el sabotaje se aplicó: sin
+       eso, un arnés donde el parche no llegó pasa en verde sin probar nada. */
+    window.__SIN_TAMANO__ = 0;
     const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files");
     Object.defineProperty(HTMLInputElement.prototype, "files", {
       configurable: true,
@@ -65,6 +68,7 @@ const info = m => console.log("  info   " + m);
         const reales = desc.get.call(this);
         if (!reales || !reales.length) return reales;
         const lista = Array.from(reales).map(f => {
+          window.__SIN_TAMANO__++;
           const p = {
             name: f.name, type: f.type, lastModified: f.lastModified,
             size: 0,                                   // <- lo único distinto
@@ -107,6 +111,8 @@ const info = m => console.log("  info   " + m);
   (await ch1).setFiles(PDF);
   await page.waitForTimeout(2500);
 
+  const parcheados = await page.evaluate(() => window.__SIN_TAMANO__ || 0);
+  ok(parcheados > 0, `el sabotaje se aplicó: ${parcheados} archivo(s) entregados sin tamaño`);
   const t1 = await page.evaluate(() => document.body.innerText);
   ok(!/está vacío|no tiene nada adentro/i.test(t1),
      "no dice que el archivo está vacío — sólo no sabe cuánto mide, que es otra cosa");
