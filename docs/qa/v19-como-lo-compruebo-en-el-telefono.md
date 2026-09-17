@@ -118,8 +118,14 @@ dónde venía el archivo.** Sobre esa confusión mía se construyeron tres ronda
 ### Qué tan probado está
 
 Esta vez el defecto **se reproduce acá**. Le agregué al navegador de pruebas la misma función que tiene el
-tuyo, y con el código de la v18 el arnés falla **10 veces** mostrando exactamente lo que vos viste, en los
-dos gestos. Con el arreglo, verde.
+tuyo, y con el código de la v18 el arnés falla **9 veces**: **8 en los dos gestos** —importar y adjuntar,
+mostrando el mismo texto que vos viste— y una novena que es un chequeo directo al motor, fuera de los
+gestos. Con el arreglo, las nueve en verde.
+
+(Ese número primero lo escribí como "10 en los dos gestos". Estaba mal en las dos mitades: venía de una
+corrida anterior del arnés, antes de que reestructurara las pruebas, y no lo volví a contar antes de
+escribirlo. Lo agarró la auditoría. Es la misma clase de exceso de confianza que este mismo arreglo le saca
+al mensaje de error de la app, cometido en la línea que lo anuncia.)
 
 Eso es lo que no tuvimos las tres veces anteriores: un arnés que puede decir que **no**.
 

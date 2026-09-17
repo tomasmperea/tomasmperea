@@ -399,7 +399,7 @@ las auditorías hicieron explícita: **una entrega sobre este defecto no puede d
 y tampoco tiene que quedarse sin publicar por eso.** Lo que se publica es lo que convierte la próxima ronda
 en datos — la línea de observación y el sello de versión —, más los arreglos que no dependen de la causa.
 
-El guion de la prueba del PM vive en `docs/qa/v18-como-lo-compruebo-en-el-telefono.md`: tres gestos, sin
+El guion de la prueba del PM vive en `docs/qa/v19-como-lo-compruebo-en-el-telefono.md`: tres gestos, sin
 consola, con lo que la entrega NO afirma en su propia sección.
 
 ### Lo que queda abierto al cerrar la iteración 3
@@ -409,3 +409,66 @@ consola, con lo que la entrega NO afirma en su propia sección.
 - **`doc_repl`** (reemplazar un documento) no tiene escenario propio. Se cubrió por propiedad en vez de por
   escenario: `preparar-no-lanza.js` verifica que exista **una sola** llamada al motor y que esté blindada,
   lo cual alcanza a todo gesto presente y futuro. Si mañana aparece una segunda llamada, ese caso falla.
+
+
+---
+
+## La causa raíz, encontrada el 17/09 por la instrumentación que publicamos para encontrarla
+
+La tabla de arriba decía, con razón, que dos de los arreglos dependían de acertar la causa y que ninguno
+podía declararse cumplido desde acá. Lo que no decía —porque todavía no se sabía— es que **la causa no era
+ninguna de las que habíamos supuesto, y no estaba en el teléfono del PM: estaba en nuestro código, desde el
+primer commit del motor.**
+
+### Qué la encontró
+
+La línea de observación de la v18. Una sola captura del PM:
+
+```
+informa 123129 B · memoria 0 B · application/pdf · v18
+```
+
+Un intento, cero bytes, sobre un archivo que informa 123 KB. Los tres caminos de lectura no aparecen porque
+nunca corrieron. **Cerró en una ronda lo que tres arreglos no movieron en tres.**
+
+### Qué era
+
+`leerBytesConDiagnostico` abría con un atajo: `if (file && file.bytes) { ...usar esos bytes...; return; }`.
+`bytes` es el nombre de un método de Blob —`Blob.prototype.bytes()`, que existe en los navegadores nuevos y
+no en el Chromium de este entorno—. En el teléfono del PM, entonces, `file.bytes` era una función:
+verdadera, así que el atajo entraba, y normalizar una función da cero bytes. Todo archivo volvía vacío antes
+de que existiera cualquier otro camino, y los tres arreglos anteriores tocaban código debajo de ese
+`return`.
+
+### Lo que corrige del propio brief
+
+La tabla de arriba explicaba que la foto de la cámara entraba "porque el navegador es su dueño". **Era
+falso**, y sobre eso se construyeron tres rondas de pruebas del PM. Entraba porque pesaba 2,7 MB: arriba
+del tope de 190 KB un archivo se va por `rutaGrande`, que recomprime con canvas y nunca pasa por el lector.
+Los PDF del PM pesaban 123 KB y 20 KB. **La diferencia era el tamaño, no el origen.**
+
+### Qué se entrega ahora, y con qué respaldo
+
+| Cambio | ¿Depende de acertar la causa? | Dónde se probó |
+|---|---|---|
+| El atajo exige bytes de verdad, no "verdadero" | **No** — rechaza cualquier valor que no sean bytes, sea o no el método nativo | `metodo-bytes-nativo.js`, los dos gestos |
+| Y si no lo son, no devuelve: sigue a los tres caminos | **No** — una guarda que corta el camino convierte cualquier sorpresa en "archivo vacío" | ídem |
+| El mensaje deja de decir "probé de tres formas" | **No** — era falso en el único caso que importaba | ídem |
+
+**Y por primera vez el defecto se reproduce acá.** El arnés instala `bytes` donde lo pone el navegador
+—`Blob.prototype`, devolviendo `Promise<Uint8Array>`—, leyendo el contrato de la plataforma y no la
+hipótesis. Contra la v18 publicada da 9 fallas: 8 en los dos gestos, con el mismo texto que vio el PM, más
+un chequeo directo al motor. Es lo que faltó las tres veces anteriores: un arnés capaz de decir que no.
+
+### Lo que sigue abierto
+
+- **Que en el teléfono del PM alcance.** El arreglo se sostiene sin acertar por qué `file.bytes` era
+  verdadero ahí, pero puede haber más de una cosa rota. Si vuelve a fallar, la línea de observación va a
+  decir algo distinto de `memoria 0 B`, y esa diferencia ya es el próximo dato.
+- **Un cartel del sistema Android**, "Memoria insuficiente para completar la operación anterior", visible en
+  la cuarta captura del 17/09. No es de la app y no se puede observar desde acá. Queda declarado sin
+  conclusión, no como defecto.
+- **VAL-57**, fuera por decisión del PM, con el desacuerdo del PO registrado.
+- **`doc_repl`** sigue cubierto por invariante estructural y no por escenario propio bajo la condición
+  exacta de este bug. La invariante (`preparar-no-lanza.js`: una sola llamada al motor en toda la app, y
+  `doc_repl` pasa por ella) se corrió en verde en esta ronda.
