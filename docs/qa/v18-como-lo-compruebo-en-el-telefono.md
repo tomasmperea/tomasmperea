@@ -11,9 +11,16 @@ de pantalla**.
 
 Abrí la app y fijate arriba, al lado del título: dice **`v18`**.
 
-Si dice otra cosa, estás viendo una versión vieja y la prueba no sirve. Pasó el 16/09: probaste la v14 tres
-veces mientras yo publicaba la 15 y la 16, porque el link compartido te fijaba una versión anterior. Si no
-dice `v18`, avisame y lo arreglo antes de que gastes la ronda.
+Si dice otra cosa, estás viendo una versión vieja y la prueba no sirve.
+
+Y si **no dice ninguna versión**, tampoco sirve, por un motivo que descubrí justo antes de publicar esto:
+**el Artifact que estaba arriba era el código de dos commits antes.** No tenía el lector de tres caminos, no
+tenía el mensaje nuevo, y no tenía este sello de versión. Tu ronda del 16/09 —"persisten ambos errores con la
+versión latest"— corrió contra un build al que le faltaban justo las dos cosas hechas para que esa ronda
+diera datos. Yo te pedí una prueba sobre trabajo que nunca había salido.
+
+Esta vez lo verifiqué: leí el archivo publicado y busqué adentro cada uno de los cinco arreglos. Están.
+Igual, si arriba no dice `v18`, avisame antes de seguir y no gastes la ronda.
 
 ---
 

@@ -203,3 +203,27 @@ Un gesto sin prueba es un hallazgo bloqueante, no una observación.
 **Y no se commitea mientras el auditor está auditando.** El 17/09 la primera ronda se vetó en 70 en parte
 porque llegó un commit nuevo encima del árbol que el auditor estaba puntuando. Hizo bien en no puntuarlo: un
 puntaje sobre un árbol que se movió no vale. El árbol se queda quieto hasta que vuelve el puntaje.
+
+## Publicar no es haber publicado
+
+El 17/09, antes de publicar la v18, comparé el Artifact que estaba arriba contra el repo. No tenía el lector
+de tres caminos, no tenía el mensaje nuevo y **no tenía el sello de versión**: era el código de dos commits
+antes. Yo venía diciendo "publicá y probá" sobre trabajo que nunca había salido.
+
+El costo lo pagó el PM. Su ronda del 16/09 —"persisten ambos errores con la versión latest"— corrió contra
+un build **sin** las dos cosas diseñadas para que esa ronda diera datos. Un reporte perfecto sobre el
+binario equivocado no dice nada, y encima parece decir que el arreglo falló.
+
+Dos causas distintas, las dos ya vistas en este proyecto: el link compartido puede quedar **fijado** a una
+versión anterior, y un `git commit` **no publica nada**. La segunda es la que pasó acá.
+
+Entonces, mecánica, y va antes de pedirle una prueba a nadie:
+
+1. **Leer lo que está publicado.** No el repo, no el último commit: el archivo que sirve el Artifact.
+2. **Buscar en ese archivo una marca del cambio que se quiere probar.** Una cadena que exista sólo en la
+   versión nueva. Si no está, no está publicado, y no hay nada que pedirle al PM.
+3. **Buscar el sello de versión**, y que coincida con el que se le va a pedir que mire en pantalla.
+4. **Confirmar que el link compartido sirve la última**, no una fijada.
+
+Ninguno de los cuatro es una opinión: son cuatro `grep`. Pedir una prueba sin hacerlos es gastar una ronda
+del PM a cambio de nada.
