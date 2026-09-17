@@ -29,6 +29,11 @@ const LIBS = process.env.VALIJA_LIBS || "/tmp/valija-libs";
 const APP = process.argv[2] || path.resolve(__dirname, "..", "valija.html");
 const PDF = path.join(LIBS, "tarjeta-real.pdf");
 if (!fs.existsSync(PDF)) { console.log("\nFalta preparar el entorno (ver app/pruebas/pdf-real.js).\n"); process.exit(2); }
+/* Importar necesita el lector de PDF: sin él la app —con razón— ni siquiera
+   ofrece subir un archivo, y el escenario no se podría correr. Se le sirve el
+   real, el mismo que fija por <script>. */
+const pdfMin    = fs.readFileSync(path.join(LIBS, "node_modules/pdfjs-dist/build/pdf.min.js"));
+const pdfWorker = fs.readFileSync(path.join(LIBS, "node_modules/pdfjs-dist/build/pdf.worker.min.js"));
 
 let fallos = 0;
 const ok = (c, m) => { console.log((c ? "  ok    " : "  FALLA ") + m); if (!c) fallos++; };
@@ -139,11 +144,71 @@ async function escenario(nombre, caminos, esperaLeer) {
   await browser.close();
 }
 
+/* El MISMO archivo ilegible, por el otro gesto. Existe porque el arnés cubría
+   sólo Adjuntar, y el PM reportó el bug por los DOS caminos: adjuntar directo
+   e importar. Lo encontró la auditoría del 17/09: con los tres caminos rotos,
+   Importar contestaba "Este PDF es un escaneo", que es una causa inventada
+   —el archivo no es un escaneo, es ilegible— y encima sin el dato observado.
+   Arreglar la lectura no alcanzaba: había que arreglar también qué se dice
+   cuando la lectura no alcanza. */
+async function escenarioImportar(nombre, caminos) {
+  const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+  const ctx = await browser.newContext({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true });
+  const page = await ctx.newPage();
+  await page.route("**/*", r => {
+    const u = r.request().url();
+    if (/^file:/.test(u)) return r.continue();
+    if (/pdf\.min\.js/.test(u))         return r.fulfill({ contentType:"application/javascript", body: pdfMin });
+    if (/pdf\.worker\.min\.js/.test(u)) return r.fulfill({ contentType:"application/javascript", body: pdfWorker });
+    return r.abort();
+  });
+  await page.addInitScript(romper, caminos);
+  await page.goto("file://" + APP);
+  await page.waitForTimeout(1500);
+  await page.click("#newtrip"); await page.waitForTimeout(350);
+  await page.fill("#t_name","Madrid"); await page.fill("#t_dest","Madrid");
+  await page.fill("#t_from","2026-11-10"); await page.fill("#t_to","2026-11-20");
+  await page.click("#save"); await page.waitForTimeout(800);
+  const card = await page.$(".tag-card"); if (card) { await card.click(); await page.waitForTimeout(600); }
+  await page.click("#imp");
+  await page.waitForSelector('[data-pick="im_doc"]', {timeout:15000}).catch(()=>{});
+  await page.waitForTimeout(600);
+  if(!(await page.$('[data-pick="im_doc"]'))){
+    console.log("  --- pantalla de importar ---");
+    console.log("      " + (await page.evaluate(()=>document.body.innerText)).replace(/\n+/g," / ").slice(0,400));
+  }
+  const ch = page.waitForEvent("filechooser", {timeout:10000});
+  await page.$eval('[data-pick="im_doc"]', e => e.click());
+  (await ch).setFiles(PDF);
+  await page.waitForTimeout(2500);
+
+  const pantalla = await page.evaluate(() => document.body.innerText);
+  console.log(`\n· ${nombre}`);
+  ok(!/es un escaneo/i.test(pantalla),
+     "NO dice que el PDF es un escaneo: eso es una causa inventada sobre un archivo que no se pudo leer");
+  ok(!/está vacío|no tiene nada adentro/i.test(pantalla), "ni que está vacío");
+  ok(/no pude leer/i.test(pantalla), "dice que no lo pudo leer");
+  const dato = await page.evaluate(() => {
+    const d = document.querySelector(".dato, .meta.dato");
+    return d ? d.innerText : null;
+  });
+  info("dato observado: " + JSON.stringify(dato));
+  ok(!!dato && /arrayBuffer/.test(dato) && /FileReader/.test(dato),
+     "y muestra qué observó en los tres caminos, igual que al adjuntar");
+  const puedeSeguir = await page.evaluate(() => {
+    const b = document.getElementById("im-run");
+    return b ? !b.disabled : null;
+  });
+  ok(puedeSeguir === false, "y no deja mandarlo a interpretar: ya se sabe que no se puede leer");
+  await browser.close();
+}
+
 (async () => {
   await escenario("el camino moderno falla (arrayBuffer rechaza)", ["arrayBuffer"], true);
   await escenario("fallan el moderno y la copia (queda FileReader)", ["arrayBuffer","slice"], true);
   await escenario("además el archivo no informa su tamaño", ["size","arrayBuffer","slice"], true);
   await escenario("fallan los tres: no se puede leer de ninguna forma", ["arrayBuffer","slice","FileReader"], false);
+  await escenarioImportar("el mismo archivo ilegible, pero por IMPORTAR", ["arrayBuffer","slice","FileReader"]);
 
   console.log("\n====================================================");
   console.log(fallos ? `  ${fallos} FALLARON` : "  Todo en verde — la app ya no depende de UN camino");

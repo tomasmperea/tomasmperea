@@ -9028,7 +9028,17 @@ async function sheetImport(trip){
        Un solo lugar sabe cómo leer un archivo. */
     entrada.leyendo = AdjuntosEngine.leerBytesConDiagnostico(origen, {}).then(r=>{
       entrada.intentos = r.intentos;
-      if(!r.bytes.length) return;
+      if(!r.bytes.length){
+        /* Los tres caminos fallaron: este archivo no se puede leer, y eso se
+           sabe ACÁ, antes de gastar una llamada al modelo y antes de que el
+           motor de interpretación invente una causa que no observó ("es un
+           escaneo"). Se marca, se muestra lo que se vio, y no se manda.
+           El hueco lo encontró la auditoría del 17/09: el arreglo del lector
+           cubría adjuntar y dejaba importar diciendo cualquier cosa. */
+        entrada.ilegible = true;
+        entrada.detalle = AdjuntosEngine.detalleDeLectura(origen, r.intentos);
+        return;
+      }
       entrada.bytes = r.bytes;
       entrada.blob  = new Blob([r.bytes], {type: entrada.mimeType || "application/octet-stream"});
       entrada.size  = r.bytes.length;
@@ -9043,17 +9053,19 @@ async function sheetImport(trip){
   function flagsDeArchivo(f){
     const engineKind = ImportEngine.fileKind({name:f.name, mimeType:f.mimeType});
     return {
+      ilegible: !!f.ilegible,
       big: f.size > MAX_FILE_BYTES,
       invalid: !f.forced && engineKind==="desconocido",
       noLeible: sinImagenes && (engineKind==="imagen" || f.kind==="img"),
       sinLector: sinPdf && (engineKind==="pdf" || f.kind==="pdf")
     };
   }
-  const legible = f => !f.big && !f.invalid && !f.noLeible && !f.sinLector;
+  const legible = f => !f.ilegible && !f.big && !f.invalid && !f.noLeible && !f.sinLector;
   function queueRowHtml(f){
     const cls = kindThumbCls(f.kind), icon = kindIcon(f.kind);
     let meta;
-    if(f.big) meta = `<span class="meta err">Pesa ${fmtSize(f.size)}, más de lo que puedo leer (máx. ${MAX_FILE_MB} MB). Elegí otro archivo o sacá la foto de nuevo con menos calidad.</span>`;
+    if(f.ilegible) meta = `<span class="meta err">No pude leer este archivo: probé de tres formas distintas y ninguna trajo nada. Si vino por mail, bajalo al teléfono primero y después elegilo desde ahí.</span>${f.detalle?`<span class="meta dato">${esc(f.detalle)} · v${esc(VALIJA_VERSION)}</span>`:""}`;
+    else if(f.big) meta = `<span class="meta err">Pesa ${fmtSize(f.size)}, más de lo que puedo leer (máx. ${MAX_FILE_MB} MB). Elegí otro archivo o sacá la foto de nuevo con menos calidad.</span>`;
     else if(f.invalid) meta = `<span class="meta err">No reconozco este tipo de archivo. Subí una foto (PNG o JPG) o un PDF.</span>`;
     else if(f.noLeible) meta = `<span class="meta err">Acá no se pueden leer imágenes. Subí el PDF del comprobante, o pegá abajo el texto del correo.</span>`;
     else if(f.sinLector) meta = `<span class="meta err">El lector de PDF no cargó, así que este archivo no se puede leer acá. ${sinImagenes?"Pegá abajo el texto del correo.":"Sacale una foto al comprobante, o pegá abajo el texto del correo."}</span>`;
