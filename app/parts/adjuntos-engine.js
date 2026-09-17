@@ -885,8 +885,23 @@ function prepararDocumento(file, opts) {
   var clas = clasificarArchivo(file);
   if (!clas.soportado) return Promise.resolve(resultadoFallido("tipo-no-soportado", { extension: clas.extension }));
 
+  /* CERO NO ES VACÍO: ES "NO SÉ".
+
+     Un archivo que en Android entrega un proveedor —el correo, Drive— puede
+     no traer el dato de cuánto mide, y el navegador informa `size: 0`. El
+     archivo está entero y se lee perfecto; lo único que falta es el número.
+
+     El motor concluía "está vacío" de ese cero y ni siquiera intentaba
+     leerlo. Por eso una foto de la cámara entraba —esa la crea el navegador
+     y sí trae su tamaño— y el PDF del mail no. El PM lo vio en su teléfono
+     tres veces seguidas, con dos arreglos míos en el medio que apuntaban a
+     otra cosa.
+
+     Lo único que prueba que un archivo está vacío es leerlo y que no venga
+     nada. Así que un cero se trata como tamaño desconocido y se cae al
+     camino que lee para saber. Lo reproduce `app/pruebas/archivo-sin-tamano.js`. */
   var tam = tamañoDe(file);
-  if (tam === 0) return Promise.resolve(resultadoFallido("archivo-vacio", {}));
+  if (tam === 0) tam = null;
 
   var ctx = {
     id: opts.id || generarId(),
