@@ -8810,7 +8810,7 @@ async function sheetImport(trip){
       onMudo: avisarSelectorMudo,
       onRetirar: retirarSelectorMudo,
       onFiles: files => {
-        files.forEach(file=>{
+        const nuevas = files.map(file=>{
           const engineKind = ImportEngine.fileKind({name:file.name, mimeType:file.type});
           const entrada = {
             id:uid(), name:file.name, mimeType:file.type, blob:file, size:file.size,
@@ -8818,10 +8818,49 @@ async function sheetImport(trip){
             forced: !!forcedKind
           };
           st.queue.push(Object.assign(entrada, flagsDeArchivo(entrada)));
+          return entrada;
         });
         renderElegir();
+        // Ver `leerUnaVez`: el archivo se lee ya, una sola vez, y lo que sigue
+        // usa esa copia. Redibujar al final porque el peso puede corregirse.
+        Promise.all(nuevas.map(leerUnaVez)).then(()=>{ if(alive()) renderElegir(); });
       }
     });
+  }
+  /* ---------- UNA SOLA LECTURA DEL ARCHIVO ELEGIDO ----------
+     Un archivo que el selector entrega desde el correo o desde Drive llega,
+     en Android, como `content://`: lo sirve un proveedor remoto y en la
+     práctica se puede leer UNA sola vez. La segunda lectura vuelve vacía y
+     `size` pasa a 0.
+
+     La importación lo leía DOS veces: una para interpretarlo y otra, más
+     tarde, para adjuntarlo. Por eso la tarjeta de embarque del PM se
+     interpretó bien —el vuelo se completó— y el documento "estaba vacío".
+     En una computadora no pasa nunca, porque el archivo es del disco y se
+     puede leer todas las veces que uno quiera: por eso no lo vio ningún
+     arnés, ni siquiera el que corre con el pdf.js real. Lo encontró él, en
+     su teléfono, el 16/09.
+
+     Entonces se lee UNA vez, apenas se elige, y de ahí en adelante todo usa
+     esa copia en memoria. Si la lectura falla o vuelve vacía no se pisa
+     nada: queda el archivo original, y el error aparece donde corresponde en
+     vez de convertirse en un "está vacío" que no es cierto.
+
+     El arnés que lo reproduce es `app/pruebas/archivo-de-una-lectura.js`:
+     envuelve el File para que la segunda lectura devuelva cero bytes, que es
+     exactamente lo que hace Android. */
+  function leerUnaVez(entrada){
+    const origen = entrada.blob;
+    if(!origen || typeof origen.arrayBuffer !== "function") return Promise.resolve();
+    entrada.leyendo = origen.arrayBuffer().then(buf=>{
+      const bytes = new Uint8Array(buf);
+      if(!bytes.length) return;
+      entrada.bytes = bytes;
+      entrada.blob  = new Blob([bytes], {type: entrada.mimeType || "application/octet-stream"});
+      entrada.size  = bytes.length;
+      Object.assign(entrada, flagsDeArchivo(entrada));
+    }).catch(()=>{});
+    return entrada.leyendo;
   }
   /* Los motivos por los que un archivo no se va a poder leer, calculados en
      un solo lugar: al encolarlo, y otra vez si `limits()` contesta tarde.
@@ -8966,7 +9005,11 @@ async function sheetImport(trip){
      siempre la misma —el documento iba a la reserva equivocada y el otro
      cuerpo quedaba escrito sin que ningún ítem lo nombrara—. El nombre sigue
      sirviendo para mostrar; para atribuir, manda el id. */
-  function startInterpret(){
+  async function startInterpret(){
+    // La lectura única puede no haber terminado si se tocó Interpretar muy
+    // rápido. Esperarla acá evita mandar a interpretar el File frágil.
+    await Promise.all(st.queue.map(f=>f.leyendo).filter(Boolean));
+    if(!alive()) return;
     const fileSources = st.queue.filter(legible)
       .map(f=>({id:f.id, name:f.name, mimeType:f.mimeType, blob:f.blob, kind:f.kind}));
     const sources = fileSources.slice();
