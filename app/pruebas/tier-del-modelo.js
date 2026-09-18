@@ -223,6 +223,22 @@ const llamadas = page => page.evaluate(() => window.__CALLS__);
 const registro = page => page.evaluate(() => window.ValijaTier.log());
 
 /** Todas las llamadas tienen que llevar sólo opciones que el contrato conoce. */
+/** Pega texto en la caja de importar, TOCANDO primero el resumen si hace falta.
+
+    Desde el 18/09 la caja arranca colapsada cuando la vista no lee imágenes
+    (pedido del PM: no es la funcionalidad principal). Escribir directo en
+    `#im_text` sin abrirla es un gesto que ninguna persona puede hacer, y
+    Playwright se cuelga esperando un campo que no está a la vista. Se abre como
+    se abre de verdad: un toque en el resumen. */
+async function pegarTexto(page, texto) {
+  const abierta = await page.locator(".imp-more").evaluate(e => e.open);
+  if (!abierta) {
+    await page.locator(".imp-more summary").click();
+    await page.waitForTimeout(120);
+  }
+  await page.locator("#im_text").fill(texto);
+}
+
 function assertClavesLimpias(ls, donde) {
   const sucias = ls.filter(l => l.claves.some(k => CLAVES_PERMITIDAS.indexOf(k) < 0));
   assert(sucias.length === 0,
@@ -238,7 +254,7 @@ function assertClavesLimpias(ls, donde) {
   await test("importar PEGANDO TEXTO pide \"default\"", async () => {
     const page = await nuevaPagina(browser, { limits: LIMITS_SIN_IMAGENES });
     await abrirImportar(page);
-    await page.locator("#im_text").fill(VOUCHER);
+    await pegarTexto(page, VOUCHER);
     await page.waitForTimeout(150);
     await page.locator("#im-run").click();
     await page.waitForSelector("#im-save", { timeout: 15000 });
@@ -354,7 +370,7 @@ function assertClavesLimpias(ls, donde) {
     // Vista sin imágenes: ahí la vía de pegar el texto ya viene desplegada.
     const page = await nuevaPagina(browser, { limits: LIMITS_SIN_IMAGENES });
     await abrirImportar(page);
-    await page.locator("#im_text").fill(VOUCHER);
+    await pegarTexto(page, VOUCHER);
     await page.waitForTimeout(150);
     await page.locator("#im-run").click();
     await page.waitForSelector("#im-save", { timeout: 15000 });
@@ -404,7 +420,7 @@ function assertClavesLimpias(ls, donde) {
     await page.waitForFunction(() => typeof Store !== "undefined" && Store.ready, null, { timeout: 15000 });
 
     await abrirImportar(page);
-    await page.locator("#im_text").fill(VOUCHER);
+    await pegarTexto(page, VOUCHER);
     await page.waitForTimeout(150);
     await page.locator("#im-run").click();
     await page.waitForTimeout(1500);

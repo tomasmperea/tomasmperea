@@ -904,7 +904,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    Se sube a mano en cada publicación. Aparece en la cabecera, chiquito,
    y en cada mensaje de error que trae un dato observado.
    ============================================================ */
-const VALIJA_VERSION = "19";
+const VALIJA_VERSION = "20";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -8962,6 +8962,31 @@ async function sheetImport(trip){
      capacidades de la vista (ver `pdfEngineReady`). */
   const sinPdf = !pdfEngineReady();
 
+  /* CUÁNDO SE ABRE SOLA LA CAJA DE PEGAR EL TEXTO (ver el `<details>` de abajo).
+
+     Se abre con `sinPdf`, y con texto ya pegado. NO con `sinImagenes`.
+
+     Hasta el 18/09 también la abría `sinImagenes`, con el criterio de que si no se
+     pueden leer imágenes, pegar sube de categoría. El PM lo usó en su teléfono y
+     pidió lo contrario: "quiero que esté colapsado; no es la funcionalidad
+     principal". Tiene razón, y el motivo es que en esta plataforma `sinImagenes`
+     es PERMANENTE, no ocasional: una caja que nunca está cerrada dejó de ser un
+     acordeón y pasó a ser ruido fijo compitiendo con el botón de subir el PDF,
+     que es el camino principal y el que funciona.
+
+     La guía no se pierde: el aviso de arriba dice "si no tenés el PDF, pegá el
+     texto del correo acá abajo: eso funciona siempre". La da el aviso, no la caja.
+
+     `sinPdf` es otra cosa y sí la sigue abriendo: ahí subir un PDF no lleva a
+     ningún lado. Si además faltan las imágenes no queda NINGÚN botón de archivo en
+     pantalla, y pegar es literalmente lo único que se puede hacer. Los dos casos
+     los fija `importar-arranque.js`; el que cambió lo fija
+     `importar-sin-imagenes.js`.
+
+     Nota para el próximo que toque esto: el `<details>` vive adentro de un
+     template literal, así que un comentario ahí no puede tener backticks —
+     cierran la cadena. Por eso esta explicación está acá y no al lado. */
+
   // Estado de la hoja: nada de esto toca `Store` hasta el guardado final
   // (el botón "Guardar" de la pantalla de revisión). Eso incluye las
   // decisiones sobre una tarjeta de embarque —completar un vuelo, crear uno
@@ -9291,7 +9316,7 @@ async function sheetImport(trip){
         <label>Vas a interpretar</label>
         <div class="imp-files">${st.queue.map(queueRowHtml).join("")}</div>
       </div>` : ""}
-      <details class="imp-more" ${(st.pastedText||sinImagenes||sinPdf)?"open":""}>
+      <details class="imp-more" ${(st.pastedText||sinPdf)?"open":""}>
         <summary>${(sinImagenes||sinPdf)?"Pegar el texto del correo":"Pegar el texto en cambio"}</summary>
         <div class="f">
           <label for="im_text">Texto de la confirmación</label>

@@ -365,17 +365,45 @@ ella por decisión del PM el 14/09, para publicar antes las dos mejoras que sí 
 probadas. Queda anotado que el brief la llamaba "la prueba que define el éxito" de esa
 iteración, así que la 3 cerró sin responder su propia pregunta.
 
-**Lo que falta no es tecnología: es jerarquía.** Pegar el texto ya funciona y ya se
-interpreta con el mismo motor que un PDF. El problema es que la app lo esconde adentro de
-un `<details>` colapsado, como si fuera el plan de contingencia. Criterios:
+**Lo que falta no es tecnología.** Pegar el texto ya funciona y ya se interpreta con el
+mismo motor que un PDF. Criterios:
 
-- Pegar el texto es uno de los dos caminos principales, a la par de subir el PDF.
 - Una línea explica cómo traer un correo que no tiene adjunto, sin tecnicismos y sin dar
   por sentado qué teléfono usa la persona.
 - Si la única fuente es una captura, se dice que el propio teléfono sabe sacarle el
   texto. No lo reimplementamos peor que el sistema operativo.
 - Varias reservas pegadas juntas se separan solas. Ya funciona; falta verificarlo con
   correos reales del PM, que es lo que nunca se hizo.
+
+#### ⚠️ Esta historia decía una cosa que el PM contradijo el 18/09. Leer antes de construirla.
+
+El texto original de VAL-57 decía: *"el problema es que la app lo esconde adentro de un
+`<details>` colapsado, como si fuera el plan de contingencia"*, y pedía como criterio que
+**"pegar el texto sea uno de los dos caminos principales, a la par de subir el PDF"**.
+
+El 18/09, después de validar la v19 en su teléfono, el PM pidió exactamente lo contrario:
+*"cuando abre la pantalla de importar, quiero que esté colapsado la opción de pegar el
+texto del correo ya que no es la funcionalidad principal"*. Se hizo, y por eso este
+criterio se sacó de la lista de arriba.
+
+**Los dos tienen razón sobre cosas distintas, y por eso conviene no reabrirlo a ciegas.**
+La NECESIDAD de VAL-57 sigue intacta: una confirmación que llega por correo sin PDF hoy
+se carga a mano. Lo que quedó desmentido es la SOLUCIÓN que la historia daba por hecha —
+que el problema fuera la jerarquía visual de esa caja. No lo era: el PM usa PDF, el PDF
+es su camino principal, y una caja permanentemente abierta al lado del botón que sí usa
+le compite en vez de ayudarlo.
+
+**Recomendación del PO para cuando se construya:** que VAL-57 no vuelva a plantearse como
+"subir de categoría la caja". El aviso de la pantalla ya ofrece la vía en palabras, y
+abrir la caja es un toque. El trabajo real de esta historia está en otro lado:
+
+1. **Qué tan bien se interpreta un correo pegado de verdad.** Nunca se probó con correos
+   reales del PM. Ese es el criterio que define el éxito y sigue sin verificarse.
+2. **Cómo se llega a pegar desde donde está la persona**, que es su app de correo, no
+   Valija. Ahí puede haber una idea mejor que un textarea.
+
+Si al construirla aparece evidencia de que la caja sí tiene que estar abierta en algún
+caso, se decide con esa evidencia y con el PM — no heredando el criterio viejo.
 
 ### VAL-62 · Avisar del cupo de la base antes de que se llene — P2
 

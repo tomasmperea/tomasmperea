@@ -472,3 +472,38 @@ un chequeo directo al motor. Es lo que faltó las tres veces anteriores: un arn�
 - **`doc_repl`** sigue cubierto por invariante estructural y no por escenario propio bajo la condición
   exacta de este bug. La invariante (`preparar-no-lanza.js`: una sola llamada al motor en toda la app, y
   `doc_repl` pasa por ella) se corrió en verde en esta ronda.
+
+---
+
+## Cierre de la iteración 3 — 18/09
+
+**El PM validó las tres pruebas en su teléfono y anduvieron.** Adjuntar el PDF a una reserva, importarlo, y
+la foto de la cámara. Es la primera vez desde el 16/09 que los tres gestos pasan en el entorno real, que es
+la única definición de "verificado" que este proyecto acepta.
+
+Con eso, el defecto que tuvo en vilo cuatro rondas queda cerrado, y la causa quedó determinada y escrita:
+una guarda que preguntaba por "verdadero" sobre `file.bytes` —el nombre de un método de Blob— devolvía cero
+bytes y cortaba el camino antes de los tres caminos de lectura. Nunca estuvo en su teléfono.
+
+### Un cambio de alcance pedido en el cierre
+
+El PM pidió, y se entregó en la v20: **que la caja de "pegar el texto del correo" arranque colapsada en la
+pantalla de importar.** Su motivo: no es la funcionalidad principal.
+
+Se implementó sacando `sinImagenes` de la condición que la abría. Sigue abriéndose sola cuando pegar es el
+único camino que queda —el lector de PDF no cargó, o no hay ningún botón de archivo en pantalla— y cuando
+ya hay texto pegado, que nunca se esconde.
+
+**Esto revierte una decisión de diseño anterior, y está anotado como tal en `docs/backlog.md`, dentro de
+VAL-57.** La historia pedía lo contrario: subir la caja a "uno de los dos caminos principales". La necesidad
+de VAL-57 sigue en pie; la solución que daba por hecha quedó desmentida por el uso real. Quien construya
+VAL-57 en la iteración 4 tiene que leer esa nota antes de reabrir la caja.
+
+### Qué queda para la iteración 4
+
+| | |
+|---|---|
+| **VAL-57** | Primera prioridad. Con la advertencia de arriba. |
+| **VAL-62** | Avisar del cupo de la base antes de que falle un guardado (H4). |
+| **`doc_repl`** | Sin escenario propio; cubierto por invariante estructural. |
+| **El cartel de Android** | "Memoria insuficiente", visto el 17/09. Sin conclusión, no es defecto declarado. |

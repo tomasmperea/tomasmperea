@@ -203,8 +203,28 @@ async function tocarYElegir(page, pick, archivo) {
     assert(/PDF/i.test(await page.locator('[data-pick="im_doc"]').innerText()), "y el botón dice PDF, no «Archivo»");
     assert(await page.locator("#im_doc").getAttribute("accept") === "application/pdf",
       "el selector de archivos pide sólo PDF");
-    assert(await page.locator(".imp-more").evaluate(e => e.open) === true,
-      "la vía de pegar el texto queda abierta, no escondida detrás de un resumen");
+    /* CAMBIÓ EL 18/09, por decisión del PM sobre su propio uso.
+
+       Esta prueba exigía que estuviera ABIERTA: sin imágenes, pegar el texto se
+       consideraba tan importante como subir el PDF. El PM lo probó en su teléfono
+       y pidió lo contrario: "cuando abre la pantalla de importar, quiero que esté
+       colapsado; no es la funcionalidad principal".
+
+       Por qué tiene razón: en esta plataforma `sinImagenes` es PERMANENTE, no
+       ocasional. Una caja que siempre está abierta no está señalando nada — es
+       ruido fijo compitiendo con el botón de subir el PDF, que sí es el camino
+       principal y el que anda. El aviso de arriba (que esta misma prueba verifica,
+       unas líneas más arriba) ya dice "pegá el texto"; la guía la da el aviso.
+
+       Lo que sigue exigiéndose abierto está en `importar-arranque.js`: cuando no
+       cargó el lector de PDF, y cuando no hay ningún botón de archivo en pantalla.
+       Ahí pegar no es una alternativa, es lo único que queda. */
+    assert(await page.locator(".imp-more").evaluate(e => e.open) === false,
+      "pegar el texto queda colapsado: el aviso de arriba ya lo ofrece, y subir el PDF es el camino principal");
+    assert(/pegá el texto/i.test(await page.locator("#im-caps").innerText()),
+      "y la vía sigue ofrecida en el aviso, que es donde corresponde");
+    assert(await page.locator(".imp-more summary").count() === 1,
+      "el resumen está a la vista y a un toque de distancia");
     assert(await page.evaluate(() => window.__LIMITS__) === 1,
       "limits() se consultó UNA vez al abrir la hoja");
     assert(await page.evaluate(() => window.__CALLS__.length) === 0,
@@ -317,7 +337,19 @@ async function tocarYElegir(page, pick, archivo) {
     assert(await page.locator("#im-run").isDisabled(), "el botón de interpretar queda deshabilitado: no hay nada legible");
     assert(await page.evaluate(() => window.__CALLS__.length) === 0, "cero llamadas al modelo");
 
-    // Y la salida sigue estando a mano: se pega el texto y se habilita.
+    /* Y la salida sigue estando a mano. Se llega TOCANDO el resumen, que es lo
+       que hace la persona: desde que la caja quedó colapsada (18/09, pedido del
+       PM), el textarea vive adentro del acordeón y no se puede escribir sin
+       abrirlo. La versión anterior de esta prueba escribía directo en el campo y
+       pasaba sólo porque la caja estaba abierta de entrada — llenaba un campo al
+       que nadie podía llegar con el dedo sin un toque previo que la prueba nunca
+       daba. Es la regla del proyecto: se empieza por el gesto. */
+    assert(await page.locator(".imp-more").evaluate(e => e.open) === false,
+      "arranca colapsada, que es lo que pidió el PM");
+    await page.locator(".imp-more summary").click();
+    await page.waitForTimeout(120);
+    assert(await page.locator(".imp-more").evaluate(e => e.open) === true,
+      "y con UN toque en el resumen se abre: la vía está a un gesto, no escondida");
     await page.locator("#im_text").fill("Vuelo G3 1234 EZE GIG 20 de septiembre 06:40 código K7QXPL");
     await page.waitForTimeout(120);
     assert(await page.locator("#im-run").isEnabled(), "pegando el texto, la vía que sí funciona se habilita");
