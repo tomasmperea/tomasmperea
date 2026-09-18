@@ -1,140 +1,106 @@
-# v19 — cómo lo comprobás en tu teléfono
+# v19 — las pruebas, paso a paso
 
-**Para:** Tomás (PM) · **Escrito el:** 17/09/2026 · **Versión que tiene que decir la app:** `v19`
+**Link:** https://claude.ai/artifact/3Q4KLi6g3ygTAJdR79aTCf
 
-Son tres gestos y no hay que abrir ninguna consola. El único dato que necesito de vuelta es **una captura
-de pantalla**.
-
----
-
-## Antes de empezar: mirá que sea la v18
-
-Abrí la app y fijate arriba, al lado del título: dice **`v19`**.
-
-Si dice otra cosa, estás viendo una versión vieja y la prueba no sirve.
-
-Y si **no dice ninguna versión**, tampoco sirve, por un motivo que descubrí justo antes de publicar esto:
-**el Artifact que estaba arriba era el código de dos commits antes.** No tenía el lector de tres caminos, no
-tenía el mensaje nuevo, y no tenía este sello de versión. Tu ronda del 16/09 —"persisten ambos errores con la
-versión latest"— corrió contra un build al que le faltaban justo las dos cosas hechas para que esa ronda
-diera datos. Yo te pedí una prueba sobre trabajo que nunca había salido.
-
-Esta vez lo verifiqué: leí el archivo publicado y busqué adentro cada uno de los cinco arreglos. Están.
-Igual, si arriba no dice `v19`, avisame antes de seguir y no gastes la ronda.
+Abrilo en el teléfono. Son tres pruebas. En todas, si algo sale mal: **sacá captura y mandámela.**
 
 ---
 
-## Prueba 1 — el archivo del mail, adjuntándolo a una reserva
+## Antes de empezar
 
-Es el gesto con el que lo viste fallar la primera vez.
+1. Abrí el link.
+2. Mirá arriba, al lado de donde dice **Valija**.
+3. Tiene que decir **v19**.
 
-1. Abrí un viaje y tocá una reserva (o creá una nueva con cualquier título).
-2. En el bloque **DOCUMENTO**, tocá **Archivo**.
-3. Elegí el mismo PDF que te llegó por mail, desde donde lo venís eligiendo.
-
-**Si funciona:** aparece la fila del documento con su peso, algo como `RLB_CLARA_SANCHEZ · PDF · 5 KB`.
-
-**Si falla:** no va a decir "está vacío". Va a decir que no lo pudo leer, y **debajo una línea gris con
-números y palabras raras**, algo como:
-
-> `informa 0 B · arrayBuffer NotReadableError · slice 0 B · FileReader Error · application/pdf · v19`
-
-**Esa línea gris es todo lo que necesito.** Saca la captura de forma que entre completa. No hace falta que la
-entiendas: dice cuál de las tres formas de leer el archivo falló y cómo, y eso convierte el próximo intento
-en un arreglo en vez de otra apuesta.
+**Si no dice v19:** pará acá y avisame. Cerrá la pestaña, volvé a abrir el link y fijate de nuevo.
 
 ---
 
-## Prueba 2 — el mismo archivo, pero importándolo
+## Prueba 1 — adjuntar el PDF a una reserva
 
-Es el segundo gesto con el que lo viste, y es el que ayer se me había quedado sin probar.
+1. Tocá un viaje.
+2. Tocá **Agregar**.
+3. En el título escribí cualquier cosa, por ejemplo `prueba`.
+4. Bajá hasta donde dice **DOCUMENTO**.
+5. Tocá **Archivo**.
+6. Elegí el PDF de Aerolíneas, el mismo de ayer.
+7. Esperá unos segundos.
+
+**Anda si:** aparece el nombre del archivo y al lado su peso, por ejemplo `PDF · 123 KB`.
+
+**Falla si:** aparece un texto en rojo.
+→ Sacá captura. Fijate que entre **el renglón chiquito gris de abajo**, el que tiene números.
+
+8. Tocá **Guardar**.
+
+---
+
+## Prueba 2 — importar el mismo PDF
 
 1. Dentro del viaje, tocá **Importar**.
-2. Tocá **Archivo** y elegí el mismo PDF.
+2. Tocá **Subir el PDF**.
+3. Elegí el mismo PDF.
+4. Esperá unos segundos.
 
-**Si funciona:** lee la tarjeta, completa el vuelo con asiento y puerta, y deja el documento adjunto.
+**Anda si:** aparece el archivo con su peso y el botón **Interpretar** se puede tocar.
 
-**Si falla:** igual que antes — dice que no lo pudo leer, con la línea gris debajo. Lo que **ya no puede
-hacer** es decirte "este PDF es un escaneo": eso era una causa inventada sobre un archivo que ni se pudo
-abrir, y era el agujero que la auditoría me frenó ayer.
+**Falla si:** aparece un texto en rojo, o **Interpretar** queda apagado.
+→ Sacá captura, con el renglón chiquito gris incluido.
 
----
-
-## Prueba 3 — que no se rompió lo que ya andaba
-
-Una sola cosa, rápida: adjuntá una **foto sacada con la cámara** a cualquier reserva. Tiene que entrar y
-reducirse sola, como el 16/09 (2,7 MB → 112 KB). Si eso sigue andando, no rompí nada al arreglar lo otro.
+5. Si anda, tocá **Interpretar** y seguí hasta **Guardar**.
 
 ---
 
-## Un cuarto síntoma, distinto, que también vale reportar
+## Prueba 3 — la foto
 
-Además de "está vacío", hay una forma de fallar que **no dice nada**, y es la peor porque no parece un
-error: el bloque del documento se queda en **"Preparando el archivo…"** y no cambia más, y el botón
-**Guardar queda apagado**. Si te pasa eso, la reserva queda trabada: no hay nada que tocar para salir
-salvo cancelar y perder lo que escribiste.
+1. Entrá a cualquier reserva.
+2. Bajá hasta **DOCUMENTO**.
+3. Tocá **Sacar foto**.
+4. Sacá una foto de cualquier cosa.
 
-Lo encontré hoy buscando otra cosa, y lo arreglé. Va acá por dos motivos: para que si aparece sepas que es
-**otro** problema y no el del archivo vacío, y porque el arreglo se probó solamente en este entorno.
+**Anda si:** entra y muestra su peso.
 
-**Si lo ves, mandame la captura y decime "quedó colgado en preparando".** Con esas palabras ya sé que es
-éste y no el otro, y no perdemos una ronda averiguándolo.
+**Falla si:** texto en rojo.
+→ Captura.
 
 ---
 
-## Qué te mando de vuelta
+## Qué me mandás
 
 | Si pasó esto | Mandame |
 |---|---|
-| Los tres gestos andan | "anduvo" y cierro la iteración 3 |
-| Alguno falla | la captura con **la línea gris completa** |
-| Quedó en "Preparando el archivo…" con Guardar apagado | la captura y **"quedó colgado en preparando"** |
-| La app dice algo que no es ni una cosa ni la otra | la captura igual |
-| Arriba no dice `v19` | avisame antes de seguir |
+| Las tres andan | "anduvo" |
+| Alguna falla | la captura, con el renglón chiquito gris visible |
+| Arriba no dice v19 | avisame antes de seguir |
+| Se queda en "Preparando el archivo…" y no cambia más | la captura y "quedó colgado" |
+| El teléfono muestra un cartel de "Memoria insuficiente" | la captura |
 
 ---
 
-## Esta vez sí sé qué estaba roto
+<details>
+<summary>Si te interesa: qué estaba roto y qué cambió</summary>
 
-Y es la primera vez en cuatro rondas que puedo decir eso, así que va con el respaldo.
+Tu captura de ayer resolvió el problema. El renglón gris decía `informa 123129 B · memoria 0 B`: un solo
+intento de leer el archivo, sobre uno de 123 KB.
 
-**Tu captura lo resolvió.** La línea gris decía `informa 123129 B · memoria 0 B`. Un solo intento, sobre un
-archivo de 123 KB. Los tres caminos de lectura ni aparecían: nunca corrieron.
-
-El motivo estaba en mi código, no en tu teléfono. Antes de leer el archivo había un atajo: "si este archivo
-ya trae los bytes puestos, usalos". La pregunta que hacía era "¿tiene algo llamado `bytes`?" — y resulta que
-`bytes` es el nombre de una función que los navegadores nuevos le agregaron a todos los archivos. Tu Chrome
-la tiene; el navegador con el que yo pruebo, no. Así que en tu teléfono el atajo respondía "sí, tiene bytes",
-agarraba una función en lugar de datos, sacaba cero, **y devolvía sin probar nada más.**
+El error era mío y estaba desde el principio. Antes de leer el archivo había un atajo que preguntaba "¿este
+archivo ya trae los datos puestos?". La pregunta estaba mal hecha: se conformaba con que **existiera** algo
+con ese nombre. Y resulta que los navegadores nuevos —el tuyo— le agregaron a todos los archivos una función
+que se llama igual. Así que el atajo contestaba que sí, agarraba la función en vez de los datos, sacaba cero,
+**y devolvía sin probar nada más.**
 
 Todo archivo volvía vacío antes de que existiera cualquier otro camino. Los tres arreglos anteriores tocaban
 código que ese atajo salteaba. Por eso no cambió nada tres veces seguidas.
 
-**Y explica lo de la foto de la cámara**, que yo había explicado mal. No entraba por ser "del navegador":
-entraba porque pesaba 2,7 MB. Arriba de 190 KB el archivo se va a recomprimir y nunca pasa por el atajo.
-Tus PDF pesaban 123 KB y 20 KB — debajo del tope, directo a la trampa. **La diferencia era el tamaño, no de
-dónde venía el archivo.** Sobre esa confusión mía se construyeron tres rondas tuyas.
+**Y explica lo de la foto de la cámara**, que yo había explicado mal: no entraba por venir de la cámara,
+entraba porque pesaba 2,7 MB. Arriba de 190 KB el archivo va por otro camino que no pasa por el atajo. Tus
+PDF pesaban 123 KB y 20 KB. La diferencia era el tamaño.
 
-### Qué tan probado está
+**Qué tan probado está:** esta vez el defecto se reproduce acá. Le agregué al navegador de pruebas la misma
+función que tiene el tuyo, y con el código de la v18 el arnés falla 9 veces (8 en los dos gestos) mostrando
+lo mismo que viste. Con el arreglo, verde.
 
-Esta vez el defecto **se reproduce acá**. Le agregué al navegador de pruebas la misma función que tiene el
-tuyo, y con el código de la v18 el arnés falla **9 veces**: **8 en los dos gestos** —importar y adjuntar,
-mostrando el mismo texto que vos viste— y una novena que es un chequeo directo al motor, fuera de los
-gestos. Con el arreglo, las nueve en verde.
+**Qué no está probado:** que en tu teléfono alcance. Puede haber más de una cosa rota. Si falla de nuevo, el
+renglón gris va a decir algo distinto, y esa diferencia ya es el próximo dato.
 
-(Ese número primero lo escribí como "10 en los dos gestos". Estaba mal en las dos mitades: venía de una
-corrida anterior del arnés, antes de que reestructurara las pruebas, y no lo volví a contar antes de
-escribirlo. Lo agarró la auditoría. Es la misma clase de exceso de confianza que este mismo arreglo le saca
-al mensaje de error de la app, cometido en la línea que lo anuncia.)
-
-Eso es lo que no tuvimos las tres veces anteriores: un arnés que puede decir que **no**.
-
-### Lo que sigue sin estar probado
-
-Que en **tu** teléfono alcance. Sigo sin poder abrir tu Android, y puede haber más de una cosa rota. Si
-falla de nuevo, la línea gris va a decir otra cosa distinta de `memoria 0 B` — y esa diferencia ya es el
-próximo dato.
-
-Una cosa más, aparte: en tu última captura apareció abajo un cartel del sistema que dice **"Memoria
-insuficiente para completar la operación anterior"**. No es de la app, es de Android, y no tengo cómo
-mirarlo desde acá. Si vuelve a aparecer, decímelo: puede no ser nada, o puede ser un segundo problema.
+</details>
