@@ -499,6 +499,26 @@ VAL-57.** La historia pedía lo contrario: subir la caja a "uno de los dos camin
 de VAL-57 sigue en pie; la solución que daba por hecha quedó desmentida por el uso real. Quien construya
 VAL-57 en la iteración 4 tiene que leer esa nota antes de reabrir la caja.
 
+### ⚠️ Este cambio NO está verificado, y por eso la iteración todavía no está terminada
+
+La validación del PM en su teléfono es real y es de las tres pruebas de adjuntar, importar y foto. **Es de
+la v19, o sea de ANTES de este cambio.** El colapso de la caja es el único cambio de código de la v20 y
+nadie lo vio todavía en el aparato.
+
+Probado en: Chromium de escritorio, con los cuatro estados de la pantalla cubiertos por
+`importar-sin-imagenes.js` e `importar-arranque.js`.
+
+NO probado: el visor del teléfono del PM. La tabla de la sección "La palabra verificado" de `CLAUDE.md` dice
+exactamente qué no cubre ese sustituto.
+
+Entonces la v20 se publica **como candidata, con la brecha declarada**, y la iteración 3 queda cerrada
+cuando el PM confirme una sola cosa: que al abrir Importar la caja aparece cerrada y se abre con un toque.
+Son diez segundos, no una ronda de pruebas. El paso está en
+`docs/qa/v19-como-lo-compruebo-en-el-telefono.md`.
+
+Llamarla terminada antes de eso sería exactamente lo que este proyecto ya pagó cuatro veces: dar por
+verificado algo que sólo se probó donde se puede mirar.
+
 ### Qué queda para la iteración 4
 
 | | |

@@ -1,4 +1,4 @@
-# v19 — las pruebas, paso a paso
+# v19 y v20 — las pruebas, paso a paso
 
 **Link:** https://claude.ai/artifact/3Q4KLi6g3ygTAJdR79aTCf
 
@@ -10,9 +10,9 @@ Abrilo en el teléfono. Son tres pruebas. En todas, si algo sale mal: **sacá ca
 
 1. Abrí el link.
 2. Mirá arriba, al lado de donde dice **Valija**.
-3. Tiene que decir **v19**.
+3. Tiene que decir **v20**.
 
-**Si no dice v19:** pará acá y avisame. Cerrá la pestaña, volvé a abrir el link y fijate de nuevo.
+**Si no dice v20:** pará acá y avisame. Cerrá la pestaña, volvé a abrir el link y fijate de nuevo.
 
 ---
 
@@ -51,6 +51,26 @@ Abrilo en el teléfono. Son tres pruebas. En todas, si algo sale mal: **sacá ca
 
 ---
 
+## Prueba 4 — la caja de pegar el texto (nueva, v20)
+
+Es la única que falta. Diez segundos.
+
+1. Entrá a un viaje.
+2. Tocá **Importar**.
+3. Mirá abajo, donde dice **Pegar el texto del correo**.
+
+**Anda si:** aparece **cerrada** — sólo el título con un `+` al lado, sin la caja de escribir.
+
+**Falla si:** aparece abierta, con el recuadro grande para escribir a la vista.
+
+4. Tocá el título.
+
+**Anda si:** se abre y aparece el recuadro para escribir.
+
+→ Si algo de esto no pasa, sacá captura.
+
+---
+
 ## Prueba 3 — la foto
 
 1. Entrá a cualquier reserva.
@@ -71,7 +91,7 @@ Abrilo en el teléfono. Son tres pruebas. En todas, si algo sale mal: **sacá ca
 |---|---|
 | Las tres andan | "anduvo" |
 | Alguna falla | la captura, con el renglón chiquito gris visible |
-| Arriba no dice v19 | avisame antes de seguir |
+| Arriba no dice v20 | avisame antes de seguir |
 | Se queda en "Preparando el archivo…" y no cambia más | la captura y "quedó colgado" |
 | El teléfono muestra un cartel de "Memoria insuficiente" | la captura |
 

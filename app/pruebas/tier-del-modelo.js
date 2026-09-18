@@ -367,7 +367,12 @@ function assertClavesLimpias(ls, donde) {
 
   /* ---------------------------------------------------------- */
   await test("el registro dice qué tier se PIDIÓ, y dice que el aplicado no se puede saber", async () => {
-    // Vista sin imágenes: ahí la vía de pegar el texto ya viene desplegada.
+    /* Vista sin imágenes. Ahí la caja de pegar el texto arranca COLAPSADA desde
+       el 18/09 (pedido del PM), así que `pegarTexto` toca el resumen antes de
+       escribir. Este comentario decía lo contrario —"ya viene desplegada"— y
+       quedó describiendo el comportamiento anterior al mismo commit que lo
+       cambió: lo agarró la auditoría. Es la trampa de la documentación que
+       queda mintiendo, cometida en el commit que arregla el comportamiento. */
     const page = await nuevaPagina(browser, { limits: LIMITS_SIN_IMAGENES });
     await abrirImportar(page);
     await pegarTexto(page, VOUCHER);
