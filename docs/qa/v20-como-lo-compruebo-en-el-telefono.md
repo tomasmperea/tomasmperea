@@ -95,10 +95,16 @@ escribir.
 | En la prueba 4 aparecen más de un botón arriba | avisame: la prueba no sirve así |
 | Arriba no dice v20 | avisame antes de seguir |
 | Se queda en "Preparando el archivo…" y no cambia más | la captura y **"quedó colgado"** |
+| El teléfono muestra un cartel de **"Memoria insuficiente"** | la captura |
 
 **Sobre las capturas:** cuando algo falla, abajo del texto rojo aparece **un renglón chiquito gris con
 números**. Sacá la captura de forma que ese renglón entre completo. Con ese renglón se resolvió en una
 ronda el problema que llevaba cuatro.
+
+**Sobre el cartel de "Memoria insuficiente":** apareció en una de tus capturas del 17/09. **No es de la
+app**, es de Android, y no tengo cómo mirarlo desde acá. Sigue anotado como observación sin conclusión: no
+lo estoy llamando defecto. Si vuelve a aparecer, mandalo — puede no ser nada, o puede ser un segundo
+problema, y con dos apariciones ya deja de ser casualidad.
 
 ---
 
