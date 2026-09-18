@@ -399,8 +399,9 @@ las auditorías hicieron explícita: **una entrega sobre este defecto no puede d
 y tampoco tiene que quedarse sin publicar por eso.** Lo que se publica es lo que convierte la próxima ronda
 en datos — la línea de observación y el sello de versión —, más los arreglos que no dependen de la causa.
 
-El guion de la prueba del PM vive en `docs/qa/v19-como-lo-compruebo-en-el-telefono.md`: tres gestos, sin
-consola, con lo que la entrega NO afirma en su propia sección.
+El guion de la prueba del PM vive en `docs/qa/v20-como-lo-compruebo-en-el-telefono.md`: cuatro gestos, sin
+consola, con lo que la entrega NO afirma en su propia sección. (Eran tres cuando se escribió esta línea; el
+cuarto se sumó el 18/09 con el colapso de la caja de pegar el texto.)
 
 ### Lo que queda abierto al cerrar la iteración 3
 
@@ -475,7 +476,7 @@ un chequeo directo al motor. Es lo que faltó las tres veces anteriores: un arn�
 
 ---
 
-## Cierre de la iteración 3 — 18/09
+## Iteración 3 — 18/09: el defecto cerrado, la iteración todavía no
 
 **El PM validó las tres pruebas en su teléfono y anduvieron.** Adjuntar el PDF a una reserva, importarlo, y
 la foto de la cámara. Es la primera vez desde el 16/09 que los tres gestos pasan en el entorno real, que es
@@ -514,7 +515,7 @@ exactamente qué no cubre ese sustituto.
 Entonces la v20 se publica **como candidata, con la brecha declarada**, y la iteración 3 queda cerrada
 cuando el PM confirme una sola cosa: que al abrir Importar la caja aparece cerrada y se abre con un toque.
 Son diez segundos, no una ronda de pruebas. El paso está en
-`docs/qa/v19-como-lo-compruebo-en-el-telefono.md`.
+`docs/qa/v20-como-lo-compruebo-en-el-telefono.md`.
 
 Llamarla terminada antes de eso sería exactamente lo que este proyecto ya pagó cuatro veces: dar por
 verificado algo que sólo se probó donde se puede mirar.
