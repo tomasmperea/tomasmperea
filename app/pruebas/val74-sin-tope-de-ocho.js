@@ -128,6 +128,21 @@ const VIAJE = { id:"t1", name:"Noruega", destination:"Noruega",
   ok(pe.bytesSerializados(recortada) <= pe.TOPE_LISTA_BYTES,
      "y un solo motivo de doce mil caracteres ya no tira la lista sola");
 
+  /* El caso adversarial: MUCHOS ítems con motivo mínimo, para maximizar la
+     cantidad y exponer cualquier sesgo por ítem. Lo trajo la auditoría: la
+     versión anterior de `pesoGuardadoDeItem` escribía a mano una forma
+     "parecida" a la guardada y se comía 8 bytes por ítem —el 82% del margen
+     de seguridad con 838 ítems— sin cruzar el tope por pura aritmética. */
+  console.log("\n· muchos ítems chicos: el margen de seguridad sigue siendo un margen");
+  const enjambre = { items: Array.from({length:5000}, (_,k)=>({ nombre:"I"+k, motivo:"m"+k })) };
+  const conEnjambre = await pe.enrichWithDestination(lista, async () => enjambre, {});
+  const bytesEnjambre = pe.bytesSerializados(conEnjambre);
+  const margen = pe.TOPE_LISTA_BYTES - bytesEnjambre;
+  info(`5000 chicos → ${Object.keys(conEnjambre.items).length} ítems · ${bytesEnjambre} bytes · margen ${margen}`);
+  ok(bytesEnjambre <= pe.TOPE_LISTA_BYTES, "no se pasa del tope");
+  ok(margen > 8000,
+     `y el margen de seguridad sigue casi entero (${margen}): la medición por ítem no tiene sesgo acumulado`);
+
   console.log("\n· una lista que YA está en el borde no admite nada más");
   const relleno = {};
   Object.assign(relleno, lista.items);

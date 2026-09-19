@@ -1670,13 +1670,29 @@ function bytesSerializados(x) {
 
     Y el mensaje que iba a ver la persona decía "Tenés acceso de sólo lectura
     a esta valija", que además de inútil es falso. */
-function pesoGuardadoDeItem(clave, nombre, motivo, categoria) {
-  return bytesSerializados({
-    clave: clave, nombre: nombre, categoria: categoria || "otros",
-    cantidad: null, motivo: motivo, origen: "destino", estado: "pendiente",
-    empacadoEn: null, regla: null, cantidadEditada: false, nota: "",
-    orden: 0, agregadoEn: "2026-01-01T00:00:00.000Z", actualizadoEn: "2026-01-01T00:00:00.000Z"
-  }) + bytesUtf8(clave) + 4;        // la clave también es la key del objeto
+function pesoGuardadoDeItem(clave, nombre, motivo, categoria, orden) {
+  /* Se mide EL ÍTEM QUE VA A GUARDARSE, armado por la misma `makeItem` que lo
+     arma de verdad, con los mismos valores que le pasa la capa de IA
+     (`origen:"destino"`, `regla:"destino"`, el `orden` real).
+
+     La primera versión escribía a mano una forma "parecida" y el comentario
+     decía, con todas las letras, "se arma la forma final y se mide: no se
+     estima". No era cierto: ponía `regla:null` donde va `"destino"` y
+     `orden:0` donde va un número de hasta cuatro dígitos. La auditoría lo
+     midió: **8 bytes de menos por ítem, siempre para el mismo lado**, que con
+     838 ítems se comen el 82% del margen de seguridad en silencio. No cruzaba
+     el tope por una coincidencia aritmética —un ítem no baja de ~283 bytes,
+     así que no entran los ~1.024 que harían falta para agotarlo— y una
+     coincidencia no es un diseño.
+
+     La lección es la de siempre y van tres en esta historia: si el comentario
+     dice "se mide", que mida. Llamar a la función que arma el ítem cuesta lo
+     mismo que copiar sus campos a mano, y no puede quedar desincronizada. */
+  return bytesSerializados(makeItem({
+    clave: clave, nombre: nombre, categoria: categoria, cantidad: null,
+    motivo: motivo, origen: ORIGEN.DESTINO, regla: "destino",
+    orden: orden == null ? orderOf(categoria, 800) : orden
+  }, "2026-01-01T00:00:00.000Z")) + bytesUtf8(clave) + 4;   // la clave es además la key del objeto
 }
 
 /** Cuántos bytes quedan libres en ESTA lista. Puede dar negativo: una lista
@@ -3069,7 +3085,7 @@ function parseDestinationItems(raw, list) {
       /* Y se MIDE lo que va a pesar guardado, restándolo del presupuesto. El
          que no entra no entra, y los que vienen detrás tampoco: cortar acá es
          mejor que que la base rechace la lista entera después. */
-      var peso = pesoGuardadoDeItem(clave, nombre, motivo, categoria);
+      var peso = pesoGuardadoDeItem(clave, nombre, motivo, categoria, orderOf(categoria, 800 + items.length));
       if (peso > libres) return;
       libres -= peso;
       have[clave] = true; haveCanon[canon] = clave;
