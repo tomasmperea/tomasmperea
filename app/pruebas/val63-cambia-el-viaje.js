@@ -197,6 +197,39 @@ async function abrirHojaDelViaje(page, tripId){
   ok(carteles.some(t => /sumarte a la valija/i.test(t)),
      "la app le avisó que tiene algo para sumarle, sin que tenga que ir a buscarlo");
 
+  /* Y QUE EL AVISO LLEVE A ALGÚN LADO.
+
+     El PM lo probó en su teléfono el 19/09 y el cartel resultó peor que no
+     avisar: aparecía tarde —preguntarle al modelo tarda segundos y él ya se
+     había ido a otra pantalla— y no se podía tocar. Su palabra: "no me
+     actualizó los items ni me mostró cuáles son los que se agregan".
+
+     Que la lista no se actualice sola es a propósito y él lo confirmó: la app
+     propone, no pisa lo que ya marcaste. Lo que estaba mal era el camino para
+     verlo. Ahora el cartel se toca y lleva a la valija, donde vive el aviso
+     con "Ver qué agrego". */
+  const tocable = await page.evaluate(() => {
+    const c = document.querySelector(".toast.tocable");
+    return c ? { hay:true, dice:c.innerText.replace(/\n+/g," ").trim(), rol:c.getAttribute("role") } : { hay:false };
+  });
+  info("cartel tocable: " + JSON.stringify(tocable));
+  ok(tocable.hay, "el cartel se puede tocar: no es un callejón");
+  ok(tocable.rol === "button", "y se anuncia como botón, para quien usa lector de pantalla");
+
+  if (tocable.hay) {
+    await page.click(".toast.tocable");
+    await page.waitForTimeout(1200);
+    const donde = await page.evaluate(() => ({
+      hash: location.hash,
+      aviso: (document.querySelector("#main .notice") || {}).innerText || null,
+      verPlan: document.querySelectorAll('[data-pk="verplan"]').length
+    }));
+    info("después de tocarlo: " + JSON.stringify(donde));
+    ok(/\/valija$/.test(donde.hash), "tocarlo lleva a la valija");
+    ok(donde.verPlan === 1 && /Ver qué agrego/i.test(donde.aviso || ""),
+       "y ahí está el aviso con «Ver qué agrego», que es lo que el PM no encontraba");
+  }
+
   /* ---------- cambiar SÓLO las notas ----------
      Esta prueba existe por un error mío. La primera versión de VAL-63 dejaba
      las notas afuera del disparador, con el comentario "hoy no las lee nadie".

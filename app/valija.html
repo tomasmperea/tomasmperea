@@ -402,6 +402,13 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
   animation:rise .2s ease;
 }
 .toast.err{background:var(--crit);color:#fff}
+/* El cartel que se puede tocar (VAL-63). Se distingue por el "Ver" y por el
+   cursor, no sólo por el color: un aviso que parece igual a los demás no se
+   toca nunca. */
+.toast.tocable{cursor:pointer;display:flex;align-items:center;gap:10px;justify-content:center}
+.toast.tocable .ver{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--ground);color:var(--ink);padding:3px 8px;border-radius:6px;flex:none}
+.toast.tocable:active{filter:brightness(1.15)}
 
 /* ---------- misc ---------- */
 .notice{
@@ -904,7 +911,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    Se sube a mano en cada publicación. Aparece en la cabecera, chiquito,
    y en cada mensaje de error que trae un dato observado.
    ============================================================ */
-const VALIJA_VERSION = "21";
+const VALIJA_VERSION = "22";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -7941,10 +7948,41 @@ function openSheet(title, bodyHtml, footHtml){
 }
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeSheet(); });
 
-function toast(msg, err){
+/** Un cartel. Con `alTocar`, se puede tocar y lleva a algún lado.
+
+    Por qué existe la tercera forma: VAL-63 mostraba "Tengo N cosas para sumarte
+    a la valija" y ahí se terminaba. El PM lo probó en su teléfono el 19/09 y el
+    resultado fue peor que no avisar — el cartel aparecía TARDE, porque
+    preguntarle al modelo tarda segundos y él ya se había ido a otra pantalla, y
+    encima no llevaba a ningún lado. Un aviso que no sabe dónde estás y que no
+    se puede tocar es un callejón.
+
+    El que se puede tocar dura más: 2,6 segundos alcanzan para leer "Reserva
+    guardada", no para decidir si te interesa ir a ver algo. */
+function toast(msg, err, alTocar){
   const t = document.getElementById("toast");
-  t.innerHTML = `<div class="toast ${err?"err":""}">${esc(msg)}</div>`;
-  setTimeout(()=>{ t.innerHTML=""; }, err?4200:2600);
+  t.innerHTML = `<div class="toast ${err?"err":""}${alTocar?" tocable":""}"${alTocar?' role="button" tabindex="0"':""}>${esc(msg)}${alTocar?` <b class="ver">Ver</b>`:""}</div>`;
+  if(alTocar){
+    const caja = t.firstElementChild;
+    const ir = ()=>{ t.innerHTML=""; alTocar(); };
+    caja.onclick = ir;
+    caja.onkeydown = e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); ir(); } };
+  }
+  /* CADA CARTEL SÓLO SE BORRA A SÍ MISMO.
+
+     Antes el reloj hacía `t.innerHTML=""` sin mirar qué había adentro, así que
+     un cartel viejo mataba al que lo había reemplazado. Se veía justo acá: al
+     guardar el viaje salía "Viaje actualizado" (2,6 s) y un rato después
+     "Tengo N cosas para sumarte" (7 s), pero a los 2,6 s el reloj del primero
+     borraba al segundo. El aviso duraba lo que le quedaba al anterior.
+
+     Lo destapó el arnés de VAL-63 al exigir que el cartel se pudiera tocar:
+     el texto quedaba registrado —había aparecido— pero el elemento ya no
+     estaba. Es un defecto viejo, de cualquier par de carteles seguidos; VAL-63
+     sólo lo hizo visible porque es el primer caso donde el segundo importa
+     más que el primero. */
+  const mio = t.firstElementChild;
+  setTimeout(()=>{ if(t.firstElementChild === mio) t.innerHTML=""; }, err?4200:(alTocar?7000:2600));
 }
 const val = id => (document.getElementById(id)?.value || "").trim();
 
@@ -8013,7 +8051,9 @@ function sheetTrip(trip){
         if(!plan || !plan.nuevos || !plan.nuevos.length) return;
         const n = plan.nuevos.length;
         toast(n === 1 ? "Tengo 1 cosa para sumarte a la valija"
-                      : `Tengo ${n} cosas para sumarte a la valija`);
+                      : `Tengo ${n} cosas para sumarte a la valija`,
+              false,
+              ()=> go(`#/trip/${guardado.id}/valija`));
       }).catch(()=>{});
     }catch(e){ toast(writeErr(e), true); }
   };
