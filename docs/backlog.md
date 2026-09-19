@@ -614,6 +614,27 @@ entrega que ya tiene su propio alcance. El criterio lo confirmó la auditoría.
 - Se corre varias veces seguidas antes de darlo por arreglado: una corrida verde no distingue un arnés
   estable de uno con suerte.
 
+**Más datos, del 19/09 al cerrar VAL-72.** Volvió a aparecer, con las mismas tres aserciones. Se midió en
+vez de suponer:
+
+| Árbol | Corridas | Resultado |
+|---|---|---|
+| Con VAL-72 (`e313e4c`) | 8 | 7 en 111/111, **1 en 108/111** |
+| Sin VAL-72 (v23, `11f7cdf~1`) | 3 | 3 en 111/111 |
+
+La corrida que falló incluyó un `locator.innerText: Timeout 30000ms exceeded`, o sea un vencimiento del
+navegador y no una aserción de lógica, y las otras dos fallas son las de siempre: el plan leído en 0 cuando
+la prueba esperaba 2.
+
+**Lo que estos números NO permiten decir:** que VAL-72 no tenga nada que ver. Una falla en ocho contra cero
+en tres no distingue nada, y decir "es el flake conocido" sería exactamente la conclusión cómoda que este
+proyecto ya pagó cara. Lo que sí se puede afirmar es más chico y se afirma sólo eso: **VAL-72 no toca la
+capa de guardado ni la de recarga**, que es donde vive el `hayLista:false`, y el modo de falla observado es
+el mismo que ya estaba anotado acá antes de que VAL-72 existiera.
+
+Queda como está: P3, a investigar como posible defecto de la app. Si al investigarlo se encuentra que sí es
+de la app, esta tabla es el punto de partida.
+
 ### VAL-75 · Los ítems del destino viejo se quedan, y encima mienten sobre su origen — P0
 
 **Reporte del PM (19/09), con captura.** Cambió el viaje de Noruega a Argentina. La valija sugirió cosas
