@@ -469,10 +469,28 @@ imprime la prueba muestra la carrera —`appPlan: 2` en una lectura y `planDe('t
 línea siguiente—, y la espera previa es un `waitForFunction(...).catch(()=>{})` que se traga el vencimiento y
 sigue igual.
 
-No se tocó al construir VAL-63: arreglar el arnés de otra historia en el medio de ésta es meter ruido en una
-entrega que ya tiene su propio alcance. Queda anotado para no perderlo.
+**Y puede no ser el arnés.** La auditoría lo reprodujo por su cuenta y trajo un diagnóstico peor que el mío.
+Yo había leído la carrera como "la revisión no llegó a tiempo". El suyo dice otra cosa:
 
-- La espera deja de tragarse el vencimiento, o se espera por la condición que la aserción va a mirar.
+```
+diag {"view":"packing","recalc":[],"items":["flight"],"hayLista":false,"aMano":null,"appPlan":null}
+```
+
+`hayLista:false`, y falta el ítem del auto que la prueba había guardado JUSTO ANTES de recargar. No es que
+el recálculo tardó: es que **después de recargar, lo guardado no estaba**. Eso ya no es timing de prueba —
+es la misma promesa que VAL-63, "la app se entera de lo que pasó", aplicada a guardar una reserva.
+
+**Entonces esto se investiga como posible defecto de la app, no como arnés inestable**, y recién si se
+descarta se arregla la espera. Bajarlo a "puro timing de test" sería subinvestigarlo, que es como empezaron
+las cuatro rondas de septiembre.
+
+No se tocó al construir VAL-63: arreglar el arnés de otra historia en el medio de ésta es meter ruido en una
+entrega que ya tiene su propio alcance. El criterio lo confirmó la auditoría.
+
+- Primero: ¿por qué `hayLista` es falso después de recargar, y por qué falta un ítem recién guardado?
+  Se reproduce y se dice qué se observó antes de tocar nada.
+- Si resulta ser del arnés: la espera deja de tragarse el vencimiento, o se espera por la condición que la
+  aserción va a mirar.
 - Se corre varias veces seguidas antes de darlo por arreglado: una corrida verde no distingue un arnés
   estable de uno con suerte.
 

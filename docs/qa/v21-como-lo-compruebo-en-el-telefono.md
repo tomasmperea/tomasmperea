@@ -46,6 +46,18 @@ Es **una sola prueba** y es tu caso de Noruega. Si algo sale mal: **sacá captur
 
 ---
 
+## Dónde se probó esto, y dónde no
+
+**Se probó:** en Chromium de escritorio, con Playwright, tocando los botones reales de la pantalla —abrir la
+hoja del viaje, cambiar la fecha, tocar Guardar—. El arnés es `app/pruebas/val63-cambia-el-viaje.js` y su
+control negativo, que saca el cable, da 4 fallas.
+
+**No se probó:** en tu teléfono. Es lo único que este proyecto llama "verificado", y es lo que te estoy
+pidiendo con esta prueba. La tabla de `CLAUDE.md` dice exactamente qué no cubre el sustituto que usé: el
+navegador del teléfono, sus permisos y su visor.
+
+---
+
 ## Lo que esta entrega NO arregla
 
 **Que la sugerencia sea buena.** Lo que se arregló es que la app **vuelva a preguntar** cuando cambiás el
