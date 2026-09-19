@@ -461,6 +461,46 @@ caso completo, con el antes y el después escritos.
 - Un cambio que no cambia nada no molesta: si la lista nueva es igual a la vieja, no hay aviso.
 - **Criterio que define el éxito:** el caso del PM, con el antes y el después escritos.
 
+### VAL-74 · El tope de 8 ítems de la capa de IA — P1
+
+**Pregunta textual del PM (19/09):** *"otro patrón que identifico es que siempre las sugerencias son 8 items
+máximo; esto es una suposición tuya también? no tiene sentido"*.
+
+**Respuesta: sí, es una suposición mía, y esta vez ni siquiera tiene un motivo escrito.** En
+`app/parts/packing-engine.js:195`:
+
+```js
+/** Tope de ítems que puede agregar la capa de IA. */
+var MAX_AI_ITEMS = 8;
+```
+
+Eso es todo el comentario. A diferencia del tope de documentos —que al menos decía "decisión nuestra, no de
+la base"—, acá no hay ni una línea que diga por qué 8. No sale de ningún contrato: la respuesta del modelo
+no tiene un límite que muerda a los 8 ítems, y la lista entera vive en un documento de la base que admite
+256 KiB, donde ocho ítems ocupan menos del uno por ciento.
+
+Y se aplica DOS veces, lo que empeora el efecto:
+
+1. En el texto que se le manda al modelo: *"Agregá hasta 8 ítems"* (línea 1490). O sea que el modelo se
+   autocensura antes de contestar.
+2. En el parser, que descarta lo que pase de 8 (línea 1556).
+
+**Por qué el PM lo nota y tiene razón en que no tiene sentido.** El tope es fijo, pero lo que hay que
+agregar no lo es: un fin de semana en Córdoba y tres semanas por Escandinavia en invierno no necesitan la
+misma cantidad de ajustes. Un tope parejo recorta justo donde más falta hace.
+
+- Se saca el número inventado. Lo que limite, si limita algo, tiene que salir de un motivo escrito.
+- Si hace falta un tope, que dependa del viaje —días, cantidad de destinos, si es internacional— y no de una
+  constante.
+- El texto del modelo deja de pedir "hasta 8": pedirle que se autocensure es lo que hace que ni siquiera
+  veamos cuánto tenía para decir.
+- **Antes de elegir un número nuevo se mide:** cuántos ítems propone el modelo sin tope, en un viaje corto y
+  en uno largo. Con `app/pruebas/lote-modelo-real.js` ya hay un camino para preguntarle a un modelo de
+  verdad, así que esto se decide con datos y no con otra suposición.
+
+**Relación con VAL-66 y VAL-72:** las tres tocan la misma capa. Conviene hacerlas juntas y medir una sola
+vez.
+
 ### VAL-73 · Un arnés inestable en `valija-bloque-b.js` — deuda de prueba, P3
 
 El 19/09, construyendo VAL-63, la prueba "el plan se recalcula al ENTRAR a la valija" falló 3 aserciones en
