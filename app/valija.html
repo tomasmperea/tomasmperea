@@ -904,7 +904,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    Se sube a mano en cada publicación. Aparece en la cabecera, chiquito,
    y en cada mensaje de error que trae un dato observado.
    ============================================================ */
-const VALIJA_VERSION = "20";
+const VALIJA_VERSION = "21";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -7111,6 +7111,51 @@ async function recalcularPlanContra(trip, list){
   }catch(e){ return null; }   // el motor degrada solo; si igual lanzara, la app sigue
 }
 
+/* ============================================================
+   VAL-63 · ¿ESTE CAMBIO DEL VIAJE MUEVE LA VALIJA?
+
+   De dónde sale: el PM creó un viaje a Noruega para septiembre, la app
+   entendió que allá es otoño y sugirió en consecuencia. Después lo cambió a
+   junio de 2027 y la lista no se movió ni un ítem.
+
+   La causa no era el motor. `planListUpdate` recibe el viaje entero y
+   reconstruye contra las fechas nuevas, y la capa de IA razona sobre la
+   estación —eso quedó demostrado por el propio septiembre que acertó—. Lo que
+   faltaba era el disparador: `checkPackingPlan` se llamaba al guardar una
+   reserva y al importar, y NUNCA al guardar el viaje. La pregunta nunca se
+   volvía a hacer.
+
+   Por qué no se dispara en cada guardado: `checkPackingPlan` le habla al
+   modelo. Renombrar un viaje de "Noruega" a "Noruega 2027" no cambia ni un
+   ítem de la valija y no tiene por qué costar una llamada ni mostrar un aviso.
+
+   Qué mueve la valija, y por qué cada uno:
+     · las fechas      — la estación, el clima y cuántos días se viaja;
+     · el destino      — de ahí sale TODO lo que la capa de IA razona;
+     · quiénes viajan  — las cantidades salen de ahí.
+
+   Qué NO:
+     · el nombre       — es una etiqueta;
+     · las notas       — hoy no las lee nadie. Cuando VAL-65 las convierta en
+                         entrada del motor, este es el lugar donde se agregan,
+                         y la prueba que lo fija está escrita.
+
+   La comparación normaliza como lo hace el formulario. El campo de fecha
+   muestra `dayKey(t.startDate)` y guarda `YYYY-MM-DD`, así que un viaje cuya
+   fecha vino de la base con hora (`2026-09-14T00:00:00.000Z`) parecería
+   cambiar sola cada vez que alguien toca Guardar. Sin esto, el aviso saldría
+   siempre y por nada. */
+const CAMPOS_QUE_MUEVEN_LA_VALIJA = ["startDate", "endDate", "destination", "travelers"];
+
+function cambioQueMueveLaValija(antes, despues){
+  if(!antes || !despues) return false;
+  const norm = (k, v) => {
+    const s = String(v ?? "").trim();
+    return (k === "startDate" || k === "endDate") ? dayKey(s) : s;
+  };
+  return CAMPOS_QUE_MUEVEN_LA_VALIJA.some(k => norm(k, antes[k]) !== norm(k, despues[k]));
+}
+
 async function checkPackingPlan(trip){
   if(!trip) return;
   const list = Store.packingOf(trip.id);
@@ -7123,7 +7168,7 @@ async function checkPackingPlan(trip){
   if(!plan.desactualizada || !plan.nuevos.length){
     if(App.planTripId === trip.id){ App.plan = null; App.planTripId = null; App.planDesde = null; App.planDock = false; }
     render();
-    return;
+    return null;                          // nada que ofrecer, y quien llamó puede saberlo
   }
   // La huella es la de `list`: la lista con la que se calculó, no la que haya
   // ahora. Entre medio pasaron dos `await` y la lista pudo cambiar.
@@ -7135,6 +7180,11 @@ async function checkPackingPlan(trip){
   // no corre la lista bajo el pulgar (estado 16, § 4.1).
   App.planDock = (App.view === "packing" && App.tripId === trip.id);
   render();
+  /* Se devuelve el plan para que quien haya disparado la revisión pueda decir
+     algo. Es aditivo: los cuatro call sites que existían no miran el retorno y
+     siguen comportándose igual. Lo usa VAL-63 (ver el handler de la hoja del
+     viaje) porque ahí la persona NO está mirando la valija. */
+  return plan;
 }
 
 /* ---------- recálculo al ENTRAR a la pantalla de la valija ----------
@@ -7926,12 +7976,35 @@ function sheetTrip(trip){
     if(!name){ toast("Poné un nombre al viaje", true); return; }
     const from = val("t_from"), to = val("t_to");
     if(from && to && to <= from){ toast("El regreso tiene que ser después de la salida", true); return; }
+    const guardado = {...t, name, destination:val("t_dest"),
+      startDate:from, endDate:to, travelers:val("t_people"), notes:val("t_notes"), sample:t.sample||false};
+    /* VAL-63: ¿este cambio mueve la valija? Se decide ACÁ, antes de guardar,
+       porque después de `Store.saveTrip` los valores viejos ya no existen. */
+    const mueveLaValija = !!trip && cambioQueMueveLaValija(t, guardado);
     try{
-      await Store.saveTrip({...t, name, destination:val("t_dest"),
-        startDate:from, endDate:to, travelers:val("t_people"), notes:val("t_notes"), sample:t.sample||false});
+      await Store.saveTrip(guardado);
       closeSheet();
       if(!trip) go(`#/trip/${t.id}`);
       toast(trip?"Viaje actualizado":"Viaje creado");
+      /* Y recién acá, con la hoja ya cerrada: `checkPackingPlan` habla con el
+         modelo y tarda. Va sin `await` por lo mismo que en la hoja de la
+         reserva — el aviso entra cuando resuelve, no traba el guardado.
+
+         Y AVISA. Los otros cuatro disparadores pintan su aviso adentro de la
+         pantalla de la valija, que es donde la persona ya está mirando. Acá
+         no: acaba de cambiar una fecha desde la pantalla del viaje y se va a
+         ir a otro lado. Sin este toast el plan queda esperándola adentro de la
+         valija y ella no se entera de que pasó algo — que es exactamente el
+         síntoma que VAL-63 vino a arreglar, con otro disfraz.
+
+         Silencio cuando no hay nada que ofrecer: cambiar una fecha y que la
+         lista ya esté bien no es una novedad. */
+      if(mueveLaValija) checkPackingPlan(guardado).then(plan=>{
+        if(!plan || !plan.nuevos || !plan.nuevos.length) return;
+        const n = plan.nuevos.length;
+        toast(n === 1 ? "Tengo 1 cosa para sumarte a la valija"
+                      : `Tengo ${n} cosas para sumarte a la valija`);
+      }).catch(()=>{});
     }catch(e){ toast(writeErr(e), true); }
   };
   const dl = document.getElementById("deltrip");
