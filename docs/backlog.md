@@ -660,16 +660,33 @@ un cartel que dice "por Argentina" es la app afirmando algo falso con cara de da
 cantidad, motivo, origen, regla, orden y fechas — ningún campo dice para qué destino se razonó. Sin ese dato
 el chip no tiene con qué ser honesto, y (A) tampoco puede saber cuáles revisar.
 
-**Entonces el arreglo empieza por ahí:**
+**DECISIÓN DEL PM (19/09), que corrige la propuesta del PO.** El PO había propuesto guardar el destino de
+origen y etiquetar el ítem "por Noruega" aunque el viaje ya fuera Argentina, y proponer sacarlo. El PM lo
+rechazó, textual: *"pero qué sentido tiene esto? yo quiero que actualice la lista, no que mantenga lo
+anterior (...) quiero que se pisen o se eliminen las sugerencias relacionadas al destino viejo"*.
 
-- El ítem guarda el destino con el que se lo generó. Es un campo, y la medición de bytes ya lo cuenta sola
-  (ver VAL-74: por eso se dejó de enumerar campos a mano).
-- El chip dice ESE destino, no el actual. Si el viaje cambió, el ítem dice "por Noruega" aunque el viaje
-  ahora sea Argentina — que es la verdad y además hace visible el problema (A).
-- Al cambiar el destino, los ítems del destino anterior se proponen para sacar, con el mecanismo de VAL-43.
-  No se borran solos.
-- **El caso que define el éxito es el del PM:** Noruega → Argentina, y que ningún ítem diga "por Argentina"
-  con un motivo que habla de Noruega.
+Tiene razón, y el error del PO vale escribirlo: **estaba resolviendo el problema equivocado.** El problema
+del PO era que la app no mintiera; el del PM es que la lista esté al día. Etiquetar bien un ítem que ya no
+corresponde lo vuelve honestamente inútil — seguís teniendo un pantalón impermeable de Noruega en un viaje a
+Argentina, ahora con un cartel prolijo. La etiqueta correcta era la solución a (B) tratada como si fuera la
+solución a (A).
+
+**Entonces:**
+
+- El ítem guarda el destino con el que se lo generó. Sigue haciendo falta, pero para otra cosa: para saber
+  **cuáles pisar**. Es un campo, y la medición de bytes de VAL-74 ya lo cuenta sola.
+- **Al cambiar el destino, lo que la capa de IA había sugerido para el anterior se reemplaza.** No se
+  propone: se pisa. La persona cambió el destino; esa es la decisión.
+- **La única excepción, y es la que hay que cuidar:** un ítem que la persona YA marcó, editó en cantidad o
+  anotó dejó de ser una sugerencia y pasó a ser suyo. Ese no se pisa. Lo que se hace con él —dejarlo callado
+  o avisar que venía del destino viejo— se decide al construir, con el caso a la vista.
+- La regla de "proponer y no pisar" que el PM eligió el 19/09 **no se contradice**: esa protege lo que la
+  persona marcó o agregó, y una sugerencia de la app para un destino que ya no existe no la eligió nadie.
+- **El caso que define el éxito es el del PM:** Noruega → Argentina, y que en la lista no quede ni un ítem
+  cuyo motivo hable de Noruega.
+
+**Sale junto con VAL-76 y VAL-77**, por decisión del PM: los tres son la misma pregunta —qué pasa con una
+lista ya armada cuando el viaje cambia de verdad— y sueltos no se pueden probar.
 
 **Relación con VAL-63:** es su otra mitad. VAL-63 hizo que la lista se entere de que cambió el viaje y sume
 lo que falta; esto es que también se entere de lo que sobra. Y se nota más ahora justamente porque VAL-63
@@ -678,6 +695,48 @@ anda: antes no se sumaba nada, así que tampoco se veía lo que quedaba viejo.
 **Relación con VAL-72:** la misma pregunta de fondo —cuál es el destino de este viaje— vista desde otro
 lado. Conviene resolver VAL-72 primero: si el destino sale de las reservas, "el destino con el que se generó
 el ítem" ya no es un campo de texto suelto.
+
+### VAL-76 · Cambiar el tipo de viaje sobre una lista ya armada — P0
+
+**Reporte del PM (19/09):** *"no solo quiero actualizar el viaje sino que quiero actualizar el tipo de viaje
+para que alimente al motor: playa, montaña, mixto, etc. no hay paso atrás una vez elegido esto y la lista,
+por más que cambien las fechas, los destinos, no se está contemplando que un viaje ya armado cambie
+rotundamente de la montaña a la playa"*.
+
+**Corrección a la premisa, verificada en el código: el paso atrás SÍ existe, pero está escondido.** Hay un
+botón "Cambiar el tipo" (`pk-changetype`, `app/valija.html:11126`) y funciona: pasa por `runGenerate`, que
+reemplaza la lista entera y tira el plan pendiente.
+
+El problema es dónde vive: adentro de la hoja que se abre con el ícono de información ⓘ de la cabecera de la
+valija. O sea que la acción que rehace la lista entera está detrás del ícono que uno toca para *leer de
+dónde salió la lista*. El PM usó la app varios días y concluyó que no se podía. **Si el PM no lo encuentra,
+no existe.**
+
+- El tipo de viaje se puede cambiar desde donde se ve el tipo de viaje, no desde el ícono de ayuda.
+- Cambiar el tipo rehace la lista, que es lo que ya hace. Lo que falta es que eso sea alcanzable y que se
+  entienda qué va a pasar antes de tocarlo.
+- Y se cuida lo mismo que en VAL-75: lo que la persona ya marcó o agregó no se pierde al rehacer.
+- **El caso del PM:** un viaje de montaña ya armado que pasa a ser de playa, y una lista que queda de playa.
+
+### VAL-77 · "Mixto" no quiere decir nada — P1
+
+**Reporte del PM (19/09):** *"incluso, el viaje mixto no se entiende a qué hace referencia: debería poder
+elegir el mixto entre ciudad/montaña o playa/montaña o playa/ciudad, etc"*.
+
+Los tipos hoy son seis y el último es `mixto` (`packing-engine.js:362`), sin ninguna definición. Para el
+motor es una etiqueta más; para la persona es "ninguna de las anteriores", que no es lo mismo y no le dice
+nada al motor.
+
+Y es el caso más común de los viajes reales: nadie se va diez días a un solo tipo de lugar.
+
+- "Mixto" deja de ser un tipo y pasa a ser una **combinación explícita** de los que ya existen:
+  ciudad + montaña, playa + ciudad, playa + montaña, las que hagan falta.
+- El motor recibe las dos partes, no una etiqueta vacía. Las reglas de los dos tipos suman.
+- No se inventan tipos nuevos: se combinan los que hay.
+- **Cuidado con lo que ya está guardado:** hay listas con `tipoViaje:"mixto"` a secas. Tienen que seguir
+  funcionando, y conviene que la app pregunte una vez qué combinación era en vez de adivinar.
+
+**Sale junto con VAL-75 y VAL-76**, por decisión del PM.
 
 ### VAL-72 · Las reservas mandan sobre el destino escrito a mano — P0, LA MÁS ALTA
 
