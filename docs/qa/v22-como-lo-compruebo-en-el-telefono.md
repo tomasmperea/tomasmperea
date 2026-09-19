@@ -38,11 +38,11 @@ con un botón **Ver qué agrego**.
 
 9. Tocá **Ver qué agrego**.
 
-**Anda si:** te muestra la lista de lo que suma, agrupada, y podés aceptarla.
+**Anda si:** te muestra la lista de lo que suma, agrupada, con el motivo de cada cosa. Al aceptarla, la
+lista suma ítems de verano.
 
-**Anda si:** hay un aviso ofreciéndote lo que cambió, y al aceptarlo la lista suma ítems de verano.
-
-**Falla si:** no aparece ningún cartel al guardar, o la lista queda exactamente igual que en septiembre.
+**Falla si:** no aparece ningún cartel al guardar, o el cartel no se puede tocar, o al aceptar la propuesta
+la lista queda exactamente igual que en septiembre.
 
 ---
 
@@ -62,7 +62,12 @@ con un botón **Ver qué agrego**.
 
 **Se probó:** en Chromium de escritorio, con Playwright, tocando los botones reales de la pantalla —abrir la
 hoja del viaje, cambiar la fecha, tocar Guardar, y tocar el cartel hasta llegar a "Ver qué agrego"—. El arnés es `app/pruebas/val63-cambia-el-viaje.js` y su
-control negativo, que saca el cable, da 4 fallas.
+control negativo, que desactiva el disparador, hace fallar el arnés.
+
+(Acá decía "da 4 fallas". Eran 8: el número había quedado de una versión anterior del arnés, antes de que se
+le sumaran dos aserciones. Es la tercera vez esta semana que una cifra escrita a mano en prosa queda vieja,
+así que se saca en vez de corregirse — el arnés dice cuántas son cada vez que corre, y la prosa no tiene por
+qué repetirlo.)
 
 **No se probó:** en tu teléfono. Es lo único que este proyecto llama "verificado", y es lo que te estoy
 pidiendo con esta prueba. La tabla de `CLAUDE.md` dice exactamente qué no cubre el sustituto que usé: el
