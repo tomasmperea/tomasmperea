@@ -355,7 +355,7 @@ llevan a ningún lado. "Falta el vuelo de vuelta" te informa y te deja solo.
 
 ## Lo que la iteración 3 dejó abierto
 
-### VAL-57 · Que la confirmación del correo entre sin tipear — P0, PRIMERA DE LA PRÓXIMA
+### VAL-57 · Que la confirmación del correo entre sin tipear — P0, CORRIDA A LA 5 (ver abajo)
 
 Como viajero quiero cargar una confirmación que llegó por correo sin PDF adjunto, sin
 tipear los datos a mano.
@@ -524,8 +524,9 @@ Tres salidas posibles, y conviene elegir UNA con él antes de construir:
 2. **Se convierte en una nota de verdad** dentro del viaje, visible en el itinerario.
 3. **Es entrada del motor**: lo que se escribe ahí alimenta las sugerencias y los avisos.
 
-La 3 es la más valiosa y la que mejor encaja con VAL-66, pero cambia el significado del campo y hay que
-decirlo en la interfaz.
+**DECIDIDO el 19/09 por el PM: la 3.** El campo pasa a ser entrada del motor. Entra en la iteración 4 con
+VAL-66, porque es del mismo tema. La interfaz tiene que decir para qué sirve escribir ahí — cambia qué
+significa el campo, y un campo que ahora alimenta las sugerencias no puede parecer el mismo cajón de antes.
 
 ### VAL-67 · Las categorías de la valija arrancan colapsadas — P2
 

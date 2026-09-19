@@ -104,11 +104,19 @@ mano. Ninguna cantidad de avisos reemplaza eso.
 - Dejar de pedir el modelo más caro para extraer datos de un texto limpio, y mandar los
   textos de un lote en una sola llamada.
 
-**NO entregado: VAL-57.** Pasa a la iteración 4 como primera prioridad. Decisión del PM
-el 14/09, con la recomendación en contra del PO anotada acá: el brief llama a VAL-57 "la
-prueba que define el éxito" de esta iteración, así que la 3 cierra **sin responder su
-propia pregunta**. Se cierra igual porque lo entregado son dos mejoras reales y probadas,
-y porque conviene ponerlas en el teléfono del PM antes de seguir construyendo encima.
+**NO entregado: VAL-57.** Decisión del PM el 14/09, con la recomendación en contra del PO
+anotada acá: el brief llama a VAL-57 "la prueba que define el éxito" de esta iteración,
+así que la 3 cierra **sin responder su propia pregunta**. Se cierra igual porque lo
+entregado son dos mejoras reales y probadas, y porque conviene ponerlas en el teléfono
+del PM antes de seguir construyendo encima.
+
+**Y se corrió una segunda vez, el 19/09.** Quedaba como primera prioridad de la 4, y al
+reordenar el roadmap pasó a la 5. Queda dicho que es el segundo diferimiento de la misma
+historia. La recomendación del PO esta vez no es de prioridad sino de oportunidad: **el
+buzón de reenvío de la 5 la reemplaza**. Reenviar un correo a una dirección es
+estrictamente mejor que abrir la app, copiar el texto y pegarlo; construir VAL-57 antes es
+construir algo que la iteración siguiente vuelve innecesario. Si el PM la quiere antes,
+entra — pero con esa consecuencia a la vista.
 
 **El riesgo que decidía la iteración ya se resolvió, y en contra:** el paso cero mostró
 que la librería de reconocimiento carga pero el diccionario del idioma no baja de ningún
@@ -123,7 +131,28 @@ el plan de contingencia.
 
 ---
 
-## Iteración 4 — Avisar
+## Iteración 4 — Que la valija cumpla lo que promete
+
+**Reordenada el 19/09 por el PM**, después de probar la app entera. Lo que era la 4 ("Avisar") pasa entera a
+la 5, sin recortes.
+
+**Objetivo:** que la valija inteligente sea inteligente. La prueba del PM encontró que la promesa central no
+se cumple en el caso más obvio: cambió un viaje de otoño a verano y la lista no se movió.
+
+**El argumento del orden:** mandar correos sobre una valija que sugiere mal amplifica el problema en vez de
+arreglarlo. Un aviso semanal que recomienda ropa de otoño para un viaje de verano es peor que no avisar.
+
+**Alcance:** VAL-63 y VAL-66 como corazón (la lista se entera de que cambió el viaje, y el motor sabe del
+destino), más VAL-65 (el campo Notas alimenta al motor), VAL-70 (ver una reserva sin editarla), VAL-68 con
+VAL-62 (el tope de documentos y el aviso de cupo) y los tres arreglos baratos VAL-64, VAL-67 y VAL-69.
+
+Especificada en `docs/briefs/la-valija-cumple.md`.
+
+**Pregunta que responde:** ¿la valija inteligente es inteligente?
+
+---
+
+## Iteración 5 — Avisar
 
 **Objetivo:** que el producto te busque en lugar de esperar a que lo abras. Es la iteración de retención, y
 la primera que necesita infraestructura propia.
@@ -151,7 +180,7 @@ correos, un cron diario para el evaluador de reglas, e Inbound Parse para el buz
 
 ---
 
-## Iteración 5 — Acompañar
+## Iteración 6 — Acompañar
 
 **Objetivo:** pasar de organizador a compañero de viaje.
 
