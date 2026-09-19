@@ -426,7 +426,7 @@ Nueve hallazgos suyos recorriendo la app entera. Las prioridades son las que él
 **Diagnóstico** lo verifiqué leyendo el código antes de escribir la historia, no es una interpretación de su
 reporte.
 
-### VAL-63 · La lista de la valija no se entera de que cambió el viaje — P0
+### VAL-63 · La lista de la valija no se entera de que cambió el viaje — P0 · ✅ TERMINADA el 19/09
 
 Como viajero quiero que si cambio las fechas o el destino de un viaje, la valija se actualice sola.
 
@@ -485,7 +485,12 @@ que escribo una afirmación sin comprobarla.
 **Queda declarado sin comprobar:** si un lector de pantalla real lee el cartel. Se prueba en un teléfono con
 el lector prendido y no está hecho.
 
-### VAL-74 · El tope de 8 ítems de la capa de IA — P1
+**TERMINADA.** El PM la probó en su teléfono con la v22 y el recorrido completo anduvo: guardar, esperar el
+cartel, tocarlo, llegar a "Ver qué agrego". Cinco rondas de auditoría (38 → 76 → 60 → 74 → 83) sobre lo que
+empezó siendo una línea de código; ninguna encontró un invento y las cinco encontraron algo propio, casi
+siempre lo mismo: una afirmación escrita sin comprobar.
+
+### VAL-74 · El tope de 8 ítems de la capa de IA — P0 (subida por el PM) · construida el 19/09
 
 **Pregunta textual del PM (19/09):** *"otro patrón que identifico es que siempre las sugerencias son 8 items
 máximo; esto es una suposición tuya también? no tiene sentido"*.
@@ -524,6 +529,24 @@ misma cantidad de ajustes. Un tope parejo recorta justo donde más falta hace.
 
 **Relación con VAL-66 y VAL-72:** las tres tocan la misma capa. Conviene hacerlas juntas y medir una sola
 vez.
+
+**CONSTRUIDA el 19/09.** Decisión del PM: *"no tiene por qué tener un tope real, en todo caso el máximo
+técnico posible"*.
+
+`MAX_AI_ITEMS` ya no existe. El techo sale de lo único que de verdad limita —la lista entera vive en UN
+documento de la base, que tope a 256 KiB— y se **calcula contra la lista real** en vez de escribirse a mano,
+por dos motivos: un número fijo envejece en cuanto un ítem guarde un campo más, y el cupo de verdad depende
+de cuánto ocupa ya la lista, que no es lo mismo en un viaje de tres días que en uno de tres semanas.
+
+Medido: **561 ítems** de cupo sobre una lista base de 28, **1.269** sobre una vacía. El 8 estaba setenta
+veces más abajo que el techo real.
+
+Y el texto que va al modelo dejó de pedirle "hasta 8": ahora le pide los que hagan falta, sin llenar por
+llenar. Esa mitad era la peor — el modelo se autocensuraba antes de contestar y nunca supimos cuánto tenía
+para decir.
+
+Lo fija `app/pruebas/val74-sin-tope-de-ocho.js`, que saca el motor del HTML publicado: 25 ítems propuestos
+entran los 25; con 2.000 propuestos quedan 589 y la lista sigue entrando en el documento de la base.
 
 ### VAL-73 · Un arnés inestable en `valija-bloque-b.js` — deuda de prueba, P3
 

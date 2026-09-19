@@ -191,8 +191,56 @@ var DEFAULT_DAYS = 3;
 var HISTORY_PROMOTE_AT  = 2;   // agregado a mano en 2 viajes del mismo tipo -> se sugiere
 var HISTORY_SUPPRESS_AT = 2;   // descartado en 2 viajes del mismo tipo -> deja de sugerirse
 
-/** Tope de ítems que puede agregar la capa de IA. */
-var MAX_AI_ITEMS = 8;
+/* ============================================================
+   CUÁNTOS ÍTEMS PUEDE AGREGAR LA CAPA DE IA
+
+   Acá había `var MAX_AI_ITEMS = 8;` y el comentario entero decía "Tope de
+   ítems que puede agregar la capa de IA". Ni una línea sobre por qué 8.
+
+   El PM lo notó usando la app —"siempre las sugerencias son 8 items máximo;
+   esto es una suposición tuya también? no tiene sentido"— y tenía razón dos
+   veces. Era una suposición mía, y además no tiene sentido que sea fijo: un
+   fin de semana en Córdoba y tres semanas por Escandinavia en invierno no
+   necesitan la misma cantidad de ajustes. Un tope parejo recorta justo donde
+   más falta hace.
+
+   Peor todavía, se aplicaba dos veces: el texto que se le manda al modelo le
+   pedía "agregá hasta 8", o sea que se autocensuraba antes de contestar, y
+   además el parser descartaba lo que pasara de 8. Nunca vimos cuánto tenía
+   para decir.
+
+   Decisión del PM el 19/09: sin tope propio, y si hay que poner alguno, el
+   máximo técnico. Así que el número sale de lo único que de verdad limita —
+   la lista entera vive en UN documento de la base, y ese documento tope a
+   256 KiB— y se calcula contra la lista real en vez de escribirse a mano.
+
+   Medido sobre una lista base de 28 ítems: cada ítem guardado pesa unos 431
+   caracteres, la base ocupa 12 KB, y entran unos 580 ítems más. El 8 estaba
+   setenta y dos veces más abajo que el techo real.
+
+   Se calcula y no se fija por dos motivos. Uno, un número escrito a mano
+   envejece: si mañana un ítem guarda un campo más, el tope queda mintiendo.
+   Dos, el cupo de verdad depende de cuánto ocupa YA la lista, que no es lo
+   mismo en un viaje de tres días que en uno de tres semanas. */
+
+/** Tope de un documento de la base, serializado. Contrato de `db`. */
+var TOPE_LISTA_BYTES = 262144;
+
+/** Margen para el envoltorio de la lista y para que un ítem largo no quede
+    justo en el borde. Mismo criterio que el de los adjuntos. */
+var MARGEN_LISTA_BYTES = 8192;
+
+/** Cuántos ítems más entran en ESTA lista antes de chocar con el tope de la
+    base. Nunca devuelve menos de 1: si la lista ya está en el límite, el
+    problema es otro y se ve en el guardado, no acá. */
+function cupoDeItemsIA(list) {
+  var actual = 0;
+  try { actual = JSON.stringify(list || {}).length; } catch (e) { actual = 0; }
+  var n = itemsArray(list || {}).length || 1;
+  var porItem = Math.max(200, Math.ceil(actual / n));
+  var libre = TOPE_LISTA_BYTES - MARGEN_LISTA_BYTES - actual;
+  return Math.max(1, Math.floor(libre / porItem));
+}
 
 /** Los tres estados de un ítem. */
 var ESTADO = { PENDIENTE:"pendiente", EMPACADO:"empacado", DESCARTADO:"descartado" };
@@ -1487,7 +1535,7 @@ function destinationPrompt(list) {
     "",
     "La lista base ya incluye: " + (yaHay || "nada"),
     "",
-    "Agregá hasta " + MAX_AI_ITEMS + " ítems que sean específicos de ESE destino en ESA época del año, o de",
+    "Agregá los ítems que hagan falta, sin llenar por llenar: los que sean específicos de ESE destino en ESA época del año, o de",
     "una combinación puntual de ESTE viaje que ninguna regla genérica podría anticipar: una escala larga,",
     "un check-in de madrugada, un alojamiento sin lavandería en un viaje largo, una actividad que pide",
     "equipo propio. También sirve el tipo de enchufe del país, la amplitud térmica de la zona en ese mes,",
@@ -1538,6 +1586,11 @@ function parseDestinationItems(raw, list) {
   if (typeof data === "string") { try { data = JSON.parse(data); } catch (e) { data = null; } }
   if (!data || typeof data !== "object") return { items:[], quitar:[], clima:"" };
 
+  /* El techo real: cuántos ítems más entran en ESTA lista antes de chocar con
+     el tope del documento de la base. No es un número nuestro — ver
+     `cupoDeItemsIA` y el comentario largo de arriba. */
+  var cupo = cupoDeItemsIA(list);
+
   var haveOriginal = indexItems(itemsArray(list));
   var haveCanonOriginal = {};
   Object.keys(haveOriginal).forEach(function (k) { haveCanonOriginal[canonicalKey(k)] = k; });
@@ -1553,7 +1606,7 @@ function parseDestinationItems(raw, list) {
   var items = [];
   if (Array.isArray(data.items)) {
     data.items.forEach(function (x) {
-      if (items.length >= MAX_AI_ITEMS) return;
+      if (items.length >= cupo) return;        // el techo de la base, no un número nuestro
       if (!x || typeof x !== "object") return;
       var nombre = String(x.nombre || x.label || "").trim();
       var motivo = String(x.motivo || x.reason || "").trim();
@@ -2055,7 +2108,8 @@ return {
   VERSION:VERSION, DEFAULT_DAYS:DEFAULT_DAYS,
   ESTADO:ESTADO, ESTADOS:ESTADOS, ORIGEN:ORIGEN, ORIGEN_PRECEDENCIA:ORIGEN_PRECEDENCIA,
   HISTORY_PROMOTE_AT:HISTORY_PROMOTE_AT, HISTORY_SUPPRESS_AT:HISTORY_SUPPRESS_AT,
-  MAX_AI_ITEMS:MAX_AI_ITEMS,
+  TOPE_LISTA_BYTES:TOPE_LISTA_BYTES,
+  cupoDeItemsIA:cupoDeItemsIA,
   CATEGORIES:CATEGORIES, TRIP_TYPES:TRIP_TYPES, BASE_RULES:BASE_RULES, FACTS:FACTS,
   AR_IATA:AR_IATA, AR_HINTS:AR_HINTS, FOREIGN_HINTS:FOREIGN_HINTS, TYPE_HINTS:TYPE_HINTS,
   SYNONYM_GROUPS:SYNONYM_GROUPS, CRITICAL_CLAVES:CRITICAL_CLAVES,
