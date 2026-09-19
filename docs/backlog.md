@@ -614,6 +614,71 @@ entrega que ya tiene su propio alcance. El criterio lo confirmó la auditoría.
 - Se corre varias veces seguidas antes de darlo por arreglado: una corrida verde no distingue un arnés
   estable de uno con suerte.
 
+### VAL-75 · Los ítems del destino viejo se quedan, y encima mienten sobre su origen — P0
+
+**Reporte del PM (19/09), con captura.** Cambió el viaje de Noruega a Argentina. La valija sugirió cosas
+nuevas —o sea que VAL-63 funcionó— pero *"no actualiza los que ya hizo"*.
+
+En la captura, la cabecera dice **ARGENTINA · MONTAÑA**, y abajo:
+
+| Ítem | Chip | Motivo |
+|---|---|---|
+| Pantalón impermeable | **por Argentina** | *"En **Noruega** la lluvia es frecuente en septiembre…"* |
+| Capas intermedias de polar | **por Argentina** | *"Fin de septiembre en la montaña **noruega** es frío…"* |
+| Buff o cuello | **por Argentina** | *"El viento de montaña en **Noruega**…"* |
+
+**Son dos defectos distintos y el segundo es peor.**
+
+#### A · Nada saca los ítems del destino anterior
+
+`planListUpdate` sólo SUMA. Cuando el destino cambia, los ítems que la capa de IA había agregado para el
+destino viejo se quedan en la lista, con su motivo intacto. Verificado: no hay ningún camino que los revise
+ni los proponga para sacar.
+
+Esto no contradice la regla de "proponer y no pisar" que el PM confirmó el 19/09. Esa regla protege **lo que
+la persona marcó o agregó**; un ítem que sugirió la app para un destino que ya no existe no lo eligió nadie.
+Lo que corresponde no es borrarlo en silencio: es **proponer sacarlo**, con el mismo mecanismo que ya existe
+para las propuestas de quitar (VAL-43).
+
+#### B · El chip le pone al ítem viejo el destino NUEVO
+
+`app/valija.html:3657`:
+
+```js
+if(it.origen === "destino") return {cls:"chip soon", tx:`por ${trip.destination || "el destino"}`};
+```
+
+El chip no dice de dónde salió el ítem: dice **cuál es el destino del viaje AHORA**. Así que en el momento en
+que el PM cambió el destino, tres ítems razonados para Noruega pasaron a declarar *"por Argentina"* sin que
+nadie los volviera a mirar.
+
+**Eso es una causa inventada, que es lo que este proyecto tiene prohibido por escrito.** Y es peor que
+dejarlos: un ítem viejo con su motivo de Noruega es una lista desactualizada, que se nota. Un ítem viejo con
+un cartel que dice "por Argentina" es la app afirmando algo falso con cara de dato.
+
+**La causa de fondo: el ítem no guarda de qué destino salió.** `makeItem` guarda clave, nombre, categoría,
+cantidad, motivo, origen, regla, orden y fechas — ningún campo dice para qué destino se razonó. Sin ese dato
+el chip no tiene con qué ser honesto, y (A) tampoco puede saber cuáles revisar.
+
+**Entonces el arreglo empieza por ahí:**
+
+- El ítem guarda el destino con el que se lo generó. Es un campo, y la medición de bytes ya lo cuenta sola
+  (ver VAL-74: por eso se dejó de enumerar campos a mano).
+- El chip dice ESE destino, no el actual. Si el viaje cambió, el ítem dice "por Noruega" aunque el viaje
+  ahora sea Argentina — que es la verdad y además hace visible el problema (A).
+- Al cambiar el destino, los ítems del destino anterior se proponen para sacar, con el mecanismo de VAL-43.
+  No se borran solos.
+- **El caso que define el éxito es el del PM:** Noruega → Argentina, y que ningún ítem diga "por Argentina"
+  con un motivo que habla de Noruega.
+
+**Relación con VAL-63:** es su otra mitad. VAL-63 hizo que la lista se entere de que cambió el viaje y sume
+lo que falta; esto es que también se entere de lo que sobra. Y se nota más ahora justamente porque VAL-63
+anda: antes no se sumaba nada, así que tampoco se veía lo que quedaba viejo.
+
+**Relación con VAL-72:** la misma pregunta de fondo —cuál es el destino de este viaje— vista desde otro
+lado. Conviene resolver VAL-72 primero: si el destino sale de las reservas, "el destino con el que se generó
+el ítem" ya no es un campo de texto suelto.
+
 ### VAL-72 · Las reservas mandan sobre el destino escrito a mano — P0, LA MÁS ALTA
 
 Como viajero quiero que si cargué vuelos, traslados o alojamientos, la valija use ESOS destinos y no el que
