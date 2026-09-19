@@ -1724,7 +1724,15 @@ function parseDestinationItems(raw, list) {
       if (peso > libres) return;
       libres -= peso;
       have[clave] = true; haveCanon[canon] = clave;
-      items.push({ clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad, motivo:motivo });
+      /* Se empuja EL MISMO objeto que se midió. `enrichWithDestination` se lo
+         da a `makeItem` tal cual, sin rearmar un literal aparte.
+
+         Quedaban DOS enumeraciones de campos —la de acá, que mide, y la de
+         allá, que arma— y coincidían de casualidad. El candado del arnés
+         agarra la divergencia cuando alguien corre el arnés; esto la hace
+         imposible. Lo señaló la auditoría después de confirmar que el candado
+         funciona: que una red atrape la caída no es lo mismo que no caerse. */
+      items.push(campos);
     });
   }
 
@@ -1796,11 +1804,10 @@ function enrichWithDestination(list, ask, opts) {
       }
       var items = Object.assign({}, list.items);
       parsed.items.forEach(function (x, i) {
-        items[x.clave] = makeItem({
-          clave:x.clave, nombre:x.nombre, categoria:x.categoria, cantidad:x.cantidad,
-          motivo:x.motivo, origen:ORIGEN.DESTINO, regla:"destino",
-          orden:orderOf(x.categoria, 800 + i)
-        }, at);
+        /* `x` ya trae todos los campos, y son los MISMOS que se midieron en
+           `parseDestinationItems`. No se rearma nada: si se rearmara, las dos
+           listas podrían separarse, que es el error que costó cuatro rondas. */
+        items[x.clave] = makeItem(x, at);
       });
       parsed.quitar.forEach(function (q) {
         var actual = items[q.clave];
