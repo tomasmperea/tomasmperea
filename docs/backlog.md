@@ -765,18 +765,42 @@ Y la sugerencia de tipo mezcla las dos fuentes en una bolsa de palabras, que es 
 "se guía por los vuelos" al principio y por el destino escrito después: no son dos criterios, es el mismo
 texto con distinto peso accidental.
 
-**La regla que pidió, y es la correcta:**
+**La regla que pidió:**
 
 1. **Si hay reservas en firme que indiquen destino** —vuelos, traslados, alojamientos— **esas mandan.** Un
    viaje multidestino tiene varios, y todos cuentan: no se elige uno.
 2. **Si no hay ninguna**, el destino principal del viaje alimenta el motor, como hoy.
 3. El destino escrito a mano nunca contradice a una reserva; a lo sumo la complementa.
 
+**La regla que se entregó, que es la misma con un recorte, y el recorte va acá arriba y no escondido abajo.**
+Dos rondas de auditoría mostraron que "reserva en firme que indique destino" no se puede decidir para todos
+los tipos de reserva. Lo que se puede determinar es esto:
+
+- **Un vuelo sí manda.** Su destino es un código IATA y el origen del primer vuelo también, así que se
+  comparan entre sí: de un vuelo se puede afirmar que no es el punto de partida.
+- **Una dirección no alcanza para mandar** —alojamiento, traslado, auto—. Es texto libre y no hay nada
+  guardado contra qué compararla. "Hotel Ezeiza Este, Buenos Aires" la noche antes de salir se escribe igual
+  que un hotel al llegar, y las fechas tampoco los distinguen. Van al modelo **enteras, con sus fechas y
+  etiquetadas como pista**, para que decida con el dato completo; lo que no hacen es desplazar lo escrito.
+- Por eso el punto 3 de arriba, tal como está redactado, **no se cumple de forma incondicional** y se deja
+  escrito así en vez de darlo por bueno.
+
+Resolver esto de verdad —traducir IATA a ciudad y comparar ciudades— es **VAL-66**.
+
+**Criterios de aceptación:**
+
 - El resumen que va al modelo dice explícitamente de dónde salió cada destino y cuál tiene precedencia.
 - Un viaje multidestino manda la lista de destinos, no uno solo.
 - La sugerencia de tipo de viaje usa la misma jerarquía que el resto del motor, no una bolsa de palabras.
+  **Con una salvedad que esta historia NO resuelve:** el clasificador local busca palabras completas y un
+  código IATA de tres letras no puede ser ninguna, así que un vuelo sin título no clasifica. Cuando pasa, la
+  pantalla lo dice. Es trabajo de VAL-66, y está detallado más abajo.
 - **El caso que define el éxito:** un viaje "Europa" con vuelos a Madrid, París y Roma tiene que sugerir para
   esas tres ciudades, no para "Europa".
+- **Y el caso que define que no se rompió nada:** un viaje a Bariloche con el destino bien escrito y una sola
+  reserva en el punto de partida —el traslado al aeropuerto, el hotel de la noche anterior— tiene que seguir
+  sugiriendo para Bariloche. Este criterio no estaba en la historia original: lo agregaron las dos auditorías
+  que voltearon las dos primeras versiones de la entrega.
 
 **Y una pregunta de producto que salió al construir VAL-63:** el motor usa el NOMBRE del viaje como pista de
 destino. Medido: renombrar "Viaje" a "Noruega" agrega 5 ítems, aun con el destino cargado, porque
@@ -790,15 +814,20 @@ razonamiento sobre un dato equivocado es afinar el error.
 
 **Cómo quedó (v24):**
 
-- `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y la diferencia entre
-  ellos es la corrección más importante de esta historia:
-  - **En firme**, y desplazan al destino escrito: el `to` de un vuelo y el `address` de un alojamiento.
-    Aterrizar en un lugar es estar ahí; una cama reservada también.
-  - **Pista**, y NO lo desplazan: el `to` de un traslado y el `address` de un auto. El propio extractor de
-    la app dice que en un traslado `to` es "el lugar de llegada tal como está escrito", que tanto puede ser
-    el centro de Roma como el aeropuerto de donde salís. Se mandan igual —callarlas sería perder
-    información— pero presentadas como pista y con las dos lecturas a la vista.
-  - Si no hay nada en firme, manda el destino escrito a mano, como antes.
+- `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
+  decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
+  - **En firme**, y desplaza al destino escrito: el `to` de un vuelo, menos el del vuelo de vuelta. Es
+    código IATA contra código IATA, así que la comparación existe.
+  - **Pista**, y NO desplaza nada: toda dirección —alojamiento, traslado, auto—. Va al modelo entera, con
+    sus fechas, y con las dos lecturas dichas en el propio prompt.
+  - Si no hay ningún vuelo, manda el destino escrito a mano, como antes.
+
+  **Llegar a esto costó dos vetos, y los dos fueron el mismo error.** La primera versión metía todo en un
+  cajón y un traslado al Aeropuerto de Ezeiza desplazaba a un "Bariloche" bien escrito. La segunda le hizo
+  la pregunta del origen al traslado y al auto, y **no al alojamiento, que estaba en el cajón de al lado**:
+  el hotel junto al aeropuerto la noche antes de un vuelo temprano volvía a producir el mismo texto. Es la
+  trampa que `CLAUDE.md` ya tenía escrita —descartar una causa sin preguntar si vale para el caso vecino—
+  y la cometí dos veces seguidas sobre la misma función.
 - La línea que le llega al modelo nombra cada destino con su fuente, dice que las reservas son lo que
   manda, avisa cuando el viaje es multidestino y cierra con *"úsalo sólo como contexto, NUNCA por encima
   de lo de arriba"* sobre el campo escrito.
@@ -840,8 +869,17 @@ recibía `- Destino: Bariloche`, después recibía lo contrario. El traslado al 
 datos más comunes que hay, así que no era un caso de borde. De ahí salieron los dos cajones.
 
 **Dónde se probó:** `app/pruebas/val72-las-reservas-mandan.js`, que saca el motor del HTML publicado y no
-de `app/parts/`. Más las regresiones del motor. **No se probó en el teléfono del PM**, que es lo único que
-este proyecto llama verificado.
+de `app/parts/`, con los casos de las dos auditorías: reserva en el punto de partida (traslado y
+alojamiento), vuelo sin título, ida y vuelta de dos tramos, y vuelta a mitad de viaje. Más
+`app/pruebas/las-dos-copias.js`, nuevo, que compara función por función el motor de `parts/` con su copia
+embebida en el HTML. Más las regresiones. **No se probó en el teléfono del PM**, que es lo único que este
+proyecto llama verificado.
+
+**Una regresión de producto que esta entrega acepta a conciencia:** un viaje con un hotel en Madrid y
+"Europa" escrito a mano ya no declara Madrid como destino; lo manda como pista. Se pierde una afirmación
+que a veces era correcta, a cambio de no volver a producir la que era catastrófica —decirle al modelo que
+ignore el destino escrito porque hay un hotel en el punto de partida—. El modelo sigue viendo Madrid con
+sus fechas. Cuando VAL-66 traduzca IATA a ciudad, esto se puede volver a apretar con datos.
 
 **Lo que esta historia NO resuelve, y es VAL-66:** que la sugerencia para MAD, CDG y FCO sea *buena*. Lo que
 cambió es cuál es el destino sobre el que el motor razona, no qué tan bien razona.

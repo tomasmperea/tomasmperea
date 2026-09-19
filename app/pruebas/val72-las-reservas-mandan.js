@@ -68,7 +68,7 @@ const solo = pe.buildPackingList({ trip:EUROPA, items:[] });
 const lineaSola = pe.destinationPrompt(solo).split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaSola.slice(0, 120));
 ok(/Europa/.test(lineaSola), "usa lo que la persona escribió");
-ok(/no hay ningún vuelo ni alojamiento/i.test(lineaSola), "y le dice al modelo que nadie lo confirmó");
+ok(/no hay ningún vuelo cargado/i.test(lineaSola), "y le dice al modelo que nadie lo confirmó");
 
 console.log("\n· las otras reservas también aportan, pero no todas mandan igual");
 /* Esta prueba decía antes que traslado y auto aportaban DESTINO. Lo decía
@@ -82,15 +82,14 @@ const OTRAS = [
 const d2 = pe.destinosDelViaje({ id:"t2", destination:"Europa" }, OTRAS);
 info("destinos: " + JSON.stringify(d2.lugares.map(x=>x.fuente)) +
      " · pistas: " + JSON.stringify(d2.pistas.map(x=>x.fuente)));
-ok(d2.deReservas, "un viaje sin vuelos pero con alojamiento tiene destino de reserva igual");
-ok(d2.lugares.some(l=>l.fuente === "alojamiento"), "el alojamiento aporta su dirección, y manda");
+ok(!d2.deReservas, "sin vuelos, ninguna dirección se declara destino en firme");
+ok(d2.pistas.some(l=>l.fuente === "alojamiento"), "el alojamiento aporta su dirección, como pista");
 ok(d2.pistas.some(l=>l.fuente === "traslado"), "el traslado aporta su «hasta», como pista");
 ok(d2.pistas.some(l=>l.fuente === "auto"), "y el auto su lugar de retiro, también como pista");
-ok(!d2.lugares.some(l=>l.fuente === "traslado" || l.fuente === "auto"),
-   "ninguno de los dos entra al cajón de los que mandan");
+ok(d2.pistas.length === 3, `las tres viajan al modelo: ninguna se calla (${d2.pistas.length})`);
 
 console.log("\n· la dirección se manda entera: no se le adivina la ciudad");
-ok(d2.lugares.some(l => l.lugar === "Calle Atocha 123, Madrid"),
+ok(d2.pistas.some(l => l.lugar === "Calle Atocha 123, Madrid"),
    "la dirección va tal cual, sin recortarle «Madrid» con una heurística");
 
 console.log("\n· el TIPO de viaje también: un vuelo le gana a una palabra tipeada");
@@ -161,16 +160,37 @@ info(lineaBari.slice(0, 200));
 ok(!/Ezeiza.*lo que manda|manda.*Ezeiza/i.test(lineaBari), "la línea NO dice que Ezeiza mande");
 ok(!/NUNCA por encima/.test(lineaBari), "y NO le dice al modelo que ignore Bariloche");
 ok(/Ezeiza/.test(lineaBari), "pero el traslado se manda igual: callarlo sería perder información");
-ok(/no lo tomes como destino/i.test(lineaBari), "presentado como pista, con las dos lecturas a la vista");
+ok(/antes de tomarla como destino/i.test(lineaBari), "presentado como pista, con las dos lecturas a la vista");
 
-console.log("\n· pero un ALOJAMIENTO sí manda: una cama reservada es estar ahí");
-/* El control del hallazgo 1: si «no manda» se hubiera aplicado a todo lo que
-   no es vuelo, el caso de Europa con sólo hotel dejaría de funcionar. */
-const SOLO_HOTEL = [{ type:"stay", address:"Calle Atocha 123, Madrid", start:"2027-04-01" }];
-const dh = pe.destinosDelViaje(EUROPA, SOLO_HOTEL);
-ok(dh.deReservas, "un viaje sin vuelos pero con alojamiento tiene destino en firme");
-ok(dh.lugares.some(l => l.fuente === "alojamiento"), "y sale del alojamiento");
-ok(!dh.lugares.some(l => /europa/i.test(l.lugar)), "«Europa» ya no compite con él");
+console.log("\n· HALLAZGO 1, SEGUNDA RONDA · el alojamiento en el ORIGEN, que es el caso espejo");
+/* La segunda ronda de auditoría volteó el arreglo de la primera: yo le había
+   preguntado «¿puede estar en el punto de partida?» al traslado y al auto, y
+   NO al alojamiento, que estaba en el cajón de al lado. El hotel junto al
+   aeropuerto la noche antes de un vuelo temprano es un patrón común, y hacía
+   que el modelo recibiera «Buenos Aires manda, Bariloche NUNCA por encima».
+
+   La regla que sí se sostiene: sólo un vuelo se puede comparar contra el
+   punto de partida, porque los dos son códigos IATA. Una dirección es texto
+   libre y no hay contra qué compararla — ni con fechas, porque una noche
+   antes de salir y una noche al llegar se escriben igual. */
+const HOTEL_EN_ORIGEN = [{ type:"stay", address:"Hotel Ezeiza Este, Buenos Aires", start:"2027-06-30" }];
+const dho = pe.destinosDelViaje(BARI, HOTEL_EN_ORIGEN);
+info("deReservas: " + dho.deReservas + " · destino: " + dho.lugares.map(x=>x.lugar).join(", "));
+ok(!dho.deReservas, "un alojamiento solo NO declara destino en firme");
+ok(dho.lugares.some(l => l.lugar === "Bariloche"), "«Bariloche» sigue siendo el destino");
+const lineaHotel = pe.destinationPrompt(pe.buildPackingList({ trip:BARI, items:HOTEL_EN_ORIGEN }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+ok(!/NUNCA por encima/.test(lineaHotel), "y el modelo NO recibe la orden de ignorarlo");
+ok(/Hotel Ezeiza Este/.test(lineaHotel), "pero el hotel se manda igual, como pista");
+ok(/2027-06-30/.test(lineaHotel), "con su fecha, que es lo que le permite al modelo decidir");
+
+console.log("\n· y el control: un vuelo SÍ puede desplazar lo escrito");
+/* Sin esto, todo lo de arriba pasaría con una función que nunca declare nada
+   en firme. Tiene que seguir habiendo un camino que mande. */
+const dfv = pe.destinosDelViaje(BARI, [{ type:"flight", from:"EZE", to:"BRC", start:"2027-07-01" }]);
+ok(dfv.deReservas, "con un vuelo cargado sí hay destino en firme");
+ok(dfv.lugares.some(l => l.lugar === "BRC"), "y es el del vuelo");
+ok(!dfv.lugares.some(l => /bariloche/i.test(l.lugar)), "el escrito a mano ya no aparece como destino");
 
 console.log("\n· HALLAZGO 2 DE LA AUDITORÍA · un vuelo sin título no puede fingir que clasificó");
 /* El destino de un vuelo es IATA de tres letras y ninguna palabra de
