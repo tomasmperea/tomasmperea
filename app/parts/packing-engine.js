@@ -1120,21 +1120,48 @@ var TYPE_HINTS = [
  */
 function suggestTripType(trip, items, ctx) {
   trip = trip || {}; items = items || [];
-  var blob = ctx ? ctx.textBlob : norm([
-    trip.name, trip.destination, trip.notes,
-    items.map(function (i) { return [i.title, i.notes].filter(Boolean).join(" "); }).join(" ")
+
+  /* VAL-72 · LAS RESERVAS MANDAN, TAMBIÉN ACÁ.
+
+     Antes esto era UNA bolsa de palabras: el nombre del viaje, el destino
+     escrito a mano, las notas y los títulos de las reservas, todo junto y
+     pesando lo mismo. El PM lo vio desde afuera —"se guía por los vuelos al
+     principio pero después sugiere por el destino principal"— y no eran dos
+     criterios: era el mismo texto con distinto peso accidental.
+
+     Reproducido: un vuelo a Madrid más un destino escrito "Bariloche montaña"
+     daba `montana`, "por bariloche". Una palabra tipeada le ganaba a un vuelo
+     reservado.
+
+     Ahora se mira primero lo que está RESERVADO —títulos, notas y direcciones
+     de las reservas, más los destinos de `destinosDelViaje`— y sólo si de ahí
+     no sale ninguna pista se mira lo que la persona escribió. No es que lo
+     escrito no valga: vale cuando es lo único que hay, que es exactamente lo
+     que pidió el PM. */
+  var deReservas = norm([
+    items.map(function (i) { return [i.title, i.notes, i.address, i.to].filter(Boolean).join(" "); }).join(" "),
+    destinosDelViaje(trip, items).lugares.map(function (l) { return l.fuente === "escrito-a-mano" ? "" : l.lugar; }).join(" ")
   ].filter(Boolean).join(" "));
+
+  var escrito = norm([trip.name, trip.destination, trip.notes].filter(Boolean).join(" "));
 
   var days = ctx ? ctx.days : (daysBetweenInclusive(trip.startDate, trip.endDate) || DEFAULT_DAYS);
   var daysKnown = ctx ? ctx.daysKnown : daysBetweenInclusive(trip.startDate, trip.endDate) != null;
 
-  var scores = {}, hits = {};
-  TYPE_HINTS.forEach(function (h) {
-    var found = h.words.filter(function (w) { return blob.indexOf(w) >= 0; });
-    if (found.length) { scores[h.type] = found.length; hits[h.type] = found; }
-  });
+  function puntuar(texto) {
+    var sc = {}, hi = {};
+    if (texto) TYPE_HINTS.forEach(function (h) {
+      var found = h.words.filter(function (w) { return texto.indexOf(w) >= 0; });
+      if (found.length) { sc[h.type] = found.length; hi[h.type] = found; }
+    });
+    return { scores:sc, hits:hi, ranked:Object.keys(sc).sort(function (a, b) { return sc[b] - sc[a]; }) };
+  }
 
-  var ranked = Object.keys(scores).sort(function (a, b) { return scores[b] - scores[a]; });
+  var r = puntuar(deReservas);
+  var fuente = "lo que tenés reservado";
+  if (!r.ranked.length) { r = puntuar(escrito); fuente = "lo que escribiste del viaje"; }
+
+  var scores = r.scores, hits = r.hits, ranked = r.ranked;
 
   if (ranked.length) {
     var top = ranked[0];
@@ -1144,7 +1171,7 @@ function suggestTripType(trip, items, ctx) {
                reason:"El viaje mezcla " + TRIP_TYPE_LABEL[top].toLowerCase() + " y " + TRIP_TYPE_LABEL[ranked[1]].toLowerCase() + "." };
     }
     return { type:top, confidence:scores[top] >= 2 ? "alta" : "media",
-             reason:"Por \"" + hits[top][0] + "\" en el viaje." };
+             reason:"Por \"" + hits[top][0] + "\", en " + fuente + "." };
   }
   if (!daysKnown) return { type:"mixto", confidence:"baja", reason:"Sin fechas ni pistas del destino, armo una lista mixta." };
   if (days <= 4) return { type:"ciudad", confidence:"baja", reason:"Viaje corto de " + dias(days) + ", sin otras pistas." };
@@ -1357,6 +1384,11 @@ function buildPackingList(input) {
     creadaEn:at, generadaEn:at, actualizadaEn:at,
     base:{
       destino:ctx.destination, desde:ctx.startDate, hasta:ctx.endDate,
+      /* VAL-72: los destinos de verdad, con de dónde salió cada uno y si
+         vienen de reservas o del campo que la persona escribió. `destino`
+         queda arriba por compatibilidad con listas ya guardadas, pero NO es
+         el que manda: lo que manda es esto. */
+      destinos:destinosDelViaje(trip, items),
       dias:ctx.days, noches:ctx.nights, diasConocidos:ctx.daysKnown,
       internacional:ctx.international, internacionalConocido:ctx.internationalKnown,
       internacionalFuente:ctx.internationalSource, internacionalDetalle:ctx.internationalDetail,
@@ -1515,6 +1547,87 @@ function hoursBetween(a, b) {
  * @param {Array} items reservas completas del viaje
  * @returns {Array<Object>} resumen, listo para ir en el prompt
  */
+/* ============================================================
+   VAL-72 · DE DÓNDE SALE EL DESTINO DE UN VIAJE
+
+   El PM lo reportó así: "el tipo de valija inteligente que pregunta al
+   principio se guía por los vuelos cargados pero luego termina sugiriendo en
+   función del destino principal que está en el viaje (...) si hay vuelos o
+   cualquier reserva en firme que indique destino, eso prima por sobre
+   cualquier otra cosa. el ejemplo más claro es un viaje multidestino a
+   Europa".
+
+   Y el diagnóstico era peor que "usa uno u otro": **usaba LOS DOS y no había
+   ninguna regla de cuál gana.** Al modelo le llegaba un campo `destino` que
+   decía "Europa" —lo que la persona escribió a mano— y más abajo, entre las
+   reservas, tres vuelos que decían MAD, CDG y FCO. Nada le decía cuál manda,
+   así que el de arriba, que es el más pobre, pesaba como si fuera la verdad.
+
+   Además el motor sólo miraba los vuelos. El alojamiento y el auto guardan
+   una dirección ("Calle Atocha 123, Madrid"), y el traslado guarda un "hasta",
+   y nada de eso llegaba nunca.
+
+   LA JERARQUÍA, de más firme a menos:
+
+     1. vuelo      — el `to` es un código de aeropuerto, no hay ambigüedad;
+     2. traslado   — el "hasta" lo escribió la persona sobre algo reservado;
+     3. alojamiento— la dirección dice dónde se duerme, que es dónde se está;
+     4. auto       — dónde se retira, que suele ser el mismo lugar;
+     5. el campo del viaje — lo último, y sólo si no hay ninguna reserva.
+
+   NO SE ADIVINA LA CIUDAD DE UNA DIRECCIÓN. "Calle Atocha 123, Madrid" se
+   manda entera y el modelo la interpreta, que para eso está. Sacarle "Madrid"
+   con una heurística sería inventar un dato, y este proyecto ya pagó por eso.
+
+   Un viaje multidestino devuelve VARIOS. No se elige uno: Madrid, París y
+   Roma son los tres el destino de ese viaje.
+   ============================================================ */
+
+/** Los destinos del viaje, en orden de firmeza, con de dónde salió cada uno.
+    @returns {{lugares:Array, deReservas:boolean}} */
+function destinosDelViaje(trip, items) {
+  trip = trip || {}; items = (items || []).filter(Boolean);
+  var lugares = [];
+  var vistos = {};
+
+  function sumar(texto, fuente, cuando) {
+    var t = String(texto == null ? "" : texto).trim();
+    if (!t) return;
+    var k = norm(t);
+    if (vistos[k]) return;
+    vistos[k] = true;
+    lugares.push({ lugar:t, fuente:fuente, desde:cuando || "" });
+  }
+
+  var porFecha = function (a, b) { return String(a.start || "").localeCompare(String(b.start || "")); };
+
+  // El vuelo de vuelta aterriza en casa, y casa no es un destino: si entra a
+  // la lista, el prompt le pide al modelo que la valija sirva TAMBIÉN para
+  // Buenos Aires. No es una suposición sobre el viajero — si el último vuelo
+  // llega adonde salió el primero, ese lugar es el punto de partida, y eso
+  // está escrito en los datos, no inferido.
+  var vuelos = items.filter(function (i) { return i.type === "flight" && i.to; }).sort(porFecha);
+  var casa = vuelos.length > 1 ? norm(vuelos[0].from) : "";
+  vuelos.forEach(function (f, k) {
+    if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
+    sumar(String(f.to).toUpperCase(), "vuelo", f.start);
+  });
+
+  items.filter(function (i) { return i.type === "transfer" && i.to; }).sort(porFecha)
+    .forEach(function (t) { sumar(t.to, "traslado", t.start); });
+
+  items.filter(function (i) { return i.type === "stay" && i.address; }).sort(porFecha)
+    .forEach(function (s) { sumar(s.address, "alojamiento", s.start); });
+
+  items.filter(function (i) { return i.type === "car" && i.address; }).sort(porFecha)
+    .forEach(function (c) { sumar(c.address, "auto", c.start); });
+
+  var deReservas = lugares.length > 0;
+  if (!deReservas) sumar(trip.destination, "escrito-a-mano", trip.startDate);
+
+  return { lugares:lugares, deReservas:deReservas };
+}
+
 function summarizeReservationsForAI(trip, items) {
   items = (items || []).filter(Boolean);
   var out = [];
@@ -1585,6 +1698,33 @@ function summarizeReservationsForAI(trip, items) {
  * @param {Object} list lista base ya generada
  * @returns {string}
  */
+/** La línea de destino del prompt, con la jerarquía explícita.
+
+    Antes decía `- Destino: Europa` y más abajo aparecían, entre las reservas,
+    tres vuelos a MAD, CDG y FCO. Al modelo le llegaban los dos datos y NADA le
+    decía cuál manda, así que el de arriba —el que la persona escribió a mano,
+    el más pobre— pesaba como si fuera la verdad. Es lo que el PM reportó el
+    19/09 con el caso de un viaje multidestino a Europa.
+
+    Ahora la jerarquía se dice con todas las letras, y un viaje multidestino
+    manda la lista entera en vez de un solo lugar. */
+function lineaDestinos(b) {
+  var d = (b && b.destinos) || null;
+  if (!d || !d.lugares || !d.lugares.length) {
+    return "- Destino: " + ((b && b.destino) || "sin especificar");
+  }
+  var partes = d.lugares.map(function (l) { return l.lugar + " (" + l.fuente + ")"; });
+  if (!d.deReservas) {
+    return "- Destino: " + partes.join(", ") + ". Lo escribió la persona al crear el viaje; no hay reservas cargadas que lo confirmen.";
+  }
+  var extra = (b.destino && norm(b.destino) !== norm(d.lugares[0].lugar))
+    ? " La persona además escribió \"" + b.destino + "\" como destino del viaje: úsalo sólo como contexto, NUNCA por encima de lo de arriba."
+    : "";
+  return "- Destinos, sacados de las reservas ya cargadas, que son lo que manda: " + partes.join(" · ") +
+         (d.lugares.length > 1 ? ". Es un viaje multidestino: lo que sugieras tiene que servir para TODOS esos lugares, no para uno." : ".") +
+         extra;
+}
+
 function destinationPrompt(list) {
   var b = (list && list.base) || {};
   var yaHay = itemsArray(list).map(function (i) { return i.nombre; }).join(", ");
@@ -1610,7 +1750,7 @@ function destinationPrompt(list) {
     "Sos parte de una app de viajes y ajustás una lista de equipaje al destino. Devolvés SOLO JSON.",
     "",
     "Viaje:",
-    "- Destino: " + (b.destino || "sin especificar"),
+    lineaDestinos(b),
     "- Fechas: " + (b.desde ? b.desde + " a " + (b.hasta || "sin regreso") : "sin fechas cargadas"),
     "- Duración: " + b.dias + " días" + (b.diasConocidos ? "" : " (estimados, el viaje no tiene fechas)"),
     "- Tipo de viaje: " + tipo,
@@ -2246,6 +2386,7 @@ return {
   destinationPrompt:destinationPrompt,
   parseDestinationItems:parseDestinationItems,
   summarizeReservationsForAI:summarizeReservationsForAI,
+  destinosDelViaje:destinosDelViaje,
   sanitizeNotesForAI:sanitizeNotesForAI,
   clearRemovalSuggestion:clearRemovalSuggestion,
 

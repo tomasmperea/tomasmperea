@@ -738,7 +738,7 @@ Y es el caso más común de los viajes reales: nadie se va diez días a un solo 
 
 **Sale junto con VAL-75 y VAL-76**, por decisión del PM.
 
-### VAL-72 · Las reservas mandan sobre el destino escrito a mano — P0, LA MÁS ALTA
+### VAL-72 · Las reservas mandan sobre el destino escrito a mano — ✅ entregada en v24
 
 Como viajero quiero que si cargué vuelos, traslados o alojamientos, la valija use ESOS destinos y no el que
 escribí al crear el viaje.
@@ -787,6 +787,35 @@ a Oslo no puede valer lo mismo que una palabra en el título del viaje.
 **Relación con VAL-66:** son la misma pieza. VAL-66 es que el motor razone mejor sobre el destino; VAL-72 es
 que razone sobre el destino CORRECTO. No tiene sentido hacer la primera sin la segunda — afinar el
 razonamiento sobre un dato equivocado es afinar el error.
+
+**Cómo quedó (v24):**
+
+- `destinosDelViaje(trip, items)` arma la lista de destinos con una jerarquía explícita: vuelo (`to`),
+  traslado (`to`), alojamiento (`address`), auto (`address`) y, **sólo si no hay ninguna de esas**, el
+  destino escrito a mano. Devuelve además `deReservas`, que es lo que el resto del motor consulta para
+  saber si hay algo en firme.
+- La línea que le llega al modelo nombra cada destino con su fuente, dice que las reservas son lo que
+  manda, avisa cuando el viaje es multidestino y cierra con *"úsalo sólo como contexto, NUNCA por encima
+  de lo de arriba"* sobre el campo escrito.
+- `suggestTripType` deja de ser una bolsa de palabras: puntúa **primero** lo reservado y sólo cae en lo
+  escrito si no hay reservas. El motivo dice de dónde salió (*"en lo que tenés reservado"* /
+  *"en lo que escribiste del viaje"*), así que la precedencia es visible en pantalla y no sólo en el código.
+- **No se le adivina la ciudad a una dirección.** "Calle Atocha 123, Madrid" va entera al modelo. Recortar
+  la ciudad con una heurística sería exactamente el tipo de suposición que esta historia viene a sacar.
+
+**Un caso que el PM no reportó y salió de releer el código antes de entregar:** su viaje de prueba era de
+ida sola. Con el vuelo de vuelta cargado, `EZE` entraba a la lista de destinos y el prompt le pedía al
+modelo que la valija sirviera también para Buenos Aires. Se descarta el destino del **último** vuelo cuando
+coincide con el origen del **primero** — no es una suposición sobre el viajero, está escrito en los datos.
+El arnés tiene el caso y su control negativo: un viaje que termina en Lisboa sin volver a EZE conserva
+Lisboa, así que la prueba no pasaría con una función que descarte siempre el último vuelo.
+
+**Dónde se probó:** `app/pruebas/val72-las-reservas-mandan.js`, que saca el motor del HTML publicado y no
+de `app/parts/`. Más las regresiones del motor. **No se probó en el teléfono del PM**, que es lo único que
+este proyecto llama verificado.
+
+**Lo que esta historia NO resuelve, y es VAL-66:** que la sugerencia para MAD, CDG y FCO sea *buena*. Lo que
+cambió es cuál es el destino sobre el que el motor razona, no qué tan bien razona.
 
 ### VAL-66 · Que el motor sepa de verdad del destino — P0
 
