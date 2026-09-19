@@ -293,29 +293,31 @@ function bytesSerializados(x) {
 
     Y el mensaje que iba a ver la persona decía "Tenés acceso de sólo lectura
     a esta valija", que además de inútil es falso. */
-function pesoGuardadoDeItem(clave, nombre, motivo, categoria, orden) {
-  /* Se mide EL ÍTEM QUE VA A GUARDARSE, armado por la misma `makeItem` que lo
-     arma de verdad, con los mismos valores que le pasa la capa de IA
-     (`origen:"destino"`, `regla:"destino"`, el `orden` real).
+/** Lo que pesa, guardado, el ítem que describen ESTOS campos.
 
-     La primera versión escribía a mano una forma "parecida" y el comentario
-     decía, con todas las letras, "se arma la forma final y se mide: no se
-     estima". No era cierto: ponía `regla:null` donde va `"destino"` y
-     `orden:0` donde va un número de hasta cuatro dígitos. La auditoría lo
-     midió: **8 bytes de menos por ítem, siempre para el mismo lado**, que con
-     838 ítems se comen el 82% del margen de seguridad en silencio. No cruzaba
-     el tope por una coincidencia aritmética —un ítem no baja de ~283 bytes,
-     así que no entran los ~1.024 que harían falta para agotarlo— y una
-     coincidencia no es un diseño.
+    Recibe el mismo objeto de campos que se le pasa a `makeItem` en el camino
+    real, y se lo pasa tal cual. No enumera campos, y ese es el punto.
 
-     La lección es la de siempre y van tres en esta historia: si el comentario
-     dice "se mide", que mida. Llamar a la función que arma el ítem cuesta lo
-     mismo que copiar sus campos a mano, y no puede quedar desincronizada. */
-  return bytesSerializados(makeItem({
-    clave: clave, nombre: nombre, categoria: categoria, cantidad: null,
-    motivo: motivo, origen: ORIGEN.DESTINO, regla: "destino",
-    orden: orden == null ? orderOf(categoria, 800) : orden
-  }, "2026-01-01T00:00:00.000Z")) + bytesUtf8(clave) + 4;   // la clave es además la key del objeto
+    ESTA FUNCIÓN SE ARREGLÓ TRES VECES, SIEMPRE POR LO MISMO. La primera
+    versión calculaba un cupo promediando el tamaño de la lista: la lista
+    terminaba 32% arriba del tope. La segunda armaba a mano una copia
+    "parecida" al ítem guardado, con el comentario diciendo "se arma la forma
+    final y se mide: no se estima" — y ponía `regla:null` donde va "destino"
+    y `orden:0` donde va un número: 8 bytes por ítem, el 82% del margen de
+    seguridad. La tercera llamaba a `makeItem` pero seguía clavando
+    `cantidad:null`, y con una cantidad de veinte dígitos la lista se pasaba
+    por 5.566 bytes.
+
+    Tres arreglos, tres campos, el mismo error: **enumerar a mano los campos
+    de otra función.** Cada vez que alguien agregue un campo al ítem, esta
+    lista queda vieja y nadie se entera hasta que algo no entra.
+
+    Así que deja de haber lista. Los campos vienen de quien los arma, se los
+    da a la misma `makeItem` que usa el camino real, y se mide el resultado.
+    Si mañana el ítem guarda un campo más, esto lo cuenta solo. */
+function pesoGuardadoDeItem(campos) {
+  return bytesSerializados(makeItem(campos, "2026-01-01T00:00:00.000Z"))
+       + bytesUtf8(campos.clave) + 4;   // la clave es además la key del objeto
 }
 
 /** Cuántos bytes quedan libres en ESTA lista. Puede dar negativo: una lista
@@ -1704,11 +1706,21 @@ function parseDestinationItems(raw, list) {
       var canon = canonicalKey(clave);
       if (have[clave] || haveCanon[canon]) return;     // VAL-45: ya está, literal o por sinónimo
       var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
-      var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0) ? Math.round(x.cantidad) : null;
+      /* La cantidad se acota a dos dígitos. No es por el tamaño —la medición
+         ya lo cubre— sino porque "99999999999999999999 medias" no es un dato:
+         es ruido que además ocupa lugar. Nadie empaca más de 99 de nada. */
+      var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0)
+        ? Math.min(99, Math.round(x.cantidad)) : null;
       /* Y se MIDE lo que va a pesar guardado, restándolo del presupuesto. El
          que no entra no entra, y los que vienen detrás tampoco: cortar acá es
          mejor que que la base rechace la lista entera después. */
-      var peso = pesoGuardadoDeItem(clave, nombre, motivo, categoria, orderOf(categoria, 800 + items.length));
+      /* Los MISMOS campos con los que `enrichWithDestination` va a llamar a
+         `makeItem` unas líneas más abajo. Si los dos se separan, la medición
+         miente — por eso van juntos y en el mismo orden. */
+      var campos = { clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad,
+                     motivo:motivo, origen:ORIGEN.DESTINO, regla:"destino",
+                     orden:orderOf(categoria, 800 + items.length) };
+      var peso = pesoGuardadoDeItem(campos);
       if (peso > libres) return;
       libres -= peso;
       have[clave] = true; haveCanon[canon] = clave;

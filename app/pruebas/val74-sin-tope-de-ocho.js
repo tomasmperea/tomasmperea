@@ -133,6 +133,47 @@ const VIAJE = { id:"t1", name:"Noruega", destination:"Noruega",
      versión anterior de `pesoGuardadoDeItem` escribía a mano una forma
      "parecida" a la guardada y se comía 8 bytes por ítem —el 82% del margen
      de seguridad con 838 ítems— sin cruzar el tope por pura aritmética. */
+  /* ─────────────────────────────────────────────────────────────
+     LO QUE SE MIDE TIENE QUE SER LO QUE SE GUARDA.
+
+     `pesoGuardadoDeItem` se arregló TRES veces, siempre por lo mismo:
+     enumeraba a mano los campos de otra función y se olvidaba de uno.
+     Primero `regla` y `orden` (8 bytes por ítem, el 82% del margen), después
+     `cantidad` (con veinte dígitos la lista se pasaba por 5.566 bytes).
+
+     Arreglar el cuarto campo no habría servido: el error es enumerar. Ahora
+     los campos vienen de quien los arma y van a la misma `makeItem`. Esta
+     prueba es el candado: compara lo que la medición predijo contra lo que
+     de verdad quedó guardado. Si alguien agrega un campo al ítem y la
+     medición no lo cuenta, esto falla acá y no en el teléfono de alguien.
+     ───────────────────────────────────────────────────────────── */
+  console.log("\n· lo que se mide es exactamente lo que se guarda");
+  const conCantidad = await pe.enrichWithDestination(lista, async () => ({
+    items: [{ nombre:"Medias de lana", motivo:"hace frío en Noruega", cantidad:7, categoria:"ropa" }]
+  }), {});
+  const claveNueva = Object.keys(conCantidad.items).find(k => !lista.items[k]);
+  const guardado = conCantidad.items[claveNueva];
+  const medido = pe.pesoGuardadoDeItem({
+    clave: guardado.clave, nombre: guardado.nombre, categoria: guardado.categoria,
+    cantidad: guardado.cantidad, motivo: guardado.motivo, origen: guardado.origen,
+    regla: guardado.regla, orden: guardado.orden
+  });
+  const real = pe.bytesSerializados(guardado) + pe.bytesUtf8(guardado.clave) + 4;
+  info(`predicho: ${medido} bytes · guardado de verdad: ${real} bytes`);
+  ok(medido === real,
+     "la medición coincide EXACTO con el ítem guardado: no quedó ningún campo sin contar");
+  ok(guardado.cantidad === 7, "y la cantidad que puso el modelo llegó tal cual (7)");
+
+  console.log("\n· una cantidad absurda se acota antes de guardarse");
+  const absurda = await pe.enrichWithDestination(lista, async () => ({
+    items: [{ nombre:"Pinzas para tender", motivo:"por si acaso", cantidad:99999999999999999999 }]
+  }), {});
+  const kAbs = Object.keys(absurda.items).find(k => !lista.items[k]);
+  info("el ítem: " + JSON.stringify(kAbs) + " · cantidad: " + (absurda.items[kAbs] || {}).cantidad);
+  ok(!!kAbs, "el ítem entró (si no entra, la prueba de abajo no prueba nada)");
+  ok((absurda.items[kAbs] || {}).cantidad === 99,
+     "se acota a 99: nadie empaca más de noventa y nueve de nada");
+
   console.log("\n· muchos ítems chicos: el margen de seguridad sigue siendo un margen");
   const enjambre = { items: Array.from({length:5000}, (_,k)=>({ nombre:"I"+k, motivo:"m"+k })) };
   const conEnjambre = await pe.enrichWithDestination(lista, async () => enjambre, {});
