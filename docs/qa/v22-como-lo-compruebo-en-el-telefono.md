@@ -64,10 +64,13 @@ la lista queda exactamente igual que en septiembre.
 hoja del viaje, cambiar la fecha, tocar Guardar, y tocar el cartel hasta llegar a "Ver qué agrego"—. El arnés es `app/pruebas/val63-cambia-el-viaje.js` y su
 control negativo, que desactiva el disparador, hace fallar el arnés.
 
-(Acá decía "da 4 fallas". Eran 8: el número había quedado de una versión anterior del arnés, antes de que se
-le sumaran dos aserciones. Es la tercera vez esta semana que una cifra escrita a mano en prosa queda vieja,
-así que se saca en vez de corregirse — el arnés dice cuántas son cada vez que corre, y la prosa no tiene por
-qué repetirlo.)
+(Acá decía "da 4 fallas". Eran 8: el número había quedado de una versión anterior del arnés, de antes de que
+se le sumaran aserciones nuevas. Es la tercera vez esta semana que una cifra escrita a mano en prosa queda
+vieja, así que se saca en vez de corregirse — el arnés dice cuántas son cada vez que corre, y la prosa no
+tiene por qué repetirlo.
+
+Y la primera versión de esta misma nota decía "dos aserciones", que tampoco pude confirmar al contarlas. Un
+número de más en la explicación de por qué sobraba un número.)
 
 **No se probó:** en tu teléfono. Es lo único que este proyecto llama "verificado", y es lo que te estoy
 pidiendo con esta prueba. La tabla de `CLAUDE.md` dice exactamente qué no cubre el sustituto que usé: el
