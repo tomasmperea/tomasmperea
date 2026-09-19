@@ -105,10 +105,35 @@ los pasos para comprobarlo.
 Una entrega está lista cuando cumple los criterios de aceptación del brief de la iteración, funciona en un
 teléfono, y funciona igual en tema claro y oscuro.
 
-**Y cuando pasó la auditoría.** Ninguna entrega se publica sin puntaje del rol `auditor`, y menos de 85
-sobre 100 no se publica. La rúbrica está en `docs/auditoria/rubrica.md` y cada auditoría queda escrita en
-`docs/auditoria/`. No hay excepción por urgencia: el arreglo urgente mal verificado ya costó tres
-iteraciones seguidas en el mismo bug.
+**Y cuando pasó la auditoría.** Ninguna entrega se publica sin puntaje del rol `auditor`. La rúbrica está
+en `docs/auditoria/rubrica.md` y cada auditoría queda escrita en `docs/auditoria/`. No hay excepción por
+urgencia: el arreglo urgente mal verificado ya costó tres iteraciones seguidas en el mismo bug.
+
+### PUBLICAR y TERMINAR no son lo mismo, y el puntaje que hace falta tampoco
+
+La regla decía "menos de 85 no se publica", y el 19/09 se topó con su propio callejón. VAL-63 sacó 76. Lo
+que le faltaba para 85 eran dos cosas: **confirmar que estaba publicada, y que el PM la probara en su
+teléfono.** Las dos exigen que esté publicada. La regla se pedía a sí misma algo imposible, y el auditor
+—que la aplica— fue el que señaló la salida.
+
+Entonces se separa lo que siempre fueron dos cosas distintas:
+
+| | Qué significa | Puntaje |
+|---|---|---|
+| **Candidato** | Sale al Artifact para que el PM lo pruebe. La brecha va declarada y hay un guion para cerrarla. | **70**, y sólo si lo único que falta es el entorno real |
+| **Terminado** | La historia se da por cumplida y se cierra la iteración. | **85**, sin excepción |
+
+**Lo que NO cambia, y es lo que la regla protegía:**
+
+- Un candidato con un defecto conocido, una causa sin determinar o una afirmación sin respaldo **no sale**.
+  El piso de 70 vale cuando la única dimensión floja es la 1, y porque está floja por definición: nada se
+  prueba en el teléfono antes de estar arriba.
+- **Terminado sigue exigiendo el teléfono.** Publicar no cierra nada. VAL-63 no está terminada hasta que
+  vuelva el resultado del PM, y eso se escribe en la entrega, no se da por hecho.
+- Si el auditor baja el puntaje por otra dimensión —causa raíz, honestidad, calidad interna—, **no hay piso
+  de 70 que valga**: eso se arregla antes de publicar, como siempre.
+
+La decisión de separarlo la tomó el PM el 19/09, con el callejón a la vista.
 
 ## La palabra "verificado"
 
