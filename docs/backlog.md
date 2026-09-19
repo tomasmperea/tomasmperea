@@ -545,8 +545,41 @@ Y el texto que va al modelo dejó de pedirle "hasta 8": ahora le pide los que ha
 llenar. Esa mitad era la peor — el modelo se autocensuraba antes de contestar y nunca supimos cuánto tenía
 para decir.
 
-Lo fija `app/pruebas/val74-sin-tope-de-ocho.js`, que saca el motor del HTML publicado: 25 ítems propuestos
-entran los 25; con 2.000 propuestos quedan 589 y la lista sigue entrando en el documento de la base.
+Lo fija `app/pruebas/val74-sin-tope-de-ocho.js`, que saca el motor del HTML publicado.
+
+**Y la primera versión de este arreglo estaba mal, con la auditoría en 38/100.** Vale escribirlo porque el
+error es de método, no de cuenta.
+
+Calculaba un cupo dividiendo el tamaño de la lista por su cantidad de ítems: o sea **estimaba**, asumiendo
+que lo que viene pesa como el promedio de lo que ya está. Los ítems de las reglas traen motivos de veinte a
+noventa caracteres; el prompt le pide al modelo una frase entera. Con el cupo que yo mismo publiqué —561— y
+motivos reales en español, la lista terminaba en **345.595 bytes contra un tope de 262.144**: 32% arriba, y
+la base la habría rechazado.
+
+Tres cosas más salieron de ahí:
+
+- **Medía en caracteres, no en bytes.** La base mide bytes UTF-8, y en español cada acento pesa dos. La
+  función correcta ya existía en `adjuntos-engine.js`, con el comentario "la base mide bytes, no caracteres"
+  escrito al lado, y no la usé.
+- **No había tope de largo** en lo que escribe el modelo. Un solo motivo de doce mil caracteres tiraba la
+  lista solo. `sanitizeNotesForAI` y el título de una reserva ya lo tenían; acá faltaba.
+- **El mensaje que iba a ver la persona era falso.** `writeErr` traducía `invalid_argument` como "Tenés
+  acceso de sólo lectura a esta valija", cuando la base usa ese código también para un documento pasado de
+  tamaño. Le habría dicho "no sos dueño" al dueño. Corregido: ahora dice qué pasó y ofrece las dos
+  posibilidades sin elegir una.
+
+**Y el arnés no lo agarró porque tenía el mismo punto ciego que el código:** medía en caracteres y probaba
+con motivos ASCII cortos y parejos. Es la familia de error que `CLAUDE.md` llama "el simulador escrito de
+memoria", aplicada a una medición. Ahora prueba con motivos reales, mide bytes UTF-8, y cubre la lista que
+ya está pasada de tope.
+
+Estado actual, medido: 3.000 ítems propuestos con motivos de una frase real entran 465 y la lista queda en
+256.957 bytes, debajo del tope.
+
+**Lo que NO se midió, y queda declarado:** cuántos ítems devuelve el modelo real del teléfono con el prompt
+sin tope. El criterio original de esta historia decía medirlo con `lote-modelo-real.js` antes de elegir un
+número; no elegí ninguno —saqué el tope— pero tampoco medí. Va en el guion del PM como lo que hay que mirar:
+si ahora sugiere veinte cosas y cinco son ruido, es peor que ocho buenas.
 
 ### VAL-73 · Un arnés inestable en `valija-bloque-b.js` — deuda de prueba, P3
 

@@ -62,14 +62,16 @@ const VIAJE = { id:"t1", name:"Noruega", destination:"Noruega",
     ok(!/Agregá hasta \d+ ítems/.test(html), "el HTML no contiene «Agregá hasta N ítems»");
   }
 
-  console.log("\n· el cupo sale de la base, no de una constante");
-  const cupoBase  = pe.cupoDeItemsIA(lista);
-  const cupoVacia = pe.cupoDeItemsIA({ items:{} });
-  info(`cupo sobre la lista base (${pe.itemsArray ? pe.itemsArray(lista).length : "?"} ítems): ${cupoBase}`);
-  info("cupo sobre una lista vacía: " + cupoVacia);
-  ok(cupoBase > 100, `el cupo es holgado, no 8 (${cupoBase})`);
-  ok(cupoVacia > cupoBase, "y depende de cuánto ocupa YA la lista: una vacía admite más");
+  console.log("\n· el presupuesto sale de la base, en bytes, y no de una constante");
+  const libresBase  = pe.bytesLibresDeLista(lista);
+  const libresVacia = pe.bytesLibresDeLista({ items:{} });
+  info(`bytes libres sobre la lista base: ${libresBase}`);
+  info("bytes libres sobre una lista vacía: " + libresVacia);
+  ok(libresBase > 100000, `queda lugar de sobra, no para 8 ítems (${libresBase} bytes)`);
+  ok(libresVacia > libresBase, "y depende de cuánto ocupa YA la lista: una vacía admite más");
   ok(pe.MAX_AI_ITEMS === undefined, "la constante inventada ya no existe");
+  ok(typeof pe.cupoDeItemsIA === "undefined",
+     "y tampoco quedó la estimación por promedio que la reemplazó mal la primera vez");
 
   console.log("\n· el modelo puede devolver muchos más de 8 y entran todos");
   const N = 25;
@@ -85,6 +87,62 @@ const VIAJE = { id:"t1", name:"Noruega", destination:"Noruega",
   ok(sumados === N, `entraron los ${N}, no 8 (entraron ${sumados})`);
   ok(enriquecida.capaInteligente && enriquecida.capaInteligente.estado === "ok",
      "y la capa quedó en estado ok");
+
+  /* ─────────────────────────────────────────────────────────────
+     EL CASO QUE ESTE ARNÉS NO PROBABA, Y POR ESO NO LO AGARRÓ.
+
+     La primera versión medía con `JSON.stringify(x).length` —caracteres, no
+     bytes— y con motivos ASCII cortos y parejos. O sea: tenía el MISMO punto
+     ciego que el código que estaba auditando. Es la familia de error que
+     `CLAUDE.md` llama "el simulador escrito de memoria", aplicada a una
+     medición en vez de a un mock.
+
+     La auditoría del 19/09 lo reprodujo en minutos con lo que el propio
+     prompt pide —"por qué, en una frase, mencionando el dato del destino"—:
+     la lista terminaba 32% arriba del tope y la base la habría rechazado.
+     ───────────────────────────────────────────────────────────── */
+  console.log("\n· motivos largos de verdad, medidos en BYTES y no en caracteres");
+  const MOTIVO_REAL = "En Noruega en septiembre la temperatura baja de los diez grados al atardecer y llueve seguido, así que conviene llevarlo aunque el pronóstico diga otra cosa el día que salís de casa, porque el clima cambia rápido en la costa.";
+  info(`el motivo mide ${MOTIVO_REAL.length} caracteres y ${pe.bytesUtf8(MOTIVO_REAL)} bytes UTF-8`);
+  ok(pe.bytesUtf8(MOTIVO_REAL) > MOTIVO_REAL.length,
+     "los acentos pesan más que un caracter: medir en caracteres subestima");
+
+  const avalanchaReal = { items: Array.from({length:3000}, (_,k)=>({
+    nombre: "Ítem número " + k, motivo: MOTIVO_REAL })) };
+  const conMotivos = await pe.enrichWithDestination(lista, async () => avalanchaReal, {});
+  const bytesReales = pe.bytesSerializados(conMotivos);
+  info(`3000 propuestos con motivo real → ${Object.keys(conMotivos.items).length} ítems · ${bytesReales} bytes`);
+  ok(bytesReales <= pe.TOPE_LISTA_BYTES,
+     `la lista ENTRA en el documento de la base (${bytesReales} <= ${pe.TOPE_LISTA_BYTES})`);
+
+  console.log("\n· y lo que escribe el modelo se recorta antes de medirlo");
+  const largo = "x".repeat(12000);
+  const unoSolo = { items: [{ nombre:"Cosa con nombre larguísimo ".repeat(20), motivo: largo }] };
+  const recortada = await pe.enrichWithDestination(lista, async () => unoSolo, {});
+  const nuevo = Object.keys(recortada.items).find(k => !lista.items[k]);
+  const it = nuevo ? recortada.items[nuevo] : null;
+  info("el ítem quedó: " + JSON.stringify(it && { nombre:it.nombre.slice(0,40)+"…", largoMotivo: it.motivo.length }));
+  ok(!!it, "el ítem entró igual, recortado en vez de descartado");
+  ok(it && it.motivo.length <= pe.MAX_MOTIVO_IA, `el motivo se recortó a ${pe.MAX_MOTIVO_IA} (quedó en ${it && it.motivo.length})`);
+  ok(it && it.nombre.length <= pe.MAX_NOMBRE_IA, `y el nombre a ${pe.MAX_NOMBRE_IA} (quedó en ${it && it.nombre.length})`);
+  ok(pe.bytesSerializados(recortada) <= pe.TOPE_LISTA_BYTES,
+     "y un solo motivo de doce mil caracteres ya no tira la lista sola");
+
+  console.log("\n· una lista que YA está en el borde no admite nada más");
+  const relleno = {};
+  Object.assign(relleno, lista.items);
+  for (let k = 0; k < 600; k++) {
+    relleno["relleno-" + k] = Object.assign({}, lista.items[Object.keys(lista.items)[0]],
+      { clave:"relleno-"+k, nombre:"Relleno "+k, motivo: MOTIVO_REAL });
+  }
+  const casiLlena = Object.assign({}, lista, { items: relleno });
+  const libres = pe.bytesLibresDeLista(casiLlena);
+  info(`la lista de prueba pesa ${pe.bytesSerializados(casiLlena)} bytes · libres: ${libres}`);
+  ok(libres < 0, "una lista pasada de tope informa bytes libres NEGATIVOS, no 1 «por las dudas»");
+  const sobreLlena = await pe.enrichWithDestination(casiLlena, async () => ({
+    items:[{nombre:"Algo más", motivo: MOTIVO_REAL}] }), {});
+  const sumo = Object.keys(sobreLlena.items).length - Object.keys(casiLlena.items).length;
+  ok(sumo === 0, `no le sumó nada a una lista que ya no entra (sumó ${sumo})`);
 
   console.log("\n· pero el techo de la base SIGUE existiendo: no es barra libre");
   const MUCHOS = 2000;

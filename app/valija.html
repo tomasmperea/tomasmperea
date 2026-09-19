@@ -1603,20 +1603,89 @@ var HISTORY_SUPPRESS_AT = 2;   // descartado en 2 viajes del mismo tipo -> deja 
 /** Tope de un documento de la base, serializado. Contrato de `db`. */
 var TOPE_LISTA_BYTES = 262144;
 
-/** Margen para el envoltorio de la lista y para que un ítem largo no quede
-    justo en el borde. Mismo criterio que el de los adjuntos. */
+/** Margen para el envoltorio de la lista y los separadores del JSON. */
 var MARGEN_LISTA_BYTES = 8192;
 
-/** Cuántos ítems más entran en ESTA lista antes de chocar con el tope de la
-    base. Nunca devuelve menos de 1: si la lista ya está en el límite, el
-    problema es otro y se ve en el guardado, no acá. */
-function cupoDeItemsIA(list) {
-  var actual = 0;
-  try { actual = JSON.stringify(list || {}).length; } catch (e) { actual = 0; }
-  var n = itemsArray(list || {}).length || 1;
-  var porItem = Math.max(200, Math.ceil(actual / n));
-  var libre = TOPE_LISTA_BYTES - MARGEN_LISTA_BYTES - actual;
-  return Math.max(1, Math.floor(libre / porItem));
+/** Largo máximo de lo que escribe el modelo. Sin esto no hay tope que
+    alcance: un solo motivo de doce mil caracteres tira la lista sola. Los
+    números salen del mismo criterio que `sanitizeNotesForAI` y el título de
+    una reserva: lo que entra en una frase que alguien lee de un vistazo. */
+var MAX_NOMBRE_IA = 80;
+var MAX_MOTIVO_IA = 280;
+
+/** Largo en bytes UTF-8, que es lo que mide la base. NO caracteres.
+
+    Esta función ya existía en `adjuntos-engine.js`, con el comentario "la
+    base mide bytes, no caracteres" escrito al lado, y la primera versión de
+    VAL-74 igual estimó en caracteres. Una "ñ" pesa dos bytes y un acento
+    también; en español eso es un 2% largo, y sobre 250 KB son cinco mil bytes
+    de diferencia. No fue lo que rompió el cálculo, pero es la mitad de por
+    qué nadie lo vio. */
+/** Corta un texto a lo sumo a `max` caracteres, sin cortar una palabra al
+    medio si se puede evitar. */
+function recortar(s, max) {
+  s = String(s == null ? "" : s).trim();
+  if (s.length <= max) return s;
+  /* El corte deja lugar para el puntito suspensivo: si no, el resultado sale
+     un caracter MÁS largo que el máximo. La primera versión cortaba en `max`
+     y después agregaba el "…", así que un tope de 280 devolvía 281. Es la
+     misma clase de error que el tope de 192 KB de los adjuntos, que no dejaba
+     lugar para el envoltorio del propio documento — el número correcto es
+     siempre el que incluye lo que se agrega después. */
+  var corte = s.slice(0, max - 1);
+  var esp = corte.lastIndexOf(" ");
+  return (esp > max * 0.6 ? corte.slice(0, esp) : corte).replace(/[\s,;.]+$/, "") + "…";
+}
+
+function bytesUtf8(s) {
+  s = String(s == null ? "" : s);
+  var n = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xD800 && c <= 0xDBFF) { n += 4; i++; }
+    else n += 3;
+  }
+  return n;
+}
+
+function bytesSerializados(x) {
+  try { return bytesUtf8(JSON.stringify(x)); } catch (e) { return 0; }
+}
+
+/** Lo que va a pesar este ítem UNA VEZ GUARDADO, con todos los campos que se
+    le agregan después. Se arma la forma final y se mide: no se estima.
+
+    Acá estuvo el defecto que la auditoría del 19/09 reprodujo en minutos. La
+    primera versión calculaba un cupo dividiendo el tamaño de la lista por su
+    cantidad de ítems, o sea asumiendo que lo que viene pesa como el promedio
+    de lo que ya está. Los ítems de las reglas traen motivos de veinte a
+    noventa caracteres; el prompt le pide al modelo "por qué, en una frase,
+    mencionando el dato del destino", que da el triple.
+
+    Con ese cupo —561, el número que yo mismo publiqué— y motivos de una
+    frase real en español, la lista terminaba en 345.595 bytes contra un tope
+    de 262.144: 32% arriba. La base lo habría rechazado.
+
+    Y el mensaje que iba a ver la persona decía "Tenés acceso de sólo lectura
+    a esta valija", que además de inútil es falso. */
+function pesoGuardadoDeItem(clave, nombre, motivo, categoria) {
+  return bytesSerializados({
+    clave: clave, nombre: nombre, categoria: categoria || "otros",
+    cantidad: null, motivo: motivo, origen: "destino", estado: "pendiente",
+    empacadoEn: null, regla: null, cantidadEditada: false, nota: "",
+    orden: 0, agregadoEn: "2026-01-01T00:00:00.000Z", actualizadoEn: "2026-01-01T00:00:00.000Z"
+  }) + bytesUtf8(clave) + 4;        // la clave también es la key del objeto
+}
+
+/** Cuántos bytes quedan libres en ESTA lista. Puede dar negativo: una lista
+    que ya se pasó no admite nada, y decirlo con un número negativo es más
+    honesto que devolver 1 "por las dudas" como hacía la primera versión —
+    ese piso de 1 empujaba la lista por encima del tope y el problema
+    aparecía después, en el guardado, con el mensaje equivocado. */
+function bytesLibresDeLista(list) {
+  return TOPE_LISTA_BYTES - MARGEN_LISTA_BYTES - bytesSerializados(list || {});
 }
 
 /** Los tres estados de un ítem. */
@@ -2963,10 +3032,9 @@ function parseDestinationItems(raw, list) {
   if (typeof data === "string") { try { data = JSON.parse(data); } catch (e) { data = null; } }
   if (!data || typeof data !== "object") return { items:[], quitar:[], clima:"" };
 
-  /* El techo real: cuántos ítems más entran en ESTA lista antes de chocar con
-     el tope del documento de la base. No es un número nuestro — ver
-     `cupoDeItemsIA` y el comentario largo de arriba. */
-  var cupo = cupoDeItemsIA(list);
+  /* El techo real, en bytes y no en cantidad: se van sumando los ítems y se
+     corta cuando el próximo no entra. Ver `pesoGuardadoDeItem`. */
+  var libres = bytesLibresDeLista(list);
 
   var haveOriginal = indexItems(itemsArray(list));
   var haveCanonOriginal = {};
@@ -2983,10 +3051,14 @@ function parseDestinationItems(raw, list) {
   var items = [];
   if (Array.isArray(data.items)) {
     data.items.forEach(function (x) {
-      if (items.length >= cupo) return;        // el techo de la base, no un número nuestro
+      if (libres <= 0) return;                 // ya no entra nada más en el documento
       if (!x || typeof x !== "object") return;
-      var nombre = String(x.nombre || x.label || "").trim();
-      var motivo = String(x.motivo || x.reason || "").trim();
+      /* Se recorta lo que escribe el modelo ANTES de medirlo. Sin esto no hay
+         presupuesto que alcance: un solo motivo de doce mil caracteres se come
+         la lista entero. Es lo mismo que ya se hacía con las notas del viaje
+         (`sanitizeNotesForAI`) y con el título de una reserva; acá faltaba. */
+      var nombre = recortar(String(x.nombre || x.label || "").trim(), MAX_NOMBRE_IA);
+      var motivo = recortar(String(x.motivo || x.reason || "").trim(), MAX_MOTIVO_IA);
       if (!nombre || !motivo) return;                 // sin motivo no entra: VAL-33 lo exige
       var clave = slug(nombre);
       if (!clave || suprimidos[clave]) return;
@@ -2994,6 +3066,12 @@ function parseDestinationItems(raw, list) {
       if (have[clave] || haveCanon[canon]) return;     // VAL-45: ya está, literal o por sinónimo
       var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
       var cantidad = (typeof x.cantidad === "number" && isFinite(x.cantidad) && x.cantidad > 0) ? Math.round(x.cantidad) : null;
+      /* Y se MIDE lo que va a pesar guardado, restándolo del presupuesto. El
+         que no entra no entra, y los que vienen detrás tampoco: cortar acá es
+         mejor que que la base rechace la lista entera después. */
+      var peso = pesoGuardadoDeItem(clave, nombre, motivo, categoria);
+      if (peso > libres) return;
+      libres -= peso;
       have[clave] = true; haveCanon[canon] = clave;
       items.push({ clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad, motivo:motivo });
     });
@@ -3486,7 +3564,12 @@ return {
   ESTADO:ESTADO, ESTADOS:ESTADOS, ORIGEN:ORIGEN, ORIGEN_PRECEDENCIA:ORIGEN_PRECEDENCIA,
   HISTORY_PROMOTE_AT:HISTORY_PROMOTE_AT, HISTORY_SUPPRESS_AT:HISTORY_SUPPRESS_AT,
   TOPE_LISTA_BYTES:TOPE_LISTA_BYTES,
-  cupoDeItemsIA:cupoDeItemsIA,
+  MAX_NOMBRE_IA:MAX_NOMBRE_IA,
+  MAX_MOTIVO_IA:MAX_MOTIVO_IA,
+  bytesUtf8:bytesUtf8,
+  bytesSerializados:bytesSerializados,
+  bytesLibresDeLista:bytesLibresDeLista,
+  pesoGuardadoDeItem:pesoGuardadoDeItem,
   CATEGORIES:CATEGORIES, TRIP_TYPES:TRIP_TYPES, BASE_RULES:BASE_RULES, FACTS:FACTS,
   AR_IATA:AR_IATA, AR_HINTS:AR_HINTS, FOREIGN_HINTS:FOREIGN_HINTS, TYPE_HINTS:TYPE_HINTS,
   SYNONYM_GROUPS:SYNONYM_GROUPS, CRITICAL_CLAVES:CRITICAL_CLAVES,
@@ -8128,8 +8211,24 @@ function sheetTrip(trip){
   };
 }
 
+/** Traduce un error de escritura de la base a algo que la persona pueda usar.
+
+    `invalid_argument` NO significa "sólo lectura". La base lo devuelve al
+    menos por dos motivos distintos: que quien mira no puede escribir, y que
+    el documento se pasó del tope de 256 KiB. Este mensaje elegía uno de los
+    dos y lo afirmaba.
+
+    Lo encontró la auditoría de VAL-74 el 19/09 siguiendo el hilo de qué vería
+    la persona si la lista se pasaba del tope: le habría dicho "tenés acceso de
+    sólo lectura" a alguien que es dueño de su propia valija. Una causa
+    inventada, que es justo lo que este proyecto tiene prohibido por escrito.
+
+    Ahora dice lo que pasó —no se pudo guardar— y ofrece las dos salidas
+    posibles sin decidir cuál es. Si más adelante la base distingue los casos,
+    acá es donde se separan. */
 function writeErr(e){
-  if(e && e.code === "invalid_argument") return "Tenés acceso de sólo lectura a esta valija";
+  if(e && e.code === "invalid_argument")
+    return "No se pudo guardar. Puede ser que estés mirando una valija que no es tuya, o que esto ya no entre por tamaño";
   if(e && e.code === "quota_exceeded") return "La valija llegó a su límite de reservas";
   // Quedó guardado en este teléfono aunque no haya podido sincronizar: decirlo
   // evita que la persona cargue todo de nuevo pensando que se perdió.
