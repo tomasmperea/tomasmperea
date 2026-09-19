@@ -50,8 +50,15 @@ vs verano" está en la capa de IA y nunca se midió.
 Documentación de entrada —visa, vigencia de pasaporte, vacunas, permisos de menores—, y lo que cambia por
 estación en ESE destino, no en general.
 
-Van juntas y no se pueden separar: actualizar la lista al cambiar la fecha no sirve de nada si lo que
-recalcula tampoco distingue una estación de otra.
+**VAL-72 · Las reservas mandan sobre el destino escrito a mano.** P0, la más alta. Agregada el 19/09.
+
+Hoy al modelo le llegan las dos fuentes —el campo `destino` que la persona escribió y el `to` de cada
+vuelo— sin ninguna regla de cuál gana, así que "Europa" pesa igual que MAD, CDG y FCO. VAL-66 es que el
+motor razone mejor sobre el destino; VAL-72 es que razone sobre el destino CORRECTO. Afinar el razonamiento
+sobre un dato equivocado es afinar el error.
+
+Las tres van juntas y no se pueden separar: actualizar la lista al cambiar la fecha no sirve de nada si lo
+que recalcula tampoco distingue una estación de otra, ni sabe a qué ciudad se viaja.
 
 **Dato del PM del 19/09 que acota VAL-63:** con el viaje en septiembre, la app supo que en Noruega es otoño.
 La inteligencia de estación existe y funciona; lo que falta es que se le vuelva a preguntar. Eso baja el

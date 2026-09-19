@@ -461,6 +461,50 @@ caso completo, con el antes y el después escritos.
 - Un cambio que no cambia nada no molesta: si la lista nueva es igual a la vieja, no hay aviso.
 - **Criterio que define el éxito:** el caso del PM, con el antes y el después escritos.
 
+### VAL-72 · Las reservas mandan sobre el destino escrito a mano — P0, LA MÁS ALTA
+
+Como viajero quiero que si cargué vuelos, traslados o alojamientos, la valija use ESOS destinos y no el que
+escribí al crear el viaje.
+
+**Reporte textual del PM (19/09):** *"el tipo de valija inteligente que pregunta al principio (playa,
+montaña, ciudad, etc) se guía por los vuelos cargados pero luego termina sugiriendo en función del destino
+principal que está en el viaje (...) si hay viaje cargado y a su vez hay vuelos o cualquier reserva en firme
+que indique destino, eso prima por sobre cualquier otra cosa. el ejemplo más claro es un viaje multidestino
+a Europa"*.
+
+**Diagnóstico (verificado en el código, 19/09), y es más preciso que "usa uno u otro": usa LOS DOS y no hay
+ninguna regla de precedencia.**
+
+| Dónde | Qué manda | Línea |
+|---|---|---|
+| El resumen base que va al modelo | `destino: ctx.destination` — el campo que la persona escribió a mano | `packing-engine.js:1224` |
+| Cada vuelo de ese mismo resumen | `destino: f.to` — el código de aeropuerto real | `packing-engine.js:1395` |
+| La sugerencia de tipo de viaje | un texto plano con nombre + destino + notas + títulos de las reservas, todo mezclado | `suggestTripType`, ~986 |
+
+Al modelo le llega un campo llamado `destino` que dice "Europa" y, más abajo, tres vuelos que dicen MAD, CDG
+y FCO. Nada le dice cuál manda, así que el `destino` de arriba —el más pobre— pesa como si fuera la verdad.
+
+Y la sugerencia de tipo mezcla las dos fuentes en una bolsa de palabras, que es por lo que el PM ve que
+"se guía por los vuelos" al principio y por el destino escrito después: no son dos criterios, es el mismo
+texto con distinto peso accidental.
+
+**La regla que pidió, y es la correcta:**
+
+1. **Si hay reservas en firme que indiquen destino** —vuelos, traslados, alojamientos— **esas mandan.** Un
+   viaje multidestino tiene varios, y todos cuentan: no se elige uno.
+2. **Si no hay ninguna**, el destino principal del viaje alimenta el motor, como hoy.
+3. El destino escrito a mano nunca contradice a una reserva; a lo sumo la complementa.
+
+- El resumen que va al modelo dice explícitamente de dónde salió cada destino y cuál tiene precedencia.
+- Un viaje multidestino manda la lista de destinos, no uno solo.
+- La sugerencia de tipo de viaje usa la misma jerarquía que el resto del motor, no una bolsa de palabras.
+- **El caso que define el éxito:** un viaje "Europa" con vuelos a Madrid, París y Roma tiene que sugerir para
+  esas tres ciudades, no para "Europa".
+
+**Relación con VAL-66:** son la misma pieza. VAL-66 es que el motor razone mejor sobre el destino; VAL-72 es
+que razone sobre el destino CORRECTO. No tiene sentido hacer la primera sin la segunda — afinar el
+razonamiento sobre un dato equivocado es afinar el error.
+
 ### VAL-66 · Que el motor sepa de verdad del destino — P0
 
 Como viajero quiero que la valija me diga qué necesito para ESE destino, sobre todo la documentación.
