@@ -214,7 +214,20 @@ async function abrirHojaDelViaje(page, tripId){
   });
   info("cartel tocable: " + JSON.stringify(tocable));
   ok(tocable.hay, "el cartel se puede tocar: no es un callejón");
-  ok(tocable.rol === "button", "y se anuncia como botón, para quien usa lector de pantalla");
+  ok(tocable.rol === "button", "lleva role=button, así que es operable con teclado y no sólo con el dedo");
+  /* Y que el contenedor anuncie. Acá había una aserción mía que decía "se
+     anuncia como botón, para quien usa lector de pantalla" mirando SÓLO el
+     `role`. Era falso: `#toast` no tenía `aria-live`, así que no se anunciaba
+     nada. `role` hace el cartel operable una vez que llegás a él; no lo hace
+     descubrible. Lo encontró la auditoría del 19/09.
+
+     Lo que esta prueba NO puede decir: si TalkBack de verdad lo lee. Eso se
+     comprueba en un teléfono con el lector prendido y no está hecho. */
+  const vivo = await page.evaluate(() => {
+    const c = document.getElementById("toast");
+    return c ? c.getAttribute("aria-live") : null;
+  });
+  ok(vivo === "polite", `el contenedor de los carteles es una región viva desde la carga (aria-live=${vivo})`);
 
   if (tocable.hay) {
     await page.click(".toast.tocable");

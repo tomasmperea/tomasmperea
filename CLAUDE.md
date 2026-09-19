@@ -130,8 +130,17 @@ Entonces se separa lo que siempre fueron dos cosas distintas:
   prueba en el teléfono antes de estar arriba.
 - **Terminado sigue exigiendo el teléfono.** Publicar no cierra nada. VAL-63 no está terminada hasta que
   vuelva el resultado del PM, y eso se escribe en la entrega, no se da por hecho.
-- Si el auditor baja el puntaje por otra dimensión —causa raíz, honestidad, calidad interna—, **no hay piso
-  de 70 que valga**: eso se arregla antes de publicar, como siempre.
+- Si el auditor baja el puntaje por **cualquier motivo que no sea la indisponibilidad del entorno real**, no
+  hay piso de 70 que valga: eso se arregla antes de publicar, como siempre.
+
+  La primera redacción de esta regla listaba "causa raíz, honestidad, calidad interna" y **se olvidaba de
+  las otras dos dimensiones**, contrato y diseño. El auditor lo marcó el mismo día: tal como estaba escrita,
+  alguien podía publicar con un criterio de aceptación incumplido —uno que no tuviera nada que ver con el
+  teléfono— y defenderlo diciendo que esa dimensión no figuraba en la lista.
+
+  Por eso la regla deja de enumerar dimensiones y nombra la única excepción que existe: **que la dimensión
+  esté floja porque todavía no se pudo probar en el aparato.** Si la 4 baja porque el criterio de aceptación
+  exige el teléfono, eso no rompe el candidato. Si baja porque el criterio no se cumple por otra cosa, sí.
 
 La decisión de separarlo la tomó el PM el 19/09, con el callejón a la vista.
 

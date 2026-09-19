@@ -461,6 +461,30 @@ caso completo, con el antes y el después escritos.
 - Un cambio que no cambia nada no molesta: si la lista nueva es igual a la vieja, no hay aviso.
 - **Criterio que define el éxito:** el caso del PM, con el antes y el después escritos.
 
+**Construida el 19/09, en tres rondas, y lo que enseñó cada una.**
+
+*Ronda 1 (auditoría 38/100).* La guarda elegía a mano qué campos mueven la valija y dejaba afuera el nombre
+y las notas, con dos motivos escritos que eran falsos: se miden en cuatro líneas de node —sólo las notas dan
+3 ítems nuevos; sólo el nombre da 5, aun con el destino puesto—. El arreglo no fue agregar esos dos campos:
+fue dejar de adivinar y comparar todo lo que la persona puede editar.
+
+*Ronda 2 (76/100).* Lo que faltaba exigía estar publicada. De ahí salió la separación entre candidato y
+terminado que ahora vive en `CLAUDE.md`.
+
+*Ronda 3 (60/100), después de que el PM la probara en su teléfono.* Su reporte: el cartel llegaba tarde y
+"no me mostró cuáles son los que se agregan". El aviso dentro de la valija estaba bien —se comprobó antes de
+tocar nada—; lo que fallaba era el camino. El cartel no se podía tocar. Y **apareció un defecto viejo que no
+era de esta historia**: cada cartel hacía `innerHTML=""` al vencer su reloj sin mirar qué había adentro, así
+que "Viaje actualizado" (2,6 s) borraba a "Tengo N cosas" (7 s). Pasa con cualquier par de carteles
+seguidos; esta historia sólo lo hizo visible porque es el primer caso donde el segundo importa más.
+
+Esa misma ronda encontró que el arnés afirmaba "se anuncia como botón, para quien usa lector de pantalla"
+mirando sólo el `role`, sobre un contenedor sin `aria-live` que no anunciaba nada. Tercera vez en la semana
+que escribo una afirmación sin comprobarla.
+
+**Queda declarado sin comprobar:** si un lector de pantalla real lee el cartel. Se prueba en un teléfono con
+el lector prendido y no está hecho.
+
 ### VAL-74 · El tope de 8 ítems de la capa de IA — P1
 
 **Pregunta textual del PM (19/09):** *"otro patrón que identifico es que siempre las sugerencias son 8 items

@@ -834,7 +834,16 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
      anuncia. Ver docs/design/valija-inteligente-b.md § 9, punto 3. -->
 <div id="pkdock" aria-live="polite"></div>
 <div id="modal"></div>
-<div id="toast"></div>
+<!-- Los carteles. `aria-live` va ACÁ y desde la carga, no en el cartel: una
+     región viva creada junto con su contenido no se anuncia — el mismo motivo
+     que ya estaba escrito para `#pkdock` y que acá faltaba.
+
+     Lo encontró la auditoría del 19/09, y de la peor manera: el arnés de
+     VAL-63 afirmaba "se anuncia como botón, para quien usa lector de pantalla"
+     sobre un contenedor que no anunciaba nada. `role="button"` hace el cartel
+     operable una vez que llegás a él; no lo hace descubrible. Eran dos cosas
+     distintas y yo escribí una afirmación sobre la que no había comprobado. -->
+<div id="toast" aria-live="polite"></div>
 
 <script>
 "use strict";
