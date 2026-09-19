@@ -420,6 +420,170 @@ para no inventar una pantalla nueva sobre el cierre de la iteración.
 
 ---
 
+## De la prueba completa del PM — 19/09
+
+Nueve hallazgos suyos recorriendo la app entera. Las prioridades son las que él puso; lo que está en
+**Diagnóstico** lo verifiqué leyendo el código antes de escribir la historia, no es una interpretación de su
+reporte.
+
+### VAL-63 · La lista de la valija no se entera de que cambió el viaje — P0
+
+Como viajero quiero que si cambio las fechas o el destino de un viaje, la valija se actualice sola.
+
+**Reporte textual:** *"cree un viaje con noruega como destino principal para viajar ahora (otoño) y luego lo
+cambié para verano pero la lista no actualizó automáticamente"*.
+
+**Diagnóstico (verificado en el código, 19/09).** El motor YA sabe hacerlo: `planListUpdate` recibe `trip`
+entero y reconstruye la lista base contra las fechas y el destino nuevos. Lo que falta es el disparador.
+`checkPackingPlan()` se llama en cuatro lugares —al guardar una reserva (dos) y al importar (dos)— y
+**ninguno es guardar el viaje**. El handler de `#save` de la hoja del viaje (`app/valija.html`, ~7924) hace
+`Store.saveTrip(...)`, cierra la hoja y muestra un aviso: nunca vuelve a mirar la valija.
+
+O sea: no hay que construir la inteligencia, hay que cablear un evento que falta.
+
+**Pero hay una segunda mitad, y es la que define el alcance real.** El motor no tiene lógica propia de
+estación ni de clima: la única mención de temporada en `packing-engine.js` está adentro del texto que se le
+manda al modelo. La sensibilidad a "otoño vs verano" vive entera en la capa de IA
+(`enrichWithDestination`). Entonces cablear el disparador hace que la lista se recalcule, pero que el
+resultado sea DISTINTO entre otoño y verano depende de que esa capa razone sobre la fecha — y eso no está
+medido. Esta historia no está terminada hasta que se compruebe con el caso del PM: Noruega en octubre contra
+Noruega en enero tienen que dar listas distintas, y la diferencia tiene que ser la correcta.
+
+- Cambiar fechas o destino de un viaje dispara la misma revisión que hoy dispara cargar una reserva.
+- La persona decide: se le propone lo que cambia, no se le pisa la lista. Vale lo de VAL-46 — nada de lo que
+  ya marcó se pierde.
+- Un cambio que no cambia nada no molesta: si la lista nueva es igual a la vieja, no hay aviso.
+- **Criterio que define el éxito:** el caso del PM, con el antes y el después escritos.
+
+### VAL-66 · Que el motor sepa de verdad del destino — P0
+
+Como viajero quiero que la valija me diga qué necesito para ESE destino, sobre todo la documentación.
+
+**Reporte textual:** *"necesito que refine las sugerencias/búsquedas por destino en cuánto a la documentación
+y todo lo referido al viaje"*.
+
+Es la continuación natural de VAL-44, y va junto con VAL-63: las dos dependen de la misma capa. Si el motor
+no razona bien sobre el destino, actualizar la lista al cambiar la fecha actualiza a algo que tampoco sirve.
+
+- Documentación de entrada: visa, pasaporte con vigencia mínima, vacunas exigidas, permisos de menores.
+- Lo que cambia por estación en ESE destino, no en general.
+- Cada ítem sigue diciendo por qué está, como hoy.
+- **Lo que NO se hace:** afirmar un requisito migratorio como si fuera oficial. Esto se sugiere, no se
+  certifica, y el texto tiene que dejarlo claro sin asustar.
+
+### VAL-68 · El tope de tres documentos por reserva — P1
+
+**Pregunta textual del PM:** *"la capacidad de documentos (máximo 3) para adjuntar en una reserva es muy
+poco; esto es una limitación técnica o una suposición tuya?"*
+
+**Respuesta: es una suposición mía.** Está escrito así en `app/parts/adjuntos-engine.js:135`:
+
+```js
+/** Tope de documentos por reserva (diseño 5.2). Decisión nuestra, no de la base. */
+var MAX_DOCS_POR_RESERVA = 3;
+```
+
+Los topes que SÍ son de la plataforma, y que no se pueden mover:
+
+| Límite | Valor | De dónde sale |
+|---|---|---|
+| Tamaño de un documento de la base | 256 KiB serializado | Contrato de `db` |
+| Archivo crudo más grande que entra | ~190 KB | Derivado del anterior |
+| Documentos en toda la base | 5.000 | Contrato de `db` |
+
+Cada adjunto gasta UN documento de esos 5.000. Con el tope en 3, un viaje de 20 reservas usa como mucho 60.
+Subirlo a 10 lo llevaría a 200. El presupuesto no es el problema.
+
+- Se sube el tope. El número lo decide el PM con este dato a la vista.
+- El aviso de cupo de la base (VAL-62) pasa a importar más: se hace junto.
+- El texto de la interfaz sale del tope, no está escrito a mano en ningún lado.
+
+### VAL-70 · Entrar a una reserva sin entrar a editarla — P1
+
+Como viajero quiero abrir una reserva y VERLA, y editarla sólo si lo pido.
+
+**Reporte textual:** *"es incómodo entrar a una reserva ya guardada y por defecto hacerlo en el modo edición
+(...) genera fricción en la UX y margen de error por cambios involuntarios"*.
+
+- Tocar una reserva guardada abre un resumen legible, no un formulario.
+- Editar es una acción explícita.
+- Lo que ya existe se reusa: la tira del documento, el troquelado, los chips. No se diseña una pantalla nueva
+  desde cero.
+
+### VAL-65 · El campo "Notas" del viaje no lleva a ningún lado — P2
+
+**Reporte textual:** *"no termino de entender realmente la utilidad del campo Notas (...) si lo vamos a
+dejar, debería crear una nota automáticamente dentro del viaje o debería servir de input para alertas (...)
+porque sino esas notas de ahí no se vuelven a consultar nunca más"*.
+
+Tiene razón y el diagnóstico es de producto, no técnico: hoy ese campo se guarda y nada lo lee. Un campo que
+sólo escribe es peor que no tenerlo, porque promete memoria.
+
+Tres salidas posibles, y conviene elegir UNA con él antes de construir:
+1. **Se va.** Lo más barato y no pierde nada que hoy sirva.
+2. **Se convierte en una nota de verdad** dentro del viaje, visible en el itinerario.
+3. **Es entrada del motor**: lo que se escribe ahí alimenta las sugerencias y los avisos.
+
+La 3 es la más valiosa y la que mejor encaja con VAL-66, pero cambia el significado del campo y hay que
+decirlo en la interfaz.
+
+### VAL-67 · Las categorías de la valija arrancan colapsadas — P2
+
+**Reporte textual:** *"por defecto, cada categoría de la valija ejemplo: documentación, necesito que este
+colapsado para mayor orden visual"*.
+
+El acordeón ya existe (`.pk-cat[data-open]`). Es cambiar el estado inicial.
+
+- Arrancan cerradas, con su nombre y su cuenta a la vista.
+- Lo que la persona abre o cierra a mano se respeta mientras esté en la pantalla.
+- **Ojo con lo que ya nos pasó:** un ítem nuevo o una propuesta adentro de una categoría cerrada no puede
+  quedar invisible. Si hay algo que mirar, se ve desde afuera.
+
+### VAL-69 · Formato de fecha según el tipo de reserva — P2
+
+**Reporte textual:** *"el único que tiene sentido sea d/m/a XX:XX am/pm es el auto porque normalmente se
+definen horarios de retiro/devolución pero el resto es innecesario"*.
+
+- El auto lleva fecha y hora en los dos extremos.
+- El resto muestra la hora sólo cuando la hay y cuando significa algo. Un vuelo sin hora no inventa 00:00.
+- Un solo lugar decide el formato por tipo, no cada pantalla por su cuenta.
+
+### VAL-64 · Un viaje vacío no puede estar 100% completo — P3
+
+**Reporte textual:** *"las tarjetas creadas por cada viaje vienen con el indicador de completitud en 100 por
+defecto y eso está mal; 100 es que no tengo pendientes y un viaje vacío no puede tener 100"*.
+
+**Diagnóstico (verificado, `app/valija.html:1486`).** `completeness()` cuenta los campos críticos de cada
+reserva, y aparte suma 2 puntos por las fechas del viaje. Un viaje recién creado con fecha de ida y de
+vuelta tiene `total = 2` y `done = 2`: da 100 sin una sola reserva cargada.
+
+Y hay una línea que se lee como si quisiera devolver 0 y no lo hace nunca:
+
+```js
+if(items.length===0) return items.length ? 0 : Math.round(done/total*100);
+```
+
+Adentro de ese `if`, `items.length` ya es 0, así que la condición del ternario siempre es falsa y siempre
+devuelve el porcentaje. Alguien quiso arreglar esto y escribió una tautología.
+
+- Un viaje sin reservas no muestra 100.
+- Qué muestra en cambio lo decide el diseño: puede ser vacío, "sin reservas", o un anillo apagado. No un
+  número que miente.
+
+### VAL-71 · El resumen exportable sale mal — P3
+
+**Reporte textual:** *"sale muy pero muy mal; todo desprolijo, caracteres pisados, no tiene un diseño pero
+esto es evolutivo (es el final del recorrido de cada viaje)"*.
+
+"Caracteres pisados" es el síntoma típico de fuentes: jsPDF sin una fuente embebida no tiene los glifos del
+español y superpone o descarta. Hay que verificarlo antes de rediseñar nada — puede ser que el rediseño no
+haga falta y el problema sea la fuente.
+
+- Se reproduce primero, con un viaje real del PM, y se dice qué se observó.
+- Recién después se diseña.
+
+---
+
 ## Iteración 4 — Avisar
 
 ### VAL-10 · Recibir avisos por correo — P0
