@@ -1,0 +1,62 @@
+# v21 — la prueba, paso a paso
+
+**Link:** https://claude.ai/artifact/3Q4KLi6g3ygTAJdR79aTCf
+
+Es **una sola prueba** y es tu caso de Noruega. Si algo sale mal: **sacá captura y mandámela.**
+
+---
+
+## Antes de empezar
+
+1. Abrí el link.
+2. Arriba, al lado de **Valija**, tiene que decir **v21**.
+
+**Si no dice v21:** pará y avisame.
+
+---
+
+## La prueba — que la valija se entere de que cambiaste la fecha
+
+1. Creá un viaje: nombre **Noruega**, destino **Noruega**, salida **14/09/2026**, regreso **24/09/2026**.
+2. Entrá al viaje y **armá la valija** (el botón grande de abajo).
+3. Esperá a que la lista aparezca. Mirá qué sugiere y, si querés, sacale una captura.
+4. Volvé a la pantalla del viaje y tocá el **lápiz** de arriba para editarlo.
+5. Cambiá las fechas a **10/06/2027** y **20/06/2027**.
+6. Tocá **Guardar**.
+7. **Quedate mirando la pantalla unos segundos.**
+
+**Anda si:** aparece abajo un cartel que dice algo como **"Tengo N cosas para sumarte a la valija"**.
+
+8. Entrá a la valija.
+
+**Anda si:** hay un aviso ofreciéndote lo que cambió, y al aceptarlo la lista suma ítems de verano.
+
+**Falla si:** no aparece ningún cartel al guardar, o la lista queda exactamente igual que en septiembre.
+
+---
+
+## Qué me mandás
+
+| Si pasó esto | Mandame |
+|---|---|
+| Apareció el cartel y la lista cambió | **"anduvo"** |
+| No apareció ningún cartel | captura de la pantalla del viaje |
+| Apareció el cartel pero la lista no cambió | **las dos capturas**, la de septiembre y la de junio |
+| Arriba no dice v21 | avisame antes de seguir |
+
+---
+
+## Lo que esta entrega NO arregla
+
+**Que la sugerencia sea buena.** Lo que se arregló es que la app **vuelva a preguntar** cuando cambiás el
+viaje — antes no preguntaba nunca. Si la respuesta de junio es floja, o si para un viaje multidestino sigue
+mirando el destino que escribiste en vez de tus vuelos, eso es lo que viene después: **VAL-66 y VAL-72**,
+que ya están mapeadas con prioridad más alta que ésta.
+
+Por eso la tercera fila de la tabla pide las dos capturas: si el cartel aparece pero la lista no cambia,
+el problema es de las otras dos historias y con esas capturas arranco con dato en vez de con una suposición.
+
+**Y algo que te va a llamar la atención:** ahora **renombrar el viaje también dispara la revisión**. No es un
+error. El motor usa el nombre del viaje como pista —renombrar "Viaje" a "Noruega" agrega 5 ítems—, algo que
+yo había dado por falso sin medirlo. Que el nombre pese tanto es raro y queda anotado como pregunta de
+producto en VAL-72; mientras el motor lo use, el disparador tiene que respetarlo.

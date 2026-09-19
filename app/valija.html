@@ -7116,36 +7116,46 @@ async function recalcularPlanContra(trip, list){
 
    De dónde sale: el PM creó un viaje a Noruega para septiembre, la app
    entendió que allá es otoño y sugirió en consecuencia. Después lo cambió a
-   junio de 2027 y la lista no se movió ni un ítem.
+   junio de 2027 y la lista no se movió ni un ítem. Faltaba el disparador:
+   `checkPackingPlan` se llamaba al guardar una reserva y al importar, y NUNCA
+   al guardar el viaje.
 
-   La causa no era el motor. `planListUpdate` recibe el viaje entero y
-   reconstruye contra las fechas nuevas, y la capa de IA razona sobre la
-   estación —eso quedó demostrado por el propio septiembre que acertó—. Lo que
-   faltaba era el disparador: `checkPackingPlan` se llamaba al guardar una
-   reserva y al importar, y NUNCA al guardar el viaje. La pregunta nunca se
-   volvía a hacer.
+   POR QUÉ ACÁ NO HAY UNA LISTA DE CAMPOS, Y LA PRIMERA VERSIÓN SÍ LA TENÍA.
 
-   Por qué no se dispara en cada guardado: `checkPackingPlan` le habla al
-   modelo. Renombrar un viaje de "Noruega" a "Noruega 2027" no cambia ni un
-   ítem de la valija y no tiene por qué costar una llamada ni mostrar un aviso.
+   Escribí `CAMPOS_QUE_MUEVEN_LA_VALIJA = [fechas, destino, viajeros]` y dejé
+   afuera el nombre y las notas, con dos motivos escritos en el comentario:
+   "el nombre es una etiqueta" y "las notas hoy no las lee nadie".
 
-   Qué mueve la valija, y por qué cada uno:
-     · las fechas      — la estación, el clima y cuántos días se viaja;
-     · el destino      — de ahí sale TODO lo que la capa de IA razona;
-     · quiénes viajan  — las cantidades salen de ahí.
+   Los dos eran falsos, y no hizo falta discutirlo: se miden en cuatro líneas
+   de node contra el motor.
 
-   Qué NO:
-     · el nombre       — es una etiqueta;
-     · las notas       — hoy no las lee nadie. Cuando VAL-65 las convierta en
-                         entrada del motor, este es el lugar donde se agregan,
-                         y la prueba que lo fija está escrita.
+     · cambiar SÓLO las notas       → 3 ítems nuevos (malla, ojotas, repelente)
+     · cambiar SÓLO el nombre       → 5 ítems nuevos, aun con el destino puesto
 
-   La comparación normaliza como lo hace el formulario. El campo de fecha
-   muestra `dayKey(t.startDate)` y guarda `YYYY-MM-DD`, así que un viaje cuya
-   fecha vino de la base con hora (`2026-09-14T00:00:00.000Z`) parecería
-   cambiar sola cada vez que alguien toca Guardar. Sin esto, el aviso saldría
-   siempre y por nada. */
-const CAMPOS_QUE_MUEVEN_LA_VALIJA = ["startDate", "endDate", "destination", "travelers"];
+   El motivo es que `tripContext` arma un `textBlob` con el nombre, el destino,
+   las notas y los títulos de las reservas, todo junto, y de ahí salen los
+   `facts` que las reglas usan directo. Y las notas además viajan al modelo por
+   `sanitizeNotesForAI` desde antes de esta entrega. O sea que "no las lee
+   nadie" no era una decisión de diseño: era una afirmación mía sin comprobar,
+   metida en un comentario, sobre código que ya hacía lo contrario.
+
+   Es exactamente la trampa que este proyecto tiene escrita —la documentación
+   que queda mintiendo— y la cometí dos días después de la última vez.
+
+   Entonces se deja de adivinar qué campo importa. Se compara TODO lo que la
+   persona puede editar en esa hoja. No puede haber falso negativo, que es el
+   único error que importa acá: uno de más cuesta una consulta al modelo; uno
+   de menos es el bug original volviendo por otra puerta.
+
+   Lo único que no entra son los campos de contabilidad —`id`, `hue`,
+   `createdAt`, `updatedAt`, `sample`—, que la persona no toca y que cambian
+   solos en cada guardado.
+
+   Queda una pregunta de producto abierta, y va anotada en VAL-72: que el
+   NOMBRE del viaje mueva las sugerencias es raro. Renombrar "Viaje" a
+   "Noruega" no debería valer lo mismo que cargar un vuelo a Oslo. Pero
+   mientras el motor lo use, ignorarlo acá sería mentir dos veces. */
+const CAMPOS_EDITABLES_DEL_VIAJE = ["name", "destination", "startDate", "endDate", "travelers", "notes"];
 
 function cambioQueMueveLaValija(antes, despues){
   if(!antes || !despues) return false;
@@ -7153,7 +7163,7 @@ function cambioQueMueveLaValija(antes, despues){
     const s = String(v ?? "").trim();
     return (k === "startDate" || k === "endDate") ? dayKey(s) : s;
   };
-  return CAMPOS_QUE_MUEVEN_LA_VALIJA.some(k => norm(k, antes[k]) !== norm(k, despues[k]));
+  return CAMPOS_EDITABLES_DEL_VIAJE.some(k => norm(k, antes[k]) !== norm(k, despues[k]));
 }
 
 async function checkPackingPlan(trip){

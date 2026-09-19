@@ -197,18 +197,44 @@ async function abrirHojaDelViaje(page, tripId){
   ok(carteles.some(t => /sumarte a la valija/i.test(t)),
      "la app le avisó que tiene algo para sumarle, sin que tenga que ir a buscarlo");
 
-  /* ---------- el control: un cambio que NO mueve la valija ---------- */
-  console.log("\n· renombrar el viaje NO tiene que costar una consulta");
+  /* ---------- cambiar SÓLO las notas ----------
+     Esta prueba existe por un error mío. La primera versión de VAL-63 dejaba
+     las notas afuera del disparador, con el comentario "hoy no las lee nadie".
+     Es falso y se mide en cuatro líneas de node: cambiar sólo las notas deja
+     la lista desactualizada con 3 ítems nuevos, porque `tripContext` las mete
+     en el `textBlob` del que salen los `facts`, y además viajan al modelo. */
+  console.log("\n· cambiar SÓLO las notas también mueve la valija");
+  const q0 = await page.evaluate(() => window.__CONSULTAS__.length);
+  await abrirHojaDelViaje(page, tripId);
+  if (await page.$("#t_notes")) {
+    await page.fill("#t_notes","vamos a hacer trekking y kayak");
+    await page.click("#save");
+    await page.waitForTimeout(3000);
+  }
+  const q1 = await page.evaluate(() => window.__CONSULTAS__.length);
+  info(`consultas: ${q0} → ${q1}`);
+  ok(q1 > q0, "cambiar las notas volvió a preguntarle al modelo");
+
+  /* ---------- y el nombre, que TAMPOCO era una etiqueta ----------
+     La primera versión de esta prueba exigía lo contrario: que renombrar NO
+     costara una consulta, "porque el nombre es una etiqueta". También falso.
+     Renombrar deja la lista con 5 ítems nuevos AUNQUE el destino esté puesto,
+     porque el nombre entra en el mismo `textBlob`.
+
+     Queda anotado como pregunta de producto en VAL-72: que el nombre mueva
+     las sugerencias es raro. Pero mientras el motor lo use, el disparador
+     tiene que respetarlo — ignorarlo sería el bug original por otra puerta. */
+  console.log("\n· renombrar el viaje también, porque el motor usa el nombre");
   const n0 = await page.evaluate(() => window.__CONSULTAS__.length);
   await abrirHojaDelViaje(page, tripId);
   if (await page.$("#t_name")) {
     await page.fill("#t_name","Noruega 2027");
     await page.click("#save");
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(3000);
   }
   const n1 = await page.evaluate(() => window.__CONSULTAS__.length);
   info(`consultas: ${n0} → ${n1}`);
-  ok(n1 === n0, "renombrar no le preguntó al modelo: sólo cambió una etiqueta");
+  ok(n1 > n0, "renombrar volvió a preguntarle al modelo: el nombre alimenta el motor");
 
   /* ---------- y guardar sin tocar nada, tampoco ----------
      Esta es la que falla si la comparación de fechas está mal hecha: el

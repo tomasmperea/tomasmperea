@@ -461,6 +461,21 @@ caso completo, con el antes y el después escritos.
 - Un cambio que no cambia nada no molesta: si la lista nueva es igual a la vieja, no hay aviso.
 - **Criterio que define el éxito:** el caso del PM, con el antes y el después escritos.
 
+### VAL-73 · Un arnés inestable en `valija-bloque-b.js` — deuda de prueba, P3
+
+El 19/09, construyendo VAL-63, la prueba "el plan se recalcula al ENTRAR a la valija" falló 3 aserciones en
+una corrida y pasó en las dos siguientes, con el mismo código. No es un misterio: el propio diagnóstico que
+imprime la prueba muestra la carrera —`appPlan: 2` en una lectura y `planDe('t1')` en 0 en la aserción de la
+línea siguiente—, y la espera previa es un `waitForFunction(...).catch(()=>{})` que se traga el vencimiento y
+sigue igual.
+
+No se tocó al construir VAL-63: arreglar el arnés de otra historia en el medio de ésta es meter ruido en una
+entrega que ya tiene su propio alcance. Queda anotado para no perderlo.
+
+- La espera deja de tragarse el vencimiento, o se espera por la condición que la aserción va a mirar.
+- Se corre varias veces seguidas antes de darlo por arreglado: una corrida verde no distingue un arnés
+  estable de uno con suerte.
+
 ### VAL-72 · Las reservas mandan sobre el destino escrito a mano — P0, LA MÁS ALTA
 
 Como viajero quiero que si cargué vuelos, traslados o alojamientos, la valija use ESOS destinos y no el que
@@ -500,6 +515,12 @@ texto con distinto peso accidental.
 - La sugerencia de tipo de viaje usa la misma jerarquía que el resto del motor, no una bolsa de palabras.
 - **El caso que define el éxito:** un viaje "Europa" con vuelos a Madrid, París y Roma tiene que sugerir para
   esas tres ciudades, no para "Europa".
+
+**Y una pregunta de producto que salió al construir VAL-63:** el motor usa el NOMBRE del viaje como pista de
+destino. Medido: renombrar "Viaje" a "Noruega" agrega 5 ítems, aun con el destino cargado, porque
+`tripContext` mete nombre, destino, notas y títulos de reservas en un mismo `textBlob`. Eso es la misma bolsa
+de palabras que esta historia viene a ordenar, y refuerza que la jerarquía tiene que ser explícita: un vuelo
+a Oslo no puede valer lo mismo que una palabra en el título del viaje.
 
 **Relación con VAL-66:** son la misma pieza. VAL-66 es que el motor razone mejor sobre el destino; VAL-72 es
 que razone sobre el destino CORRECTO. No tiene sentido hacer la primera sin la segunda — afinar el
