@@ -441,13 +441,19 @@ entero y reconstruye la lista base contra las fechas y el destino nuevos. Lo que
 
 O sea: no hay que construir la inteligencia, hay que cablear un evento que falta.
 
-**Pero hay una segunda mitad, y es la que define el alcance real.** El motor no tiene lógica propia de
-estación ni de clima: la única mención de temporada en `packing-engine.js` está adentro del texto que se le
-manda al modelo. La sensibilidad a "otoño vs verano" vive entera en la capa de IA
-(`enrichWithDestination`). Entonces cablear el disparador hace que la lista se recalcule, pero que el
-resultado sea DISTINTO entre otoño y verano depende de que esa capa razone sobre la fecha — y eso no está
-medido. Esta historia no está terminada hasta que se compruebe con el caso del PM: Noruega en octubre contra
-Noruega en enero tienen que dar listas distintas, y la diferencia tiene que ser la correcta.
+**La segunda mitad, acotada por un dato del PM del 19/09.** El motor no tiene lógica propia de estación: la
+única mención de temporada en `packing-engine.js` está adentro del texto que se le manda al modelo, así que
+toda la sensibilidad vive en la capa de IA (`enrichWithDestination`).
+
+Eso abría la duda de si esa capa razona sobre la fecha. **El PM la contestó con su propia prueba:** con el
+viaje en septiembre, la app *"supo que allá es otoño"*. O sea que la inteligencia de estación existe y
+funciona; lo que nunca pasó es que se le volviera a preguntar al cambiar la fecha a junio de 2027.
+
+Textual: *"si sabe hacerlo, que lo haga"*. Tiene razón, y eso reduce esta historia a cablear el evento.
+
+**Lo que ese dato NO prueba, y por eso el criterio no se afloja:** que acierte en septiembre no dice nada
+sobre junio, porque nunca se le preguntó. Una observación correcta no es dos. El criterio sigue siendo el
+caso completo, con el antes y el después escritos.
 
 - Cambiar fechas o destino de un viaje dispara la misma revisión que hoy dispara cargar una reserva.
 - La persona decide: se le propone lo que cambia, no se le pisa la lista. Vale lo de VAL-46 — nada de lo que
@@ -494,9 +500,29 @@ Los topes que SÍ son de la plataforma, y que no se pueden mover:
 Cada adjunto gasta UN documento de esos 5.000. Con el tope en 3, un viaje de 20 reservas usa como mucho 60.
 Subirlo a 10 lo llevaría a 200. El presupuesto no es el problema.
 
-- Se sube el tope. El número lo decide el PM con este dato a la vista.
-- El aviso de cupo de la base (VAL-62) pasa a importar más: se hace junto.
-- El texto de la interfaz sale del tope, no está escrito a mano en ningún lado.
+**DECIDIDO el 19/09 por el PM: sin tope.** Textual: *"que no tenga límite básicamente, nunca se va a llegar
+al tope por reserva"*.
+
+Y es correcto, medido y no supuesto. "Sin límite" no existe —siempre hay un techo—, pero el techo deja de
+ser un número nuestro y pasan a mandar los de la plataforma. El metadato de un documento adentro de la
+reserva pesa **251 caracteres** con nombres largos reales; el documento de la reserva tope a 256 KiB. Da
+**~1.036 documentos por reserva** antes de chocar. Nadie llega.
+
+Entonces el límite efectivo pasa a ser el otro, el de verdad: **5.000 documentos en TODA la app**, que
+comparten viajes, reservas, listas de equipaje y adjuntos.
+
+| Documentos por reserva | Un viaje de 20 reservas usa | De 5.000 |
+|---|---|---|
+| 3 (hoy) | 60 | 1,2 % |
+| 20 | 400 | 8 % |
+| 50 | 1.000 | 20 % |
+
+- Se saca `MAX_DOCS_POR_RESERVA` como decisión de producto. No se reemplaza por otro número inventado.
+- Queda la guarda técnica contra el tope del documento de la reserva, con su mensaje propio, para que si
+  alguien llegara ahí la app lo diga en vez de fallar al guardar.
+- **VAL-62 deja de ser P2 y se hace en la misma entrega.** Era el aviso de un cupo lejano; sin tope por
+  reserva, el de 5.000 pasa a ser el único que protege y tiene que avisar antes de que falle un guardado.
+- El texto de la interfaz ("Documentos · 1 de 3") sale del tope y hay que rehacerlo: sin tope no hay "de N".
 
 ### VAL-70 · Entrar a una reserva sin entrar a editarla — P1
 

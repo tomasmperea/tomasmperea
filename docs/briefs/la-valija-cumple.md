@@ -53,6 +53,11 @@ estación en ESE destino, no en general.
 Van juntas y no se pueden separar: actualizar la lista al cambiar la fecha no sirve de nada si lo que
 recalcula tampoco distingue una estación de otra.
 
+**Dato del PM del 19/09 que acota VAL-63:** con el viaje en septiembre, la app supo que en Noruega es otoño.
+La inteligencia de estación existe y funciona; lo que falta es que se le vuelva a preguntar. Eso baja el
+riesgo de VAL-63 a cablear un evento. No baja el criterio: que acierte en septiembre no prueba junio,
+porque nunca se le preguntó.
+
 **VAL-65 · El campo "Notas" alimenta al motor.** P2 por impacto, pero entra acá porque es del mismo tema.
 
 Decisión del PM el 19/09, de tres salidas posibles. Hoy ese campo se guarda y nada lo lee: un campo que sólo
@@ -64,9 +69,13 @@ qué sirve, porque cambia qué significa escribir ahí.
 **VAL-70 · Entrar a una reserva sin entrar a editarla.** P1. Hoy abre en modo edición y eso genera cambios
 involuntarios.
 
-**VAL-68 · Subir el tope de documentos por reserva.** P1. Era una suposición nuestra, no un límite de la
-plataforma; está escrito así en el propio código. Va junto con **VAL-62** (avisar del cupo de la base antes
-de que falle un guardado), porque subir el tope hace que ese aviso importe más.
+**VAL-68 · Sacar el tope de documentos por reserva.** P1. **El PM decidió el 19/09: sin tope.** Era una
+suposición nuestra, no un límite de la plataforma. Medido: caben ~1.036 por reserva antes de chocar con el
+tope del documento de la reserva, así que nadie llega.
+
+**VAL-62 sube a P1 y entra en la misma entrega.** Sin tope por reserva, el presupuesto de 5.000 documentos
+de la base pasa a ser el único límite que protege, y hoy sólo existe el error reactivo. Un aviso de cupo
+lejano era un lujo; ahora es la red.
 
 ### Lo barato que se nota
 
@@ -94,7 +103,7 @@ queda dicho.
 reemplaza.** Reenviar un correo a una dirección es estrictamente mejor que abrir la app, copiar el texto y
 pegarlo. Construir VAL-57 ahora es construir algo que la iteración siguiente vuelve innecesario.
 
-Si el PM prefiere tenerla antes, entra — pero conviene que sea con esa consecuencia a la vista.
+**Confirmado por el PM el 19/09: espera a la 5.**
 
 ---
 
