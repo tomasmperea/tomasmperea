@@ -790,16 +790,34 @@ razonamiento sobre un dato equivocado es afinar el error.
 
 **Cómo quedó (v24):**
 
-- `destinosDelViaje(trip, items)` arma la lista de destinos con una jerarquía explícita: vuelo (`to`),
-  traslado (`to`), alojamiento (`address`), auto (`address`) y, **sólo si no hay ninguna de esas**, el
-  destino escrito a mano. Devuelve además `deReservas`, que es lo que el resto del motor consulta para
-  saber si hay algo en firme.
+- `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y la diferencia entre
+  ellos es la corrección más importante de esta historia:
+  - **En firme**, y desplazan al destino escrito: el `to` de un vuelo y el `address` de un alojamiento.
+    Aterrizar en un lugar es estar ahí; una cama reservada también.
+  - **Pista**, y NO lo desplazan: el `to` de un traslado y el `address` de un auto. El propio extractor de
+    la app dice que en un traslado `to` es "el lugar de llegada tal como está escrito", que tanto puede ser
+    el centro de Roma como el aeropuerto de donde salís. Se mandan igual —callarlas sería perder
+    información— pero presentadas como pista y con las dos lecturas a la vista.
+  - Si no hay nada en firme, manda el destino escrito a mano, como antes.
 - La línea que le llega al modelo nombra cada destino con su fuente, dice que las reservas son lo que
   manda, avisa cuando el viaje es multidestino y cierra con *"úsalo sólo como contexto, NUNCA por encima
   de lo de arriba"* sobre el campo escrito.
 - `suggestTripType` deja de ser una bolsa de palabras: puntúa **primero** lo reservado y sólo cae en lo
-  escrito si no hay reservas. El motivo dice de dónde salió (*"en lo que tenés reservado"* /
+  escrito si de ahí no sale ninguna pista. El motivo dice de dónde salió (*"en lo que tenés reservado"* /
   *"en lo que escribiste del viaje"*), así que la precedencia es visible en pantalla y no sólo en el código.
+
+  **Con un límite que hay que decir, porque la primera versión de esta entrega lo tapó.** El destino de un
+  vuelo es un código IATA de tres letras y ninguna palabra del catálogo de pistas tiene tres letras: `MAD`
+  **no puede puntuar nunca**. De un vuelo, lo único que clasifica es su texto libre —título y notas—, que la
+  importación suele llenar ("Vuelo a Madrid") y la carga manual no. Entonces: un viaje cargado a mano, con
+  vuelos sin título, sigue clasificándose por lo que la persona escribió aunque tenga reservas en firme.
+
+  Eso ya pasaba en la v23 y sigue pasando: **no es una regresión, es una promesa que esta historia no
+  cumple.** Lo que sí cambia es que deja de ser invisible — cuando ocurre, el motivo en pantalla dice
+  *"tus reservas no dicen de qué tipo de viaje se trata"*. Resolver IATA → ciudad es trabajo de **VAL-66**.
+
+  El **destino** que le llega al modelo sí sale de los vuelos en todos los casos: esta limitación es sólo
+  del clasificador local de tipo de viaje, que corre sin conexión.
 - **No se le adivina la ciudad a una dirección.** "Calle Atocha 123, Madrid" va entera al modelo. Recortar
   la ciudad con una heurística sería exactamente el tipo de suposición que esta historia viene a sacar.
 
@@ -809,6 +827,17 @@ modelo que la valija sirviera también para Buenos Aires. Se descarta el destino
 coincide con el origen del **primero** — no es una suposición sobre el viajero, está escrito en los datos.
 El arnés tiene el caso y su control negativo: un viaje que termina en Lisboa sin volver a EZE conserva
 Lisboa, así que la prueba no pasaría con una función que descarte siempre el último vuelo.
+
+**El alcance de esa regla, dicho para que nadie lo descubra creyendo que fue un descuido:** mira el último
+vuelo contra el origen del primero, y nada más. Un viaje que pasa por casa **a mitad** de camino deja ese
+lugar entre los destinos. Está en el arnés como caso declarado, no como caso resuelto.
+
+**Y una regresión que esta historia introdujo y la auditoría volteó con 57/100, antes de publicar.** La
+primera versión metía en un solo cajón todo lo que tuviera un lugar escrito. Un viaje a Bariloche con el
+destino bien cargado y **un solo traslado al Aeropuerto de Ezeiza** terminaba diciéndole al modelo que
+Ezeiza era lo que manda y que Bariloche no iba "NUNCA por encima". Medido contra la v23: antes el modelo
+recibía `- Destino: Bariloche`, después recibía lo contrario. El traslado al aeropuerto de salida es de los
+datos más comunes que hay, así que no era un caso de borde. De ahí salieron los dos cajones.
 
 **Dónde se probó:** `app/pruebas/val72-las-reservas-mandan.js`, que saca el motor del HTML publicado y no
 de `app/parts/`. Más las regresiones del motor. **No se probó en el teléfono del PM**, que es lo único que

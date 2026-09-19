@@ -68,20 +68,26 @@ const solo = pe.buildPackingList({ trip:EUROPA, items:[] });
 const lineaSola = pe.destinationPrompt(solo).split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaSola.slice(0, 120));
 ok(/Europa/.test(lineaSola), "usa lo que la persona escribió");
-ok(/no hay reservas/i.test(lineaSola), "y le dice al modelo que nadie lo confirmó");
+ok(/no hay ningún vuelo ni alojamiento/i.test(lineaSola), "y le dice al modelo que nadie lo confirmó");
 
-console.log("\n· las otras reservas también aportan destino, no sólo los vuelos");
+console.log("\n· las otras reservas también aportan, pero no todas mandan igual");
+/* Esta prueba decía antes que traslado y auto aportaban DESTINO. Lo decía
+   porque el código lo hacía, y el código estaba mal: ver el hallazgo 1 más
+   abajo. Ahora aportan como PISTA, que es lo que su campo alcanza a decir. */
 const OTRAS = [
   { type:"stay", address:"Calle Atocha 123, Madrid", start:"2027-04-01" },
   { type:"transfer", to:"Centro de Madrid", start:"2027-04-01" },
   { type:"car", address:"Aeropuerto de Madrid T4", start:"2027-04-02" }
 ];
 const d2 = pe.destinosDelViaje({ id:"t2", destination:"Europa" }, OTRAS);
-info("fuentes: " + JSON.stringify(d2.lugares.map(x=>x.fuente)));
+info("destinos: " + JSON.stringify(d2.lugares.map(x=>x.fuente)) +
+     " · pistas: " + JSON.stringify(d2.pistas.map(x=>x.fuente)));
 ok(d2.deReservas, "un viaje sin vuelos pero con alojamiento tiene destino de reserva igual");
-ok(d2.lugares.some(l=>l.fuente === "alojamiento"), "el alojamiento aporta su dirección");
-ok(d2.lugares.some(l=>l.fuente === "traslado"), "y el traslado su «hasta»");
-ok(d2.lugares.some(l=>l.fuente === "auto"), "y el auto su lugar de retiro");
+ok(d2.lugares.some(l=>l.fuente === "alojamiento"), "el alojamiento aporta su dirección, y manda");
+ok(d2.pistas.some(l=>l.fuente === "traslado"), "el traslado aporta su «hasta», como pista");
+ok(d2.pistas.some(l=>l.fuente === "auto"), "y el auto su lugar de retiro, también como pista");
+ok(!d2.lugares.some(l=>l.fuente === "traslado" || l.fuente === "auto"),
+   "ninguno de los dos entra al cajón de los que mandan");
 
 console.log("\n· la dirección se manda entera: no se le adivina la ciudad");
 ok(d2.lugares.some(l => l.lugar === "Calle Atocha 123, Madrid"),
@@ -134,6 +140,81 @@ info("sin regreso: " + dsv.lugares.map(x=>x.lugar).join(" · "));
 ok(dsv.lugares.some(l => l.lugar === "LIS"),
    "LIS es el último vuelo y no vuelve a EZE, así que queda");
 ok(dsv.lugares.length === 2, `los dos destinos, ninguno descartado (${dsv.lugares.length})`);
+
+console.log("\n· HALLAZGO 1 DE LA AUDITORÍA · una reserva en el punto de PARTIDA no es un destino");
+/* Esto volteó la primera versión de VAL-72 con 57/100, y no es un caso raro:
+   el traslado al aeropuerto de salida es de los datos más comunes que hay.
+   Medido contra la v23: ANTES el modelo recibía "- Destino: Bariloche", y
+   DESPUÉS de la primera versión recibía "Ezeiza es lo que manda, Bariloche
+   NUNCA por encima". Era una regresión, no una mejora incompleta. */
+const BARI = { id:"t4", name:"Bariloche", destination:"Bariloche",
+               startDate:"2027-07-01", endDate:"2027-07-10" };
+const SOLO_TRASLADO = [{ type:"transfer", to:"Aeropuerto de Ezeiza", start:"2027-07-01" }];
+const dt = pe.destinosDelViaje(BARI, SOLO_TRASLADO);
+info("deReservas: " + dt.deReservas + " · lugares: " + dt.lugares.map(x=>x.lugar).join(", ") +
+     " · pistas: " + (dt.pistas||[]).map(x=>x.lugar).join(", "));
+ok(!dt.deReservas, "un traslado solo NO alcanza para desplazar el destino escrito");
+ok(dt.lugares.some(l => l.lugar === "Bariloche"), "«Bariloche», que es lo que la persona escribió, sigue siendo el destino");
+const lineaBari = pe.destinationPrompt(pe.buildPackingList({ trip:BARI, items:SOLO_TRASLADO }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaBari.slice(0, 200));
+ok(!/Ezeiza.*lo que manda|manda.*Ezeiza/i.test(lineaBari), "la línea NO dice que Ezeiza mande");
+ok(!/NUNCA por encima/.test(lineaBari), "y NO le dice al modelo que ignore Bariloche");
+ok(/Ezeiza/.test(lineaBari), "pero el traslado se manda igual: callarlo sería perder información");
+ok(/no lo tomes como destino/i.test(lineaBari), "presentado como pista, con las dos lecturas a la vista");
+
+console.log("\n· pero un ALOJAMIENTO sí manda: una cama reservada es estar ahí");
+/* El control del hallazgo 1: si «no manda» se hubiera aplicado a todo lo que
+   no es vuelo, el caso de Europa con sólo hotel dejaría de funcionar. */
+const SOLO_HOTEL = [{ type:"stay", address:"Calle Atocha 123, Madrid", start:"2027-04-01" }];
+const dh = pe.destinosDelViaje(EUROPA, SOLO_HOTEL);
+ok(dh.deReservas, "un viaje sin vuelos pero con alojamiento tiene destino en firme");
+ok(dh.lugares.some(l => l.fuente === "alojamiento"), "y sale del alojamiento");
+ok(!dh.lugares.some(l => /europa/i.test(l.lugar)), "«Europa» ya no compite con él");
+
+console.log("\n· HALLAZGO 2 DE LA AUDITORÍA · un vuelo sin título no puede fingir que clasificó");
+/* El destino de un vuelo es IATA de tres letras y ninguna palabra de
+   TYPE_HINTS tiene tres letras: "MAD" no puede puntuar nunca. La prueba
+   anterior pasaba porque su único fixture traía title:"Vuelo a Madrid".
+   Un viaje cargado a mano no lo trae. Esto NO es regresión —la v23 hacía lo
+   mismo— pero el backlog prometía que estaba resuelto. */
+const SIN_TITULO = [{ type:"flight", from:"EZE", to:"MAD", start:"2027-04-01" }];
+const st = pe.buildPackingList({ trip:trampa, items:SIN_TITULO });
+info(`vuelo sin título → ${st.tipoViaje} · ${st.base.tipoViajeMotivo}`);
+ok(/no dicen de qué tipo/i.test(st.base.tipoViajeMotivo),
+   "el motivo dice en pantalla que las reservas no se pudieron clasificar");
+ok(!/en lo que tenés reservado\.$/.test(st.base.tipoViajeMotivo),
+   "y NO afirma haber decidido por lo reservado cuando no pudo");
+
+console.log("\n· el control del hallazgo 2: cuando NO hay reservas, no se inventa esa frase");
+ok(!/no dicen de qué tipo/i.test(sinVuelo.base.tipoViajeMotivo),
+   "un viaje sin ninguna reserva no dice «tus reservas no dicen»: no las hay");
+
+console.log("\n· ida y vuelta de dos tramos, el caso más común de todos");
+const DOS_TRAMOS = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01" },
+  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-10" }
+];
+const d2t = pe.destinosDelViaje(EUROPA, DOS_TRAMOS);
+info("dos tramos: " + d2t.lugares.map(x=>x.lugar).join(" · "));
+ok(d2t.lugares.length === 1 && d2t.lugares[0].lugar === "MAD",
+   "queda Madrid y sólo Madrid: la vuelta no agrega tu casa");
+ok(d2t.deReservas, "y sigue contando como destino en firme");
+
+console.log("\n· volver a casa a MITAD de viaje: declarado, no resuelto");
+/* El auditor lo marcó como menor y tiene razón: la regla mira el último vuelo
+   contra el origen del primero, así que una escala en casa a mitad de viaje
+   queda como destino. Se deja escrito acá para que nadie lo descubra creyendo
+   que era un descuido: es el alcance elegido, no un olvido. */
+const VUELVE_AL_MEDIO = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01" },
+  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-08" },
+  { type:"flight", from:"EZE", to:"FCO", start:"2027-04-12" }
+];
+const dm = pe.destinosDelViaje(EUROPA, VUELVE_AL_MEDIO);
+info("con escala en casa: " + dm.lugares.map(x=>x.lugar).join(" · "));
+ok(dm.lugares.some(l => l.lugar === "EZE"),
+   "EZE queda como destino, y eso es el alcance conocido de la regla, no un bug oculto");
 
 /* EL CONTROL: que estas pruebas puedan fallar. Si las reservas NO mandaran,
    el caso de la trampa daría "montana" y la línea del prompt diría sólo

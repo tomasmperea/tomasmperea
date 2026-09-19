@@ -2514,7 +2514,16 @@ function suggestTripType(trip, items, ctx) {
      de las reservas, más los destinos de `destinosDelViaje`— y sólo si de ahí
      no sale ninguna pista se mira lo que la persona escribió. No es que lo
      escrito no valga: vale cuando es lo único que hay, que es exactamente lo
-     que pidió el PM. */
+     que pidió el PM.
+
+     UN LÍMITE QUE HAY QUE DECIR, porque lo encontró la auditoría y no la
+     prueba: el destino de un vuelo es un código IATA de tres letras, y
+     ninguna palabra de TYPE_HINTS tiene tres letras, así que "MAD" no puede
+     puntuar NUNCA. De un vuelo lo único que puntúa es el texto libre —su
+     título y sus notas—, que la importación suele llenar ("Vuelo a Madrid")
+     y la carga manual no. Un viaje cargado a mano, con vuelos sin título,
+     cae en lo escrito aunque tenga reservas en firme. No se tapa: cuando
+     pasa, el motivo lo dice en pantalla. Resolver IATA → ciudad es VAL-66. */
   var deReservas = norm([
     items.map(function (i) { return [i.title, i.notes, i.address, i.to].filter(Boolean).join(" "); }).join(" "),
     destinosDelViaje(trip, items).lugares.map(function (l) { return l.fuente === "escrito-a-mano" ? "" : l.lugar; }).join(" ")
@@ -2534,9 +2543,19 @@ function suggestTripType(trip, items, ctx) {
     return { scores:sc, hits:hi, ranked:Object.keys(sc).sort(function (a, b) { return sc[b] - sc[a]; }) };
   }
 
+  // ¿Hay reservas en firme que este clasificador no supo leer? Si las hay y
+  // termina decidiendo por lo escrito, eso se dice: callarlo es el mismo
+  // silencio que hizo que el PM viera "se guía por los vuelos y después no".
+  var hayFirmes = destinosDelViaje(trip, items).deReservas;
+
   var r = puntuar(deReservas);
   var fuente = "lo que tenés reservado";
-  if (!r.ranked.length) { r = puntuar(escrito); fuente = "lo que escribiste del viaje"; }
+  if (!r.ranked.length) {
+    r = puntuar(escrito);
+    fuente = hayFirmes
+      ? "lo que escribiste del viaje: tus reservas no dicen de qué tipo de viaje se trata"
+      : "lo que escribiste del viaje";
+  }
 
   var scores = r.scores, hits = r.hits, ranked = r.ranked;
 
@@ -2550,9 +2569,12 @@ function suggestTripType(trip, items, ctx) {
     return { type:top, confidence:scores[top] >= 2 ? "alta" : "media",
              reason:"Por \"" + hits[top][0] + "\", en " + fuente + "." };
   }
-  if (!daysKnown) return { type:"mixto", confidence:"baja", reason:"Sin fechas ni pistas del destino, armo una lista mixta." };
-  if (days <= 4) return { type:"ciudad", confidence:"baja", reason:"Viaje corto de " + dias(days) + ", sin otras pistas." };
-  return { type:"mixto", confidence:"baja", reason:"Viaje de " + dias(days) + " sin pistas del destino." };
+  // Cuando no hay NINGUNA pista, el motivo tiene que distinguir dos cosas muy
+  // distintas: que no hay reservas, y que las hay pero no se pudieron leer.
+  var nada = hayFirmes ? " Tus reservas están cargadas, pero no dicen de qué tipo de viaje se trata." : "";
+  if (!daysKnown) return { type:"mixto", confidence:"baja", reason:"Sin fechas ni pistas del destino, armo una lista mixta." + nada };
+  if (days <= 4) return { type:"ciudad", confidence:"baja", reason:"Viaje corto de " + dias(days) + ", sin otras pistas." + nada };
+  return { type:"mixto", confidence:"baja", reason:"Viaje de " + dias(days) + " sin pistas del destino." + nada };
 }
 
 /* ============================================================
@@ -2967,42 +2989,67 @@ function destinosDelViaje(trip, items) {
   var lugares = [];
   var vistos = {};
 
-  function sumar(texto, fuente, cuando) {
+  function sumar(texto, fuente, cuando, firme) {
     var t = String(texto == null ? "" : texto).trim();
     if (!t) return;
     var k = norm(t);
     if (vistos[k]) return;
     vistos[k] = true;
-    lugares.push({ lugar:t, fuente:fuente, desde:cuando || "" });
+    lugares.push({ lugar:t, fuente:fuente, desde:cuando || "", firme:!!firme });
   }
 
   var porFecha = function (a, b) { return String(a.start || "").localeCompare(String(b.start || "")); };
 
+  // DOS CAJONES, y la diferencia importa. La primera versión de esto tenía
+  // uno solo: cualquier reserva con un lugar escrito "mandaba". La auditoría
+  // lo volteó con un caso que ya existía en la app y yo no había mirado: un
+  // viaje a Bariloche con destino bien escrito y UN traslado al Aeropuerto de
+  // Ezeiza terminaba diciéndole al modelo que Ezeiza era lo que manda y que
+  // Bariloche no iba "NUNCA por encima". El traslado al aeropuerto de salida
+  // es de los datos más comunes que hay, y apuntaba al lugar de donde se sale.
+  //
+  // Lo que la app puede saber de cada campo, leyendo su propio extractor
+  // (el prompt de importar dice que en un transfer `to` es "el lugar de
+  // llegada tal como está escrito", sea el aeropuerto de salida o el centro
+  // de Roma):
+  //
+  //   EN FIRME  vuelo (`to`)        aterrizar en un lugar es estar ahí.
+  //             alojamiento (`address`)  una cama reservada es estar ahí.
+  //   PISTA     traslado (`to`)     puede ser el viaje AL aeropuerto de casa.
+  //             auto (`address`)    el retiro puede ser en el de salida.
+  //
+  // Las pistas se mandan igual —son información— pero no vuelven `deReservas`
+  // verdadero, así que no desplazan el destino que la persona escribió. No es
+  // una suposición sobre el viajero: es lo que el campo alcanza a decir.
+  var vuelos = items.filter(function (i) { return i.type === "flight" && i.to; }).sort(porFecha);
+
   // El vuelo de vuelta aterriza en casa, y casa no es un destino: si entra a
   // la lista, el prompt le pide al modelo que la valija sirva TAMBIÉN para
-  // Buenos Aires. No es una suposición sobre el viajero — si el último vuelo
-  // llega adonde salió el primero, ese lugar es el punto de partida, y eso
-  // está escrito en los datos, no inferido.
-  var vuelos = items.filter(function (i) { return i.type === "flight" && i.to; }).sort(porFecha);
+  // Buenos Aires. Si el último vuelo llega adonde salió el primero, ese lugar
+  // es el punto de partida, y eso está escrito en los datos, no inferido.
   var casa = vuelos.length > 1 ? norm(vuelos[0].from) : "";
   vuelos.forEach(function (f, k) {
     if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
-    sumar(String(f.to).toUpperCase(), "vuelo", f.start);
+    sumar(String(f.to).toUpperCase(), "vuelo", f.start, true);
   });
 
-  items.filter(function (i) { return i.type === "transfer" && i.to; }).sort(porFecha)
-    .forEach(function (t) { sumar(t.to, "traslado", t.start); });
-
   items.filter(function (i) { return i.type === "stay" && i.address; }).sort(porFecha)
-    .forEach(function (s) { sumar(s.address, "alojamiento", s.start); });
+    .forEach(function (s) { sumar(s.address, "alojamiento", s.start, true); });
+
+  items.filter(function (i) { return i.type === "transfer" && i.to; }).sort(porFecha)
+    .forEach(function (t) { sumar(t.to, "traslado", t.start, false); });
 
   items.filter(function (i) { return i.type === "car" && i.address; }).sort(porFecha)
-    .forEach(function (c) { sumar(c.address, "auto", c.start); });
+    .forEach(function (c) { sumar(c.address, "auto", c.start, false); });
 
-  var deReservas = lugares.length > 0;
-  if (!deReservas) sumar(trip.destination, "escrito-a-mano", trip.startDate);
+  var deReservas = lugares.some(function (l) { return l.firme; });
+  if (!deReservas) sumar(trip.destination, "escrito-a-mano", trip.startDate, false);
 
-  return { lugares:lugares, deReservas:deReservas };
+  return {
+    lugares:lugares.filter(function (l) { return l.firme || l.fuente === "escrito-a-mano"; }),
+    pistas:lugares.filter(function (l) { return !l.firme && l.fuente !== "escrito-a-mano"; }),
+    deReservas:deReservas
+  };
 }
 
 function summarizeReservationsForAI(trip, items) {
@@ -3091,15 +3138,28 @@ function lineaDestinos(b) {
     return "- Destino: " + ((b && b.destino) || "sin especificar");
   }
   var partes = d.lugares.map(function (l) { return l.lugar + " (" + l.fuente + ")"; });
+
+  /* Las pistas —traslados y autos— se mandan SIEMPRE, con las dos lecturas
+     posibles a la vista. Callarlas sería perder información; presentarlas como
+     destino fue el error que volteó la auditoría. Que el modelo decida con el
+     dato completo es mejor que decidir nosotros con medio dato. */
+  var pistas = (d.pistas || []).map(function (l) { return "\"" + l.lugar + "\" (" + l.fuente + ")"; });
+  var lineaPistas = pistas.length
+    ? " Hay además " + pistas.join(" y ") + ": puede ser parte del viaje o el camino hasta el aeropuerto de salida, " +
+      "así que no lo tomes como destino por sí solo."
+    : "";
+
   if (!d.deReservas) {
-    return "- Destino: " + partes.join(", ") + ". Lo escribió la persona al crear el viaje; no hay reservas cargadas que lo confirmen.";
+    return "- Destino: " + partes.join(", ") +
+           ". Lo escribió la persona al crear el viaje; no hay ningún vuelo ni alojamiento cargado que lo confirme." +
+           lineaPistas;
   }
   var extra = (b.destino && norm(b.destino) !== norm(d.lugares[0].lugar))
     ? " La persona además escribió \"" + b.destino + "\" como destino del viaje: úsalo sólo como contexto, NUNCA por encima de lo de arriba."
     : "";
-  return "- Destinos, sacados de las reservas ya cargadas, que son lo que manda: " + partes.join(" · ") +
+  return "- Destinos, sacados de los vuelos y alojamientos ya cargados, que son lo que manda: " + partes.join(" · ") +
          (d.lugares.length > 1 ? ". Es un viaje multidestino: lo que sugieras tiene que servir para TODOS esos lugares, no para uno." : ".") +
-         extra;
+         extra + lineaPistas;
 }
 
 function destinationPrompt(list) {
