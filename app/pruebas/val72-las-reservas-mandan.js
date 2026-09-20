@@ -522,23 +522,119 @@ info("con las fechas al revés: " + dInv.lugares.map(x=>x.lugar).join(" · "));
 ok(dInv.lugares.some(l => l.lugar === "EZE"),
    "con las fechas invertidas queda EZE, y es el alcance conocido, no un bug oculto");
 
-/* MECANISMO, NO PROMESA. El fixture sin `end` hizo pasar una aserción que
-   debía fallar en DOS rondas seguidas, y la segunda vez fue en el mismo
-   commit que escribió la regla de revisar los fixtures. Una regla que hay
-   que acordarse no sirve: esto lo comprueba el arnés cada vez que corre. */
-console.log("\n· todo vuelo de este archivo trae los campos que la app escribe");
+console.log("\n· LOS DOS BLOQUEANTES DE LA SÉPTIMA RONDA");
+/* 1 · Un vuelo del MEDIO sin hora de llegada. `end` no es obligatorio —no
+   está en `REQUIRED.flight` y el campo "Llega" se dibuja sin la marca—, así
+   que es la forma más común de un viaje tipeado a mano. La frase de cierre
+   decía "un lugar sin tiempo es que no hay vuelo después", y CDG tenía un
+   vuelo después, cargado y con fecha. */
+const VUELO_DEL_MEDIO_SIN_LLEGADA = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
+  { type:"flight", from:"MAD", to:"CDG", start:"2027-04-08T09:00" },
+  { type:"flight", from:"CDG", to:"FCO", start:"2027-04-17T09:00", end:"2027-04-17T11:00" }
+];
+const lineaMedio = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:VUELO_DEL_MEDIO_SIN_LLEGADA }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaMedio.slice(0, 130));
+ok(/CDG \(vuelo\)/.test(lineaMedio), "CDG no informa tiempo: falta la hora para medirlo");
+ok(!/no hay vuelo después/.test(lineaMedio),
+   "y la frase de cierre NO dice que no hay vuelo después, porque lo hay");
+ok(/no se pudo medir/.test(lineaMedio), "dice lo que sí pasa: no se pudo medir");
+
+/* 2 · El próximo vuelo sin origen cargado. La app no sabe de dónde sale, y
+   decía "que sale de otro lado" mientras el aviso traducía eso a "la persona
+   se movió por tierra". Inventar una causa sobre un campo en blanco. */
+const PROXIMO_SIN_ORIGEN = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
+  { type:"flight", from:"", to:"FCO", start:"2027-04-10T09:00", end:"2027-04-10T11:00" }
+];
+const lineaSinOrig = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:PROXIMO_SIN_ORIGEN }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaSinOrig.slice(0, 130));
+ok(!/otro lado/.test(lineaSinOrig), "no dice «que sale de otro lado» sobre un campo vacío");
+ok(!/movió por tierra/.test(lineaSinOrig), "ni le atribuye a la persona un viaje por tierra que no está en los datos");
+ok(/MAD \(vuelo\)/.test(lineaSinOrig), "MAD queda sin número: no hay con qué medirlo");
+
+console.log("\n· la estadía de verdad le gana a un tiempo que no es estadía");
+/* «Gana la estadía más larga» decía el commit anterior y el código comparaba
+   números sin mirar si eran estadías: diez días reales en Madrid se perdían
+   detrás de "11 días hasta un vuelo que sale de Lisboa". */
+const MADRID_DIEZ_DIAS = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
+  { type:"flight", from:"MAD", to:"FCO", start:"2027-04-11T20:00", end:"2027-04-11T23:00" },
+  { type:"flight", from:"FCO", to:"MAD", start:"2027-04-14T09:00", end:"2027-04-14T11:00" },
+  { type:"transfer", from:"Madrid", to:"Lisboa", start:"2027-04-20T09:00", end:"2027-04-20T18:00" },
+  { type:"flight", from:"LIS", to:"EZE", start:"2027-04-25T18:00", end:"2027-04-26T06:00" }
+];
+const lineaDiez = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:MADRID_DIEZ_DIAS }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaDiez.slice(0, 120));
+ok(/MAD \(vuelo, 10 días ahí\)/.test(lineaDiez),
+   "Madrid conserva sus diez días reales y no los pierde detrás de un número más grande");
+ok(!/MAD \(vuelo, 11 días/.test(lineaDiez), "el número más grande no gana por ser más grande");
+
+console.log("\n· reservas a las que les falta un campo: nada revienta y nada se inventa");
+/* El mecanismo de abajo exige que exista un caso SIN cada campo que el motor
+   lee. Estos son esos casos, y valen por sí mismos: son lo que queda cuando
+   alguien carga una reserva a medias y se va. */
+const INCOMPLETAS = [
+  { type:"stay", start:"2027-05-01T15:00", end:"2027-05-08T10:00" },          // sin dirección
+  { type:"stay", address:"Hotel sin fechas, Lima" },                           // sin check-in ni check-out
+  { type:"transfer", from:"Centro", start:"2027-05-02T09:00" },                // sin "hasta"
+  { type:"transfer", from:"Centro", to:"Aeropuerto" },                         // sin fecha
+  { type:"car", start:"2027-05-03T09:00", end:"2027-05-06T09:00" },            // sin lugar de retiro
+  { type:"car", address:"Rentadora del centro" }                               // sin retiro ni devolución
+];
+let revento = false;
+let dInc = null;
+try { dInc = pe.destinosDelViaje({ id:"c14", destination:"Lima" }, INCOMPLETAS); }
+catch (e) { revento = true; info("reventó: " + e.message); }
+ok(!revento, "seis reservas a medias no tiran ninguna excepción");
+ok(dInc && dInc.lugares.some(l => l.lugar === "Lima"), "el destino escrito sigue mandando");
+ok(dInc && dInc.pistas.length === 3,
+   `sólo las que tienen lugar entran como pista (${dInc && dInc.pistas.length}): las otras tres no se inventan`);
+const lineaInc = pe.destinationPrompt(pe.buildPackingList({
+  trip:{ id:"c14", destination:"Lima", startDate:"2027-05-01", endDate:"2027-05-10" }, items:INCOMPLETAS }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+ok(!/undefined|null|NaN/.test(lineaInc), "y la línea no muestra «undefined» ni «NaN» por los campos que faltan");
+
+/* MECANISMO, NO PROMESA — SEGUNDA VERSIÓN, porque la primera aseguraba algo
+   falso. Decía «end, que la app siempre escribe» y `end` NO es obligatorio en
+   un vuelo: no está en `REQUIRED.flight` y el campo "Llega" se dibuja sin la
+   marca de requerido. La aserción, escrita desde esa creencia, PROHIBÍA el
+   único fixture que habría encontrado el defecto de esta ronda — un vuelo del
+   medio sin hora de llegada—. Convertir una regla en aserción estuvo bien; se
+   convirtió la regla equivocada, y una aserción escrita desde una creencia
+   sólo puede darle la razón a quien la escribió.
+
+   Lo que sí se puede afirmar sin creer nada: **de cada campo que el motor
+   LEE tiene que haber un caso con y un caso sin.** Eso no sale de una
+   suposición sobre el formulario; sale de abrir la función y ver qué toca.
+   Y `CLAUDE.md` ya lo decía con esas palabras: "si un campo es opcional,
+   tiene que haber un caso con y un caso sin". */
+console.log("\n· de cada campo que el motor lee hay un caso con y un caso sin");
 (function () {
   const fuente = fs.readFileSync(__filename, "utf8");
-  const vuelos = fuente.match(/\{[^{}]*type:"flight"[^{}]*\}/g) || [];
-  ok(vuelos.length > 10, `hay fixtures de vuelo que revisar (${vuelos.length})`);
-  const sinEnd = vuelos.filter(v => !/\bend:/.test(v) && !/to:"\s*"/.test(v));
-  ok(sinEnd.length === 0,
-     sinEnd.length ? `fixtures de vuelo SIN «end», que la app siempre escribe: ${sinEnd.join(" | ")}`
-                   : "todos traen «end», que es el campo cuya ausencia tapó el defecto dos rondas seguidas");
-  const fechaPelada = vuelos.filter(v => /start:"\d{4}-\d{2}-\d{2}"/.test(v));
-  ok(fechaPelada.length === 0,
-     fechaPelada.length ? `fixtures con fecha sin hora, que el formulario no puede producir: ${fechaPelada.join(" | ")}`
-                        : "y ninguna fecha pelada: los campos son datetime-local");
+  // Campos que `destinosDelViaje` lee de cada tipo de reserva. Salen de leer
+  // la función, no de recordar el formulario.
+  const LEE = {
+    flight:   ["from", "to", "start", "end"],
+    stay:     ["address", "start", "end"],
+    transfer: ["to", "start", "end"],
+    car:      ["address", "start", "end"]
+  };
+  Object.keys(LEE).forEach(function (tipo) {
+    const re = new RegExp('\\{[^{}]*type:"' + tipo + '"[^{}]*\\}', "g");
+    const fixtures = fuente.match(re) || [];
+    ok(fixtures.length > 0, `hay fixtures de «${tipo}» (${fixtures.length})`);
+    LEE[tipo].forEach(function (campo) {
+      const conValor = fixtures.filter(f => new RegExp('\\b' + campo + ':"[^"]+"').test(f)).length;
+      const sinValor = fixtures.filter(f => !new RegExp('\\b' + campo + ':"[^"]+"').test(f)).length;
+      ok(conValor > 0 && sinValor > 0,
+         `${tipo}.${campo}: ${conValor} con valor y ${sinValor} sin` +
+         (conValor && sinValor ? "" : " — falta el caso que no está"));
+    });
+  });
 })();
 
 /* EL CONTROL: que estas pruebas puedan fallar. Si las reservas NO mandaran,

@@ -928,6 +928,32 @@ Ahora se conservan los dos casos: cuando el próximo vuelo sale de acá, el tiem
 de otra ciudad, se dice cuánto falta **y de dónde sale**, que es el dato que revela el tramo por tierra.
 Volver a la guarda habría perdido información real en un viaje perfectamente común.
 
+**Y la séptima ronda encontró que la rama nueva afirmaba dos cosas que el dato no decía:**
+
+- *"Un lugar sin tiempo es que no hay vuelo después desde el cual medirlo"* era falso. **`end` no es
+  obligatorio en un vuelo** —no está en `REQUIRED.flight` y el campo "Llega" se dibuja sin la marca de
+  requerido—, así que un vuelo del medio sin hora de llegada deja a su destino sin número **teniendo** vuelo
+  después. Ahora dice *"no se pudo medir: puede no haber vuelo después, o faltarle la hora a alguno"*.
+- *"que sale de otro lado"* se emitía también cuando el próximo vuelo **no tenía origen cargado**, y el aviso
+  traducía eso a *"la persona se movió por tierra"*. Inventar una causa sobre un campo en blanco, que es la
+  regla propia que este proyecto ya tiene escrita. Sin origen no hay número ni frase.
+
+**Y una tercera: «gana la estadía más larga» no era lo que hacía el código.** Comparaba números sin mirar si
+eran estadías, así que diez días reales en Madrid se perdían detrás de "11 días hasta un vuelo que sale de
+Lisboa". Una estadía de verdad le gana a cualquier no-estadía; entre comparables, la más larga.
+
+**Y el mecanismo de fixtures, que la ronda anterior celebró, aseguraba algo falso.** Decía *"end, que la app
+siempre escribe"* y prohibía el único fixture que habría encontrado el primero de estos bloqueantes: un vuelo
+sin hora de llegada. Convertir una regla en aserción estuvo bien; **se convirtió la regla equivocada**, y una
+aserción escrita desde una creencia sólo puede darle la razón a quien la escribió — que es, palabra por
+palabra, el error del simulador que este proyecto ya había pagado en septiembre.
+
+La segunda versión no cree nada: exige que **de cada campo que el motor lee haya un caso con y un caso sin**,
+y esa lista sale de abrir la función y mirar qué toca. Al correrla encontró **ocho huecos**: no había un solo
+fixture de alojamiento, traslado o auto al que le faltara la dirección o las fechas. Ya están, y con
+aserciones propias: seis reservas a medias no revientan nada, sólo entran como pista las que tienen lugar, y
+la línea no muestra "undefined" por los campos que faltan.
+
 **Y dos casos más, declarados y no resueltos:**
 
 - **Fechas invertidas.** Si el vuelo de vuelta quedó cargado con una fecha anterior a la de ida, el orden se

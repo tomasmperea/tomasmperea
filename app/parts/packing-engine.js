@@ -1643,7 +1643,6 @@ function destinosDelViaje(trip, items) {
     var t = String(texto == null ? "" : texto).trim();
     if (!t) return;
     var k = norm(t);
-    var repetido = !!vistos[k];
     vistos[k] = true;
     var e = { lugar:t, fuente:fuente, desde:(item && item.start) || "",
               hasta:(item && item.end) || "", firme:!!firme,
@@ -1662,8 +1661,19 @@ function destinosDelViaje(trip, items) {
     var yaEsta = null;
     for (var q = 0; q < lugares.length; q++) if (norm(lugares[q].lugar) === k) yaEsta = lugares[q];
     if (yaEsta) {
-      if (e.horasHastaElProximoVuelo != null &&
-          (yaEsta.horasHastaElProximoVuelo == null || e.horasHastaElProximoVuelo > yaEsta.horasHastaElProximoVuelo)) {
+      /* «Gana la estadía más larga» decía el commit anterior, y el código
+         comparaba números sin mirar si eran estadías. Un tiempo que NO es
+         estadía —los días hasta un vuelo que sale de otra ciudad— le ganaba
+         por ser más grande, y diez días reales en Madrid se perdían detrás de
+         un "11 días hasta el próximo vuelo". Una estadía de verdad le gana a
+         cualquier no-estadía; entre dos comparables, la más larga. */
+      var mejor = (function () {
+        if (e.horasHastaElProximoVuelo == null) return false;
+        if (yaEsta.horasHastaElProximoVuelo == null) return true;
+        if (e.tiempoEsAca !== yaEsta.tiempoEsAca) return e.tiempoEsAca;
+        return e.horasHastaElProximoVuelo > yaEsta.horasHastaElProximoVuelo;
+      })();
+      if (mejor) {
         yaEsta.horasHastaElProximoVuelo = e.horasHastaElProximoVuelo;
         yaEsta.tiempoEsAca = e.tiempoEsAca;
         yaEsta.proximoVueloDesde = e.proximoVueloDesde;
@@ -1771,12 +1781,19 @@ function destinosDelViaje(trip, items) {
        sale, que es el dato que le permite al modelo entender que hubo un
        tramo por tierra. Callarlo —volver a la guarda— perdería información
        real en un viaje perfectamente común. */
+    /* `encadena` puede ser falso por DOS motivos, y hasta acá los trataba
+       igual: porque el próximo vuelo sale de otro lado —dato— o porque no
+       sabemos de dónde sale —ignorancia—. Con el origen vacío la línea decía
+       "que sale de otro lado" y el aviso lo traducía a "la persona se movió
+       por tierra", que es inventar una causa sobre un campo en blanco. Sin
+       origen no se dice nada: ni número ni frase. */
     var sig = vuelos[k + 1];
-    var horas = sig ? hoursBetween(f.end, sig.start) : null;
-    var encadena = !!(sig && f.to && sig.from && norm(f.to) === norm(sig.from));
+    var sabemosDeDondeSale = !!(sig && String(sig.from || "").trim());
+    var horas = sabemosDeDondeSale ? hoursBetween(f.end, sig.start) : null;
+    var encadena = !!(sabemosDeDondeSale && f.to && norm(f.to) === norm(sig.from));
     sumar(String(f.to).toUpperCase(), "vuelo", f, true,
           (horas != null && horas > 0)
-            ? { horas:Math.round(horas * 10) / 10, aca:encadena, proximoDesde:encadena ? "" : String(sig.from || "").toUpperCase() }
+            ? { horas:Math.round(horas * 10) / 10, aca:encadena, proximoDesde:encadena ? "" : String(sig.from).trim().toUpperCase() }
             : null);
   });
 
@@ -1916,8 +1933,8 @@ function lineaDestinos(b) {
   var avisoEscala = hayTiempos
     ? " Los tiempos que van al lado de cada lugar te dicen qué es una parada de verdad y qué es un cambio de " +
       "avión: unas horas en un aeropuerto no piden nada, unos días sí. Donde dice «hasta el próximo vuelo, que " +
-      "sale de otra ciudad», la persona se movió por tierra en el medio y ese tiempo no fue todo en ese lugar. " +
-      "Un lugar sin tiempo es que no hay vuelo después desde el cual medirlo."
+      "sale de», la persona se movió por tierra en el medio y ese tiempo no fue todo en ese lugar. " +
+      "Un lugar sin tiempo es que no se pudo medir: puede no haber vuelo después, o faltarle la hora a alguno."
     : "";
 
   /* Las pistas —alojamientos, traslados y autos— se mandan SIEMPRE, con sus

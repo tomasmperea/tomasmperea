@@ -244,8 +244,16 @@ Los cuatro defectos nuevos salieron de ahí:
 hizo el barrido que pedía, se lo declaró completo, y quedaron dieciséis fixtures sin el campo. Lo que falló
 cinco veces no fue la memoria: fue que nada obligaba. Las reglas de este proyecto que sí funcionan no piden
 acordarse —`app/pruebas/las-dos-copias.js` es un arnés, no un párrafo—, así que **cuando una regla de éstas
-se pueda convertir en una aserción, se convierte.** La de los fixtures ya lo está: `val72-las-reservas-mandan`
-lee su propio archivo y falla si un vuelo de prueba no trae los campos que el formulario escribe.
+se pueda convertir en una aserción, se convierte** — con una condición que costó una ronda más: **la aserción se escribe leyendo, no
+creyendo.** La primera versión del mecanismo de fixtures aseguraba que la app "siempre escribe" la hora de
+llegada de un vuelo. Es falso: ese campo no es obligatorio. Y como la aserción exigía que todos los fixtures
+lo tuvieran, **prohibía el único caso que habría encontrado el defecto de la ronda siguiente**. Una aserción
+escrita desde una creencia sólo puede darle la razón a quien la escribió, que es exactamente el error del
+simulador que este proyecto ya pagó en septiembre, esta vez disfrazado de mecanismo.
+
+La versión que sí sirve no afirma nada sobre el formulario: exige que **de cada campo que el motor lee haya
+un caso con y un caso sin**, y esa lista sale de abrir la función. Encontró ocho huecos en el mismo commit
+que la estrenó.
 
 ## Un fixture al que le falta un campo hace pasar una prueba que debería fallar
 
