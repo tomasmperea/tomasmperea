@@ -759,7 +759,7 @@ Y es el caso más común de los viajes reales: nadie se va diez días a un solo 
 
 **Sale junto con VAL-75 y VAL-76**, por decisión del PM.
 
-### VAL-72 · Las reservas mandan sobre el destino escrito a mano — ✅ entregada en v24
+### VAL-72 · Las reservas mandan sobre el destino escrito a mano — EN CURSO, seis vetos de auditoría
 
 Como viajero quiero que si cargué vuelos, traslados o alojamientos, la valija use ESOS destinos y no el que
 escribí al crear el viaje.
@@ -833,7 +833,12 @@ a Oslo no puede valer lo mismo que una palabra en el título del viaje.
 que razone sobre el destino CORRECTO. No tiene sentido hacer la primera sin la segunda — afinar el
 razonamiento sobre un dato equivocado es afinar el error.
 
-**Cómo quedó (v24):**
+**El encabezado de esta historia decía «✅ entregada en v24» y era falso dos veces:** ni estaba entregada
+—seis rondas de auditoría la vetaron— ni había v24 publicada. El 20/09 se leyó el archivo que sirve el
+Artifact y los cuatro `grep` dicen: **lo que está arriba es la v23**, con VAL-63 y VAL-74 y nada de VAL-72.
+El PM no tiene ninguna versión vetada en el teléfono, que era el riesgo que abrió la sexta auditoría.
+
+**Cómo quedó (v26):**
 
 - `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
   decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
@@ -912,6 +917,25 @@ anterior.** Están anotados porque la lección no es sobre destinos:
   reservas sin fecha a propósito —el contrato del importador dice "o vacío"—, así que ahora el descarte se
   aplica sólo cuando el orden es confiable: sin fechas se manda de más, que es el lado seguro y el mismo que
   ya se había elegido para el vuelo sin origen.
+
+**Y un tercer intento, que también se cayó: el número decía una cosa y calculaba otra.** Al sacar el rótulo
+saqué también la guarda que exigía que el próximo vuelo saliera del mismo lugar, y no lo declaré. El número
+quedó bien y la palabra quedó mal: un vuelo a Madrid, tren a Lisboa a los dos días y vuelta desde Lisboa
+producía *"MAD, 11 días ahí"* **en la misma oración que mostraba el tren del día 3**. La mitad que mentía era
+la que el prompt llama "lo que manda".
+
+Ahora se conservan los dos casos: cuando el próximo vuelo sale de acá, el tiempo es tiempo acá; cuando sale
+de otra ciudad, se dice cuánto falta **y de dónde sale**, que es el dato que revela el tramo por tierra.
+Volver a la guarda habría perdido información real en un viaje perfectamente común.
+
+**Y dos casos más, declarados y no resueltos:**
+
+- **Fechas invertidas.** Si el vuelo de vuelta quedó cargado con una fecha anterior a la de ida, el orden se
+  invierte y el descarte se come el destino real. No es determinable: un MAD→EZE→MAD es exactamente lo que
+  carga alguien que vive en Madrid. `ordenConfiable` cubre la fecha que **falta**, no la equivocada.
+- **Una ciudad por la que se pasa dos veces** se quedaba con el primer número —la conexión de 2 h— en vez de
+  con los diez días de la vuelta. **Esto sí se arregló:** gana la estadía más larga, que es la que decide qué
+  hay que llevar.
 
 **La escala: dos intentos de arreglarla fueron peores que el problema, y el error no era el umbral — era
 rotular.**

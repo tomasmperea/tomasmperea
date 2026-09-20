@@ -234,7 +234,18 @@ Los cuatro defectos nuevos salieron de ahí:
 2. **¿El arreglo puede romper el caso que la historia vino a resolver?** Correr el caso de éxito DESPUÉS del
    arreglo, explícitamente, y no confiar en que alguna prueba lo cubre. Las dos versiones de la marca de
    escala rompieron el caso de éxito de su propia historia.
-3. **¿El fixture se parece a lo que la app escribe?** Ver abajo, porque es la que más caro salió.
+3. **¿Qué condición saqué, y qué caso la necesitaba?** Es la pregunta que faltaba, y la señaló el auditor
+   después de que el mismo error pasara dos veces: las otras tres miran hacia adelante y ninguna pregunta por
+   lo que se **quitó**. Un `if` que estorba casi siempre protegía algo; si no se sabe qué, todavía no se
+   puede sacar. Las dos veces que fallé acá el código quedó "más simple" y empezó a afirmar cosas falsas.
+4. **¿El fixture se parece a lo que la app escribe?** Ver abajo, porque es la que más caro salió.
+
+**Y una regla no va a alcanzar.** La de los fixtures se escribió, y en el mismo commit que la escribió se
+hizo el barrido que pedía, se lo declaró completo, y quedaron dieciséis fixtures sin el campo. Lo que falló
+cinco veces no fue la memoria: fue que nada obligaba. Las reglas de este proyecto que sí funcionan no piden
+acordarse —`app/pruebas/las-dos-copias.js` es un arnés, no un párrafo—, así que **cuando una regla de éstas
+se pueda convertir en una aserción, se convierte.** La de los fixtures ya lo está: `val72-las-reservas-mandan`
+lee su propio archivo y falla si un vuelo de prueba no trae los campos que el formulario escribe.
 
 ## Un fixture al que le falta un campo hace pasar una prueba que debería fallar
 

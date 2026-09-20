@@ -1643,13 +1643,33 @@ function destinosDelViaje(trip, items) {
     var t = String(texto == null ? "" : texto).trim();
     if (!t) return;
     var k = norm(t);
-    if (vistos[k]) return;
+    var repetido = !!vistos[k];
     vistos[k] = true;
     var e = { lugar:t, fuente:fuente, desde:(item && item.start) || "",
               hasta:(item && item.end) || "", firme:!!firme,
               // Horas entre llegar acá y salir en el próximo vuelo. `null`
               // cuando es el último lugar del viaje o cuando falta una fecha.
-              horasHastaElProximoVuelo:(extra && extra.horas != null) ? extra.horas : null };
+              horasHastaElProximoVuelo:(extra && extra.horas != null) ? extra.horas : null,
+              // Si el próximo vuelo sale de ACÁ, esas horas son tiempo en
+              // este lugar. Si sale de otra ciudad, no: hubo un tramo por
+              // tierra y sólo sabemos desde cuál despega.
+              tiempoEsAca:!!(extra && extra.aca),
+              proximoVueloDesde:(extra && extra.proximoDesde) || "" };
+    /* Un lugar por el que se pasa dos veces —conexión de 2 h a la ida y diez
+       días a la vuelta— se quedaba con el PRIMER número, que es el más corto,
+       y el modelo leía "unas horas, no pide nada". Gana la estadía más larga,
+       que es la que decide qué hay que llevar. */
+    var yaEsta = null;
+    for (var q = 0; q < lugares.length; q++) if (norm(lugares[q].lugar) === k) yaEsta = lugares[q];
+    if (yaEsta) {
+      if (e.horasHastaElProximoVuelo != null &&
+          (yaEsta.horasHastaElProximoVuelo == null || e.horasHastaElProximoVuelo > yaEsta.horasHastaElProximoVuelo)) {
+        yaEsta.horasHastaElProximoVuelo = e.horasHastaElProximoVuelo;
+        yaEsta.tiempoEsAca = e.tiempoEsAca;
+        yaEsta.proximoVueloDesde = e.proximoVueloDesde;
+      }
+      return;
+    }
     lugares.push(e);
   }
 
@@ -1734,14 +1754,30 @@ function destinosDelViaje(trip, items) {
        después. Lo único que separa dos horas de aeropuerto de dos semanas en
        Madrid es el TIEMPO, y el tiempo es un número que ya tenemos.
 
-       Entonces no se rotula nada: se dice cuánto se queda en cada lugar y
-       elige el modelo, que es lo mismo que se hace con las pistas y con el
-       destino escrito. Dos horas no piden nada, dos semanas piden todo, y esa
-       cuenta no la tenemos que hacer nosotros. */
+       Entonces no se rotula nada: se dice cuánto tiempo hay hasta el próximo
+       vuelo y elige el modelo, que es lo mismo que se hace con las pistas y
+       con el destino escrito. Dos horas no piden nada, dos semanas piden
+       todo, y esa cuenta no la tenemos que hacer nosotros.
+
+       PERO ESE NÚMERO NO SIEMPRE ES "TIEMPO ACÁ", y sacar la guarda `encadena`
+       para calcularlo siempre fue el defecto de la sexta ronda. Si el próximo
+       vuelo sale de OTRA ciudad, la persona se movió por tierra en el medio:
+       un vuelo a Madrid, tren a Lisboa a los dos días y vuelta desde Lisboa
+       daba "MAD, 11 días ahí" en la misma oración que mostraba el tren del
+       día 3. El número era correcto y la palabra "ahí" era falsa.
+
+       Se conservan los dos: cuando el próximo vuelo sale de acá, el tiempo es
+       tiempo acá; cuando sale de otro lado, se dice cuánto falta y DE DÓNDE
+       sale, que es el dato que le permite al modelo entender que hubo un
+       tramo por tierra. Callarlo —volver a la guarda— perdería información
+       real en un viaje perfectamente común. */
     var sig = vuelos[k + 1];
     var horas = sig ? hoursBetween(f.end, sig.start) : null;
+    var encadena = !!(sig && f.to && sig.from && norm(f.to) === norm(sig.from));
     sumar(String(f.to).toUpperCase(), "vuelo", f, true,
-          (horas != null && horas > 0) ? { horas:Math.round(horas * 10) / 10 } : null);
+          (horas != null && horas > 0)
+            ? { horas:Math.round(horas * 10) / 10, aca:encadena, proximoDesde:encadena ? "" : String(sig.from || "").toUpperCase() }
+            : null);
   });
 
   items.filter(function (i) { return i.type === "stay" && i.address; }).sort(porFecha)
@@ -1871,13 +1907,17 @@ function lineaDestinos(b) {
   var d = (b && b.destinos) || null;
   var partes = (d && d.lugares || []).map(function (l) {
     var h = l.horasHastaElProximoVuelo;
-    return l.lugar + " (" + l.fuente + (h != null ? ", " + cuantoTiempo(h) + " ahí" : "") + ")";
+    if (h == null) return l.lugar + " (" + l.fuente + ")";
+    if (l.tiempoEsAca) return l.lugar + " (" + l.fuente + ", " + cuantoTiempo(h) + " ahí)";
+    return l.lugar + " (" + l.fuente + ", " + cuantoTiempo(h) + " hasta el próximo vuelo, que sale de " +
+           (l.proximoVueloDesde || "otro lado") + ")";
   });
   var hayTiempos = (d && d.lugares || []).some(function (l) { return l.horasHastaElProximoVuelo != null; });
   var avisoEscala = hayTiempos
-    ? " Al lado de cada lugar va cuánto tiempo pasa ahí antes del próximo vuelo. Usalo para saber qué es una " +
-      "parada de verdad y qué es un cambio de avión: unas horas en un aeropuerto no piden nada, unos días sí. " +
-      "El último de la lista no lo dice porque no hay vuelo después."
+    ? " Los tiempos que van al lado de cada lugar te dicen qué es una parada de verdad y qué es un cambio de " +
+      "avión: unas horas en un aeropuerto no piden nada, unos días sí. Donde dice «hasta el próximo vuelo, que " +
+      "sale de otra ciudad», la persona se movió por tierra en el medio y ese tiempo no fue todo en ese lugar. " +
+      "Un lugar sin tiempo es que no hay vuelo después desde el cual medirlo."
     : "";
 
   /* Las pistas —alojamientos, traslados y autos— se mandan SIEMPRE, con sus
