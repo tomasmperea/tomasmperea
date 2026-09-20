@@ -913,7 +913,12 @@ decía verde. Ya está cerrado: compara también las declaraciones de la cabecer
 por su marcador en vez de por número de línea, y tiene su propio control negativo, que cambia un tope a mano
 y verifica que el arnés lo ve.
 
-**Una regresión de producto que esta entrega acepta a conciencia:** un viaje con un hotel en Madrid y
+**Una regresión de producto que esta entrega acepta a conciencia, y el PM la aprobó explícitamente el
+20/09** después de que la tercera auditoría señalara que no era una decisión del PO: cambia una promesa del
+criterio original, no un detalle de implementación. Se le planteó con las tres salidas —aceptarla, volver a
+que el alojamiento mande, o frenar VAL-72 hasta VAL-66— y eligió aceptarla y publicar.
+
+Es esta: un viaje con un hotel en Madrid y
 "Europa" escrito a mano ya no declara Madrid como destino; lo manda como pista. Se pierde una afirmación
 que a veces era correcta, a cambio de no volver a producir la que era catastrófica —decirle al modelo que
 ignore el destino escrito porque hay un hotel en el punto de partida—. El modelo sigue viendo Madrid con
