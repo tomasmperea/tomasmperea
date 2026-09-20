@@ -205,6 +205,59 @@ se pasaba como closure y `addInitScript` no se lleva el closure. Lo destapó el 
 escenario que esperaba una falla. **Todo arnés que rompe algo a propósito necesita al
 menos un caso que falle si el sabotaje no llegó.**
 
+## El arreglo no recibe el mismo ataque que el defecto
+
+Cinco rondas de auditoría sobre VAL-72, el 19 y 20/09. Los puntajes: 57, 51, 70, 59, 51. **No es que no se
+avanzara: cada ronda cerró de verdad lo que la anterior había encontrado.** Lo que pasó es otra cosa, y la
+nombró el auditor en la quinta:
+
+> Es la cuarta ronda seguida en que el commit que cierra la auditoría introduce un defecto nuevo. Los
+> hallazgos anteriores se cierran bien; lo que se agrega encima no recibe el mismo ataque que lo que se
+> arregla.
+
+Es exacto. Al hallazgo se lo persigue: se reproduce antes de tocar nada, se mide contra la versión anterior,
+se le escribe un control negativo. Al **arreglo** se lo prueba una vez, se lo ve andar, y se lo commitea.
+
+Los cuatro defectos nuevos salieron de ahí:
+
+| Lo que se arregló | Lo que el arreglo rompió |
+|---|---|
+| Que un traslado no pise el destino escrito | El alojamiento quedó pisándolo igual: no le hice la misma pregunta al cajón de al lado |
+| Que la línea no cortara antes de las pistas | Saqué una guarda sin preguntar qué más protegía: una pista podía borrar el destino escrito |
+| Que una escala no cuente como destino | Marcó como escala las tres ciudades del viaje multidestino |
+| Lo mismo, segundo intento | Marcó como escala el único destino de una ida y vuelta |
+
+**Entonces, antes de commitear un arreglo, se le hacen las mismas tres cosas que se le hicieron al defecto:**
+
+1. **¿Qué caso vecino comparte la causa?** Si el arreglo distingue A de B, hay que preguntarse por C. Dos
+   veces seguidas el arreglo trató un cajón y dejó intacto el de al lado, a cinco líneas de distancia.
+2. **¿El arreglo puede romper el caso que la historia vino a resolver?** Correr el caso de éxito DESPUÉS del
+   arreglo, explícitamente, y no confiar en que alguna prueba lo cubre. Las dos versiones de la marca de
+   escala rompieron el caso de éxito de su propia historia.
+3. **¿El fixture se parece a lo que la app escribe?** Ver abajo, porque es la que más caro salió.
+
+## Un fixture al que le falta un campo hace pasar una prueba que debería fallar
+
+El caso de la ida y vuelta vivió **dos rondas** de auditoría sin que ningún arnés lo viera, y el arnés tenía
+una aserción escrita exactamente para eso. Pasaba porque el fixture de vuelos **no tenía hora de llegada**, y
+la app la escribe por tres caminos distintos: el formulario manual, la pantalla de revisar lo importado, y el
+prompt con el que se le pide al modelo que complete los datos.
+
+O sea: el control declaraba un caso de éxito, y pasaba porque al dato le faltaba un campo, no porque el
+código estuviera bien.
+
+Ya está escrito más arriba que *un escenario que espera que todo salga bien puede pasar porque el sabotaje no
+se aplicó*. Esto es la misma regla con el agravante de que **acá el sabotaje era el dato real**. No hacía
+falta romper nada: alcanzaba con que el fixture se pareciera a lo que la persona carga.
+
+**Entonces un fixture se escribe leyendo el formulario, no de memoria.** Antes de dar por bueno un arnés:
+abrir la pantalla donde se carga ese dato, listar los campos, y comprobar que el fixture los tiene. Si un
+campo es opcional, tiene que haber un caso con y un caso sin.
+
+Para Valija, hoy: un vuelo tiene origen, destino, sale y **llega**; un alojamiento tiene check-in,
+**check-out** y dirección; un auto tiene retiro, **devolución** y lugar; un traslado tiene **desde**, hasta y
+fecha. Y todas las fechas son `datetime-local`: nunca una fecha pelada.
+
 ## Antes de dar algo por resuelto
 
 Tres preguntas, en este orden. Si alguna no tiene respuesta, la entrega no está lista:
