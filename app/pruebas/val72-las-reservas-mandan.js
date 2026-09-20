@@ -236,6 +236,45 @@ info("con escala en casa: " + dm.lugares.map(x=>x.lugar).join(" · "));
 ok(dm.lugares.some(l => l.lugar === "EZE"),
    "EZE queda como destino, y eso es el alcance conocido de la regla, no un bug oculto");
 
+console.log("\n· sin destino escrito y sin vuelos, la pista NO se tira");
+/* Salió de atacar la función con fixtures nuevos, no de un reporte. Si la
+   persona nunca escribió el destino y sólo importó el hotel, la línea no
+   tenía nada que encabezarla y cortaba antes de las pistas: el modelo
+   recibía "sin especificar" mientras la app tenía el hotel cargado. Las
+   pistas existen para mandarse; que se pierdan justo cuando son lo único
+   que hay es el peor momento posible. */
+const SIN_ESCRIBIR = { id:"t9", name:"Viaje", destination:"",
+                       startDate:"2027-05-01", endDate:"2027-05-10" };
+const SOLO_RIAD = [{ type:"stay", address:"Riad Dar Anika, Marrakech",
+                     start:"2027-05-01", end:"2027-05-08" }];
+const lineaRiad = pe.destinationPrompt(pe.buildPackingList({ trip:SIN_ESCRIBIR, items:SOLO_RIAD }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaRiad.slice(0, 170));
+ok(/Marrakech/.test(lineaRiad), "el hotel llega al modelo aunque no haya destino escrito");
+ok(/2027-05-01 a 2027-05-08/.test(lineaRiad), "con sus fechas, que es lo que le permite ubicarlo");
+ok(!/^- Destino: sin especificar/.test(lineaRiad), "y la línea deja de decir que no se sabe nada");
+
+console.log("\n· el control: sin nada cargado SÍ dice que no hay destino");
+const lineaNada = pe.destinationPrompt(pe.buildPackingList({ trip:SIN_ESCRIBIR, items:[] }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+ok(/sin especificar/.test(lineaNada),
+   "un viaje vacío de verdad sigue diciendo «sin especificar»: el arreglo no inventa una pista");
+
+console.log("\n· un vuelo sin origen cargado: el alcance, dicho");
+/* La regla del vuelo de vuelta compara el `to` del último contra el `from`
+   del primero. Si ese `from` está vacío no hay contra qué comparar, así que
+   el aeropuerto de casa entra como destino. Es el lado seguro del error —se
+   manda de más, no de menos— pero queda escrito para que no se descubra
+   como sorpresa. */
+const SIN_ORIGEN = [
+  { type:"flight", from:"", to:"SLA", start:"2027-05-01" },
+  { type:"flight", from:"SLA", to:"EZE", start:"2027-05-10" }
+];
+const dso = pe.destinosDelViaje({ id:"t10", destination:"Salta" }, SIN_ORIGEN);
+info("sin origen en el primer vuelo: " + dso.lugares.map(x=>x.lugar).join(" · "));
+ok(dso.lugares.some(l => l.lugar === "EZE"),
+   "sin `from` en el primer vuelo, EZE entra: no hay contra qué compararlo, y se manda de más y no de menos");
+
 /* EL CONTROL: que estas pruebas puedan fallar. Si las reservas NO mandaran,
    el caso de la trampa daría "montana" y la línea del prompt diría sólo
    "Europa". Se comprueba que los dos resultados son distintos entre sí. */

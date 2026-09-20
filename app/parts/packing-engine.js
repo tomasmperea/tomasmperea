@@ -1784,10 +1784,7 @@ function summarizeReservationsForAI(trip, items) {
     manda la lista entera en vez de un solo lugar. */
 function lineaDestinos(b) {
   var d = (b && b.destinos) || null;
-  if (!d || !d.lugares || !d.lugares.length) {
-    return "- Destino: " + ((b && b.destino) || "sin especificar");
-  }
-  var partes = d.lugares.map(function (l) { return l.lugar + " (" + l.fuente + ")"; });
+  var partes = (d && d.lugares || []).map(function (l) { return l.lugar + " (" + l.fuente + ")"; });
 
   /* Las pistas —alojamientos, traslados y autos— se mandan SIEMPRE, con sus
      fechas y con las dos lecturas posibles a la vista. Callarlas sería perder
@@ -1805,6 +1802,19 @@ function lineaDestinos(b) {
       "de donde se sale —un hotel junto al aeropuerto la noche antes de viajar se escribe igual que uno al llegar—, " +
       "así que fijate en las fechas y en el resto del viaje antes de tomarla como destino."
     : "";
+
+  /* Sin destino escrito y sin vuelos no hay nada que encabece la línea, y la
+     primera versión de esto cortaba acá y devolvía "- Destino: sin
+     especificar" — TIRANDO las pistas. O sea que un viaje al que le
+     importaste el hotel y nunca le escribiste el destino le mandaba al modelo
+     que no sabía nada, teniendo el hotel cargado. Las pistas existen justo
+     para eso: se mandan igual, y la línea dice que el destino no está escrito
+     en vez de decir que no se sabe nada. */
+  if (!partes.length) {
+    return lineaPistas
+      ? "- Destino: la persona no escribió ninguno y no hay vuelos cargados." + lineaPistas
+      : "- Destino: " + ((b && b.destino) || "sin especificar");
+  }
 
   if (!d.deReservas) {
     return "- Destino: " + partes.join(", ") +

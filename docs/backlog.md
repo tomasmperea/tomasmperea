@@ -896,6 +896,19 @@ alojamiento), vuelo sin título, ida y vuelta de dos tramos, y vuelta a mitad de
 embebida en el HTML. Más las regresiones. **No se probó en el teléfono del PM**, que es lo único que este
 proyecto llama verificado.
 
+**Dos defectos que encontré atacando la función con fixtures nuevos, no leyendo un reporte.** La cuarta
+auditoría se cortó por límite de sesión antes de terminar su propio ataque, así que lo hice yo:
+
+- **Sin destino escrito y sin vuelos, las pistas se perdían.** La línea no tenía nada que la encabezara y
+  cortaba antes de mandarlas: un viaje al que le importaste el hotel y nunca le escribiste el destino le
+  decía al modelo *"Destino: sin especificar"* teniendo el hotel cargado. Las pistas existen para mandarse,
+  y se perdían justo cuando eran lo único que había. Arreglado, con su control: un viaje realmente vacío
+  sigue diciendo "sin especificar", así que el arreglo no inventa una pista donde no la hay.
+- **Un vuelo sin origen cargado deja entrar el aeropuerto de casa.** La regla del vuelo de vuelta compara el
+  `to` del último contra el `from` del primero; si ese `from` está vacío no hay contra qué comparar. Es el
+  lado seguro del error —se manda de más, no de menos— y queda declarado en el arnés en vez de arreglado con
+  una suposición.
+
 **Dos correcciones al propio registro, de la tercera auditoría.**
 
 *Un número escrito a mano que era falso.* El commit de la tercera versión dice que "seis aserciones viejas
