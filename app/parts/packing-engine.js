@@ -1618,8 +1618,12 @@ function hoursBetween(a, b) {
    Roma son los tres el destino de ese viaje.
    ============================================================ */
 
-/** Los destinos del viaje, en orden de firmeza, con de dónde salió cada uno.
-    @returns {{lugares:Array, deReservas:boolean}} */
+/** Los destinos del viaje, separados de las pistas, con de dónde salió cada uno.
+    @returns {{lugares:Array, pistas:Array, hayVuelos:boolean, deReservas:boolean}}
+      `lugares`  el destino que manda: los vuelos si hay, si no el escrito a mano.
+      `pistas`   toda dirección — no desplaza al escrito, pero se manda igual.
+      `hayVuelos` si hay vuelos cargados, aunque estén sin destino.
+      `deReservas` si el destino sale de un vuelo y no del campo escrito. */
 function destinosDelViaje(trip, items) {
   trip = trip || {}; items = (items || []).filter(Boolean);
   var lugares = [];
@@ -1676,7 +1680,18 @@ function destinosDelViaje(trip, items) {
   // la lista, el prompt le pide al modelo que la valija sirva TAMBIÉN para
   // Buenos Aires. Si el último vuelo llega adonde salió el primero, ese lugar
   // es el punto de partida, y eso está escrito en los datos, no inferido.
-  var casa = vuelos.length > 1 ? norm(vuelos[0].from) : "";
+  // El orden por fecha es lo ÚNICO que le da sentido a "el primero" y "el
+  // último". Un vuelo sin fecha ordena antes que todos —`String(start||"")`
+  // pone la cadena vacía primero— y pasa a definir cuál es casa. La cuarta
+  // auditoría mostró la consecuencia: con el vuelo de vuelta sin `start`, el
+  // descarte se comía el destino VERDADERO y dejaba el aeropuerto de casa.
+  // La app acepta reservas sin fecha a propósito (el contrato del importador
+  // dice "o vacío"), así que el descarte se aplica sólo cuando el orden es
+  // confiable. Sin fecha se manda de más, que es el lado seguro y el mismo
+  // que ya se eligió para el vuelo sin origen.
+  var ordenConfiable = vuelos.length > 1 &&
+    vuelos.every(function (f) { return String(f.start == null ? "" : f.start).trim(); });
+  var casa = ordenConfiable ? norm(vuelos[0].from) : "";
   vuelos.forEach(function (f, k) {
     if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
     sumar(String(f.to).toUpperCase(), "vuelo", f, true);
@@ -1693,11 +1708,34 @@ function destinosDelViaje(trip, items) {
 
   var deReservas = lugares.some(function (l) { return l.firme; });
   var pistas = lugares.filter(function (l) { return !l.firme; });
-  if (!deReservas) sumar(trip.destination, "escrito-a-mano", { start:trip.startDate, end:trip.endDate }, false);
+  var destinos = lugares.filter(function (l) { return l.firme; });
+
+  /* EL DESTINO ESCRITO NO PASA POR `vistos`, y la razón la encontró la cuarta
+     auditoría. Antes se sumaba con la misma función que las pistas, y `vistos`
+     es compartido: en un viaje a "Bariloche" con un traslado cuyo "hasta" dice
+     "Bariloche", la pista se comía la entrada del destino escrito. `lugares`
+     quedaba vacío y la línea terminaba diciéndole al modelo que la persona no
+     había escrito ningún destino —falso— y ofreciéndole su propio destino como
+     una pista que no tomara demasiado en serio. Una reserva desplazando al
+     destino escrito otra vez, por un camino nuevo, que es exactamente el
+     defecto que dos rondas anteriores vinieron a cerrar.
+
+     Cuando coinciden, gana el escrito y la pista se cae por redundante: dice
+     lo mismo con menos respaldo. */
+  var escrito = String(trip.destination == null ? "" : trip.destination).trim();
+  if (!deReservas && escrito) {
+    destinos = [{ lugar:escrito, fuente:"escrito-a-mano", desde:trip.startDate || "",
+                  hasta:trip.endDate || "", firme:false }];
+    pistas = pistas.filter(function (l) { return norm(l.lugar) !== norm(escrito); });
+  }
 
   return {
-    lugares:lugares.filter(function (l) { return l.firme || l.fuente === "escrito-a-mano"; }),
+    lugares:destinos,
     pistas:pistas,
+    // Hay vuelos CARGADOS, que no es lo mismo que vuelos que digan adónde
+    // llegan. La línea del prompt necesita distinguirlos para no afirmar que
+    // no hay ninguno cuando lo que pasa es que están incompletos.
+    hayVuelos:items.some(function (i) { return i.type === "flight"; }),
     deReservas:deReservas
   };
 }
@@ -1793,7 +1831,7 @@ function lineaDestinos(b) {
      necesita para distinguir una noche antes de salir de una noche al llegar:
      nosotros no podemos hacer esa cuenta —ver el comentario de
      `destinosDelViaje`— pero él tiene el resto del viaje a la vista. */
-  var pistas = (d.pistas || []).map(function (l) {
+  var pistas = (d && d.pistas || []).map(function (l) {
     var f = [l.desde, l.hasta].filter(Boolean).join(" a ");
     return "\"" + l.lugar + "\" (" + l.fuente + (f ? ", " + f : "") + ")";
   });
@@ -1811,9 +1849,18 @@ function lineaDestinos(b) {
      para eso: se mandan igual, y la línea dice que el destino no está escrito
      en vez de decir que no se sabe nada. */
   if (!partes.length) {
-    return lineaPistas
-      ? "- Destino: la persona no escribió ninguno y no hay vuelos cargados." + lineaPistas
-      : "- Destino: " + ((b && b.destino) || "sin especificar");
+    if (!lineaPistas) return "- Destino: " + ((b && b.destino) || "sin especificar");
+    /* Acá había una afirmación doble y las dos partes podían ser falsas: decía
+       "la persona no escribió ninguno y no hay vuelos cargados" sin mirar ni
+       una cosa ni la otra. Se lo dispara la ausencia de destinos, que también
+       ocurre con un vuelo cargado sin `to`. Ahora cada mitad sale del dato que
+       le corresponde. */
+    var porQue = [];
+    if (!String((b && b.destino) || "").trim()) porQue.push("la persona no escribió ninguno");
+    porQue.push(d && d.hayVuelos
+      ? "los vuelos cargados no dicen adónde llegan"
+      : "no hay vuelos cargados");
+    return "- Destino: " + porQue.join(" y ") + "." + lineaPistas;
   }
 
   if (!d.deReservas) {

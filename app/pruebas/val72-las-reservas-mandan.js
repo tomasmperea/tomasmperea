@@ -275,6 +275,92 @@ info("sin origen en el primer vuelo: " + dso.lugares.map(x=>x.lugar).join(" · "
 ok(dso.lugares.some(l => l.lugar === "EZE"),
    "sin `from` en el primer vuelo, EZE entra: no hay contra qué compararlo, y se manda de más y no de menos");
 
+console.log("\n· BLOQUEANTE DE LA CUARTA RONDA · una pista no puede borrar el destino escrito");
+/* El destino escrito se sumaba con la misma función que las pistas, y esa
+   función comparte un registro de "ya lo vi". Un traslado cuyo «hasta» dice
+   lo mismo que el destino del viaje se comía la entrada del destino escrito:
+   la línea le decía al modelo que la persona no había escrito ninguno —falso—
+   y le ofrecía su propio destino como pista que no tomara en serio. Una
+   reserva desplazando al destino escrito otra vez, por un camino nuevo. */
+[["el «hasta» de un traslado, igual al destino", { id:"c1", destination:"Bariloche",
+   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"transfer", to:"Bariloche", start:"2027-06-01" }], "Bariloche"],
+ ["con acento y mayúscula de diferencia", { id:"c2", destination:"Córdoba",
+   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"car", address:"cordoba", start:"2027-06-01" }], "Córdoba"],
+ ["con espacios de más", { id:"c3", destination:"Madrid",
+   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"stay", address:"  MADRID ", start:"2027-06-01" }], "Madrid"]
+].forEach(function (caso) {
+  var titulo = caso[0], trip = caso[1], items = caso[2], esperado = caso[3];
+  var d = pe.destinosDelViaje(trip, items);
+  var linea = pe.destinationPrompt(pe.buildPackingList({ trip:trip, items:items }))
+    .split("\n").find(l => /^- Destino/.test(l)) || "";
+  ok(d.lugares.some(l => l.lugar === esperado), `${titulo}: «${esperado}» sigue siendo el destino`);
+  ok(!/no escribió ninguno/.test(linea), `${titulo}: la línea no afirma que no escribió nada`);
+  ok(d.pistas.length === 0, `${titulo}: la pista redundante se cae, no se manda dos veces lo mismo`);
+});
+
+console.log("\n· el control: una pista DISTINTA se sigue mandando");
+const dDistinta = pe.destinosDelViaje({ id:"c4", destination:"Bariloche" },
+  [{ type:"transfer", to:"Villa La Angostura", start:"2027-06-01" }]);
+ok(dDistinta.lugares.some(l => l.lugar === "Bariloche"), "el destino escrito sigue ahí");
+ok(dDistinta.pistas.some(l => l.lugar === "Villa La Angostura"),
+   "y la pista distinta NO se cae: el filtro saca lo redundante, no todo");
+
+console.log("\n· la línea no afirma lo que no miró");
+/* Decía "no hay vuelos cargados" mirando si quedaban destinos, no si había
+   vuelos. Un vuelo cargado sin destino —la app los acepta, el contrato del
+   importador dice "o vacío"— la hacía mentir. */
+const VUELO_MUDO = [{ type:"flight", from:"EZE", to:"", start:"2027-06-01" },
+                    { type:"stay", address:"Hotel X, Lima", start:"2027-06-02" }];
+const lineaMuda = pe.destinationPrompt(pe.buildPackingList({
+  trip:{ id:"c5", destination:"", startDate:"2027-06-01", endDate:"2027-06-10" }, items:VUELO_MUDO }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaMuda.slice(0, 130));
+ok(!/no hay vuelos cargados/.test(lineaMuda), "con un vuelo cargado, NO dice que no hay vuelos");
+ok(/no dicen adónde llegan/.test(lineaMuda), "dice lo que sí pasa: el vuelo está, sin destino");
+ok(/Hotel X, Lima/.test(lineaMuda), "y la pista se manda igual");
+
+console.log("\n· el control: sin ningún vuelo, sí dice que no hay vuelos");
+const lineaSinVuelos = pe.destinationPrompt(pe.buildPackingList({
+  trip:{ id:"c6", destination:"", startDate:"2027-06-01", endDate:"2027-06-10" },
+  items:[{ type:"stay", address:"Hotel X, Lima", start:"2027-06-02" }] }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+ok(/no hay vuelos cargados/.test(lineaSinVuelos),
+   "las dos frases existen y se eligen por el dato, no una sola para todo");
+
+console.log("\n· BLOQUEANTE DE LA CUARTA RONDA · el vuelo de vuelta SIN fecha");
+/* El orden por fecha es lo único que le da sentido a «el primero» y «el
+   último». Un vuelo sin fecha ordena antes que todos y pasaba a definir cuál
+   era casa: el descarte se comía el destino VERDADERO y dejaba el aeropuerto
+   de salida. Ahora el descarte se aplica sólo si el orden es confiable. */
+const VUELTA_SIN_FECHA = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T10:00" },
+  { type:"flight", from:"MAD", to:"EZE", start:"" }
+];
+const dsf = pe.destinosDelViaje({ id:"c7", destination:"España" }, VUELTA_SIN_FECHA);
+info("vuelta sin fecha: " + dsf.lugares.map(x=>x.lugar).join(" · "));
+ok(dsf.lugares.some(l => l.lugar === "MAD"), "MAD, que es el destino de verdad, NO se pierde");
+ok(dsf.deReservas, "y el viaje sigue teniendo destino en firme");
+
+console.log("\n· el control: con las dos fechas puestas, el descarte SÍ se aplica");
+const dcf = pe.destinosDelViaje({ id:"c8", destination:"España" }, [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T10:00" },
+  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-10T18:00" }
+]);
+info("con fechas: " + dcf.lugares.map(x=>x.lugar).join(" · "));
+ok(dcf.lugares.length === 1 && dcf.lugares[0].lugar === "MAD",
+   "queda MAD sola: la regla del vuelo de vuelta sigue funcionando cuando puede");
+ok(!dsf.lugares.length === false && dsf.lugares.length !== dcf.lugares.length,
+   "y los dos casos dan resultados distintos: la fecha cambia el comportamiento");
+
+console.log("\n· una lista vieja no deja la app muda");
+/* `destinationPrompt` declara que puede recibir una lista armada por una
+   versión anterior del motor, sin `destinos`. La guarda estaba en una línea
+   y faltaba en la de al lado. */
+let reventó = false;
+try { pe.destinationPrompt({ base:{ destino:"Roma", destinos:null }, items:{} }); }
+catch (e) { reventó = true; info("reventó con: " + e.message); }
+ok(!reventó, "una lista sin `destinos` no tira una excepción");
+
 /* EL CONTROL: que estas pruebas puedan fallar. Si las reservas NO mandaran,
    el caso de la trampa daría "montana" y la línea del prompt diría sólo
    "Europa". Se comprueba que los dos resultados son distintos entre sí. */

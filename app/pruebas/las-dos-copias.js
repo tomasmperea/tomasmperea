@@ -73,11 +73,19 @@ function cuerpoDelModulo(src, archivo) {
   return src.slice(src.indexOf("\n", i) + 1);
 }
 
-/* Todo lo que hay ANTES de la primera función —las constantes del motor,
-   los catálogos, los topes— no lo veía la primera versión de este arnés, y
-   lo encontró la auditoría: alguien podía cambiar `TOPE_LISTA_BYTES` en una
-   sola copia y esto decía "verde". Se compara aparte, porque ahí no hay
-   funciones que alinear: es un bloque contra otro. */
+/* Todo lo que hay ANTES de la primera función —las constantes, los catálogos,
+   los topes y los comentarios que explican por qué valen lo que valen— no lo
+   veía la primera versión de este arnés: alguien podía cambiar
+   `TOPE_LISTA_BYTES` en una sola copia y esto decía "verde".
+
+   La SEGUNDA versión comparaba sólo las líneas que declaran algo, y el
+   comentario decía "un bloque contra otro", que era más de lo que hacía. La
+   auditoría lo falsificó con dos sabotajes que pasaban en verde: cambiar un
+   número adentro de un comentario, y dar vuelta el orden de dos constantes.
+
+   Ahora sí es un bloque contra otro: el texto entero de la cabecera,
+   normalizando espacios al final de línea y líneas vacías, que es lo único
+   que difiere a propósito entre un archivo suelto y uno embebido. */
 function cabecera(src) {
   const m = /^\s*function\s+[A-Za-z0-9_$]+\s*\(/m.exec(src);
   return limpiar(m ? src.slice(0, m.index) : src);
@@ -90,20 +98,19 @@ MOTORES.forEach(function (mot) {
   const enHtml  = funciones(crudoHtml);
   const enParts = funciones(crudoParts);
 
-  /* La cabecera de `parts/` arranca con el envoltorio UMD y un comentario de
-     archivo que en el HTML no van. Lo que sí tiene que estar en las dos son
-     las declaraciones: se comparan esas, línea por línea. */
-  const declara = t => limpiar(t).split("\n")
-    .filter(l => /^\s*(var|const|let)\s+[A-Za-z0-9_$]+\s*=/.test(l))
-    .map(l => l.trim());
-  const decHtml = declara(cabecera(crudoHtml));
-  const decParts = declara(cabecera(crudoParts));
-  const faltanDec = decParts.filter(d => decHtml.indexOf(d) < 0);
-  const sobranDec = decHtml.filter(d => decParts.indexOf(d) < 0);
-  info(`constantes antes de la primera función: ${decParts.length} en parts, ${decHtml.length} en el HTML`);
-  ok(decParts.length > 0, "hay constantes que comparar antes de la primera función");
-  ok(faltanDec.length === 0, faltanDec.length ? `constantes que el HTML NO tiene igual: ${faltanDec.join(" | ")}` : "todas las constantes de parts están igual en el HTML");
-  ok(sobranDec.length === 0, sobranDec.length ? `constantes que sólo están en el HTML: ${sobranDec.join(" | ")}` : "el HTML no tiene constantes de más");
+  const cabHtml = cabecera(crudoHtml), cabParts = cabecera(crudoParts);
+  info(`cabecera: ${cabParts.split("\n").length} líneas en parts, ${cabHtml.split("\n").length} en el HTML`);
+  ok(cabParts.length > 0, "hay cabecera que comparar antes de la primera función");
+  if (cabHtml === cabParts) {
+    ok(true, "la cabecera entera es idéntica: constantes, catálogos y comentarios");
+  } else {
+    const A = cabParts.split("\n"), B = cabHtml.split("\n");
+    let k = 0;
+    while (k < Math.max(A.length, B.length) && A[k] === B[k]) k++;
+    ok(false, `la cabecera DIVERGE en la línea ${k + 1}`);
+    console.log("     parts: " + (A[k] === undefined ? "(nada)" : A[k]));
+    console.log("     html : " + (B[k] === undefined ? "(nada)" : B[k]));
+  }
 
   const nombresParts = Object.keys(enParts);
   const nombresHtml  = Object.keys(enHtml);
@@ -139,19 +146,27 @@ MOTORES.forEach(function (mot) {
 /* EL CONTROL: si este arnés no pudiera ver una diferencia, todo lo de
    arriba pasaría por vacío. Se le mete un cambio a mano a una copia y se
    comprueba que lo detecta. */
-console.log("\n· el control de las constantes: el arnés ve una constante cambiada");
+console.log("\n· el control de la cabecera: los tres sabotajes que la auditoría usó");
 (function () {
   const crudo = cuerpoDelModulo(fs.readFileSync(path.join(PARTS, MOTORES[0].archivo), "utf8"), MOTORES[0].archivo);
-  const m = /^\s*function\s+[A-Za-z0-9_$]+\s*\(/m.exec(crudo);
-  const cab = limpiar(crudo.slice(0, m.index));
-  const declara = t => t.split("\n")
-    .filter(l => /^\s*(var|const|let)\s+[A-Za-z0-9_$]+\s*=/.test(l))
-    .map(l => l.trim());
-  const reales = declara(cab);
-  ok(reales.length > 0, `hay constantes sobre las que probar el control (${reales.length})`);
-  const saboteadas = declara(cab.replace(/=\s*262144/, "= 999999"));
-  const difiere = saboteadas.some(d => reales.indexOf(d) < 0);
-  ok(difiere, "cambiar un tope en una sola copia aparece como constante que falta");
+  const cab = cabecera(crudo);
+  ok(cab.length > 0, "hay cabecera sobre la que probar el control");
+
+  // 1 · un tope cambiado — lo único que la versión anterior detectaba.
+  ok(cabecera(crudo.replace("262144", "999999")) !== cab, "un tope cambiado se ve");
+
+  // 2 · un número adentro de un comentario — pasaba en verde antes.
+  const conComentario = cab.replace(/(\/\*|\/\/)/, "$1 nota colada:");
+  ok(conComentario !== cab, "el sabotaje del comentario se aplicó");
+  ok(limpiar(conComentario) !== limpiar(cab), "un comentario cambiado se ve");
+
+  // 3 · dos constantes dadas vuelta — también pasaba en verde antes.
+  const lineas = cab.split("\n");
+  const idx = lineas.map((l, k) => /^\s*var\s+MAX_/.test(l) ? k : -1).filter(k => k >= 0);
+  ok(idx.length >= 2, `hay al menos dos constantes para intercambiar (${idx.length})`);
+  const vuelta = lineas.slice();
+  const t = vuelta[idx[0]]; vuelta[idx[0]] = vuelta[idx[1]]; vuelta[idx[1]] = t;
+  ok(limpiar(vuelta.join("\n")) !== limpiar(cab), "dos constantes dadas vuelta se ven");
 })();
 
 console.log("\n· el control: el arnés detecta una diferencia metida a mano");

@@ -896,6 +896,37 @@ alojamiento), vuelo sin título, ida y vuelta de dos tramos, y vuelta a mitad de
 embebida en el HTML. Más las regresiones. **No se probó en el teléfono del PM**, que es lo único que este
 proyecto llama verificado.
 
+**Dos bloqueantes más, de la cuarta auditoría, y los dos los metió el commit que buscaba cerrar la ronda
+anterior.** Están anotados porque la lección no es sobre destinos:
+
+- **Una pista podía borrar el destino escrito.** El destino escrito se sumaba con la misma función que las
+  pistas, y esa función comparte un registro de "esto ya lo vi". Un traslado cuyo «hasta» decía lo mismo que
+  el destino del viaje se comía la entrada del destino escrito: la línea le decía al modelo que la persona
+  no había escrito ninguno —falso— y le ofrecía su propio destino como una pista que no tomara en serio.
+  **Una reserva desplazando al destino escrito otra vez, por un camino nuevo.** Reproducía también con sólo
+  un acento, una mayúscula o un espacio de diferencia. Ahora el destino escrito no pasa por ese registro, y
+  la pista redundante se cae porque dice lo mismo con menos respaldo.
+- **El vuelo de vuelta sin fecha se comía el destino de verdad.** El orden por fecha es lo único que le da
+  sentido a "el primero" y "el último"; un vuelo sin fecha ordena antes que todos y pasaba a definir cuál era
+  el aeropuerto de casa. Con la vuelta sin `start`, el descarte sacaba Madrid y dejaba Ezeiza. La app acepta
+  reservas sin fecha a propósito —el contrato del importador dice "o vacío"—, así que ahora el descarte se
+  aplica sólo cuando el orden es confiable: sin fechas se manda de más, que es el lado seguro y el mismo que
+  ya se había elegido para el vuelo sin origen.
+
+**Y la lección, que no es sobre destinos:** el primero salió de **sacar una guarda sin preguntar qué más
+protegía**. La guarda que cortaba la línea temprano también tapaba que `lugares` pudiera quedar vacío
+teniendo un destino escrito vivo. Se quitó mirando un solo caso.
+
+Además, dos afirmaciones que el código hacía sin mirar el dato: *"no hay vuelos cargados"* salía de que no
+quedaran destinos, no de que no hubiera vuelos, así que un vuelo cargado sin destino la hacía mentir; y el
+`@returns` de `destinosDelViaje` seguía diciendo "en orden de firmeza" —la jerarquía volteada— y ni nombraba
+`pistas`, el campo que esta historia agregó. Las dos corregidas, con su prueba.
+
+**Y el arnés `las-dos-copias.js` prometía más de lo que hacía.** Su comentario decía que comparaba la
+cabecera "un bloque contra otro" y comparaba una lista filtrada de declaraciones. La auditoría lo falsificó
+con dos sabotajes que pasaban en verde: un número cambiado adentro de un comentario, y dos constantes dadas
+vuelta. Ahora compara la cabecera entera y tiene los tres sabotajes como control.
+
 **Dos defectos que encontré atacando la función con fixtures nuevos, no leyendo un reporte.** La cuarta
 auditoría se cortó por límite de sesión antes de terminar su propio ataque, así que lo hice yo:
 
