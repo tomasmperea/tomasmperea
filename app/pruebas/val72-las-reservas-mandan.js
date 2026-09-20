@@ -39,10 +39,26 @@ const pe = require(arch);
 /* El caso del PM, tal cual lo describió. */
 const EUROPA = { id:"t1", name:"Europa", destination:"Europa",
                  startDate:"2027-04-01", endDate:"2027-04-17" };
+/* CON `end` CARGADO, que es lo que la app escribe. El fixture no lo tenía, y
+   por eso un control que declaraba un caso de éxito pasaba: le faltaba un
+   campo que el formulario de vuelo ("Llega"), la pantalla de revisar lo
+   importado y el prompt del importador completan los tres. La quinta
+   auditoría lo destapó. Es la regla que ya está escrita: un escenario que
+   espera que todo salga bien puede pasar porque el sabotaje nunca llegó —
+   acá el sabotaje era el dato real. */
 const VUELOS = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01", title:"Vuelo a Madrid" },
-  { type:"flight", from:"MAD", to:"CDG", start:"2027-04-06", title:"Vuelo a París" },
-  { type:"flight", from:"CDG", to:"FCO", start:"2027-04-11", title:"Vuelo a Roma" }
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T23:30", title:"Vuelo a Madrid" },
+  { type:"flight", from:"MAD", to:"CDG", start:"2027-04-06T09:00", end:"2027-04-06T11:00", title:"Vuelo a París" },
+  { type:"flight", from:"CDG", to:"FCO", start:"2027-04-11T14:00", end:"2027-04-11T16:00", title:"Vuelo a Roma" }
+];
+
+/* El caso más común que existe en la app, y el que esta marca rompía: ida y
+   vuelta. El único destino del viaje quedaba rotulado como lugar de
+   trasbordo, y el prompt le pedía al modelo que dudara de tratarlo como
+   destino. No había otro lugar al que pudiera caer. */
+const IDA_Y_VUELTA_CON_END = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T23:30" },
+  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-15T10:00", end:"2027-04-16T06:00" }
 ];
 
 console.log("\n· el viaje multidestino a Europa: los tres destinos, no uno");
@@ -75,9 +91,9 @@ console.log("\n· las otras reservas también aportan, pero no todas mandan igua
    porque el código lo hacía, y el código estaba mal: ver el hallazgo 1 más
    abajo. Ahora aportan como PISTA, que es lo que su campo alcanza a decir. */
 const OTRAS = [
-  { type:"stay", address:"Calle Atocha 123, Madrid", start:"2027-04-01" },
-  { type:"transfer", to:"Centro de Madrid", start:"2027-04-01" },
-  { type:"car", address:"Aeropuerto de Madrid T4", start:"2027-04-02" }
+  { type:"stay", address:"Calle Atocha 123, Madrid", start:"2027-04-01T15:00", end:"2027-04-06T10:00" },
+  { type:"transfer", from:"Aeropuerto de Madrid T4", to:"Centro de Madrid", start:"2027-04-01T10:00" },
+  { type:"car", address:"Aeropuerto de Madrid T4", start:"2027-04-02T09:00", end:"2027-04-09T09:00" }
 ];
 const d2 = pe.destinosDelViaje({ id:"t2", destination:"Europa" }, OTRAS);
 info("destinos: " + JSON.stringify(d2.lugares.map(x=>x.fuente)) +
@@ -115,7 +131,7 @@ console.log("\n· el vuelo de vuelta no convierte tu casa en un destino");
    cargada, el prompt le pedía al modelo que la valija sirviera también para
    Buenos Aires, que es de donde sale. */
 const IDA_Y_VUELTA = VUELOS.concat([
-  { type:"flight", from:"FCO", to:"EZE", start:"2027-04-17", title:"Vuelo de regreso" }
+  { type:"flight", from:"FCO", to:"EZE", start:"2027-04-17T08:00", title:"Vuelo de regreso" }
 ]);
 const dv = pe.destinosDelViaje(EUROPA, IDA_Y_VUELTA);
 info("con la vuelta cargada: " + dv.lugares.map(x=>x.lugar).join(" · "));
@@ -131,8 +147,8 @@ console.log("\n· pero sólo se descarta el ÚLTIMO, y sólo si es de donde sali
    punto de partida, su destino tiene que quedar. Sin esto, la prueba de arriba
    pasaría igual con una función que descarte siempre el último vuelo. */
 const SIN_VOLVER = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01" },
-  { type:"flight", from:"MAD", to:"LIS", start:"2027-04-10" }
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00" },
+  { type:"flight", from:"MAD", to:"LIS", start:"2027-04-10T08:00" }
 ];
 const dsv = pe.destinosDelViaje(EUROPA, SIN_VOLVER);
 info("sin regreso: " + dsv.lugares.map(x=>x.lugar).join(" · "));
@@ -148,7 +164,7 @@ console.log("\n· HALLAZGO 1 DE LA AUDITORÍA · una reserva en el punto de PART
    NUNCA por encima". Era una regresión, no una mejora incompleta. */
 const BARI = { id:"t4", name:"Bariloche", destination:"Bariloche",
                startDate:"2027-07-01", endDate:"2027-07-10" };
-const SOLO_TRASLADO = [{ type:"transfer", to:"Aeropuerto de Ezeiza", start:"2027-07-01" }];
+const SOLO_TRASLADO = [{ type:"transfer", from:"Av. Santa Fe 1234", to:"Aeropuerto de Ezeiza", start:"2027-07-01T05:00" }];
 const dt = pe.destinosDelViaje(BARI, SOLO_TRASLADO);
 info("deReservas: " + dt.deReservas + " · lugares: " + dt.lugares.map(x=>x.lugar).join(", ") +
      " · pistas: " + (dt.pistas||[]).map(x=>x.lugar).join(", "));
@@ -173,7 +189,7 @@ console.log("\n· HALLAZGO 1, SEGUNDA RONDA · el alojamiento en el ORIGEN, que 
    punto de partida, porque los dos son códigos IATA. Una dirección es texto
    libre y no hay contra qué compararla — ni con fechas, porque una noche
    antes de salir y una noche al llegar se escriben igual. */
-const HOTEL_EN_ORIGEN = [{ type:"stay", address:"Hotel Ezeiza Este, Buenos Aires", start:"2027-06-30" }];
+const HOTEL_EN_ORIGEN = [{ type:"stay", address:"Hotel Ezeiza Este, Buenos Aires", start:"2027-06-30T20:00", end:"2027-07-01T04:00" }];
 const dho = pe.destinosDelViaje(BARI, HOTEL_EN_ORIGEN);
 info("deReservas: " + dho.deReservas + " · destino: " + dho.lugares.map(x=>x.lugar).join(", "));
 ok(!dho.deReservas, "un alojamiento solo NO declara destino en firme");
@@ -187,7 +203,7 @@ ok(/2027-06-30/.test(lineaHotel), "con su fecha, que es lo que le permite al mod
 console.log("\n· y el control: un vuelo SÍ puede desplazar lo escrito");
 /* Sin esto, todo lo de arriba pasaría con una función que nunca declare nada
    en firme. Tiene que seguir habiendo un camino que mande. */
-const dfv = pe.destinosDelViaje(BARI, [{ type:"flight", from:"EZE", to:"BRC", start:"2027-07-01" }]);
+const dfv = pe.destinosDelViaje(BARI, [{ type:"flight", from:"EZE", to:"BRC", start:"2027-07-01T08:00" }]);
 ok(dfv.deReservas, "con un vuelo cargado sí hay destino en firme");
 ok(dfv.lugares.some(l => l.lugar === "BRC"), "y es el del vuelo");
 ok(!dfv.lugares.some(l => /bariloche/i.test(l.lugar)), "el escrito a mano ya no aparece como destino");
@@ -198,7 +214,7 @@ console.log("\n· HALLAZGO 2 DE LA AUDITORÍA · un vuelo sin título no puede f
    anterior pasaba porque su único fixture traía title:"Vuelo a Madrid".
    Un viaje cargado a mano no lo trae. Esto NO es regresión —la v23 hacía lo
    mismo— pero el backlog prometía que estaba resuelto. */
-const SIN_TITULO = [{ type:"flight", from:"EZE", to:"MAD", start:"2027-04-01" }];
+const SIN_TITULO = [{ type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00" }];
 const st = pe.buildPackingList({ trip:trampa, items:SIN_TITULO });
 info(`vuelo sin título → ${st.tipoViaje} · ${st.base.tipoViajeMotivo}`);
 ok(/no dicen de qué tipo/i.test(st.base.tipoViajeMotivo),
@@ -212,8 +228,8 @@ ok(!/no dicen de qué tipo/i.test(sinVuelo.base.tipoViajeMotivo),
 
 console.log("\n· ida y vuelta de dos tramos, el caso más común de todos");
 const DOS_TRAMOS = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01" },
-  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-10" }
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00" },
+  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-10T08:00" }
 ];
 const d2t = pe.destinosDelViaje(EUROPA, DOS_TRAMOS);
 info("dos tramos: " + d2t.lugares.map(x=>x.lugar).join(" · "));
@@ -227,9 +243,9 @@ console.log("\n· volver a casa a MITAD de viaje: declarado, no resuelto");
    queda como destino. Se deja escrito acá para que nadie lo descubra creyendo
    que era un descuido: es el alcance elegido, no un olvido. */
 const VUELVE_AL_MEDIO = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01" },
-  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-08" },
-  { type:"flight", from:"EZE", to:"FCO", start:"2027-04-12" }
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00" },
+  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-08T08:00" },
+  { type:"flight", from:"EZE", to:"FCO", start:"2027-04-12T08:00" }
 ];
 const dm = pe.destinosDelViaje(EUROPA, VUELVE_AL_MEDIO);
 info("con escala en casa: " + dm.lugares.map(x=>x.lugar).join(" · "));
@@ -246,12 +262,13 @@ console.log("\n· sin destino escrito y sin vuelos, la pista NO se tira");
 const SIN_ESCRIBIR = { id:"t9", name:"Viaje", destination:"",
                        startDate:"2027-05-01", endDate:"2027-05-10" };
 const SOLO_RIAD = [{ type:"stay", address:"Riad Dar Anika, Marrakech",
-                     start:"2027-05-01", end:"2027-05-08" }];
+                     start:"2027-05-01T15:00", end:"2027-05-08T10:00" }];
 const lineaRiad = pe.destinationPrompt(pe.buildPackingList({ trip:SIN_ESCRIBIR, items:SOLO_RIAD }))
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaRiad.slice(0, 170));
 ok(/Marrakech/.test(lineaRiad), "el hotel llega al modelo aunque no haya destino escrito");
-ok(/2027-05-01 a 2027-05-08/.test(lineaRiad), "con sus fechas, que es lo que le permite ubicarlo");
+ok(/2027-05-01T15:00 a 2027-05-08T10:00/.test(lineaRiad),
+   "con sus fechas tal como las guarda la app, que es lo que le permite ubicarlo");
 ok(!/^- Destino: sin especificar/.test(lineaRiad), "y la línea deja de decir que no se sabe nada");
 
 console.log("\n· el control: sin nada cargado SÍ dice que no hay destino");
@@ -267,8 +284,8 @@ console.log("\n· un vuelo sin origen cargado: el alcance, dicho");
    manda de más, no de menos— pero queda escrito para que no se descubra
    como sorpresa. */
 const SIN_ORIGEN = [
-  { type:"flight", from:"", to:"SLA", start:"2027-05-01" },
-  { type:"flight", from:"SLA", to:"EZE", start:"2027-05-10" }
+  { type:"flight", from:"", to:"SLA", start:"2027-05-01T08:00" },
+  { type:"flight", from:"SLA", to:"EZE", start:"2027-05-10T08:00" }
 ];
 const dso = pe.destinosDelViaje({ id:"t10", destination:"Salta" }, SIN_ORIGEN);
 info("sin origen en el primer vuelo: " + dso.lugares.map(x=>x.lugar).join(" · "));
@@ -283,11 +300,11 @@ console.log("\n· BLOQUEANTE DE LA CUARTA RONDA · una pista no puede borrar el 
    y le ofrecía su propio destino como pista que no tomara en serio. Una
    reserva desplazando al destino escrito otra vez, por un camino nuevo. */
 [["el «hasta» de un traslado, igual al destino", { id:"c1", destination:"Bariloche",
-   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"transfer", to:"Bariloche", start:"2027-06-01" }], "Bariloche"],
+   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"transfer", from:"Aeropuerto", to:"Bariloche", start:"2027-06-01T09:00" }], "Bariloche"],
  ["con acento y mayúscula de diferencia", { id:"c2", destination:"Córdoba",
-   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"car", address:"cordoba", start:"2027-06-01" }], "Córdoba"],
+   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"car", address:"cordoba", start:"2027-06-01T09:00", end:"2027-06-08T09:00" }], "Córdoba"],
  ["con espacios de más", { id:"c3", destination:"Madrid",
-   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"stay", address:"  MADRID ", start:"2027-06-01" }], "Madrid"]
+   startDate:"2027-06-01", endDate:"2027-06-10" }, [{ type:"stay", address:"  MADRID ", start:"2027-06-01T15:00", end:"2027-06-08T10:00" }], "Madrid"]
 ].forEach(function (caso) {
   var titulo = caso[0], trip = caso[1], items = caso[2], esperado = caso[3];
   var d = pe.destinosDelViaje(trip, items);
@@ -300,7 +317,7 @@ console.log("\n· BLOQUEANTE DE LA CUARTA RONDA · una pista no puede borrar el 
 
 console.log("\n· el control: una pista DISTINTA se sigue mandando");
 const dDistinta = pe.destinosDelViaje({ id:"c4", destination:"Bariloche" },
-  [{ type:"transfer", to:"Villa La Angostura", start:"2027-06-01" }]);
+  [{ type:"transfer", from:"Bariloche centro", to:"Villa La Angostura", start:"2027-06-01T09:00" }]);
 ok(dDistinta.lugares.some(l => l.lugar === "Bariloche"), "el destino escrito sigue ahí");
 ok(dDistinta.pistas.some(l => l.lugar === "Villa La Angostura"),
    "y la pista distinta NO se cae: el filtro saca lo redundante, no todo");
@@ -309,8 +326,8 @@ console.log("\n· la línea no afirma lo que no miró");
 /* Decía "no hay vuelos cargados" mirando si quedaban destinos, no si había
    vuelos. Un vuelo cargado sin destino —la app los acepta, el contrato del
    importador dice "o vacío"— la hacía mentir. */
-const VUELO_MUDO = [{ type:"flight", from:"EZE", to:"", start:"2027-06-01" },
-                    { type:"stay", address:"Hotel X, Lima", start:"2027-06-02" }];
+const VUELO_MUDO = [{ type:"flight", from:"EZE", to:"", start:"2027-06-01T08:00" },
+                    { type:"stay", address:"Hotel X, Lima", start:"2027-06-02T15:00", end:"2027-06-09T10:00" }];
 const lineaMuda = pe.destinationPrompt(pe.buildPackingList({
   trip:{ id:"c5", destination:"", startDate:"2027-06-01", endDate:"2027-06-10" }, items:VUELO_MUDO }))
   .split("\n").find(l => /^- Destino/.test(l)) || "";
@@ -322,7 +339,7 @@ ok(/Hotel X, Lima/.test(lineaMuda), "y la pista se manda igual");
 console.log("\n· el control: sin ningún vuelo, sí dice que no hay vuelos");
 const lineaSinVuelos = pe.destinationPrompt(pe.buildPackingList({
   trip:{ id:"c6", destination:"", startDate:"2027-06-01", endDate:"2027-06-10" },
-  items:[{ type:"stay", address:"Hotel X, Lima", start:"2027-06-02" }] }))
+  items:[{ type:"stay", address:"Hotel X, Lima", start:"2027-06-02T15:00", end:"2027-06-09T10:00" }] }))
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 ok(/no hay vuelos cargados/.test(lineaSinVuelos),
    "las dos frases existen y se eligen por el dato, no una sola para todo");
@@ -377,10 +394,13 @@ const dEsc = pe.destinosDelViaje(EUROPA, CON_ESCALA);
 const lineaEsc = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:CON_ESCALA }))
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaEsc.slice(0, 160));
-ok(dEsc.lugares.some(l => l.lugar === "GRU" && l.escala), "San Pablo queda marcado como escala");
-ok(dEsc.lugares.some(l => l.lugar === "MAD" && !l.escala), "y Madrid NO: es el destino de verdad");
-ok(/escala de 2 h/.test(lineaEsc), "la línea dice cuánto dura, que es el dato que decide");
-ok(/fijate en las horas/.test(lineaEsc), "y le avisa al modelo qué mirar antes de tratarlo como destino");
+ok(dEsc.lugares.some(l => l.lugar === "GRU" && l.horasHastaElProximoVuelo === 2),
+   "San Pablo informa las 2 horas que se pasan ahí");
+ok(dEsc.lugares.some(l => l.lugar === "MAD" && l.horasHastaElProximoVuelo === null),
+   "y Madrid no informa ninguna, porque no hay vuelo después");
+ok(/GRU \(vuelo, 2 h ahí\)/.test(lineaEsc), "la línea dice cuánto se queda, que es el dato que decide");
+ok(/parada de verdad y qué es un cambio de avión/.test(lineaEsc),
+   "y le explica al modelo para qué sirve ese número");
 
 console.log("\n· la misma forma con otra duración se ve distinta");
 /* El control: si la marca fuera cosmética, una parada de cuatro días daría
@@ -392,7 +412,7 @@ const PARADA_LARGA = [
 const lineaLarga = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:PARADA_LARGA }))
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaLarga.slice(0, 110));
-ok(/escala de 98 h/.test(lineaLarga), "una parada de cuatro días informa sus 98 horas");
+ok(/GRU \(vuelo, 4 días ahí\)/.test(lineaLarga), "una parada de cuatro días se lee como cuatro días");
 ok(lineaEsc !== lineaLarga, "las dos líneas son distintas: la duración llega, no es un rótulo fijo");
 
 console.log("\n· el control: un multidestino DE VERDAD conserva su énfasis");
@@ -404,7 +424,7 @@ const lineaMulti = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 ok(/multidestino/.test(lineaMulti),
    "dos vuelos que NO se encadenan siguen siendo dos destinos, no una escala");
-ok(!/escala/.test(lineaMulti), "y no se los marca como escala");
+ok(!/ahí\)/.test(lineaMulti), "y ninguno informa tiempo, porque no se encadenan");
 
 console.log("\n· y el caso que define el éxito de la historia NO se rompió");
 /* La primera versión de la marca de escala rompió justo esto: los tres
@@ -412,7 +432,32 @@ console.log("\n· y el caso que define el éxito de la historia NO se rompió");
    marcados y el prompt dejó de avisar que era multidestino. Lo agarró este
    arnés, no una auditoría. */
 ok(/multidestino/.test(linea), "Europa con MAD, CDG y FCO sigue avisando que es multidestino");
-ok(!/escala/.test(linea), "y sus tres ciudades no quedaron marcadas como escalas");
+ok(!/escala/.test(linea), "y ninguna de sus ciudades queda rotulada como lugar de trasbordo");
+ok(/MAD \(vuelo, 4 días ahí\)/.test(linea) && /CDG \(vuelo, 5 días ahí\)/.test(linea),
+   "cada una dice cuántos días se pasan ahí, que es lo que las separa de una escala");
+
+console.log("\n· EL CASO QUE VOLTEÓ LA QUINTA RONDA · ida y vuelta con hora de llegada");
+/* La forma de viaje más común que existe en la app. Madrid es el destino del
+   primer vuelo y el origen del segundo, así que «encadena» igual que una
+   escala: el ÚNICO destino del viaje quedaba rotulado como lugar de
+   trasbordo y el prompt le pedía al modelo que dudara de él. El error no era
+   el umbral, era rotular. */
+const lineaIV2 = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:IDA_Y_VUELTA_CON_END }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaIV2.slice(0, 120));
+ok(/MAD \(vuelo, 13 días ahí\)/.test(lineaIV2), "Madrid dice los 13 días que se pasan ahí");
+ok(!/escala/.test(lineaIV2), "y NO queda rotulado como lugar de trasbordo");
+ok(!/EZE/.test(lineaIV2), "y el vuelo de vuelta sigue sin agregar tu casa");
+
+console.log("\n· la línea no miente en NINGUNA de sus dos ramas");
+const lineaRamaB = pe.destinationPrompt(pe.buildPackingList({
+  trip:{ id:"c9", destination:"Bariloche", startDate:"2027-06-01", endDate:"2027-06-10" },
+  items:[{ type:"flight", from:"EZE", to:"", start:"2027-06-01T08:00" }] }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaRamaB.slice(0, 140));
+ok(!/no hay ningún vuelo cargado/.test(lineaRamaB),
+   "con un vuelo cargado sin destino, la rama del destino escrito tampoco dice que no hay vuelos");
+ok(/no dicen adónde llegan/.test(lineaRamaB), "dice lo que sí pasa");
 
 /* EL CONTROL: que estas pruebas puedan fallar. Si las reservas NO mandaran,
    el caso de la trampa daría "montana" y la línea del prompt diría sólo

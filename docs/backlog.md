@@ -913,6 +913,37 @@ anterior.** Están anotados porque la lección no es sobre destinos:
   aplica sólo cuando el orden es confiable: sin fechas se manda de más, que es el lado seguro y el mismo que
   ya se había elegido para el vuelo sin origen.
 
+**La escala: dos intentos de arreglarla fueron peores que el problema, y el error no era el umbral — era
+rotular.**
+
+El problema era real: un Buenos Aires · San Pablo · Madrid le pedía al modelo una valija que sirviera también
+para San Pablo, y para quien vuela a Europa desde acá eso es casi todos los viajes.
+
+- **El primer intento** marcó como escala todo lo que encadenara —el destino de un vuelo es el origen del
+  siguiente— y marcó las tres ciudades del viaje a Europa, que encadena igual. Lo agarró el arnés.
+- **El segundo** puso la marca sólo cuando la duración se podía calcular. La quinta auditoría lo volteó con
+  la forma de viaje **más común que existe**: la ida y vuelta. En un EZE→MAD, MAD→EZE, Madrid es el destino
+  del primer vuelo y el origen del segundo, así que el **único** destino del viaje quedaba rotulado
+  *"escala de 320 h"* y el prompt le pedía al modelo que dudara de tratarlo como destino.
+
+`encadena` es verdadero en **todo** itinerario que siga un orden, porque adonde llegás es de donde salís
+después. Lo único que separa dos horas de aeropuerto de dos semanas en Madrid es el tiempo, y el tiempo es un
+número que ya teníamos. Así que no se rotula nada: **se dice cuánto se queda en cada lugar** —"MAD (vuelo,
+13 días ahí)", "GRU (vuelo, 2 h ahí)"— y elige el modelo. Es lo mismo que se hace con las pistas y con el
+destino escrito.
+
+**Y por qué el arnés no lo vio: al fixture le faltaba un campo que la app escribe.** Los vuelos de prueba no
+tenían hora de llegada, y la app la pide en el formulario manual, en la pantalla de revisar lo importado, y
+en el prompt del importador. El control que declaraba el caso de éxito pasaba porque al dato le faltaba algo,
+no porque el código estuviera bien. Es la regla que ya estaba escrita —*un escenario que espera que todo
+salga bien puede pasar porque el sabotaje nunca llegó*— con el agravante de que acá **el sabotaje era el dato
+real**.
+
+Por eso se revisaron **todos** los fixtures del arnés contra los campos que la app escribe: los traslados
+tienen "Desde" además de "Hasta", los alojamientos tienen check-out, los autos tienen devolución, y todas las
+fechas son `datetime-local`, nunca una fecha pelada. El barrido no destapó nada más, pero la próxima vez el
+arnés parte del dato real y no de una versión conveniente.
+
 **Una escala dejó de ser un destino, y lo agarró mi propio arnés a mitad de camino.** Era una observación
 de la cuarta auditoría, no un bloqueante, pero para quien vuela a Europa desde acá es casi todos los viajes:
 un Buenos Aires · San Pablo · Madrid le pedía al modelo una valija que sirviera **también** para San Pablo,

@@ -1624,6 +1624,16 @@ function hoursBetween(a, b) {
       `pistas`   toda dirección — no desplaza al escrito, pero se manda igual.
       `hayVuelos` si hay vuelos cargados, aunque estén sin destino.
       `deReservas` si el destino sale de un vuelo y no del campo escrito. */
+/* Cuánto tiempo se pasa en un lugar, dicho como lo diría una persona. No
+   decide nada: sólo hace legible el número para que el modelo no tenga que
+   convertir 320 horas a "dos semanas" mientras razona sobre otra cosa. */
+function cuantoTiempo(horas) {
+  if (horas == null) return "";
+  if (horas < 24) return (Math.round(horas * 10) / 10) + " h";
+  var dias = Math.round(horas / 24);
+  return dias + (dias === 1 ? " día" : " días");
+}
+
 function destinosDelViaje(trip, items) {
   trip = trip || {}; items = (items || []).filter(Boolean);
   var lugares = [];
@@ -1637,8 +1647,9 @@ function destinosDelViaje(trip, items) {
     vistos[k] = true;
     var e = { lugar:t, fuente:fuente, desde:(item && item.start) || "",
               hasta:(item && item.end) || "", firme:!!firme,
-              escala:false, horasEscala:null };
-    if (extra && extra.escala) { e.escala = true; e.horasEscala = extra.horas; }
+              // Horas entre llegar acá y salir en el próximo vuelo. `null`
+              // cuando es el último lugar del viaje o cuando falta una fecha.
+              horasHastaElProximoVuelo:(extra && extra.horas != null) ? extra.horas : null };
     lugares.push(e);
   }
 
@@ -1698,38 +1709,39 @@ function destinosDelViaje(trip, items) {
   vuelos.forEach(function (f, k) {
     if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
 
-    /* UNA ESCALA NO ES UN DESTINO, y hasta acá lo era: un Buenos Aires ·
-       San Pablo · Madrid le pedía al modelo una valija que sirviera también
-       para San Pablo, con el énfasis de "multidestino". Para quien vuela a
-       Europa desde acá, eso es casi todos los viajes.
+    /* CUÁNTO SE QUEDA EN CADA LUGAR, que es el dato, y no "esto es una
+       escala", que es una interpretación nuestra.
 
-       Lo que NO se hace es decidirlo con un umbral de horas inventado: dos
-       horas en el aeropuerto y catorce saliendo a caminar se escriben igual
-       salvo por la duración, y dónde está el corte es una opinión. Se marca
-       que es escala, se dicen las horas, y elige el modelo, que tiene el
-       resto del viaje a la vista. Es el mismo criterio que las pistas.
+       El problema era real: un Buenos Aires · San Pablo · Madrid le pedía al
+       modelo una valija que sirviera también para San Pablo, y para quien
+       vuela a Europa desde acá eso es casi todos los viajes. Pero mis dos
+       intentos de RESOLVERLO fueron peores que el problema:
 
-       Que encadene sí se determina: el destino de este vuelo es el origen del
-       siguiente. Es la misma regla que el motor ya usa en
-       `summarizeReservationsForAI` para el bloque de escalas.
+         El primero marcó como escala todo lo que encadenara. El viaje a
+         Europa —EZE·MAD·CDG·FCO— encadena exactamente igual que una escala,
+         así que quedaron las tres ciudades marcadas.
 
-       PERO ENCADENAR NO ALCANZA, y lo destapó el propio arnés: el viaje a
-       Europa de la historia —EZE·MAD·CDG·FCO— encadena exactamente igual que
-       una escala, y son tres ciudades de cinco días cada una. La primera
-       versión de esto las marcó a las tres como escala y le sacó al prompt el
-       aviso de multidestino: arreglando un caso rompí el caso que define el
-       éxito de la historia.
+         El segundo puso la marca sólo cuando la duración se podía calcular, y
+         la quinta auditoría lo volteó con la forma de viaje más común que
+         existe: la IDA Y VUELTA. En un EZE→MAD, MAD→EZE, Madrid es el destino
+         del primer vuelo y el origen del segundo, así que encadena, así que
+         el ÚNICO destino del viaje quedaba rotulado como lugar de trasbordo
+         —"escala de 320 h"— y el prompt le pedía al modelo que dudara de
+         tratarlo como destino.
 
-       La única diferencia entre las dos cosas es CUÁNTO dura, así que la
-       marca se pone sólo cuando la duración se puede calcular. Sin `end`
-       cargado no hay nada que distinga una de otra, y marcar igual sería
-       ponerle un rótulo a una sospecha. */
+       El error no era el umbral: era rotular. `encadena` es verdadero en todo
+       itinerario que siga un orden, porque adonde llegás es de donde salís
+       después. Lo único que separa dos horas de aeropuerto de dos semanas en
+       Madrid es el TIEMPO, y el tiempo es un número que ya tenemos.
+
+       Entonces no se rotula nada: se dice cuánto se queda en cada lugar y
+       elige el modelo, que es lo mismo que se hace con las pistas y con el
+       destino escrito. Dos horas no piden nada, dos semanas piden todo, y esa
+       cuenta no la tenemos que hacer nosotros. */
     var sig = vuelos[k + 1];
-    var encadena = !!(sig && f.to && sig.from && norm(f.to) === norm(sig.from));
-    var horas = encadena ? hoursBetween(f.end, sig.start) : null;
-    var medible = horas != null && horas > 0;
+    var horas = sig ? hoursBetween(f.end, sig.start) : null;
     sumar(String(f.to).toUpperCase(), "vuelo", f, true,
-          (encadena && medible) ? { escala:true, horas:Math.round(horas * 10) / 10 } : null);
+          (horas != null && horas > 0) ? { horas:Math.round(horas * 10) / 10 } : null);
   });
 
   items.filter(function (i) { return i.type === "stay" && i.address; }).sort(porFecha)
@@ -1858,13 +1870,14 @@ function summarizeReservationsForAI(trip, items) {
 function lineaDestinos(b) {
   var d = (b && b.destinos) || null;
   var partes = (d && d.lugares || []).map(function (l) {
-    if (!l.escala) return l.lugar + " (" + l.fuente + ")";
-    return l.lugar + " (escala de " + l.horasEscala + " h)";
+    var h = l.horasHastaElProximoVuelo;
+    return l.lugar + " (" + l.fuente + (h != null ? ", " + cuantoTiempo(h) + " ahí" : "") + ")";
   });
-  var hayEscala = (d && d.lugares || []).some(function (l) { return l.escala; });
-  var avisoEscala = hayEscala
-    ? " Los que dicen «escala» son lugares donde se cambia de avión: fijate en las horas antes de tratarlos como " +
-      "un destino, porque dos horas en el aeropuerto no piden nada y un día entero sí."
+  var hayTiempos = (d && d.lugares || []).some(function (l) { return l.horasHastaElProximoVuelo != null; });
+  var avisoEscala = hayTiempos
+    ? " Al lado de cada lugar va cuánto tiempo pasa ahí antes del próximo vuelo. Usalo para saber qué es una " +
+      "parada de verdad y qué es un cambio de avión: unas horas en un aeropuerto no piden nada, unos días sí. " +
+      "El último de la lista no lo dice porque no hay vuelo después."
     : "";
 
   /* Las pistas —alojamientos, traslados y autos— se mandan SIEMPRE, con sus
@@ -1907,8 +1920,16 @@ function lineaDestinos(b) {
   }
 
   if (!d.deReservas) {
+    /* Esta rama decía "no hay ningún vuelo cargado que lo confirme" sin mirar
+       si los había, con `hayVuelos` calculado ocho líneas más arriba y usado
+       en la rama de al lado. Un vuelo cargado sin destino la hacía mentir. La
+       ronda anterior dijo "cada mitad sale ahora de su dato": era cierto en
+       una rama y falso en ésta, que es una forma de estar mal peor que no
+       haberlo arreglado. */
     return "- Destino: " + partes.join(", ") +
-           ". Lo escribió la persona al crear el viaje; no hay ningún vuelo cargado que lo confirme." +
+           ". Lo escribió la persona al crear el viaje; " +
+           (d.hayVuelos ? "los vuelos cargados no dicen adónde llegan, así que nada lo confirma."
+                        : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
   }
   var extra = (b.destino && norm(b.destino) !== norm(d.lugares[0].lugar))
