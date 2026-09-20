@@ -1629,14 +1629,17 @@ function destinosDelViaje(trip, items) {
   var lugares = [];
   var vistos = {};
 
-  function sumar(texto, fuente, item, firme) {
+  function sumar(texto, fuente, item, firme, extra) {
     var t = String(texto == null ? "" : texto).trim();
     if (!t) return;
     var k = norm(t);
     if (vistos[k]) return;
     vistos[k] = true;
-    lugares.push({ lugar:t, fuente:fuente, desde:(item && item.start) || "",
-                   hasta:(item && item.end) || "", firme:!!firme });
+    var e = { lugar:t, fuente:fuente, desde:(item && item.start) || "",
+              hasta:(item && item.end) || "", firme:!!firme,
+              escala:false, horasEscala:null };
+    if (extra && extra.escala) { e.escala = true; e.horasEscala = extra.horas; }
+    lugares.push(e);
   }
 
   var porFecha = function (a, b) { return String(a.start || "").localeCompare(String(b.start || "")); };
@@ -1694,7 +1697,39 @@ function destinosDelViaje(trip, items) {
   var casa = ordenConfiable ? norm(vuelos[0].from) : "";
   vuelos.forEach(function (f, k) {
     if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
-    sumar(String(f.to).toUpperCase(), "vuelo", f, true);
+
+    /* UNA ESCALA NO ES UN DESTINO, y hasta acá lo era: un Buenos Aires ·
+       San Pablo · Madrid le pedía al modelo una valija que sirviera también
+       para San Pablo, con el énfasis de "multidestino". Para quien vuela a
+       Europa desde acá, eso es casi todos los viajes.
+
+       Lo que NO se hace es decidirlo con un umbral de horas inventado: dos
+       horas en el aeropuerto y catorce saliendo a caminar se escriben igual
+       salvo por la duración, y dónde está el corte es una opinión. Se marca
+       que es escala, se dicen las horas, y elige el modelo, que tiene el
+       resto del viaje a la vista. Es el mismo criterio que las pistas.
+
+       Que encadene sí se determina: el destino de este vuelo es el origen del
+       siguiente. Es la misma regla que el motor ya usa en
+       `summarizeReservationsForAI` para el bloque de escalas.
+
+       PERO ENCADENAR NO ALCANZA, y lo destapó el propio arnés: el viaje a
+       Europa de la historia —EZE·MAD·CDG·FCO— encadena exactamente igual que
+       una escala, y son tres ciudades de cinco días cada una. La primera
+       versión de esto las marcó a las tres como escala y le sacó al prompt el
+       aviso de multidestino: arreglando un caso rompí el caso que define el
+       éxito de la historia.
+
+       La única diferencia entre las dos cosas es CUÁNTO dura, así que la
+       marca se pone sólo cuando la duración se puede calcular. Sin `end`
+       cargado no hay nada que distinga una de otra, y marcar igual sería
+       ponerle un rótulo a una sospecha. */
+    var sig = vuelos[k + 1];
+    var encadena = !!(sig && f.to && sig.from && norm(f.to) === norm(sig.from));
+    var horas = encadena ? hoursBetween(f.end, sig.start) : null;
+    var medible = horas != null && horas > 0;
+    sumar(String(f.to).toUpperCase(), "vuelo", f, true,
+          (encadena && medible) ? { escala:true, horas:Math.round(horas * 10) / 10 } : null);
   });
 
   items.filter(function (i) { return i.type === "stay" && i.address; }).sort(porFecha)
@@ -1822,7 +1857,15 @@ function summarizeReservationsForAI(trip, items) {
     manda la lista entera en vez de un solo lugar. */
 function lineaDestinos(b) {
   var d = (b && b.destinos) || null;
-  var partes = (d && d.lugares || []).map(function (l) { return l.lugar + " (" + l.fuente + ")"; });
+  var partes = (d && d.lugares || []).map(function (l) {
+    if (!l.escala) return l.lugar + " (" + l.fuente + ")";
+    return l.lugar + " (escala de " + l.horasEscala + " h)";
+  });
+  var hayEscala = (d && d.lugares || []).some(function (l) { return l.escala; });
+  var avisoEscala = hayEscala
+    ? " Los que dicen «escala» son lugares donde se cambia de avión: fijate en las horas antes de tratarlos como " +
+      "un destino, porque dos horas en el aeropuerto no piden nada y un día entero sí."
+    : "";
 
   /* Las pistas —alojamientos, traslados y autos— se mandan SIEMPRE, con sus
      fechas y con las dos lecturas posibles a la vista. Callarlas sería perder
@@ -1871,9 +1914,15 @@ function lineaDestinos(b) {
   var extra = (b.destino && norm(b.destino) !== norm(d.lugares[0].lugar))
     ? " La persona además escribió \"" + b.destino + "\" como destino del viaje: úsalo sólo como contexto, NUNCA por encima de lo de arriba."
     : "";
+  /* El aviso de multidestino se queda como estaba, contando TODOS los
+     lugares. Sacarlo cuando hay escalas fue el error de la primera versión de
+     esta marca: el viaje que define el éxito de la historia dejó de avisar
+     que era multidestino. Las escalas ya vienen con sus horas y con la
+     advertencia; el modelo decide con eso, que es el criterio de toda la
+     función. */
   return "- Destinos, sacados de los vuelos ya cargados, que son lo que manda: " + partes.join(" · ") +
          (d.lugares.length > 1 ? ". Es un viaje multidestino: lo que sugieras tiene que servir para TODOS esos lugares, no para uno." : ".") +
-         extra + lineaPistas;
+         avisoEscala + extra + lineaPistas;
 }
 
 function destinationPrompt(list) {

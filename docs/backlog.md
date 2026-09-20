@@ -913,6 +913,23 @@ anterior.** Están anotados porque la lección no es sobre destinos:
   aplica sólo cuando el orden es confiable: sin fechas se manda de más, que es el lado seguro y el mismo que
   ya se había elegido para el vuelo sin origen.
 
+**Una escala dejó de ser un destino, y lo agarró mi propio arnés a mitad de camino.** Era una observación
+de la cuarta auditoría, no un bloqueante, pero para quien vuela a Europa desde acá es casi todos los viajes:
+un Buenos Aires · San Pablo · Madrid le pedía al modelo una valija que sirviera **también** para San Pablo,
+con el énfasis de "multidestino".
+
+No se resolvió con un umbral de horas inventado: dónde está el corte entre "esperé el avión" y "salí a
+caminar" es una opinión. Se marca que es escala, se dan las horas, y elige el modelo con el resto del viaje
+a la vista — el mismo criterio que las pistas.
+
+**Y la primera versión de esa marca rompió el caso que define el éxito de esta historia.** El viaje a Europa
+—EZE · MAD · CDG · FCO— encadena exactamente igual que una escala: el destino de cada vuelo es el origen del
+siguiente. Quedaron las tres ciudades marcadas como escala y el prompt dejó de avisar que era multidestino.
+Arreglando un caso rompí el otro, y lo destapó el arnés en la misma corrida, no una auditoría. La diferencia
+real entre las dos cosas es **cuánto dura**, así que la marca se pone sólo cuando la duración se puede
+calcular: sin `end` cargado no hay nada que las distinga, y marcar igual sería ponerle un rótulo a una
+sospecha.
+
 **Y la lección, que no es sobre destinos:** el primero salió de **sacar una guarda sin preguntar qué más
 protegía**. La guarda que cortaba la línea temprano también tapaba que `lugares` pudiera quedar vacío
 teniendo un destino escrito vivo. Se quitó mirando un solo caso.

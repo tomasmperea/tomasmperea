@@ -361,6 +361,59 @@ try { pe.destinationPrompt({ base:{ destino:"Roma", destinos:null }, items:{} })
 catch (e) { reventó = true; info("reventó con: " + e.message); }
 ok(!reventó, "una lista sin `destinos` no tira una excepción");
 
+console.log("\n· una escala no es un destino, y se dice cuánto dura");
+/* Observación de la cuarta auditoría. Para quien vuela a Europa desde acá es
+   casi todos los viajes: un Buenos Aires · San Pablo · Madrid le pedía al
+   modelo una valija que sirviera TAMBIÉN para San Pablo, con el énfasis de
+   "multidestino". No se resuelve con un umbral de horas inventado —dónde
+   está el corte es una opinión—: se marca que es escala, se dan las horas, y
+   elige el modelo. Que SEA escala sí se determina: el destino de un vuelo es
+   el origen del siguiente. */
+const CON_ESCALA = [
+  { type:"flight", from:"EZE", to:"GRU", start:"2027-04-01T08:00", end:"2027-04-01T11:00" },
+  { type:"flight", from:"GRU", to:"MAD", start:"2027-04-01T13:00", end:"2027-04-02T05:00" }
+];
+const dEsc = pe.destinosDelViaje(EUROPA, CON_ESCALA);
+const lineaEsc = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:CON_ESCALA }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaEsc.slice(0, 160));
+ok(dEsc.lugares.some(l => l.lugar === "GRU" && l.escala), "San Pablo queda marcado como escala");
+ok(dEsc.lugares.some(l => l.lugar === "MAD" && !l.escala), "y Madrid NO: es el destino de verdad");
+ok(/escala de 2 h/.test(lineaEsc), "la línea dice cuánto dura, que es el dato que decide");
+ok(/fijate en las horas/.test(lineaEsc), "y le avisa al modelo qué mirar antes de tratarlo como destino");
+
+console.log("\n· la misma forma con otra duración se ve distinta");
+/* El control: si la marca fuera cosmética, una parada de cuatro días daría
+   el mismo texto que dos horas de aeropuerto. */
+const PARADA_LARGA = [
+  { type:"flight", from:"EZE", to:"GRU", start:"2027-04-01T08:00", end:"2027-04-01T11:00" },
+  { type:"flight", from:"GRU", to:"MAD", start:"2027-04-05T13:00", end:"2027-04-06T05:00" }
+];
+const lineaLarga = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:PARADA_LARGA }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaLarga.slice(0, 110));
+ok(/escala de 98 h/.test(lineaLarga), "una parada de cuatro días informa sus 98 horas");
+ok(lineaEsc !== lineaLarga, "las dos líneas son distintas: la duración llega, no es un rótulo fijo");
+
+console.log("\n· el control: un multidestino DE VERDAD conserva su énfasis");
+const SIN_ESCALA = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00" },
+  { type:"flight", from:"BCN", to:"FCO", start:"2027-04-06T10:00" }
+];
+const lineaMulti = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:SIN_ESCALA }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+ok(/multidestino/.test(lineaMulti),
+   "dos vuelos que NO se encadenan siguen siendo dos destinos, no una escala");
+ok(!/escala/.test(lineaMulti), "y no se los marca como escala");
+
+console.log("\n· y el caso que define el éxito de la historia NO se rompió");
+/* La primera versión de la marca de escala rompió justo esto: los tres
+   vuelos de Europa encadenan igual que una escala, así que quedaron los tres
+   marcados y el prompt dejó de avisar que era multidestino. Lo agarró este
+   arnés, no una auditoría. */
+ok(/multidestino/.test(linea), "Europa con MAD, CDG y FCO sigue avisando que es multidestino");
+ok(!/escala/.test(linea), "y sus tres ciudades no quedaron marcadas como escalas");
+
 /* EL CONTROL: que estas pruebas puedan fallar. Si las reservas NO mandaran,
    el caso de la trampa daría "montana" y la línea del prompt diría sólo
    "Europa". Se comprueba que los dos resultados son distintos entre sí. */
