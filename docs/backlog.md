@@ -896,6 +896,23 @@ alojamiento), vuelo sin título, ida y vuelta de dos tramos, y vuelta a mitad de
 embebida en el HTML. Más las regresiones. **No se probó en el teléfono del PM**, que es lo único que este
 proyecto llama verificado.
 
+**Dos correcciones al propio registro, de la tercera auditoría.**
+
+*Un número escrito a mano que era falso.* El commit de la tercera versión dice que "seis aserciones viejas
+fallaron" al correr el arnés después del arreglo. Eran ocho. El auditor las contó corriendo el arnés de la
+ronda anterior contra el motor nuevo; yo las conté de memoria mientras las arreglaba. Es la cuarta vez esta
+semana que una cifra escrita a mano en prosa queda mal, y la regla que ya salió de las tres anteriores es la
+misma: **el arnés dice cuántas son cada vez que corre, y la prosa no tiene por qué repetirlo.** La sustancia
+no cambia —las ocho se revisaron y ninguna perdió cobertura— pero el número afirmado era falso y queda
+corregido acá, porque un mensaje de commit no se puede reescribir.
+
+*Un hueco del arnés nuevo, que lo encontró el auditor y no yo.* `app/pruebas/las-dos-copias.js` comparaba
+sólo desde la primera `function` en adelante: **todo lo anterior —las constantes, los topes, los catálogos—
+no se comparaba nunca.** Alguien podía cambiar `TOPE_LISTA_BYTES` en una sola de las dos copias y el arnés
+decía verde. Ya está cerrado: compara también las declaraciones de la cabecera, recorta el envoltorio UMD
+por su marcador en vez de por número de línea, y tiene su propio control negativo, que cambia un tope a mano
+y verifica que el arnés lo ve.
+
 **Una regresión de producto que esta entrega acepta a conciencia:** un viaje con un hotel en Madrid y
 "Europa" escrito a mano ya no declara Madrid como destino; lo manda como pista. Se pierde una afirmación
 que a veces era correcta, a cambio de no volver a producir la que era catastrófica —decirle al modelo que

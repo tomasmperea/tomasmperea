@@ -61,10 +61,49 @@ const MOTORES = [
   { archivo:"adjuntos-engine.js", abre:"const AdjuntosEngine = (function () {" }
 ];
 
+/* El archivo de `parts/` arranca con el envoltorio UMD, que existe sólo para
+   poder correrlo con node y que al HTML no va. Lo que se compara es el CUERPO
+   del módulo: de la apertura de la fábrica para abajo. Si el marcador no está
+   —porque alguien cambió el envoltorio— esto revienta en vez de comparar el
+   archivo entero y llenarse de diferencias falsas. */
+const APERTURA = "this, function () {";
+function cuerpoDelModulo(src, archivo) {
+  const i = src.indexOf(APERTURA);
+  if (i < 0) throw new Error("no encontré la apertura del UMD en " + archivo);
+  return src.slice(src.indexOf("\n", i) + 1);
+}
+
+/* Todo lo que hay ANTES de la primera función —las constantes del motor,
+   los catálogos, los topes— no lo veía la primera versión de este arnés, y
+   lo encontró la auditoría: alguien podía cambiar `TOPE_LISTA_BYTES` en una
+   sola copia y esto decía "verde". Se compara aparte, porque ahí no hay
+   funciones que alinear: es un bloque contra otro. */
+function cabecera(src) {
+  const m = /^\s*function\s+[A-Za-z0-9_$]+\s*\(/m.exec(src);
+  return limpiar(m ? src.slice(0, m.index) : src);
+}
+
 MOTORES.forEach(function (mot) {
   console.log("\n· " + mot.archivo + " contra su copia en el HTML");
-  const enHtml  = funciones(region(mot.abre));
-  const enParts = funciones(fs.readFileSync(path.join(PARTS, mot.archivo), "utf8"));
+  const crudoHtml  = region(mot.abre);
+  const crudoParts = cuerpoDelModulo(fs.readFileSync(path.join(PARTS, mot.archivo), "utf8"), mot.archivo);
+  const enHtml  = funciones(crudoHtml);
+  const enParts = funciones(crudoParts);
+
+  /* La cabecera de `parts/` arranca con el envoltorio UMD y un comentario de
+     archivo que en el HTML no van. Lo que sí tiene que estar en las dos son
+     las declaraciones: se comparan esas, línea por línea. */
+  const declara = t => limpiar(t).split("\n")
+    .filter(l => /^\s*(var|const|let)\s+[A-Za-z0-9_$]+\s*=/.test(l))
+    .map(l => l.trim());
+  const decHtml = declara(cabecera(crudoHtml));
+  const decParts = declara(cabecera(crudoParts));
+  const faltanDec = decParts.filter(d => decHtml.indexOf(d) < 0);
+  const sobranDec = decHtml.filter(d => decParts.indexOf(d) < 0);
+  info(`constantes antes de la primera función: ${decParts.length} en parts, ${decHtml.length} en el HTML`);
+  ok(decParts.length > 0, "hay constantes que comparar antes de la primera función");
+  ok(faltanDec.length === 0, faltanDec.length ? `constantes que el HTML NO tiene igual: ${faltanDec.join(" | ")}` : "todas las constantes de parts están igual en el HTML");
+  ok(sobranDec.length === 0, sobranDec.length ? `constantes que sólo están en el HTML: ${sobranDec.join(" | ")}` : "el HTML no tiene constantes de más");
 
   const nombresParts = Object.keys(enParts);
   const nombresHtml  = Object.keys(enHtml);
@@ -100,6 +139,21 @@ MOTORES.forEach(function (mot) {
 /* EL CONTROL: si este arnés no pudiera ver una diferencia, todo lo de
    arriba pasaría por vacío. Se le mete un cambio a mano a una copia y se
    comprueba que lo detecta. */
+console.log("\n· el control de las constantes: el arnés ve una constante cambiada");
+(function () {
+  const crudo = cuerpoDelModulo(fs.readFileSync(path.join(PARTS, MOTORES[0].archivo), "utf8"), MOTORES[0].archivo);
+  const m = /^\s*function\s+[A-Za-z0-9_$]+\s*\(/m.exec(crudo);
+  const cab = limpiar(crudo.slice(0, m.index));
+  const declara = t => t.split("\n")
+    .filter(l => /^\s*(var|const|let)\s+[A-Za-z0-9_$]+\s*=/.test(l))
+    .map(l => l.trim());
+  const reales = declara(cab);
+  ok(reales.length > 0, `hay constantes sobre las que probar el control (${reales.length})`);
+  const saboteadas = declara(cab.replace(/=\s*262144/, "= 999999"));
+  const difiere = saboteadas.some(d => reales.indexOf(d) < 0);
+  ok(difiere, "cambiar un tope en una sola copia aparece como constante que falta");
+})();
+
 console.log("\n· el control: el arnés detecta una diferencia metida a mano");
 (function () {
   const real = funciones(region(MOTORES[0].abre));

@@ -2970,13 +2970,22 @@ function hoursBetween(a, b) {
    una dirección ("Calle Atocha 123, Madrid"), y el traslado guarda un "hasta",
    y nada de eso llegaba nunca.
 
-   LA JERARQUÍA, de más firme a menos:
+   DOS NIVELES, y el porqué de cada uno está abajo, en el comentario que
+   encabeza la construcción de la lista:
 
-     1. vuelo      — el `to` es un código de aeropuerto, no hay ambigüedad;
-     2. traslado   — el "hasta" lo escribió la persona sobre algo reservado;
-     3. alojamiento— la dirección dice dónde se duerme, que es dónde se está;
-     4. auto       — dónde se retira, que suele ser el mismo lugar;
-     5. el campo del viaje — lo último, y sólo si no hay ninguna reserva.
+     EN FIRME  el `to` de un vuelo, menos el de vuelta. Desplaza al campo
+               escrito a mano.
+     PISTA     toda dirección — alojamiento, traslado, auto. Va al modelo
+               entera y con sus fechas, y NO desplaza nada.
+
+   ACÁ HABÍA UNA JERARQUÍA DE CINCO NIVELES, y era la de la primera versión
+   de esta función: la que dos auditorías voltearon. Sobrevivió a los dos
+   arreglos porque nadie relee el encabezado cuando cambia el cuerpo, y
+   quedó contradiciendo al comentario correcto veinte líneas más abajo. Lo
+   encontró la tercera auditoría. Es exactamente el riesgo que este proyecto
+   ya tiene anotado —una explicación que quedó vieja miente con más
+   autoridad que el código, porque se lee primero— y acá casi le entrega el
+   diseño equivocado al próximo que toque la función.
 
    NO SE ADIVINA LA CIUDAD DE UNA DIRECCIÓN. "Calle Atocha 123, Madrid" se
    manda entera y el modelo la interpreta, que para eso está. Sacarle "Madrid"
