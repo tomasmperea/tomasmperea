@@ -378,42 +378,34 @@ try { pe.destinationPrompt({ base:{ destino:"Roma", destinos:null }, items:{} })
 catch (e) { reventó = true; info("reventó con: " + e.message); }
 ok(!reventó, "una lista sin `destinos` no tira una excepción");
 
-console.log("\n· una escala no es un destino, y se dice cuánto dura");
-/* Observación de la cuarta auditoría. Para quien vuela a Europa desde acá es
-   casi todos los viajes: un Buenos Aires · San Pablo · Madrid le pedía al
-   modelo una valija que sirviera TAMBIÉN para San Pablo, con el énfasis de
-   "multidestino". No se resuelve con un umbral de horas inventado —dónde
-   está el corte es una opinión—: se marca que es escala, se dan las horas, y
-   elige el modelo. Que SEA escala sí se determina: el destino de un vuelo es
-   el origen del siguiente. */
+console.log("\n· la línea NO resume cuánto dura cada tramo, y eso es a propósito");
+/* Tres intentos de resumirlo costaron tres vetos seguidos —rotular por
+   encadenamiento marcó las tres ciudades de un multidestino; rotular por
+   duración medible marcó el único destino de una ida y vuelta; y decir
+   "N días ahí" mentía cuando había un tramo por tierra—. El PM lo sacó el
+   21/09 con el dato a la vista: el modelo YA recibe, más abajo en el mismo
+   pedido, cada vuelo con sus horas y un renglón por cada escala con su
+   duración. Todo lo que se construía acá repetía un dato que ya tenía. */
 const CON_ESCALA = [
   { type:"flight", from:"EZE", to:"GRU", start:"2027-04-01T08:00", end:"2027-04-01T11:00" },
   { type:"flight", from:"GRU", to:"MAD", start:"2027-04-01T13:00", end:"2027-04-02T05:00" }
 ];
-const dEsc = pe.destinosDelViaje(EUROPA, CON_ESCALA);
-const lineaEsc = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:CON_ESCALA }))
-  .split("\n").find(l => /^- Destino/.test(l)) || "";
-info(lineaEsc.slice(0, 160));
-ok(dEsc.lugares.some(l => l.lugar === "GRU" && l.horasHastaElProximoVuelo === 2),
-   "San Pablo informa las 2 horas que se pasan ahí");
-ok(dEsc.lugares.some(l => l.lugar === "MAD" && l.horasHastaElProximoVuelo === null),
-   "y Madrid no informa ninguna, porque no hay vuelo después");
-ok(/GRU \(vuelo, 2 h ahí\)/.test(lineaEsc), "la línea dice cuánto se queda, que es el dato que decide");
-ok(/parada de verdad y qué es un cambio de avión/.test(lineaEsc),
-   "y le explica al modelo para qué sirve ese número");
+const promptEsc = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:CON_ESCALA }));
+const lineaEsc = promptEsc.split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaEsc.slice(0, 150));
+ok(!/\d+ h\b|\d+ días/.test(lineaEsc), "la línea de destino no trae ningún número de tiempo");
+ok(!/ahí\)/.test(lineaEsc), "ni afirma cuánto se queda en ningún lado");
+ok(/Ojo con las escalas/.test(lineaEsc), "pero le avisa al modelo que puede haber escalas");
+ok(/No lo adivines/.test(lineaEsc), "y le dice explícitamente que no lo adivine");
 
-console.log("\n· la misma forma con otra duración se ve distinta");
-/* El control: si la marca fuera cosmética, una parada de cuatro días daría
-   el mismo texto que dos horas de aeropuerto. */
-const PARADA_LARGA = [
-  { type:"flight", from:"EZE", to:"GRU", start:"2027-04-01T08:00", end:"2027-04-01T11:00" },
-  { type:"flight", from:"GRU", to:"MAD", start:"2027-04-05T13:00", end:"2027-04-06T05:00" }
-];
-const lineaLarga = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:PARADA_LARGA }))
-  .split("\n").find(l => /^- Destino/.test(l)) || "";
-info(lineaLarga.slice(0, 110));
-ok(/GRU \(vuelo, 4 días ahí\)/.test(lineaLarga), "una parada de cuatro días se lee como cuatro días");
-ok(lineaEsc !== lineaLarga, "las dos líneas son distintas: la duración llega, no es un rótulo fijo");
+console.log("\n· el control: el dato que la línea ya no resume SÍ le llega al modelo");
+/* Sin esto, sacar la anotación sería perder información en vez de dejar de
+   repetirla. Es la premisa entera de la decisión, así que se comprueba. */
+ok(/"tipo":"escala"/.test(promptEsc), "el prompt trae un renglón propio por cada escala");
+ok(/"duracionHoras":2/.test(promptEsc), "con su duración en horas: 2");
+ok(/"origen":"EZE","destino":"GRU"/.test(promptEsc), "y cada vuelo con su origen y destino");
+ok(/"desde":"2027-04-01T08:00","hasta":"2027-04-01T11:00"/.test(promptEsc),
+   "y con sus horas de salida y llegada, que es de donde sale la cuenta");
 
 console.log("\n· el control: un multidestino DE VERDAD conserva su énfasis");
 const SIN_ESCALA = [
@@ -422,50 +414,26 @@ const SIN_ESCALA = [
 ];
 const lineaMulti = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:SIN_ESCALA }))
   .split("\n").find(l => /^- Destino/.test(l)) || "";
-ok(/multidestino/.test(lineaMulti),
-   "dos vuelos que NO se encadenan siguen siendo dos destinos, no una escala");
-ok(!/días ahí\)/.test(lineaMulti),
-   "y MAD no dice que se pasan ahí los días que faltan para un vuelo que sale de otra ciudad");
+ok(/multidestino/.test(lineaMulti), "dos vuelos que no se encadenan siguen siendo dos destinos");
 
 console.log("\n· y el caso que define el éxito de la historia NO se rompió");
-/* La primera versión de la marca de escala rompió justo esto: los tres
-   vuelos de Europa encadenan igual que una escala, así que quedaron los tres
-   marcados y el prompt dejó de avisar que era multidestino. Lo agarró este
-   arnés, no una auditoría. */
 ok(/multidestino/.test(linea), "Europa con MAD, CDG y FCO sigue avisando que es multidestino");
-ok(!/escala/.test(linea), "y ninguna de sus ciudades queda rotulada como lugar de trasbordo");
-ok(/MAD \(vuelo, 4 días ahí\)/.test(linea) && /CDG \(vuelo, 5 días ahí\)/.test(linea),
-   "cada una dice cuántos días se pasan ahí, que es lo que las separa de una escala");
+ok(/MAD/.test(linea) && /CDG/.test(linea) && /FCO/.test(linea), "y nombra las tres ciudades");
 
 console.log("\n· EL CASO QUE VOLTEÓ LA QUINTA RONDA · ida y vuelta con hora de llegada");
-/* La forma de viaje más común que existe en la app. Madrid es el destino del
-   primer vuelo y el origen del segundo, así que «encadena» igual que una
-   escala: el ÚNICO destino del viaje quedaba rotulado como lugar de
-   trasbordo y el prompt le pedía al modelo que dudara de él. El error no era
-   el umbral, era rotular. */
+/* Madrid es el destino del primer vuelo y el origen del segundo, así que
+   cualquier regla basada en encadenamiento lo rotulaba como trasbordo. Sin
+   rótulo, el problema no existe. */
 const lineaIV2 = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:IDA_Y_VUELTA_CON_END }))
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaIV2.slice(0, 120));
-ok(/MAD \(vuelo, 13 días ahí\)/.test(lineaIV2), "Madrid dice los 13 días que se pasan ahí");
-ok(!/escala/.test(lineaIV2), "y NO queda rotulado como lugar de trasbordo");
+ok(/MAD \(vuelo\)/.test(lineaIV2), "Madrid queda como destino, a secas");
+ok(!/escala|ahí|trasbordo/.test(lineaIV2), "sin ningún rótulo que lo ponga en duda");
 ok(!/EZE/.test(lineaIV2), "y el vuelo de vuelta sigue sin agregar tu casa");
 
-console.log("\n· la línea no miente en NINGUNA de sus dos ramas");
-const lineaRamaB = pe.destinationPrompt(pe.buildPackingList({
-  trip:{ id:"c9", destination:"Bariloche", startDate:"2027-06-01", endDate:"2027-06-10" },
-  items:[{ type:"flight", from:"EZE", to:"", start:"2027-06-01T08:00", end:"2027-06-01T10:00" }] }))
-  .split("\n").find(l => /^- Destino/.test(l)) || "";
-info(lineaRamaB.slice(0, 140));
-ok(!/no hay ningún vuelo cargado/.test(lineaRamaB),
-   "con un vuelo cargado sin destino, la rama del destino escrito tampoco dice que no hay vuelos");
-ok(/no dicen adónde llegan/.test(lineaRamaB), "dice lo que sí pasa");
-
 console.log("\n· EL CASO QUE VOLTEÓ LA SEXTA RONDA · un tramo por tierra en el medio");
-/* Al arreglar el rótulo saqué la guarda que exigía que el próximo vuelo
-   saliera del mismo lugar, y no lo declaré. El número quedó bien y la palabra
-   quedó mal: un vuelo a Madrid, tren a Lisboa a los dos días y vuelta desde
-   Lisboa decía "MAD, 11 días ahí" en la misma oración que mostraba el tren
-   del día 3. La mitad que mentía era la que el prompt llama "lo que manda". */
+/* Decía "MAD, 11 días ahí" en la misma oración que mostraba el tren del día
+   3. Sin resumen de tiempo no hay nada que pueda mentir. */
 const POR_TIERRA = [
   { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T23:30" },
   { type:"transfer", from:"Madrid Atocha", to:"Lisboa Oriente", start:"2027-04-03T09:00", end:"2027-04-03T19:00" },
@@ -474,37 +442,26 @@ const POR_TIERRA = [
 const lineaTierra = pe.destinationPrompt(pe.buildPackingList({
   trip:{ id:"c10", destination:"Península Ibérica", startDate:"2027-04-01", endDate:"2027-04-13" },
   items:POR_TIERRA })).split("\n").find(l => /^- Destino/.test(l)) || "";
-info(lineaTierra.slice(0, 165));
-ok(!/MAD \(vuelo, \d+ días ahí\)/.test(lineaTierra),
-   "NO dice que esos días se pasaron en Madrid: el próximo vuelo sale de otra ciudad");
-ok(/que sale de LIS/.test(lineaTierra),
-   "dice de dónde sale el próximo vuelo, que es lo que revela el tramo por tierra");
-ok(/movió por tierra/.test(lineaTierra), "y le explica al modelo qué significa eso");
+info(lineaTierra.slice(0, 150));
+ok(!/días ahí/.test(lineaTierra), "no afirma días en Madrid que la persona pasó en Lisboa");
+ok(/Lisboa Oriente/.test(lineaTierra), "y el tren se manda igual, como pista");
 
-console.log("\n· el control: cuando SÍ encadena, el tiempo es tiempo ahí");
-const lineaIV3 = pe.destinationPrompt(pe.buildPackingList({
-  trip:{ id:"c11", destination:"Madrid", startDate:"2027-04-01", endDate:"2027-04-16" },
-  items:IDA_Y_VUELTA_CON_END })).split("\n").find(l => /^- Destino/.test(l)) || "";
-ok(/MAD \(vuelo, 13 días ahí\)/.test(lineaIV3),
-   "la ida y vuelta sigue diciendo «ahí»: los dos casos dan textos distintos");
-ok(lineaTierra !== lineaIV3, "y no es el mismo texto para las dos situaciones");
-
-console.log("\n· una ciudad por la que se pasa dos veces se queda con la estadía LARGA");
-/* Con una conexión de 2 h a la ida y diez días a la vuelta, la deduplicación
-   guardaba el primer número —el más corto— y el modelo leía "unas horas, no
-   pide nada" sobre el lugar donde se pasa la mayor parte del viaje. */
-const DOS_VECES = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T18:00" },
-  { type:"flight", from:"MAD", to:"FCO", start:"2027-04-01T20:00", end:"2027-04-01T23:00" },
-  { type:"flight", from:"FCO", to:"MAD", start:"2027-04-10T09:00", end:"2027-04-10T12:00" },
-  { type:"flight", from:"MAD", to:"EZE", start:"2027-04-20T10:00", end:"2027-04-21T06:00" }
+console.log("\n· EL CASO QUE VOLTEÓ LA SÉPTIMA RONDA · vuelo del medio sin hora de llegada");
+/* `end` no es obligatorio en un vuelo. Las frases que dependían de poder
+   medir el tiempo mentían acá; sin ellas, no hay nada que mienta. */
+const VUELO_DEL_MEDIO_SIN_LLEGADA = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
+  { type:"flight", from:"MAD", to:"CDG", start:"2027-04-08T09:00" },
+  { type:"flight", from:"CDG", to:"FCO", start:"2027-04-17T09:00", end:"2027-04-17T11:00" }
 ];
-const dDos = pe.destinosDelViaje({ id:"c12", destination:"Europa" }, DOS_VECES);
-const mad = dDos.lugares.find(l => l.lugar === "MAD");
-info("MAD: " + (mad && mad.horasHastaElProximoVuelo) + " h");
-ok(mad && mad.horasHastaElProximoVuelo > 200,
-   "MAD informa los diez días de la vuelta, no las 2 horas de la conexión de ida");
-ok(dDos.lugares.filter(l => l.lugar === "MAD").length === 1, "y aparece una sola vez");
+const lineaMedio = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:VUELO_DEL_MEDIO_SIN_LLEGADA }))
+  .split("\n").find(l => /^- Destino/.test(l)) || "";
+info(lineaMedio.slice(0, 130));
+ok(/MAD \(vuelo\) · CDG \(vuelo\) · FCO \(vuelo\)/.test(lineaMedio),
+   "los tres destinos entran igual, con o sin hora de llegada");
+ok(!/no hay vuelo después|no se pudo medir/.test(lineaMedio),
+   "y no queda ninguna frase sobre medir tiempos que pueda ser falsa");
+
 
 console.log("\n· fechas invertidas: declarado, no resuelto");
 /* Si el vuelo de vuelta quedó cargado con una fecha ANTERIOR a la de ida, el
@@ -522,56 +479,6 @@ info("con las fechas al revés: " + dInv.lugares.map(x=>x.lugar).join(" · "));
 ok(dInv.lugares.some(l => l.lugar === "EZE"),
    "con las fechas invertidas queda EZE, y es el alcance conocido, no un bug oculto");
 
-console.log("\n· LOS DOS BLOQUEANTES DE LA SÉPTIMA RONDA");
-/* 1 · Un vuelo del MEDIO sin hora de llegada. `end` no es obligatorio —no
-   está en `REQUIRED.flight` y el campo "Llega" se dibuja sin la marca—, así
-   que es la forma más común de un viaje tipeado a mano. La frase de cierre
-   decía "un lugar sin tiempo es que no hay vuelo después", y CDG tenía un
-   vuelo después, cargado y con fecha. */
-const VUELO_DEL_MEDIO_SIN_LLEGADA = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
-  { type:"flight", from:"MAD", to:"CDG", start:"2027-04-08T09:00" },
-  { type:"flight", from:"CDG", to:"FCO", start:"2027-04-17T09:00", end:"2027-04-17T11:00" }
-];
-const lineaMedio = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:VUELO_DEL_MEDIO_SIN_LLEGADA }))
-  .split("\n").find(l => /^- Destino/.test(l)) || "";
-info(lineaMedio.slice(0, 130));
-ok(/CDG \(vuelo\)/.test(lineaMedio), "CDG no informa tiempo: falta la hora para medirlo");
-ok(!/no hay vuelo después/.test(lineaMedio),
-   "y la frase de cierre NO dice que no hay vuelo después, porque lo hay");
-ok(/no se pudo medir/.test(lineaMedio), "dice lo que sí pasa: no se pudo medir");
-
-/* 2 · El próximo vuelo sin origen cargado. La app no sabe de dónde sale, y
-   decía "que sale de otro lado" mientras el aviso traducía eso a "la persona
-   se movió por tierra". Inventar una causa sobre un campo en blanco. */
-const PROXIMO_SIN_ORIGEN = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
-  { type:"flight", from:"", to:"FCO", start:"2027-04-10T09:00", end:"2027-04-10T11:00" }
-];
-const lineaSinOrig = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:PROXIMO_SIN_ORIGEN }))
-  .split("\n").find(l => /^- Destino/.test(l)) || "";
-info(lineaSinOrig.slice(0, 130));
-ok(!/otro lado/.test(lineaSinOrig), "no dice «que sale de otro lado» sobre un campo vacío");
-ok(!/movió por tierra/.test(lineaSinOrig), "ni le atribuye a la persona un viaje por tierra que no está en los datos");
-ok(/MAD \(vuelo\)/.test(lineaSinOrig), "MAD queda sin número: no hay con qué medirlo");
-
-console.log("\n· la estadía de verdad le gana a un tiempo que no es estadía");
-/* «Gana la estadía más larga» decía el commit anterior y el código comparaba
-   números sin mirar si eran estadías: diez días reales en Madrid se perdían
-   detrás de "11 días hasta un vuelo que sale de Lisboa". */
-const MADRID_DIEZ_DIAS = [
-  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
-  { type:"flight", from:"MAD", to:"FCO", start:"2027-04-11T20:00", end:"2027-04-11T23:00" },
-  { type:"flight", from:"FCO", to:"MAD", start:"2027-04-14T09:00", end:"2027-04-14T11:00" },
-  { type:"transfer", from:"Madrid", to:"Lisboa", start:"2027-04-20T09:00", end:"2027-04-20T18:00" },
-  { type:"flight", from:"LIS", to:"EZE", start:"2027-04-25T18:00", end:"2027-04-26T06:00" }
-];
-const lineaDiez = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:MADRID_DIEZ_DIAS }))
-  .split("\n").find(l => /^- Destino/.test(l)) || "";
-info(lineaDiez.slice(0, 120));
-ok(/MAD \(vuelo, 10 días ahí\)/.test(lineaDiez),
-   "Madrid conserva sus diez días reales y no los pierde detrás de un número más grande");
-ok(!/MAD \(vuelo, 11 días/.test(lineaDiez), "el número más grande no gana por ser más grande");
 
 console.log("\n· reservas a las que les falta un campo: nada revienta y nada se inventa");
 /* El mecanismo de abajo exige que exista un caso SIN cada campo que el motor

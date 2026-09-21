@@ -838,7 +838,7 @@ razonamiento sobre un dato equivocado es afinar el error.
 Artifact y los cuatro `grep` dicen: **lo que está arriba es la v23**, con VAL-63 y VAL-74 y nada de VAL-72.
 El PM no tiene ninguna versión vetada en el teléfono, que era el riesgo que abrió la sexta auditoría.
 
-**Cómo quedó (v26):**
+**Cómo quedó (v27):**
 
 - `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
   decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
@@ -927,6 +927,39 @@ la que el prompt llama "lo que manda".
 Ahora se conservan los dos casos: cuando el próximo vuelo sale de acá, el tiempo es tiempo acá; cuando sale
 de otra ciudad, se dice cuánto falta **y de dónde sale**, que es el dato que revela el tramo por tierra.
 Volver a la guarda habría perdido información real en un viaje perfectamente común.
+
+**Y el 21/09 el PM sacó la anotación de tiempo entera, con el dato a la vista.** Es la decisión que cerró
+la historia, así que va primero.
+
+Tres rondas seguidas —quinta, sexta y séptima— se vetaron por defectos de **una sola cosa**: la anotación
+que decía cuánto dura cada tramo. Ninguna de las tres tenía que ver con lo que el PM pidió, que estaba
+cerrado desde la cuarta. La anotación salió de una *observación* del auditor, no de un reporte, y produjo
+seis defectos: marcó como escala las tres ciudades de un multidestino, después el único destino de una ida y
+vuelta, después dijo "11 días ahí" sobre un viaje con un tren en el medio, después afirmó un tramo por
+tierra que no estaba en los datos, después una frase sobre no poder medir que era falsa, y además se comió
+una estadía real de diez días.
+
+**Lo que destapó la salida no fue un arreglo mejor: fue mirar qué recibe el modelo por otro lado.** En el
+mismo pedido, más abajo, ya le llega:
+
+```
+{"tipo":"vuelo","desde":"2027-04-01T08:00","hasta":"2027-04-01T11:00","origen":"EZE","destino":"GRU"}
+{"tipo":"escala","ciudad":"GRU","duracionHoras":2}
+```
+
+**El modelo ya sabía que San Pablo era una escala de dos horas.** Todo lo construido repetía un dato que ya
+tenía, y cada intento de resumirlo terminó afirmando algo que el dato no decía. La línea de destino vuelve a
+hacer una sola cosa —decir qué lugares son destino y de dónde salió cada uno— y suma una frase que apunta al
+dato crudo: *"Ojo con las escalas... No lo adivines — abajo tenés cada vuelo con su hora de salida y de
+llegada, y un renglón aparte por cada escala con cuántas horas dura."*
+
+El arnés conserva los cuatro casos que voltearon las rondas 5, 6 y 7, ahora comprobando que la línea **no**
+trae ningún número de tiempo. Y suma el control que sostiene toda la decisión: que el prompt **sí** trae el
+renglón de escala con su duración, porque si no, sacar la anotación sería perder información en vez de dejar
+de repetirla.
+
+**La lección, que no es sobre escalas:** antes de resumirle un dato al modelo, mirar si ya lo tiene. Un
+resumen puede mentir; el dato crudo no.
 
 **Y la séptima ronda encontró que la rama nueva afirmaba dos cosas que el dato no decía:**
 
