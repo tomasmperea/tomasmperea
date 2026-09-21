@@ -1823,6 +1823,32 @@ function summarizeReservationsForAI(trip, items) {
     out.push({ tipo:"auto", desde:c.start || "", hasta:c.end || "", dias:dias, notas:sanitizeNotesForAI(c.notes) });
   });
 
+  /* EL TRASLADO FALTABA, y faltaba desde VAL-44. Esta función resumía vuelo,
+     alojamiento, auto y actividad, y saltaba el quinto tipo de reserva que
+     la app deja cargar. Un viaje con sólo un traslado le decía al modelo
+     "(todavía no hay reservas cargadas)" teniendo una reserva cargada, y la
+     nota que la persona escribió ahí —"sale del andén 4", "el chofer espera
+     con un cartel"— no llegaba nunca.
+
+     Lo encontró la auditoría de confirmación preguntando por qué yo había
+     declarado que el prompt lee `transfer.notes`. No lo leía: la declaración
+     era falsa y la aserción que la respaldaba pasaba mirando el archivo de
+     pruebas en vez de mirar el prompt.
+
+     Se agrega acá, con la misma forma que los otros cuatro, en vez de sacar
+     la declaración: el dato existe, la persona lo cargó, y callárselo al
+     modelo es perder información real. Un tramo por tierra entre dos
+     ciudades es exactamente la clase de dato que ninguna regla genérica
+     puede anticipar, que es para lo que existe esta función. */
+  items.filter(function (i) { return i && i.type === "transfer"; }).forEach(function (t) {
+    out.push({
+      tipo:"traslado", desde:t.start || "", hasta:t.end || "",
+      origen:String(t.from || "").trim().slice(0, 80),
+      destino:String(t.to || "").trim().slice(0, 80),
+      notas:sanitizeNotesForAI(t.notes)
+    });
+  });
+
   items.filter(function (i) { return i && i.type === "act"; }).forEach(function (a) {
     out.push({
       tipo:"actividad", fecha:a.start || "",

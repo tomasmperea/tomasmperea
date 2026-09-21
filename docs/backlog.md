@@ -635,6 +635,31 @@ el mismo que ya estaba anotado acá antes de que VAL-72 existiera.
 Queda como está: P3, a investigar como posible defecto de la app. Si al investigarlo se encuentra que sí es
 de la app, esta tabla es el punto de partida.
 
+**Y una corrección a una afirmación mía, del 21/09.** Al pedir la auditoría de confirmación escribí que la
+inestabilidad de `tier-del-modelo.js` estaba *"anotada en VAL-73 con la tabla de corridas"*. **Es falso:**
+esta historia es enteramente sobre `valija-bloque-b.js` y no menciona `tier-del-modelo` ni una vez. Confundí
+dos arneses distintos y le pasé al auditor una referencia que no existía. La encontró él yendo a leerla.
+
+Lo que sí se puede decir de `tier-del-modelo`, ahora escrito donde corresponde:
+
+| Cuándo | Qué pasó |
+|---|---|
+| 20/09 | 1 falla en 1 corrida, **sin capturar cuál aserción**. 9 corridas siguientes, 42/42 |
+| 21/09 | 1 falla en 1 corrida, **sin capturar cuál**. 4 + 5 corridas siguientes, 42/42 |
+
+**Las dos veces se perdió la salida de la corrida que falló**, que es exactamente lo que el protocolo de este
+proyecto pide guardar para un defecto que no se reproduce. Así que no hay dato: hay dos ausencias de dato.
+Mientras no se capture una falla, no se puede decir si es el arnés o la app, y **decir "es un flake conocido"
+sería inventar una causa** — la regla que este proyecto ya tiene escrita.
+
+Queda como tarea propia: envolver la corrida de `tier-del-modelo` para que guarde siempre su salida, y
+correrla en bucle hasta capturar una falla. Hasta entonces se declara así, sin nombre.
+
+**Y una deuda vecina que salió de la misma auditoría:** de los `waitForTimeout` fijos que la auditoría del
+12/09 marcó como sospechosos en `valija-bloque-b.js`, sólo tres se migraron a espera de señal real. Quedan
+varios sin migrar (líneas 429, 431, 454, 459, 461, 480). Es la causa más probable de la intermitencia de ESE
+arnés, y está sin tocar.
+
 ### VAL-75 · Los ítems del destino viejo se quedan, y encima mienten sobre su origen — P0
 
 **Reporte del PM (19/09), con captura.** Cambió el viaje de Noruega a Argentina. La valija sugirió cosas
@@ -838,7 +863,7 @@ razonamiento sobre un dato equivocado es afinar el error.
 Artifact y los cuatro `grep` dicen: **lo que está arriba es la v23**, con VAL-63 y VAL-74 y nada de VAL-72.
 El PM no tiene ninguna versión vetada en el teléfono, que era el riesgo que abrió la sexta auditoría.
 
-**Cómo quedó (v28):**
+**Cómo quedó (v29):**
 
 - `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
   decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
@@ -980,6 +1005,14 @@ de verdad.**
 
 El arnés suma lo que faltaba: aserciones sobre el prompt **entero**, no sólo sobre la línea de destino. Ahí
 es donde vivía el defecto y por eso ninguna prueba lo veía.
+
+**Y el traslado no llegaba al modelo, desde VAL-44.** `summarizeReservationsForAI` resumía cuatro de los
+cinco tipos de reserva que la app deja cargar y se salteaba el traslado. Un viaje con sólo un traslado le
+decía al modelo *"(todavía no hay reservas cargadas)"* teniendo una cargada, y la nota que la persona
+escribió ahí —"sale del andén 4"— no llegaba nunca. Lo encontró la auditoría de confirmación preguntando por
+qué yo había declarado que el prompt lee `transfer.notes`: **no lo leía. La declaración era falsa y la
+aserción que la respaldaba pasaba mirando el archivo de pruebas en vez de mirar el prompt.** Ahora entra, con
+la misma forma que los otros cuatro y con su nota saneada.
 
 **La lección, que no es sobre escalas:** antes de resumirle un dato al modelo, mirar si ya lo tiene — y
 **mirar también cómo se lo estamos contando**. Que el dato esté no alcanza: el rótulo que lo acompaña es una

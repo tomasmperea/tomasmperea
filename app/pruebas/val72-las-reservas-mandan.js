@@ -562,6 +562,60 @@ const promptNotas = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, item
 ok(/lavandería/.test(promptNotas), "la nota del alojamiento llega al modelo");
 ok(/ventanilla/.test(promptNotas), "y la del vuelo también");
 ok(/tanque lleno/.test(promptNotas), "y la del auto");
+ok(/andén 4/.test(promptNotas), "y la del traslado, que era la que faltaba");
+
+console.log("\n· un traslado ES una reserva, y hasta acá no llegaba al modelo");
+/* `summarizeReservationsForAI` resumía vuelo, alojamiento, auto y actividad,
+   y saltaba el quinto tipo que la app deja cargar. Un viaje con sólo un
+   traslado le decía al modelo "(todavía no hay reservas cargadas)" teniendo
+   una reserva cargada. Faltaba desde VAL-44 y lo encontró la auditoría de
+   confirmación preguntando por qué yo había declarado que el prompt lee
+   `transfer.notes`: no lo leía, y la aserción que lo respaldaba pasaba
+   mirando el archivo de pruebas en vez de mirar el prompt. */
+const SOLO_TRASLADO_CON_NOTA = [
+  { type:"transfer", from:"Madrid Atocha", to:"Lisboa Oriente",
+    start:"2027-04-03T09:00", end:"2027-04-03T19:00", notes:"Sale del andén 4" }
+];
+const resumen = pe.summarizeReservationsForAI(EUROPA, SOLO_TRASLADO_CON_NOTA);
+info("resumen: " + JSON.stringify(resumen));
+ok(resumen.length === 1, `el traslado entra al resumen de reservas (${resumen.length})`);
+ok(resumen[0].tipo === "traslado", "con su propio tipo");
+ok(resumen[0].origen === "Madrid Atocha" && resumen[0].destino === "Lisboa Oriente",
+   "con de dónde sale y adónde llega");
+const pSoloTras = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:SOLO_TRASLADO_CON_NOTA }));
+ok(!/no hay reservas cargadas/.test(pSoloTras),
+   "y el prompt deja de decir que no hay reservas teniendo una cargada");
+ok(/andén 4/.test(pSoloTras), "la nota del traslado llega al modelo");
+
+console.log("\n· las actividades también llegan, y este arnés no tenía ninguna");
+/* Ni un solo fixture de actividad en todo el archivo, y el resumen lee su
+   fecha, su título y sus notas. Lo pidió el mecanismo al sumar `act` a la
+   lista de campos leídos. */
+const ACTIVIDADES = [
+  { type:"act", start:"2027-04-04T10:00", title:"Buceo en la costa", notes:"Llevar certificación" },
+  { type:"act", title:"Cena con Ana" },                       // sin fecha ni notas
+  { type:"act", start:"2027-04-06T20:00", notes:"Sin título" } // sin título
+];
+const pActs = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:ACTIVIDADES }));
+ok(/Buceo en la costa/.test(pActs), "el título de la actividad llega al modelo");
+ok(/Llevar certificación/.test(pActs), "y su nota también");
+let revientaAct = false;
+try { pe.summarizeReservationsForAI(EUROPA, ACTIVIDADES); } catch (e) { revientaAct = true; }
+ok(!revientaAct, "una actividad sin fecha y otra sin título no revientan el resumen");
+
+console.log("\n· un traslado sin origen cargado tampoco revienta");
+/* El mecanismo pidió un caso SIN `from`, que es un campo que el formulario
+   marca como requerido pero la app acepta vacío igual. */
+const TRASLADO_SIN_ORIGEN = [{ type:"transfer", to:"Centro", start:"2027-04-02T09:00", end:"2027-04-02T10:00" }];
+const rSinOrig = pe.summarizeReservationsForAI(EUROPA, TRASLADO_SIN_ORIGEN);
+ok(rSinOrig.length === 1 && rSinOrig[0].origen === "", "entra igual, con el origen vacío");
+ok(rSinOrig[0].destino === "Centro", "y conserva el destino, que es lo que sí se cargó");
+
+console.log("\n· el control: la nota del traslado también se sanea");
+const pTrasSens = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:[
+  { type:"transfer", from:"A", to:"B", start:"2027-04-02T09:00", end:"2027-04-02T10:00",
+    notes:"Llamar al 11 5555 4444 antes de salir" } ] }));
+ok(!/11 5555 4444/.test(pTrasSens), "el teléfono de una nota de traslado no llega al modelo");
 
 console.log("\n· el control: una nota con un dato sensible NO llega");
 /* `sanitizeNotesForAI` existe desde VAL-44 y ningún fixture de este arnés la
@@ -600,8 +654,12 @@ console.log("\n· de cada campo que el motor lee hay un caso con y un caso sin")
   const LEE = {
     flight:   ["from", "to", "start", "end", "notes"],
     stay:     ["address", "start", "end", "notes"],
-    transfer: ["to", "start", "end", "notes"],
-    car:      ["address", "start", "end", "notes"]
+    transfer: ["from", "to", "start", "end", "notes"],
+    car:      ["address", "start", "end", "notes"],
+    // `act` faltaba: el resumen lee fecha, título y notas de las actividades,
+    // y este arnés no tenía un solo fixture de actividad. Lo preguntó la
+    // auditoría de confirmación.
+    act:      ["start", "title", "notes"]
   };
   Object.keys(LEE).forEach(function (tipo) {
     const re = new RegExp('\\{[^{}]*type:"' + tipo + '"[^{}]*\\}', "g");

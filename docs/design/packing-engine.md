@@ -225,7 +225,7 @@ internacional, trekking) era invisible para la capa de IA.
 `summarizeReservationsForAI(trip, items)` y calculado **una sola vez**, dentro de `buildPackingList` — es
 decir, existe siempre que hay una lista, corra o no la capa de IA después. `destinationPrompt(list)` lo
 vuelca al prompt como una línea de JSON por reserva, y le pide al modelo que cite el dato concreto cuando el
-motivo salga de una reserva puntual ("tu escala en Lima es de ocho horas"), no una generalidad ("las escalas
+motivo salga de una reserva puntual ("tu espera en Lima es de ocho horas"), no una generalidad ("las escalas
 largas cansan").
 
 **Cómo se arma el resumen.** Por tipo de reserva, con campos elegidos a mano (no un `Object.assign` del
@@ -234,16 +234,30 @@ objeto de reserva completo — ver más abajo por qué eso importa):
 | Tipo | Campos que viajan a la IA |
 |---|---|
 | `vuelo` | fechas/horarios (`desde`, `hasta`), `origen` y `destino` (código IATA en mayúsculas, no ciudad ni dirección), notas saneadas |
-| `escala` | ciudad (el código IATA compartido entre dos vuelos consecutivos) y duración en horas, con un decimal |
+| `entre-vuelos` | ciudad (el código IATA compartido entre dos vuelos consecutivos) y `horasEnTierra`, con un decimal |
 | `alojamiento` | fechas, noches calculadas, notas saneadas |
+| `traslado` | fechas, `origen` y `destino` tal como los escribió la persona (recortados a 80), notas saneadas |
 | `auto` | fechas, días calculados, notas saneadas |
 | `actividad` | fecha, título (recortado a 80 caracteres), notas saneadas |
 
-**Detección de escalas.** No es un campo que traiga la reserva: se infiere comparando vuelos consecutivos
-ordenados por fecha de salida. Si el destino de un vuelo coincide con el origen del siguiente y hay una
-espera real entre la llegada de uno y la salida del otro (`hoursBetween`, más de cero horas), se agrega una
-entrada `{tipo:"escala", ciudad, duracionHoras}`. Es justo el tipo de dato puntual que ninguna regla
-genérica podía anticipar.
+**El tiempo entre dos vuelos.** No es un campo que traiga la reserva: se infiere comparando vuelos
+consecutivos ordenados por fecha de salida. Si el destino de un vuelo coincide con el origen del siguiente y
+hay un hueco real entre la llegada de uno y la salida del otro (`hoursBetween`, más de cero horas), se
+agrega una entrada `{tipo:"entre-vuelos", ciudad, horasEnTierra}`. Es justo el tipo de dato puntual que
+ninguna regla genérica podía anticipar.
+
+**Y se llama así, y no «escala», por lo que costó.** Esto decía `tipo:"escala"` y rotulaba por
+encadenamiento, sin mirar cuánto duraba el hueco: un viaje de ida y vuelta a Madrid mandaba
+`{"tipo":"escala","ciudad":"MAD","duracionHoras":322.5}` —trece días de estadía llamados cambio de avión— y
+un multidestino marcaba como escala dos de sus tres ciudades. Lo mismo que VAL-72 tardó tres intentos en
+aprender en la línea de destino, vivo acá desde VAL-44. **El dato siempre estuvo bien; lo que mentía era el
+sustantivo.** Ahora el renglón dice el hecho y el prompt le explica al modelo que ocho horas son un cambio
+de avión y trescientas son una estadía: la interpretación la pone él, con el número a la vista.
+
+**Y el traslado faltaba.** Esta función resumía cuatro de los cinco tipos de reserva que la app deja cargar,
+y se salteaba el traslado desde VAL-44: un viaje con sólo un traslado le decía al modelo *"(todavía no hay
+reservas cargadas)"* teniendo una cargada, y la nota que la persona escribió ahí no llegaba nunca. Entra con
+la misma forma que los otros.
 
 **Qué NO se manda, y por qué.** El resumen **nunca incluye código de reserva (`confirmation`), teléfono
 (`phone`) ni dirección exacta (`address`)** — esos tres campos ni siquiera se leen dentro de
