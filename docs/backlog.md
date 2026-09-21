@@ -652,8 +652,17 @@ proyecto pide guardar para un defecto que no se reproduce. Así que no hay dato:
 Mientras no se capture una falla, no se puede decir si es el arnés o la app, y **decir "es un flake conocido"
 sería inventar una causa** — la regla que este proyecto ya tiene escrita.
 
-Queda como tarea propia: envolver la corrida de `tier-del-modelo` para que guarde siempre su salida, y
-correrla en bucle hasta capturar una falla. Hasta entonces se declara así, sin nombre.
+**Hecho el 21/09, después de la tercera falla.** Se corrió en bucle: **12 corridas más, todas 42/42**, sin
+capturar nada. Total acumulado: **3 fallas en ~30 corridas, y las tres salidas perdidas.**
+
+Así que se dejó de cazarla a mano. **El arnés se guarda a sí mismo**: envuelve `console.log`, escribe cada
+corrida a un archivo en el directorio temporal, y cuando falla lo grita con la ruta en la última línea.
+Comprobado con un sabotaje que rompe dos aserciones: el aviso aparece y el archivo queda.
+
+Pedirlo a mano falló tres veces; ahora no hace falta acordarse. Es la misma regla que ya está en `CLAUDE.md`:
+cuando una regla se pueda convertir en mecanismo, se convierte.
+
+La próxima falla va a tener nombre. Hasta entonces sigue sin diagnóstico, y **no se la llama flake**.
 
 **Y una deuda vecina que salió de la misma auditoría:** de los `waitForTimeout` fijos que la auditoría del
 12/09 marcó como sospechosos en `valija-bloque-b.js`, sólo tres se migraron a espera de señal real. Quedan

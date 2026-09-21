@@ -75,6 +75,29 @@ const HTML = process.argv[2]
 const APP = "file://" + HTML;
 const VOUCHER = fs.readFileSync(path.resolve(__dirname, "fixtures", "voucher-lobos-bus.txt"), "utf8");
 
+/* LA SALIDA SE GUARDA SIEMPRE, y no porque sea prolijo: este arnés falló
+   tres veces en tres días —una sola corrida cada vez, con ~30 corridas
+   limpias alrededor— y LAS TRES VECES SE PERDIÓ LA SALIDA. El protocolo de
+   este proyecto pide justamente guardarla para un defecto que no se
+   reproduce, y las tres veces se pidió a mano y las tres veces se olvidó.
+   Una intención que falla tres veces deja de ser una intención: el arnés se
+   guarda a sí mismo, y cuando falla lo grita con la ruta del archivo.
+   Va a `os.tmpdir()` para no ensuciar el repo. */
+const os = require("os");
+const LINEAS = [];
+const REGISTRO = path.join(os.tmpdir(), "tier-del-modelo-" + Date.now() + ".txt");
+(function envolverConsola() {
+  const original = console.log;
+  console.log = function () {
+    LINEAS.push(Array.prototype.map.call(arguments, String).join(" "));
+    original.apply(console, arguments);
+  };
+})();
+function guardarRegistro() {
+  try { fs.writeFileSync(REGISTRO, LINEAS.join("\n") + "\n"); return REGISTRO; }
+  catch (e) { return null; }
+}
+
 let ok = 0, fail = 0;
 function assert(cond, msg) {
   if (cond) { ok++; console.log("  ok     " + msg); }
@@ -486,6 +509,13 @@ function assertClavesLimpias(ls, donde) {
   console.log("\n====================================================");
   console.log(`  ${ok} pasaron, ${fail} fallaron`);
   console.log("====================================================\n");
+  const donde = guardarRegistro();
+  if (fail && donde) {
+    console.log("  >>> ESTA CORRIDA FALLÓ Y QUEDÓ GUARDADA EN:");
+    console.log("  >>> " + donde);
+    console.log("  >>> No la pierdas: este arnés falla una vez cada tantas decenas");
+    console.log("  >>> de corridas y las tres primeras veces se perdió la salida.\n");
+  }
   await browser.close();
   process.exitCode = fail ? 1 : 0;
 })();
