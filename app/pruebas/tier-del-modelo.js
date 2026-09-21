@@ -93,9 +93,34 @@ const REGISTRO = path.join(os.tmpdir(), "tier-del-modelo-" + Date.now() + ".txt"
     original.apply(console, arguments);
   };
 })();
+/* El `catch` de la primera versión se tragaba el error y devolvía `null`, y
+   como el aviso estaba detrás de `if (fail && donde)`, una corrida que
+   fallaba Y no podía escribir terminaba sin archivo, sin mensaje y sin
+   motivo: exactamente el síntoma que este mecanismo existe para prevenir,
+   producido por el mecanismo. Lo encontró la auditoría atacándolo con una
+   ruta imposible. Ahora el fracaso de guardar se dice, con su motivo. */
 function guardarRegistro() {
   try { fs.writeFileSync(REGISTRO, LINEAS.join("\n") + "\n"); return REGISTRO; }
-  catch (e) { return null; }
+  catch (e) {
+    process.stdout.write("\n  >>> NO SE PUDO GUARDAR EL REGISTRO en " + REGISTRO + "\n" +
+                         "  >>> motivo: " + (e && e.message) + "\n" +
+                         "  >>> La salida de esta corrida está sólo en pantalla: copiala.\n\n");
+    return null;
+  }
+}
+
+/* Y el aviso se da SIEMPRE que hubo fallas, haya archivo o no. Separar las
+   dos cosas es el punto: que no se pueda guardar es una razón MÁS para
+   gritar, no una para callarse. */
+function avisarSiFallo(cuantas) {
+  if (!cuantas) return;
+  const donde = guardarRegistro();
+  process.stdout.write("  >>> ESTA CORRIDA FALLÓ (" + cuantas + ")\n");
+  if (donde) {
+    process.stdout.write("  >>> QUEDÓ GUARDADA EN: " + donde + "\n" +
+                         "  >>> No la pierdas: este arnés falla una vez cada tantas decenas\n" +
+                         "  >>> de corridas y las tres primeras veces se perdió la salida.\n\n");
+  }
 }
 
 let ok = 0, fail = 0;
@@ -269,7 +294,20 @@ function assertClavesLimpias(ls, donde) {
     (sucias.length ? "— " + JSON.stringify(sucias.map(s => s.claves)) : "(modo/archivo/paginas se quedan en la app)"));
 }
 
+/* EL IIFE VA ENVUELTO, porque una excepción fuera de cualquier `test()` —el
+   navegador que no arranca, un fixture que no está— terminaba el proceso sin
+   pasar nunca por el guardado. La auditoría lo forzó con un `executablePath`
+   inválido: se perdió la salida entera, sin archivo y sin aviso. El `finally`
+   corre igual, y la excepción se imprime antes de que se pierda.
+
+   LO QUE ESTO NO CUBRE, dicho para que no se descubra como sorpresa: lo que
+   pasa ANTES de este bloque —la lectura del fixture, el `require` de
+   Playwright— sigue sin envolverse. Se probó: revienta con la excepción a la
+   vista y sin archivo. Se deja así a propósito, porque en ese momento no hay
+   ninguna salida que perder: el arnés todavía no imprimió nada. Envolver eso
+   sería ruido, no protección. */
 (async () => {
+ try {
   const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
   console.log("HTML bajo prueba: " + HTML);
 
@@ -509,13 +547,13 @@ function assertClavesLimpias(ls, donde) {
   console.log("\n====================================================");
   console.log(`  ${ok} pasaron, ${fail} fallaron`);
   console.log("====================================================\n");
-  const donde = guardarRegistro();
-  if (fail && donde) {
-    console.log("  >>> ESTA CORRIDA FALLÓ Y QUEDÓ GUARDADA EN:");
-    console.log("  >>> " + donde);
-    console.log("  >>> No la pierdas: este arnés falla una vez cada tantas decenas");
-    console.log("  >>> de corridas y las tres primeras veces se perdió la salida.\n");
-  }
   await browser.close();
-  process.exitCode = fail ? 1 : 0;
+ } catch (e) {
+   fail++;
+   console.log("\n  FALLA (excepción fuera de toda prueba) " + (e && e.message));
+   console.log(e && e.stack);
+ } finally {
+   avisarSiFallo(fail);
+   process.exitCode = fail ? 1 : 0;
+ }
 })();

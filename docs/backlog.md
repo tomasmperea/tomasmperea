@@ -662,6 +662,21 @@ Comprobado con un sabotaje que rompe dos aserciones: el aviso aparece y el archi
 Pedirlo a mano falló tres veces; ahora no hace falta acordarse. Es la misma regla que ya está en `CLAUDE.md`:
 cuando una regla se pueda convertir en mecanismo, se convierte.
 
+**Y el mecanismo también tuvo que recibir el ataque.** La quinta confirmación lo volteó en los dos
+escenarios que reproducen exactamente el síntoma que el mecanismo existe para prevenir:
+
+- si no se podía escribir el archivo, el `catch` se tragaba el error y el aviso estaba detrás de "hay archivo",
+  así que una corrida que fallaba **y** no podía guardar terminaba sin archivo, sin mensaje y sin motivo;
+- una excepción fuera de toda prueba —el navegador que no arranca— terminaba el proceso sin pasar nunca por
+  el guardado.
+
+O sea: **el mecanismo contra perder la salida perdía la salida.** Arreglado: el fracaso de guardar se dice
+con su motivo, el aviso de falla se da haya archivo o no, y la corrida entera va envuelta. Los dos sabotajes
+del auditor se repitieron y ahora los dos gritan.
+
+Queda declarado lo que **no** cubre: una excepción antes de que el arnés imprima nada —el fixture que no
+está, el `require` que falla— sigue sin envolverse, a propósito, porque ahí todavía no hay salida que perder.
+
 La próxima falla va a tener nombre. Hasta entonces sigue sin diagnóstico, y **no se la llama flake**.
 
 **Y una deuda vecina que salió de la misma auditoría:** de los `waitForTimeout` fijos que la auditoría del
