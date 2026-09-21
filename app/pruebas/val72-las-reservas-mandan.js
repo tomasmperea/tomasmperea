@@ -648,6 +648,51 @@ ok(rFut.length === 1 && rFut[0].tipo === "crucero",
    "un tipo que el motor no conoce llega igual, con su propio nombre");
 ok(/Mallorca/.test(rFut[0].titulo), "y con su título, en vez de desaparecer en silencio");
 
+console.log("\n· ninguna reserva sale DOS veces");
+/* La primera versión de la rama genérica se guardaba de duplicar con otra
+   lista de tipos escrita a mano —la misma fragilidad que decía haber
+   erradicado, un nivel más adentro—. La auditoría la saboteó sacando `act`
+   de esa lista y la reserva salió dos veces. Ahora la guarda no es una lista
+   sino el hecho: se anota cada ítem que ya salió. */
+const UNO_DE_CADA = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T20:00" },
+  { type:"stay", address:"Hotel", start:"2027-04-01T15:00", end:"2027-04-05T10:00" },
+  { type:"car", address:"T4", start:"2027-04-02T09:00", end:"2027-04-04T09:00" },
+  { type:"transfer", from:"A", to:"B", start:"2027-04-02T07:00", end:"2027-04-02T08:00" },
+  { type:"act", title:"Museo", start:"2027-04-03T10:00" },
+  { type:"note", title:"Adaptador", start:"2027-04-01T09:00" },
+  { type:"crucero", title:"Barco", start:"2027-04-06T09:00" }
+];
+const rTodos = pe.summarizeReservationsForAI(EUROPA, UNO_DE_CADA);
+const firmas = rTodos.map(x => JSON.stringify(x));
+info("tipos: " + rTodos.map(x => x.tipo).join(", "));
+ok(firmas.length === new Set(firmas).size, "ninguna reserva aparece dos veces en el resumen");
+ok(rTodos.filter(x => x.tipo === "actividad").length === 1, "la actividad sale una sola vez");
+ok(rTodos.some(x => x.tipo === "crucero"), "y el tipo inventado sale igual, por la rama de al final");
+
+console.log("\n· una nota y un traslado se citan por su nombre, no como «la reserva»");
+/* `findFactSource` busca palabras clave en CUALQUIER ítem sin filtrar por
+   tipo, así que una nota podía terminar citada como "la reserva" genérico:
+   al mapa de rótulos le faltaban justo `transfer` y `note`, los dos tipos
+   que costaron esta historia entera. Lo encontró la auditoría barriendo por
+   la FORMA del bug —un objeto con claves de tipo mantenido a mano— en vez de
+   por la función tocada. Se prueba por el camino público, no por la
+   función suelta. */
+const viajeCiudad = { id:"c20", name:"Madrid", destination:"Madrid",
+                      startDate:"2027-05-05", endDate:"2027-05-10" };
+const listaCiudad = pe.buildPackingList({ trip:viajeCiudad, items:[], tipoViaje:"ciudad" });
+[["la nota", { id:"n1", type:"note", title:"Día de playa en Valencia", start:"2027-05-08T10:00" }, /la nota/],
+ ["el traslado", { id:"x1", type:"transfer", from:"Madrid", to:"Valencia",
+                   start:"2027-05-08T08:00", notes:"vamos a la playa" }, /el traslado/]
+].forEach(function (caso) {
+  const r = pe.planListUpdate({ list:listaCiudad, trip:viajeCiudad, items:[caso[1]], tipoViaje:"ciudad" });
+  const citas = [...new Set((r.nuevos || []).map(n => n.reserva).filter(Boolean))];
+  info(caso[0] + " → " + JSON.stringify(citas));
+  ok(citas.length > 0, `${caso[0]}: el motor cita la reserva que motivó el ítem`);
+  ok(citas.some(c => caso[2].test(c)), `${caso[0]}: la cita la nombra por lo que es`);
+  ok(!citas.some(c => /^la reserva/.test(c)), `${caso[0]}: y NO la llama «la reserva» genérico`);
+});
+
 console.log("\n· el control: lo que se cae al piso también se sanea");
 const rSens = pe.summarizeReservationsForAI(EUROPA,
   [{ type:"note", title:"Pagar", notes:"tarjeta 4111 1111 1111 1111" }]);

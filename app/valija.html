@@ -931,7 +931,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    tres árboles, así que la regla se cumple subiéndolo en el commit que va a
    publicarse, no "antes de publicar" como intención.
    ============================================================ */
-const VALIJA_VERSION = "30";
+const VALIJA_VERSION = "31";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -3155,12 +3155,17 @@ function destinosDelViaje(trip, items) {
 function summarizeReservationsForAI(trip, items) {
   items = (items || []).filter(Boolean);
   var out = [];
+  // Los ítems que ya salieron por un bloque propio, anotados a medida que
+  // salen. Ver la rama final de esta función para por qué no es una lista
+  // de tipos.
+  var resumidos = [];
 
   var flights = items.filter(function (i) { return i && i.type === "flight"; })
     .slice()
     .sort(function (a, b) { return String(a.start || "").localeCompare(String(b.start || "")); });
 
   flights.forEach(function (f) {
+    resumidos.push(f);
     out.push({
       tipo:"vuelo", desde:f.start || "", hasta:f.end || "",
       origen:String(f.from || "").trim().toUpperCase(),
@@ -3198,6 +3203,7 @@ function summarizeReservationsForAI(trip, items) {
   }
 
   items.filter(function (i) { return i && i.type === "stay"; }).forEach(function (s) {
+    resumidos.push(s);
     var noches = daysBetweenInclusive(s.start, s.end);
     out.push({
       tipo:"alojamiento", desde:s.start || "", hasta:s.end || "",
@@ -3207,6 +3213,7 @@ function summarizeReservationsForAI(trip, items) {
   });
 
   items.filter(function (i) { return i && i.type === "car"; }).forEach(function (c) {
+    resumidos.push(c);
     var dias = daysBetweenInclusive(c.start, c.end);
     out.push({ tipo:"auto", desde:c.start || "", hasta:c.end || "", dias:dias, notas:sanitizeNotesForAI(c.notes) });
   });
@@ -3229,6 +3236,7 @@ function summarizeReservationsForAI(trip, items) {
      ciudades es exactamente la clase de dato que ninguna regla genérica
      puede anticipar, que es para lo que existe esta función. */
   items.filter(function (i) { return i && i.type === "transfer"; }).forEach(function (t) {
+    resumidos.push(t);
     out.push({
       tipo:"traslado", desde:t.start || "", hasta:t.end || "",
       origen:String(t.from || "").trim().slice(0, 80),
@@ -3238,6 +3246,7 @@ function summarizeReservationsForAI(trip, items) {
   });
 
   items.filter(function (i) { return i && i.type === "act"; }).forEach(function (a) {
+    resumidos.push(a);
     out.push({
       tipo:"actividad", fecha:a.start || "",
       titulo:String(a.title || "").trim().slice(0, 80),
@@ -3260,8 +3269,16 @@ function summarizeReservationsForAI(trip, items) {
      desaparezca en silencio**. Lo que no tuvo un bloque propio sale igual,
      con lo que toda reserva tiene: qué es, cuándo, cómo se llama y su nota.
      Peor que un resumen a medida, y muchísimo mejor que el silencio. */
-  var yaResumidos = { flight:true, stay:true, car:true, transfer:true, act:true };
-  items.filter(function (i) { return i && i.type && !yaResumidos[i.type]; }).forEach(function (x) {
+  /* Y ACÁ NO VA UNA LISTA DE TIPOS. La primera versión de esta rama tenía
+     `{flight:true, stay:true, car:true, transfer:true, act:true}`, o sea la
+     misma lista a mano que este arreglo decía haber erradicado, un nivel más
+     adentro: si alguien agregaba un bloque propio arriba y se olvidaba de
+     sumarlo acá, la reserva salía DOS veces. Lo encontró la auditoría
+     saboteándolo, y tenía razón.
+     Ahora la guarda no es una lista sino el hecho: se anota cada ítem que ya
+     salió por su bloque propio, y acá pasa lo que no está anotado. Las dos
+     cosas no se pueden desincronizar porque son la misma. */
+  items.filter(function (i) { return i && resumidos.indexOf(i) < 0; }).forEach(function (x) {
     out.push({
       tipo:String(x.type), fecha:x.start || "",
       titulo:String(x.title || "").trim().slice(0, 80),
@@ -3862,10 +3879,18 @@ function collectFactNames(cond) {
  */
 function describeReservation(it) {
   if (!it) return null;
-  var LABEL = { flight:"el vuelo", stay:"el alojamiento", car:"el auto", act:"la actividad" };
+  /* Faltaban `transfer` y `note`, que son justo los dos tipos que costaron
+     VAL-72 entera, y era alcanzable hoy: `findFactSource` busca palabras
+     clave en CUALQUIER ítem sin filtrar por tipo, así que una nota podía
+     terminar citada como "la reserva" genérico. Lo encontró la auditoría
+     barriendo por la FORMA del bug —un objeto con claves de tipo mantenido a
+     mano— en vez de por la función tocada. */
+  var LABEL = { flight:"el vuelo", stay:"el alojamiento", car:"el auto",
+                act:"la actividad", transfer:"el traslado", note:"la nota" };
   var base = LABEL[it.type] || "la reserva";
   if (it.type === "flight" && (it.from || it.to)) base += " " + [it.from, it.to].filter(Boolean).join(" – ");
-  else if (it.type === "act" && it.title) base += " \"" + String(it.title).trim() + "\"";
+  else if (it.type === "transfer" && (it.from || it.to)) base += " " + [it.from, it.to].filter(Boolean).join(" – ");
+  else if ((it.type === "act" || it.type === "note") && it.title) base += " \"" + String(it.title).trim() + "\"";
   else if ((it.type === "stay" || it.type === "car") && it.provider) base += " (" + String(it.provider).trim() + ")";
   return base;
 }

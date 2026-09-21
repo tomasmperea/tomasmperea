@@ -255,6 +255,35 @@ La versión que sí sirve no afirma nada sobre el formulario: exige que **de cad
 un caso con y un caso sin**, y esa lista sale de abrir la función. Encontró ocho huecos en el mismo commit
 que la estrenó.
 
+## Se barre la clase del ARCHIVO, no la de la función
+
+Las tres últimas rondas de VAL-72 las abrió el auditor tirando de una **afirmación** mía que no le cerraba,
+no revisando el diff. Cada vez encontró el mismo patrón un poco más lejos:
+
+| Dónde | Qué era |
+|---|---|
+| `summarizeReservationsForAI` | un `filter` por tipo, y faltaba el traslado |
+| la misma función, ronda siguiente | seguía faltando la nota |
+| la rama que lo arreglaba | `yaResumidos`, otra lista de tipos a mano, un nivel más adentro |
+| `describeReservation`, 600 líneas más lejos | `LABEL`, la misma lista, sin traslado ni nota |
+
+**Cuatro instancias de una sola forma:** un objeto con las claves de los tipos de reserva, mantenido a mano,
+que se queda corto cuando aparece un tipo nuevo. Y cada ronda arreglé la instancia que me señalaron.
+
+La pregunta "¿qué caso vecino comparte la causa?" ya estaba escrita más arriba, y no alcanzó: **la estaba
+aplicando dentro de la función que tocaba.** El vecino de `yaResumidos` no era otro tipo de reserva: era
+`LABEL`, en otra función, con la misma forma.
+
+**Entonces, cuando un defecto resulta ser de forma —una lista a mano, una guarda por tipo, un `switch` sobre
+un enum— no se arregla la instancia: se busca la forma en todo el archivo.** Con `grep` de la estructura, no
+del nombre de la función. `grep -n 'flight *:'` sobre el motor encontró las dos que quedaban en un segundo, y
+ninguna de las cuatro rondas anteriores lo había corrido.
+
+**Y donde se pueda, la lista se deja de mantener.** `yaResumidos` dejó de ser una lista de tipos y pasó a ser
+el hecho —se anota cada ítem que ya salió—, así que no se puede desincronizar de los bloques que arma. El
+arnés dejó de tener su propia lista y la lee del `TYPES` de la app. Una lista que hay que acordarse de
+completar se va a quedar corta; la única pregunta es cuándo.
+
 ## Un fixture al que le falta un campo hace pasar una prueba que debería fallar
 
 El caso de la ida y vuelta vivió **dos rondas** de auditoría sin que ningún arnés lo viera, y el arnés tenía

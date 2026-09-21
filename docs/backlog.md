@@ -863,7 +863,7 @@ razonamiento sobre un dato equivocado es afinar el error.
 Artifact y los cuatro `grep` dicen: **lo que está arriba es la v23**, con VAL-63 y VAL-74 y nada de VAL-72.
 El PM no tiene ninguna versión vetada en el teléfono, que era el riesgo que abrió la sexta auditoría.
 
-**Cómo quedó (v30):**
+**Cómo quedó (v31):**
 
 - `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
   decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
@@ -1005,6 +1005,25 @@ de verdad.**
 
 El arnés suma lo que faltaba: aserciones sobre el prompt **entero**, no sólo sobre la línea de destino. Ahí
 es donde vivía el defecto y por eso ninguna prueba lo veía.
+
+**Y había DOS más, en otras funciones, con la misma forma.** La tercera confirmación las encontró barriendo
+por la **forma** del bug —un objeto con las claves de los tipos de reserva, mantenido a mano— en vez de por
+la función tocada:
+
+- **`yaResumidos`**, la guarda que puse para que la rama genérica no duplicara lo que ya salió: era otra
+  lista de tipos escrita a mano, **la misma fragilidad que el arreglo decía haber erradicado, un nivel más
+  adentro**. El auditor la saboteó sacándole `act` y la reserva salió dos veces. Ahora la guarda no es una
+  lista sino el hecho —se anota cada ítem que ya salió—, así que no se puede desincronizar de los bloques
+  que arma.
+- **`LABEL` en `describeReservation`**, seiscientas líneas más lejos: le faltaban `transfer` y `note`, justo
+  los dos tipos que costaron esta historia entera. Y era alcanzable hoy, no en teoría: `findFactSource`
+  busca palabras clave en **cualquier** ítem sin filtrar por tipo, así que una nota terminaba citada como
+  *"la reserva"* genérico. Ahora dice *"la nota «Día de playa en Valencia»"* y *"el traslado Madrid –
+  Valencia"*, comprobado por el camino público y no por la función suelta.
+
+`grep -n 'flight *:'` sobre el motor encontró las dos en un segundo, y ninguna de las cuatro rondas
+anteriores lo había corrido. **Quedó escrito en `CLAUDE.md` como regla:** cuando un defecto resulta ser de
+forma, se busca la forma en todo el archivo, con grep de la estructura y no del nombre de la función.
 
 **Y la nota tampoco, y ésa es la tercera vez del mismo error en esta historia.** La app deja cargar seis
 tipos de reserva y el resumen tenía un `filter` por tipo, con cinco. Una nota —*"comprar adaptador de
