@@ -838,7 +838,7 @@ razonamiento sobre un dato equivocado es afinar el error.
 Artifact y los cuatro `grep` dicen: **lo que está arriba es la v23**, con VAL-63 y VAL-74 y nada de VAL-72.
 El PM no tiene ninguna versión vetada en el teléfono, que era el riesgo que abrió la sexta auditoría.
 
-**Cómo quedó (v27):**
+**Cómo quedó (v28):**
 
 - `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
   decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
@@ -958,8 +958,32 @@ trae ningún número de tiempo. Y suma el control que sostiene toda la decisión
 renglón de escala con su duración, porque si no, sacar la anotación sería perder información en vez de dejar
 de repetirla.
 
-**La lección, que no es sobre escalas:** antes de resumirle un dato al modelo, mirar si ya lo tiene. Un
-resumen puede mentir; el dato crudo no.
+**Y la premisa con la que se tomó esa decisión estaba INCOMPLETA, lo cual la auditoría encontró mirando
+donde ninguna prueba miraba.** Es cierto que el modelo ya recibía el dato. Lo que nadie verificó es **cómo
+venía rotulado**: `summarizeReservationsForAI`, de VAL-44, decía `tipo:"escala"` sobre cualquier par de
+vuelos encadenados, **sin umbral de duración**. O sea:
+
+- un viaje de ida y vuelta a Madrid mandaba `{"tipo":"escala","ciudad":"MAD","duracionHoras":322.5}` —trece
+  días de estadía llamados cambio de avión—;
+- **el viaje a Europa del PM, el caso que define el éxito de esta historia**, marcaba como escala dos de sus
+  tres ciudades.
+
+Es exactamente el mismo error de rotular por encadenamiento que esta historia ya había cometido tres veces en
+la línea de destino, **vivo en otra función desde hacía dos iteraciones**. Estaba dormido; al apuntarle el
+modelo a ese bloque, pasó a amplificado.
+
+El dato siempre estuvo bien: 322,5 horas son 322,5 horas. Lo que mentía era el sustantivo. El renglón pasa a
+ser `{"tipo":"entre-vuelos","ciudad":"MAD","horasEnTierra":322.5}` —el hecho, sin la interpretación— y el
+prompt explica qué es ese número. **Una escala de ocho horas y una estadía de trece días salen ahora por el
+mismo camino, con el mismo tipo, y lo único que las distingue es el número, que es lo único que las distingue
+de verdad.**
+
+El arnés suma lo que faltaba: aserciones sobre el prompt **entero**, no sólo sobre la línea de destino. Ahí
+es donde vivía el defecto y por eso ninguna prueba lo veía.
+
+**La lección, que no es sobre escalas:** antes de resumirle un dato al modelo, mirar si ya lo tiene — y
+**mirar también cómo se lo estamos contando**. Que el dato esté no alcanza: el rótulo que lo acompaña es una
+afirmación más, y puede ser falsa. Un resumen puede mentir; el dato crudo no.
 
 **Y la séptima ronda encontró que la rama nueva afirmaba dos cosas que el dato no decía:**
 

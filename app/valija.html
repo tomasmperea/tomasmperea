@@ -931,7 +931,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    tres árboles, así que la regla se cumple subiéndolo en el commit que va a
    publicarse, no "antes de publicar" como intención.
    ============================================================ */
-const VALIJA_VERSION = "27";
+const VALIJA_VERSION = "28";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -3168,15 +3168,32 @@ function summarizeReservationsForAI(trip, items) {
     });
   });
 
-  // Escala: dos vuelos consecutivos donde el primero llega adonde sale el
-  // segundo, con una espera real en el medio. Es justo el dato puntual que
-  // ninguna regla podía anticipar (VAL-44).
+  /* EL TIEMPO ENTRE DOS VUELOS, sin llamarlo escala.
+
+     Esto decía `tipo:"escala"` sobre cualquier par de vuelos que encadenara,
+     sin mirar cuánto duraba el hueco. Venía de VAL-44 y nadie lo había
+     mirado, hasta que la octava auditoría lo puso al lado de los casos de
+     esta historia: un viaje de ida y vuelta a Madrid le mandaba al modelo
+     `{"tipo":"escala","ciudad":"MAD","duracionHoras":322.5}` —trece días de
+     estadía etiquetados como cambio de avión— y el viaje a Europa del PM
+     marcaba como escala dos de sus tres ciudades.
+
+     Es EXACTAMENTE el error que esta historia ya cometió tres veces en la
+     línea de destino: rotular por encadenamiento, cuando lo único que separa
+     una escala de una estadía es cuánto dura. Estaba vivo en otra función, y
+     al apuntarle el modelo a este bloque pasó de dormido a amplificado.
+
+     El dato siempre estuvo bien —322,5 horas son 322,5 horas—. Lo que
+     mentía era el sustantivo. Ahora el renglón dice lo que pasa y no lo que
+     significa: entre estos dos vuelos hay N horas en esta ciudad. Qué es eso
+     lo decide el modelo, que para eso recibe el número. */
   for (var i = 0; i < flights.length - 1; i++) {
     var a = flights[i], b = flights[i + 1];
     if (!a.to || !b.from || String(a.to).toUpperCase() !== String(b.from).toUpperCase()) continue;
     var horas = hoursBetween(a.end, b.start);
     if (horas == null || horas <= 0) continue;
-    out.push({ tipo:"escala", ciudad:String(a.to).toUpperCase(), duracionHoras:Math.round(horas * 10) / 10 });
+    out.push({ tipo:"entre-vuelos", ciudad:String(a.to).toUpperCase(),
+               horasEnTierra:Math.round(horas * 10) / 10 });
   }
 
   items.filter(function (i) { return i && i.type === "stay"; }).forEach(function (s) {
@@ -3243,9 +3260,10 @@ function lineaDestinos(b) {
      crudo, que no miente porque no resume. */
   var hayVarios = (d && d.lugares || []).length > 1;
   var avisoEscala = hayVarios
-    ? " Ojo con las escalas: algunos de esos lugares pueden ser sólo un cambio de avión y no una parada. " +
-      "No lo adivines — abajo tenés cada vuelo con su hora de salida y de llegada, y un renglón aparte por " +
-      "cada escala con cuántas horas dura. Unas horas en un aeropuerto no piden nada; unos días sí."
+    ? " Ojo: alguno de esos lugares puede ser sólo un cambio de avión y no una parada. No lo adivines — " +
+      "abajo tenés cada vuelo con su hora de salida y de llegada, y un renglón `entre-vuelos` con cuántas " +
+      "horas se pasan en cada ciudad entre un vuelo y el siguiente. Unas horas son un cambio de avión y no " +
+      "piden nada; unos días son una estadía y piden todo."
     : "";
 
   /* Las pistas —alojamientos, traslados y autos— se mandan SIEMPRE, con sus
@@ -3352,15 +3370,19 @@ function destinationPrompt(list) {
     "La lista base ya incluye: " + (yaHay || "nada"),
     "",
     "Agregá los ítems que hagan falta, sin llenar por llenar: los que sean específicos de ESE destino en ESA época del año, o de",
-    "una combinación puntual de ESTE viaje que ninguna regla genérica podría anticipar: una escala larga,",
+    "una combinación puntual de ESTE viaje que ninguna regla genérica podría anticipar: una espera larga entre vuelos,",
     "un check-in de madrugada, un alojamiento sin lavandería en un viaje largo, una actividad que pide",
     "equipo propio. También sirve el tipo de enchufe del país, la amplitud térmica de la zona en ese mes,",
     "la temporada de lluvias, la altura, o un requisito de ingreso conocido. Ningún ítem que agregues puede",
     "estar ya en la lista base.",
     "",
     "Cuando el motivo venga de una reserva puntual o de las notas del viaje, citá el dato concreto: \"tu",
-    "escala en Lima es de ocho horas\", no \"las escalas largas cansan\". Una generalidad sin el dato del",
+    "espera en Lima es de ocho horas\", no \"las escalas largas cansan\". Una generalidad sin el dato del",
     "viaje no sirve.",
+    "",
+    "Los renglones `entre-vuelos` dicen cuántas horas pasan en una ciudad entre un vuelo y el siguiente, y",
+    "NADA más: ocho horas son un cambio de avión y no piden nada, trescientas son dos semanas de estadía y",
+    "piden todo. El número está para que lo interpretes vos; no hay ningún rótulo que lo haya interpretado.",
     "",
     "También podés proponer SACAR ítems de \"La lista base ya incluye\" que no apliquen a este destino",
     "puntual (por ejemplo, no hace falta visa si el país no la pide). Usá el nombre EXACTO tal como aparece",

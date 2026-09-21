@@ -551,16 +551,42 @@ await test("el resumen de reservas nunca manda datos sensibles, y sí tipo, fech
   assert(/lavarropas/i.test(alojamiento.notas), "las notas sí viajan: son las que permiten razonar sobre el alojamiento");
 });
 
-await test("detecta una escala larga entre dos vuelos consecutivos", function () {
+/* Esta prueba decía "detecta una escala larga" y comprobaba `tipo:"escala"`.
+   Lo decía porque el código lo hacía, y el código rotulaba por encadenamiento
+   sin mirar la duración: ocho horas en Lima y trece días en Madrid salían con
+   el mismo sustantivo. Lo encontró la octava auditoría de VAL-72, que es la
+   historia donde el mismo error ya se había cometido tres veces en otra
+   función. Ahora el renglón dice el hecho —cuántas horas se pasan en una
+   ciudad entre dos vuelos— y el modelo decide qué es. */
+await test("informa cuántas horas hay entre dos vuelos, sin decir qué son", function () {
   var items = [
     { type:"flight", from:"EZE", to:"LIM", start:"2026-03-01T08:00", end:"2026-03-01T11:00" },
     { type:"flight", from:"LIM", to:"CUN", start:"2026-03-01T19:00", end:"2026-03-01T23:00" }
   ];
   var resumen = E.summarizeReservationsForAI({}, items);
-  var escala = resumen.filter(function (r) { return r.tipo === "escala"; })[0];
-  assert(escala, "no detectó la escala");
-  eq(escala.ciudad, "LIM", "ciudad de la escala");
-  assert(escala.duracionHoras >= 7.5 && escala.duracionHoras <= 8.5, "la escala tiene que medir ~8 horas: " + escala.duracionHoras);
+  var tramo = resumen.filter(function (r) { return r.tipo === "entre-vuelos"; })[0];
+  assert(tramo, "no informó el tiempo entre los dos vuelos");
+  eq(tramo.ciudad, "LIM", "ciudad donde se espera");
+  assert(tramo.horasEnTierra >= 7.5 && tramo.horasEnTierra <= 8.5, "tienen que ser ~8 horas: " + tramo.horasEnTierra);
+  assert(!resumen.some(function (r) { return r.tipo === "escala"; }),
+         "y ningún renglón se llama «escala»: el rótulo lo pone el modelo, no nosotros");
+});
+
+/* El control de lo anterior: una estadía larga sale por el MISMO camino y con
+   el mismo tipo. Si volviera un umbral, este caso volvería a llamarse
+   distinto que el de arriba, que es exactamente lo que se vino a sacar. */
+await test("una estadía de trece días sale igual que una espera de ocho horas", function () {
+  var items = [
+    { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T23:30" },
+    { type:"flight", from:"MAD", to:"EZE", start:"2027-04-15T10:00", end:"2027-04-16T06:00" }
+  ];
+  var resumen = E.summarizeReservationsForAI({}, items);
+  var tramo = resumen.filter(function (r) { return r.tipo === "entre-vuelos"; })[0];
+  assert(tramo, "no informó el tiempo entre los dos vuelos");
+  eq(tramo.ciudad, "MAD", "la ciudad donde se queda");
+  assert(tramo.horasEnTierra > 300, "son más de 300 horas: " + tramo.horasEnTierra);
+  assert(!resumen.some(function (r) { return r.tipo === "escala"; }),
+         "trece días en Madrid NO se llaman escala");
 });
 
 await test("las notas se sanitizan: no dejan pasar secuencias que parecen teléfono", function () {

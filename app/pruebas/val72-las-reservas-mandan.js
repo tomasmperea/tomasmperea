@@ -395,17 +395,53 @@ const lineaEsc = promptEsc.split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaEsc.slice(0, 150));
 ok(!/\d+ h\b|\d+ días/.test(lineaEsc), "la línea de destino no trae ningún número de tiempo");
 ok(!/ahí\)/.test(lineaEsc), "ni afirma cuánto se queda en ningún lado");
-ok(/Ojo con las escalas/.test(lineaEsc), "pero le avisa al modelo que puede haber escalas");
+ok(/puede ser sólo un cambio de avión/.test(lineaEsc),
+   "pero le avisa al modelo que alguno puede ser un cambio de avión");
 ok(/No lo adivines/.test(lineaEsc), "y le dice explícitamente que no lo adivine");
 
 console.log("\n· el control: el dato que la línea ya no resume SÍ le llega al modelo");
 /* Sin esto, sacar la anotación sería perder información en vez de dejar de
    repetirla. Es la premisa entera de la decisión, así que se comprueba. */
-ok(/"tipo":"escala"/.test(promptEsc), "el prompt trae un renglón propio por cada escala");
-ok(/"duracionHoras":2/.test(promptEsc), "con su duración en horas: 2");
+ok(/"tipo":"entre-vuelos"/.test(promptEsc), "el prompt trae un renglón por el tiempo entre dos vuelos");
+ok(/"horasEnTierra":2/.test(promptEsc), "con sus horas: 2");
 ok(/"origen":"EZE","destino":"GRU"/.test(promptEsc), "y cada vuelo con su origen y destino");
 ok(/"desde":"2027-04-01T08:00","hasta":"2027-04-01T11:00"/.test(promptEsc),
    "y con sus horas de salida y llegada, que es de donde sale la cuenta");
+
+console.log("\n· HALLAZGO DE LA OCTAVA RONDA · el bloque de reservas tampoco rotula");
+/* La premisa con la que se tomó la decisión estaba INCOMPLETA, y lo encontró
+   la auditoría mirando donde ninguna prueba miraba: el bloque de reservas,
+   no la línea de destino. `summarizeReservationsForAI` venía de VAL-44
+   diciendo `tipo:"escala"` sobre CUALQUIER par de vuelos encadenados, sin
+   umbral. Un viaje de ida y vuelta a Madrid le mandaba al modelo trece días
+   de estadía llamados escala, y el viaje del PM marcaba dos de sus tres
+   ciudades. Es el mismo error de rotular por encadenamiento que esta
+   historia ya cometió tres veces, vivo en otra función — y al apuntarle el
+   modelo a ese bloque pasó de dormido a amplificado.
+
+   Estas aserciones miran el prompt ENTERO, no sólo la línea de destino, que
+   es lo que faltaba. */
+[["ida y vuelta: 13 días en Madrid", IDA_Y_VUELTA_CON_END, "MAD", 322.5],
+ ["el multidestino del PM", VUELOS, "CDG", 123]
+].forEach(function (caso) {
+  var titulo = caso[0], items = caso[1], ciudad = caso[2], horas = caso[3];
+  var p = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:items }));
+  ok(!/"tipo":"escala"/.test(p), `${titulo}: ningún renglón se llama «escala»`);
+  ok(p.indexOf('"ciudad":"' + ciudad + '","horasEnTierra":' + horas) >= 0,
+     `${titulo}: ${ciudad} informa sus ${horas} horas, sin decir qué son`);
+});
+
+console.log("\n· el control: una escala de verdad y una estadía se ven IGUAL de rotuladas");
+/* O sea: no se ven rotuladas. Si el rótulo volviera para el caso corto,
+   volvería el criterio que ya falló tres veces. */
+const pCorta = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:CON_ESCALA }));
+const pLarga = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:IDA_Y_VUELTA_CON_END }));
+ok(/"tipo":"entre-vuelos"/.test(pCorta) && /"tipo":"entre-vuelos"/.test(pLarga),
+   "las dos usan el mismo tipo: el rótulo no depende de la duración");
+ok(/"horasEnTierra":2\b/.test(pCorta) && /"horasEnTierra":322.5/.test(pLarga),
+   "y lo único que las distingue es el número, que es lo único que las distingue de verdad");
+ok(/entre-vuelos.*dicen cuántas horas|horas pasan en una ciudad/.test(pCorta),
+   "el prompt le explica al modelo qué es ese número y que lo interprete él");
 
 console.log("\n· el control: un multidestino DE VERDAD conserva su énfasis");
 const SIN_ESCALA = [
