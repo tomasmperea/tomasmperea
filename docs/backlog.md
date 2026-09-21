@@ -863,7 +863,7 @@ razonamiento sobre un dato equivocado es afinar el error.
 Artifact y los cuatro `grep` dicen: **lo que está arriba es la v23**, con VAL-63 y VAL-74 y nada de VAL-72.
 El PM no tiene ninguna versión vetada en el teléfono, que era el riesgo que abrió la sexta auditoría.
 
-**Cómo quedó (v31):**
+**Cómo quedó (v32):**
 
 - `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
   decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
@@ -1013,8 +1013,16 @@ la función tocada:
 - **`yaResumidos`**, la guarda que puse para que la rama genérica no duplicara lo que ya salió: era otra
   lista de tipos escrita a mano, **la misma fragilidad que el arreglo decía haber erradicado, un nivel más
   adentro**. El auditor la saboteó sacándole `act` y la reserva salió dos veces. Ahora la guarda no es una
-  lista sino el hecho —se anota cada ítem que ya salió—, así que no se puede desincronizar de los bloques
-  que arma.
+  lista sino el hecho: se anota cada ítem a medida que sale por su bloque propio.
+
+  **Y acá decía "así que no se puede desincronizar", que era afirmar de más.** Sí se puede: si mañana alguien
+  agrega un bloque propio y se olvida del `push`, la reserva sale dos veces igual. Lo que cambia es que el
+  descuido queda **a un renglón** del código que lo causa en vez de a seiscientas líneas, y que ahora hay una
+  prueba que lo agarra — porque **la primera que escribí no lo agarraba**: comparaba firmas JSON, y un
+  duplicado nunca tiene la misma firma (la copia sale con el nombre crudo del tipo, `act`, y la original con
+  el rótulo, `actividad`). La auditoría la saboteó y las tres aserciones quedaron en verde con el duplicado
+  impreso en la línea de arriba. Ahora se cuenta el total, que es lo único que no se puede falsear, y el
+  mismo sabotaje la hace fallar.
 - **`LABEL` en `describeReservation`**, seiscientas líneas más lejos: le faltaban `transfer` y `note`, justo
   los dos tipos que costaron esta historia entera. Y era alcanzable hoy, no en teoría: `findFactSource`
   busca palabras clave en **cualquier** ítem sin filtrar por tipo, así que una nota terminaba citada como

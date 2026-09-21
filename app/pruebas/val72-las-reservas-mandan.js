@@ -664,10 +664,22 @@ const UNO_DE_CADA = [
   { type:"crucero", title:"Barco", start:"2027-04-06T09:00" }
 ];
 const rTodos = pe.summarizeReservationsForAI(EUROPA, UNO_DE_CADA);
-const firmas = rTodos.map(x => JSON.stringify(x));
 info("tipos: " + rTodos.map(x => x.tipo).join(", "));
-ok(firmas.length === new Set(firmas).size, "ninguna reserva aparece dos veces en el resumen");
-ok(rTodos.filter(x => x.tipo === "actividad").length === 1, "la actividad sale una sola vez");
+
+/* SE CUENTA, no se comparan firmas. La primera versión de esta aserción
+   miraba si había dos entradas con el mismo JSON, y un duplicado NUNCA tiene
+   el mismo JSON: la copia sale por la rama genérica con el nombre crudo del
+   tipo (`act`) y la original con el rótulo (`actividad`). La auditoría la
+   saboteó quitándole el `push` a un bloque y las tres aserciones quedaron en
+   verde con el duplicado a la vista, impreso en la línea de arriba.
+   Es la trampa que este proyecto ya tiene escrita dos veces: un control que
+   no falla cuando el sabotaje llega no es un control. Lo único que no se
+   puede falsear es el total. */
+const conVuelos = rTodos.filter(x => x.tipo !== "entre-vuelos");
+ok(conVuelos.length === UNO_DE_CADA.length,
+   `sale UNA entrada por reserva y ninguna de más: ${conVuelos.length} de ${UNO_DE_CADA.length}`);
+ok(rTodos.filter(x => x.tipo === "actividad" || x.tipo === "act").length === 1,
+   "la actividad sale una sola vez, con su rótulo o con su nombre crudo");
 ok(rTodos.some(x => x.tipo === "crucero"), "y el tipo inventado sale igual, por la rama de al final");
 
 console.log("\n· una nota y un traslado se citan por su nombre, no como «la reserva»");
