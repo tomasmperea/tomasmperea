@@ -603,6 +603,56 @@ let revientaAct = false;
 try { pe.summarizeReservationsForAI(EUROPA, ACTIVIDADES); } catch (e) { revientaAct = true; }
 ok(!revientaAct, "una actividad sin fecha y otra sin título no revientan el resumen");
 
+console.log("\n· NADA se cae al piso: una nota llega, y un tipo futuro también");
+/* La app deja cargar SEIS tipos de reserva y el resumen tenía cinco `filter`.
+   Una nota —"comprar adaptador de enchufe, el tipo F"— no llegaba nunca, que
+   es justo la clase de dato para la que existe esta función. Y la ronda
+   anterior arregló el traslado, que faltaba por lo mismo, sin preguntar por
+   el vecino: el mismo error tres veces en esta historia.
+
+   El arreglo no fue agregar un sexto `filter` —el séptimo se caería igual—
+   sino que lo que no tenga bloque propio salga de todos modos. */
+const UNA_NOTA = [{ type:"note", title:"Comprar adaptador de enchufe",
+                    start:"2027-04-01T09:00", notes:"El tipo F, que usan allá" }];
+const rNota = pe.summarizeReservationsForAI(EUROPA, UNA_NOTA);
+info("nota: " + JSON.stringify(rNota));
+ok(rNota.length === 1, "la nota entra al resumen");
+ok(/adaptador/.test(rNota[0].titulo), "con su título");
+ok(/tipo F/.test(rNota[0].notas), "y su texto");
+const pNota = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:UNA_NOTA }));
+ok(!/no hay reservas cargadas/.test(pNota),
+   "y el prompt deja de decir que no hay reservas teniendo una nota cargada");
+
+console.log("\n· una nota a medias: sin título o sin texto");
+/* El mecanismo pidió el caso SIN cada campo. Una nota sin título es lo que
+   queda cuando alguien escribe rápido y se va. */
+const NOTAS_A_MEDIAS = [
+  { type:"note", start:"2027-04-02T09:00", notes:"Sin título, sólo el texto" },
+  { type:"note", title:"Sin texto, sólo el título" }
+];
+let revientaNota = false;
+let rMedias = null;
+try { rMedias = pe.summarizeReservationsForAI(EUROPA, NOTAS_A_MEDIAS); }
+catch (e) { revientaNota = true; info("reventó: " + e.message); }
+ok(!revientaNota, "una nota sin título y otra sin texto no revientan el resumen");
+ok(rMedias && rMedias.length === 2, "las dos entran igual");
+ok(rMedias && rMedias[0].titulo === "", "la que no tiene título llega con el título vacío, no con «undefined»");
+
+console.log("\n· el control: un tipo que todavía no existe tampoco se cae");
+/* Esto es lo que distingue el arreglo de clase del arreglo de instancia: si
+   sólo se hubiera agregado un `filter` para `note`, este caso fallaría. */
+const TIPO_FUTURO = [{ type:"crucero", title:"Barco a Mallorca",
+                       start:"2027-04-05T09:00", notes:"Sale del puerto" }];
+const rFut = pe.summarizeReservationsForAI(EUROPA, TIPO_FUTURO);
+ok(rFut.length === 1 && rFut[0].tipo === "crucero",
+   "un tipo que el motor no conoce llega igual, con su propio nombre");
+ok(/Mallorca/.test(rFut[0].titulo), "y con su título, en vez de desaparecer en silencio");
+
+console.log("\n· el control: lo que se cae al piso también se sanea");
+const rSens = pe.summarizeReservationsForAI(EUROPA,
+  [{ type:"note", title:"Pagar", notes:"tarjeta 4111 1111 1111 1111" }]);
+ok(!/4111/.test(JSON.stringify(rSens)), "el camino nuevo pasa por el mismo saneo que los otros cinco");
+
 console.log("\n· un traslado sin origen cargado tampoco revienta");
 /* El mecanismo pidió un caso SIN `from`, que es un campo que el formulario
    marca como requerido pero la app acepta vacío igual. */
@@ -651,16 +701,30 @@ console.log("\n· de cada campo que el motor lee hay un caso con y un caso sin")
      es justo la función donde vivía el defecto de la ronda anterior. La
      respuesta honesta era "porque no se me ocurrió", así que se extendió:
      `notes` entra por ahí, en los cuatro tipos. */
+  /* EL UNIVERSO DE TIPOS SALE DE LA APP, no de una lista escrita a mano acá.
+     A la lista a mano le faltó `transfer`, después `act`, después `note`:
+     tres veces el mismo error, y la tercera en el commit cuyo título hablaba
+     de las dos anteriores. Una lista que hay que acordarse de completar no
+     sirve; ésta se lee del `TYPES` de la app y falla sola si mañana aparece
+     un séptimo tipo sin fixtures. */
+  const bloqueTypes = html.slice(html.indexOf("const TYPES = {"));
+  const TIPOS_DE_LA_APP = (bloqueTypes.slice(0, bloqueTypes.indexOf("\n};"))
+    .match(/^\s*([a-z]+)\s*:\s*\{label:/gm) || []).map(l => l.trim().split(/\s*:/)[0]);
+  ok(TIPOS_DE_LA_APP.length >= 6,
+     `la app declara ${TIPOS_DE_LA_APP.length} tipos de reserva: ${TIPOS_DE_LA_APP.join(", ")}`);
+
   const LEE = {
     flight:   ["from", "to", "start", "end", "notes"],
     stay:     ["address", "start", "end", "notes"],
     transfer: ["from", "to", "start", "end", "notes"],
     car:      ["address", "start", "end", "notes"],
-    // `act` faltaba: el resumen lee fecha, título y notas de las actividades,
-    // y este arnés no tenía un solo fixture de actividad. Lo preguntó la
-    // auditoría de confirmación.
-    act:      ["start", "title", "notes"]
+    act:      ["start", "title", "notes"],
+    note:     ["start", "title", "notes"]
   };
+  const sinCubrir = TIPOS_DE_LA_APP.filter(t => !LEE[t]);
+  ok(sinCubrir.length === 0,
+     sinCubrir.length ? `tipos que la app declara y este arnés no cubre: ${sinCubrir.join(", ")}`
+                      : "todos los tipos que la app declara tienen fixtures acá");
   Object.keys(LEE).forEach(function (tipo) {
     const re = new RegExp('\\{[^{}]*type:"' + tipo + '"[^{}]*\\}', "g");
     const fixtures = fuente.match(re) || [];

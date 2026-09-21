@@ -1857,6 +1857,30 @@ function summarizeReservationsForAI(trip, items) {
     });
   });
 
+  /* Y TODO LO DEMÁS, porque un tipo que no está en la lista de arriba se caía
+     al piso sin que nadie se enterara.
+
+     Esta función tenía cinco `filter` por tipo, y la app deja cargar SEIS. La
+     nota —"comprar adaptador de enchufe, el tipo F"— no llegaba nunca, que es
+     exactamente la clase de dato para la que existe esta función. Y la ronda
+     anterior había arreglado el traslado, que faltaba por la misma razón, sin
+     preguntarse por el vecino: **el mismo error tres veces en esta historia**
+     (traslado/auto sí y alojamiento no; después traslado sí y nota no).
+
+     El arreglo no es agregar un sexto `filter`: sería el mismo código con un
+     tipo más y el séptimo volvería a caerse. Lo que se agrega es que **nada
+     desaparezca en silencio**. Lo que no tuvo un bloque propio sale igual,
+     con lo que toda reserva tiene: qué es, cuándo, cómo se llama y su nota.
+     Peor que un resumen a medida, y muchísimo mejor que el silencio. */
+  var yaResumidos = { flight:true, stay:true, car:true, transfer:true, act:true };
+  items.filter(function (i) { return i && i.type && !yaResumidos[i.type]; }).forEach(function (x) {
+    out.push({
+      tipo:String(x.type), fecha:x.start || "",
+      titulo:String(x.title || "").trim().slice(0, 80),
+      notas:sanitizeNotesForAI(x.notes)
+    });
+  });
+
   return out;
 }
 

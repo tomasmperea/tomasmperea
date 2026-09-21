@@ -863,7 +863,7 @@ razonamiento sobre un dato equivocado es afinar el error.
 Artifact y los cuatro `grep` dicen: **lo que está arriba es la v23**, con VAL-63 y VAL-74 y nada de VAL-72.
 El PM no tiene ninguna versión vetada en el teléfono, que era el riesgo que abrió la sexta auditoría.
 
-**Cómo quedó (v29):**
+**Cómo quedó (v30):**
 
 - `destinosDelViaje(trip, items)` arma la lista de destinos con **dos cajones**, y cuál va en cuál se
   decide por una sola pregunta: *¿puedo comparar este dato contra el punto de partida?*
@@ -1005,6 +1005,25 @@ de verdad.**
 
 El arnés suma lo que faltaba: aserciones sobre el prompt **entero**, no sólo sobre la línea de destino. Ahí
 es donde vivía el defecto y por eso ninguna prueba lo veía.
+
+**Y la nota tampoco, y ésa es la tercera vez del mismo error en esta historia.** La app deja cargar seis
+tipos de reserva y el resumen tenía un `filter` por tipo, con cinco. Una nota —*"comprar adaptador de
+enchufe, el tipo F"*— no llegaba nunca, que es justo la clase de dato para la que existe esa función.
+
+La secuencia, escrita entera porque es la lección:
+
+| Ronda | Se arregló | No se preguntó por |
+|---|---|---|
+| 2ª | que un traslado no pise el destino escrito | el alojamiento, que estaba en el renglón de al lado |
+| confirmación | que el traslado llegue al resumen | la nota, que faltaba por lo mismo |
+
+**Entonces el arreglo dejó de ser agregar el tipo que falta.** Un sexto `filter` habría dejado caer al
+séptimo. Ahora **lo que no tiene bloque propio sale igual**, con lo que toda reserva tiene: qué es, cuándo,
+cómo se llama y su nota, saneada. El arnés lo comprueba con un tipo inventado que el motor no conoce.
+
+Y el arnés dejó de tener su propia lista de tipos escrita a mano —a esa lista le faltó `transfer`, después
+`act`, después `note`—: **ahora la lee del `TYPES` de la app** y falla solo si mañana aparece un séptimo sin
+fixtures.
 
 **Y el traslado no llegaba al modelo, desde VAL-44.** `summarizeReservationsForAI` resumía cuatro de los
 cinco tipos de reserva que la app deja cargar y se salteaba el traslado. Un viaje con sólo un traslado le

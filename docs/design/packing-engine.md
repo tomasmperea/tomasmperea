@@ -254,10 +254,24 @@ aprender en la línea de destino, vivo acá desde VAL-44. **El dato siempre estu
 sustantivo.** Ahora el renglón dice el hecho y el prompt le explica al modelo que ocho horas son un cambio
 de avión y trescientas son una estadía: la interpretación la pone él, con el número a la vista.
 
-**Y el traslado faltaba.** Esta función resumía cuatro de los cinco tipos de reserva que la app deja cargar,
-y se salteaba el traslado desde VAL-44: un viaje con sólo un traslado le decía al modelo *"(todavía no hay
-reservas cargadas)"* teniendo una cargada, y la nota que la persona escribió ahí no llegaba nunca. Entra con
-la misma forma que los otros.
+**Y faltaban tipos enteros.** Esta función tenía un `filter` por tipo de reserva, y **no estaban todos los
+que la app deja cargar**. El traslado se salteaba desde VAL-44: un viaje con sólo un traslado le decía al
+modelo *"(todavía no hay reservas cargadas)"* teniendo una cargada. Se agregó, y **en la ronda siguiente
+apareció que la nota también faltaba**, por exactamente la misma razón.
+
+Tres veces el mismo error en esta historia —traslado y auto sí pero alojamiento no; después traslado sí pero
+nota no—, así que el arreglo dejó de ser agregar el tipo que falta: **lo que no tiene un bloque propio sale
+igual**, con lo que toda reserva tiene (qué es, cuándo, cómo se llama y su nota, saneada). Un séptimo tipo
+que se agregue mañana llega al modelo sin que nadie se acuerde de tocar esta función. Peor que un resumen a
+medida, y muchísimo mejor que el silencio.
+
+El arnés, por su lado, dejó de tener su propia lista a mano: **lee los tipos del `TYPES` de la app** y falla
+si alguno no tiene fixtures. La lista escrita a mano fue la que se quedó corta las tres veces.
+
+(Acá decía "cuatro de los cinco tipos". Son seis, y se procesaban cinco. Era la tercera afirmación falsa de
+la misma ronda, escrita en el párrafo que explicaba las dos anteriores. Es la cuarta vez esta semana que un
+número escrito a mano en prosa queda mal, así que se saca en vez de corregirse: la tabla de arriba dice qué
+tipos hay y el arnés dice si están todos.)
 
 **Qué NO se manda, y por qué.** El resumen **nunca incluye código de reserva (`confirmation`), teléfono
 (`phone`) ni dirección exacta (`address`)** — esos tres campos ni siquiera se leen dentro de
