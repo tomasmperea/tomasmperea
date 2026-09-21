@@ -3097,9 +3097,10 @@ function destinosDelViaje(trip, items) {
        Lo que destapó la salida no fue un arreglo mejor: fue mirar qué le
        llega al modelo por otro lado. En el MISMO pedido, más abajo, ya
        recibe cada vuelo con su hora de salida y de llegada, y además un
-       renglón propio por cada escala con su duración:
+       renglón propio con el tiempo que pasa en cada ciudad entre un vuelo y
+       el siguiente:
 
-           {"tipo":"escala","ciudad":"GRU","duracionHoras":2}
+           {"tipo":"entre-vuelos","ciudad":"GRU","horasEnTierra":2}
 
        O sea que el modelo ya sabía que San Pablo era dos horas. Todo lo que
        se construyó acá repetía un dato que ya tenía, y cada intento de
@@ -3255,9 +3256,10 @@ function lineaDestinos(b) {
   /* Cuánto dura cada tramo NO se resume acá, y no es un olvido: tres intentos
      de hacerlo costaron tres vetos de auditoría seguidos, y los tres
      terminaron afirmando algo que el dato no decía. El modelo ya recibe, más
-     abajo en este mismo pedido, cada vuelo con sus horas y un renglón por
-     cada escala con su duración. Se lo apunta y se lo deja leer el dato
-     crudo, que no miente porque no resume. */
+     abajo en este mismo pedido, cada vuelo con sus horas y un renglón
+     `entre-vuelos` con las horas que pasa en cada ciudad entre un vuelo y el
+     siguiente. Se lo apunta y se lo deja leer el dato crudo, que no miente
+     porque no resume. */
   var hayVarios = (d && d.lugares || []).length > 1;
   var avisoEscala = hayVarios
     ? " Ojo: alguno de esos lugares puede ser sólo un cambio de avión y no una parada. No lo adivines — " +

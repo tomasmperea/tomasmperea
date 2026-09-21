@@ -541,6 +541,37 @@ const lineaInc = pe.destinationPrompt(pe.buildPackingList({
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 ok(!/undefined|null|NaN/.test(lineaInc), "y la línea no muestra «undefined» ni «NaN» por los campos que faltan");
 
+console.log("\n· las notas de una reserva llegan al modelo, y saneadas");
+/* El mecanismo de abajo pidió un caso CON notas en los cuatro tipos y no
+   había ninguno: 33 fixtures de vuelo y cero con el campo que la persona usa
+   para escribir lo que no entra en ningún otro lado. Las notas alimentan el
+   prompt por `summarizeReservationsForAI` y el tipo de viaje por la bolsa de
+   lo reservado, así que no tenerlas en ningún fixture dejaba sin cubrir dos
+   caminos enteros. */
+const CON_NOTAS = [
+  { type:"flight", from:"EZE", to:"MAD", start:"2027-04-01T08:00", end:"2027-04-01T23:30",
+    notes:"Asiento de ventanilla, equipaje de mano solamente" },
+  { type:"stay", address:"Calle Atocha 123, Madrid", start:"2027-04-01T15:00", end:"2027-04-06T10:00",
+    notes:"No tiene lavandería en el edificio" },
+  { type:"transfer", from:"Atocha", to:"Centro", start:"2027-04-02T09:00", end:"2027-04-02T10:00",
+    notes:"Sale del andén 4" },
+  { type:"car", address:"Aeropuerto T4", start:"2027-04-03T09:00", end:"2027-04-05T09:00",
+    notes:"Caja manual, hay que devolverlo con tanque lleno" }
+];
+const promptNotas = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:CON_NOTAS }));
+ok(/lavandería/.test(promptNotas), "la nota del alojamiento llega al modelo");
+ok(/ventanilla/.test(promptNotas), "y la del vuelo también");
+ok(/tanque lleno/.test(promptNotas), "y la del auto");
+
+console.log("\n· el control: una nota con un dato sensible NO llega");
+/* `sanitizeNotesForAI` existe desde VAL-44 y ningún fixture de este arnés la
+   ejercitaba. Si dejara de sanear, todo lo de arriba pasaría igual. */
+const NOTA_SENSIBLE = [{ type:"stay", address:"Hotel, Madrid", start:"2027-04-01T15:00",
+                         end:"2027-04-06T10:00", notes:"Llamar al 11 5555 4444 y pagar con la 4111 1111 1111 1111" }];
+const promptSens = pe.destinationPrompt(pe.buildPackingList({ trip:EUROPA, items:NOTA_SENSIBLE }));
+ok(!/4111 1111 1111 1111/.test(promptSens), "el número de tarjeta no llega al modelo");
+ok(!/11 5555 4444/.test(promptSens), "ni el teléfono");
+
 /* MECANISMO, NO PROMESA — SEGUNDA VERSIÓN, porque la primera aseguraba algo
    falso. Decía «end, que la app siempre escribe» y `end` NO es obligatorio en
    un vuelo: no está en `REQUIRED.flight` y el campo "Llega" se dibuja sin la
@@ -558,13 +589,19 @@ ok(!/undefined|null|NaN/.test(lineaInc), "y la línea no muestra «undefined» n
 console.log("\n· de cada campo que el motor lee hay un caso con y un caso sin");
 (function () {
   const fuente = fs.readFileSync(__filename, "utf8");
-  // Campos que `destinosDelViaje` lee de cada tipo de reserva. Salen de leer
-  // la función, no de recordar el formulario.
+  /* Campos que el prompt lee de cada tipo de reserva. Salen de abrir las
+     funciones, no de recordar el formulario.
+
+     La primera versión de esta lista cubría sólo `destinosDelViaje`, y la
+     novena auditoría preguntó por qué no `summarizeReservationsForAI` — que
+     es justo la función donde vivía el defecto de la ronda anterior. La
+     respuesta honesta era "porque no se me ocurrió", así que se extendió:
+     `notes` entra por ahí, en los cuatro tipos. */
   const LEE = {
-    flight:   ["from", "to", "start", "end"],
-    stay:     ["address", "start", "end"],
-    transfer: ["to", "start", "end"],
-    car:      ["address", "start", "end"]
+    flight:   ["from", "to", "start", "end", "notes"],
+    stay:     ["address", "start", "end", "notes"],
+    transfer: ["to", "start", "end", "notes"],
+    car:      ["address", "start", "end", "notes"]
   };
   Object.keys(LEE).forEach(function (tipo) {
     const re = new RegExp('\\{[^{}]*type:"' + tipo + '"[^{}]*\\}', "g");
