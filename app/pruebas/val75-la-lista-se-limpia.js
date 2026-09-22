@@ -201,6 +201,58 @@ const sinNada = async () => ({ items:[], quitar:[] });
   info("al cambiar el vuelo de OSL a MAD saca: " + JSON.stringify(sacaIA3));
   ok(sacaIA3.length === 3, "cambiar el vuelo a otra ciudad sí saca lo que era de la anterior");
 
+  /* ---- EL LÍMITE DE ESTA REGLA, ESCRITO Y PROBADO ---- */
+  console.log("\n· EL LÍMITE · un vuelo a OTRA ciudad, con el destino escrito sin tocar");
+  /* Lo encontró la segunda ronda de auditoría y es un límite real, no un
+     descuido: la lista se armó con el destino escrito "Noruega" y después se
+     carga un vuelo a MADRID sin corregir el texto. La fuente del destino
+     cambió (escrito → reservas), así que la comparación por texto no aplica,
+     y desde acá NO hay forma de saber si MAD es o no es Noruega: traducir un
+     código de aeropuerto a su ciudad es VAL-66 y todavía no existe.
+
+     Entre las dos equivocaciones posibles se elige la barata: el ítem se
+     QUEDA. Sacarlo sería la app tirando algo que la persona puede necesitar
+     por una corazonada que no puede justificar.
+
+     Y no queda a la deriva: el prompt le manda al modelo la lista entera
+     junto con el destino nuevo y le pide explícitamente que proponga SACAR
+     lo que no aplique. Ése es el camino que sí sabe que MAD no es Noruega.
+     Lo que sigue prueba que ese camino llega. */
+  const VUELO_MAD = { id:"r9", type:"flight", title:"EZE → MAD", from:"EZE", to:"MAD",
+                      start:"2026-09-14T22:00", end:"2026-09-15T18:00" };
+
+  const conVueloAOtroLado = await pe.planListUpdateAsync({
+    list:noruega, trip:NORUEGA, items:[VUELO_MAD], tipoViaje:"montana", ask:sinNada });
+  const sigueAhi = pe.itemsArray(conVueloAOtroLado.listaPropuesta).filter(x => x.origen === "destino");
+  info("con el modelo callado, los ítems de Noruega: " + JSON.stringify(sigueAhi.map(x=>x.nombre)));
+  ok(sigueAhi.length === 3, "se quedan: sin poder traducir MAD, no se saca nada por las dudas");
+  ok(sigueAhi.every(x => x.porDestino === "Noruega"),
+     "y siguen diciendo «por Noruega», que es de dónde salieron: el chip no miente");
+
+  console.log("\n· y el camino que SÍ sabe que MAD no es Noruega llega hasta la pantalla");
+  const prompt = pe.destinationPrompt(conVueloAOtroLado.listaPropuesta);
+  ok(/La lista base ya incluye:.*Pantalón impermeable/.test(prompt),
+     "el modelo recibe el ítem viejo en la lista base");
+  ok(/proponer SACAR/.test(prompt) && /"quitar"/.test(prompt),
+     "y la consigna de proponer sacar lo que no aplique");
+  ok(/MAD/.test(prompt), "con el destino nuevo a la vista");
+
+  const modeloLoMarca = async () => ({ items:[], quitar:[
+    { nombre:"Pantalón impermeable", motivo:"Madrid en septiembre es seco: no te hace falta." }
+  ] });
+  const marcado = await pe.planListUpdateAsync({
+    list:noruega, trip:NORUEGA, items:[VUELO_MAD], tipoViaje:"montana", ask:modeloLoMarca });
+  const conSugerencia = pe.itemsArray(marcado.listaPropuesta)
+    .filter(x => x.sugerenciaQuitar && x.sugerenciaQuitar.motivo);
+  info("marcados para sacar: " + JSON.stringify(conSugerencia.map(x=>x.nombre)));
+  ok(conSugerencia.length === 1 && /Pantalón impermeable/.test(conSugerencia[0].nombre),
+     "cuando el modelo dice que sobra, el ítem queda marcado para que la persona decida");
+
+  console.log("\n· el control: sin que el modelo lo diga, nada queda marcado");
+  ok(pe.itemsArray(conVueloAOtroLado.listaPropuesta)
+       .filter(x => x.sugerenciaQuitar).length === 0,
+     "la marca sale de lo que contestó el modelo, no de la app adivinando");
+
   /* ---- LA LISTA QUE EL PM YA TIENE EN EL TELÉFONO ---- */
   console.log("\n· LA LISTA VIEJA · la del PM no tiene `porDestino`, porque es de antes");
   /* El fixture se escribe como la app ESCRIBÍA, no como escribe hoy: `porDestino`

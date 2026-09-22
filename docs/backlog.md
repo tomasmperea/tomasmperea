@@ -1540,6 +1540,31 @@ Como viajero quiero saber si mi vuelo se retrasó o cambió de puerta.
 - Se consulta el estado del vuelo por número y fecha.
 - Los cambios de horario y puerta actualizan la reserva y disparan aviso.
 
+### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P1
+
+**Sale de la segunda ronda de auditoría de VAL-75 (22/09), reproducida en Node.** La valija se arma con el
+destino **escrito** ("Noruega") y sin vuelos. Después se carga un vuelo a **MAD** y no se corrige el texto.
+
+La app nombra el destino de dos maneras —el campo escrito cuando no hay vuelos, códigos IATA en cuanto hay
+uno— y desde el motor **no hay forma de saber si MAD es o no es Noruega**. Traducir el código a su ciudad es
+**VAL-66**, que todavía no existe. Así que VAL-75 elige la equivocación barata: el ítem se queda, con su chip
+diciendo "por Noruega", que es cierto.
+
+**Lo que ya cubre el diseño, y está probado:** el prompt le manda al modelo la lista entera junto al destino
+nuevo y le pide que proponga sacar lo que no aplique. Si lo marca, aparece en *"Hay N cosas que capaz no
+necesitás"* (VAL-43). El arnés prueba que ese camino llega hasta la lista; lo que no se puede probar desde
+acá es si el modelo real lo dice. **Es el paso 5 del guion de v33.**
+
+**Entonces esta historia arranca cuando vuelva esa captura:**
+
+- Si el modelo lo marca solo, no hay nada que construir: se cierra como cubierta.
+- Si no lo marca, hace falta que la app misma pueda comparar, y eso es VAL-66 primero.
+
+**Por qué no bloqueó la publicación de VAL-75:** no es una regresión. En v32 ese mismo gesto hacía
+desaparecer el ítem de la lista propuesta **en silencio**, sin nombrarlo en ningún lado. Dejarlo con un chip
+honesto es mejor que perderlo sin avisar, y ninguna de las dos cosas es lo que el PM reportó —él cambió el
+**destino escrito**, que sí funciona y está probado con el dedo.
+
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
 **Sale de VAL-75, por decisión del PM (22/09).** Ahí la regla quedó clara: lo empacado es intocable, porque

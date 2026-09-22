@@ -8694,7 +8694,8 @@ function packingNotice(trip, list, plan){
     const p = PK.avisoAplazado;
     const n = planCuentas(p).total;
     const r = planReserva(p);
-    return `<div class="notice">${svg(I.info)}<span class="bd">Listo, no toco nada. ${n===1?`La <b class="n">una</b> cosa`:`Las <b class="n">${n}</b> cosas`}${r?` ${esc(pkDeReserva(r))}`:""} quedan guardadas en <b>De dónde sale esta lista</b>, arriba a la derecha, por si después las querés.
+    const soloSaca = planCuentas(p).saca && !planCuentas(p).suma;
+    return `<div class="notice">${svg(I.info)}<span class="bd">Listo, no toco nada. ${n===1?`La <b class="n">una</b> cosa`:`Las <b class="n">${n}</b> cosas`}${r?` ${esc(pkDeReserva(r))}`:""} ${soloSaca?"que te propuse sacar quedan":"quedan"} guardadas en <b>De dónde sale esta lista</b>, arriba a la derecha, por si ${soloSaca?"cambiás de idea":"después las querés"}.
       <span class="acts"><button class="act" data-pk="verplan">Verlas igual</button></span></span></div>`;
   }
 
@@ -11440,7 +11441,7 @@ async function aplicarPlan(trip, plan){
   }else{
     const fresco = await recalcularPlanContra(trip, actual);
     if(!fresco){
-      toast("No pude comprobar la lista antes de sumar. Probá de nuevo.", true);
+      toast("No pude comprobar la lista antes de cambiarla. Probá de nuevo.", true);
       soltarBoton(); return;
     }
     if(planFirma(fresco) === planFirma(plan) && fresco.listaPropuesta){
@@ -11780,11 +11781,23 @@ function sheetPackingInfo(trip, list){
   const planPend = planDe(trip.id);
   const nPend = planPend ? planCuentas(planPend).total : 0;
   const rPend = planPend ? planReserva(planPend) : null;
+  /* La TERCERA instancia de "Ver qué agrego", y la encontró la auditoría con
+     `grep` de la cadena, no leyendo la función que yo había tocado. El barrido
+     del commit anterior arregló dos —el aviso y el dock— y dejó ésta, que vive
+     600 líneas más lejos. Es la clase de error que CLAUDE.md llama "se barre la
+     clase del ARCHIVO, no la de la función", esta vez en el texto.
+     Y el encabezado tenía el mismo problema una línea más arriba: "Novedades
+     sin sumar" y "cosas que aparecieron" sobre un plan que sólo saca son dos
+     afirmaciones falsas en lo que el PM lee para decidir. */
+  const {suma:nSuma, saca:nSaca} = planPend ? planCuentas(planPend) : {suma:0, saca:0};
   const novedadesHtml = planPend ? `
     <div class="stack" style="gap:7px">
-      <div class="sec-head"><span class="eyebrow">Novedades sin sumar</span></div>
-      <p class="tiny muted" style="margin:0;line-height:1.55"><b class="mono">${nPend}</b> ${nPend===1?"cosa que apareció":"cosas que aparecieron"}${rPend?` cuando agregaste ${esc(rPend)}`:" cuando cambió el viaje"}.</p>
-      <div><button class="btn sm" id="pk-info-plan">Ver qué agrego</button></div>
+      <div class="sec-head"><span class="eyebrow">${nSaca && !nSuma ? "Cambios sin aplicar" : "Novedades sin sumar"}</span></div>
+      <p class="tiny muted" style="margin:0;line-height:1.55"><b class="mono">${nPend}</b> ${
+        nSaca && !nSuma ? (nPend===1?"cosa que ya no corresponde":"cosas que ya no corresponden")
+                        : (nPend===1?"cosa que apareció":"cosas que aparecieron")
+      }${rPend?` cuando agregaste ${esc(rPend)}`:" cuando cambió el viaje"}.</p>
+      <div><button class="btn sm" id="pk-info-plan">${planVerQue(planPend)}</button></div>
     </div>
     <hr class="hr">` : "";
 
