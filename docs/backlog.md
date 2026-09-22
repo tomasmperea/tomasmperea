@@ -815,6 +815,15 @@ El arnés no lo veía porque todos sus casos cambiaban el destino de verdad o no
 cambiaba **sólo cómo se lo nombra**. Ahora están los tres: cargar el vuelo, borrarlo, y el control de que
 cambiar el vuelo a otra ciudad **sí** saca.
 
+**TERMINADA el 22/09, probada por el PM en su teléfono (v33 y v34).** Las tres pruebas del guion pasaron:
+el chip dice "por Noruega", cambiar el destino ofrece *"5 cosas para sumarle y 10 que ya no corresponden"*, la
+lista pasó de 41 ítems a 44 aplicando 14 altas y 10 bajas, y lo empacado no se tocó.
+
+**Y el teléfono encontró un defecto que el escritorio no:** con un plan MIXTO el cartel decía sólo *"Sumé 14
+cosas"* y se callaba las 10 que sacaba. El toast que yo había agregado dispara únicamente cuando el plan es
+SÓLO sacar —el caso que probé con el dedo—; el mixto, que es el más común cuando cambia el destino, quedaba
+mudo sobre la mitad. Arreglado en v34, con el caso mixto entero en el arnés de clics y su control negativo.
+
 **Historia aparte, que el PM pidió separar:** avisarle cuando un ítem que YA empacó probablemente no sirva
 para el viaje nuevo. Es informar, no sacar. No entra acá.
 
@@ -1555,15 +1564,62 @@ nuevo y le pide que proponga sacar lo que no aplique. Si lo marca, aparece en *"
 necesitás"* (VAL-43). El arnés prueba que ese camino llega hasta la lista; lo que no se puede probar desde
 acá es si el modelo real lo dice. **Es el paso 5 del guion de v33.**
 
-**Entonces esta historia arranca cuando vuelva esa captura:**
+**LA CAPTURA VOLVIÓ EL 22/09, y la respuesta es NO.** El PM cargó vuelos a otro destino y el modelo no marcó
+ni uno solo de los ítems del destino viejo. Así que el camino que el diseño ya tenía —que el modelo lo
+proponga por `quitar`— no alcanza, y esta historia pasa de "esperando el dato" a trabajo real.
 
-- Si el modelo lo marca solo, no hay nada que construir: se cierra como cubierta.
-- Si no lo marca, hace falta que la app misma pueda comparar, y eso es VAL-66 primero.
+- **Lo que queda:** que la app misma pueda comparar dos destinos. Eso es **VAL-66** (traducir IATA → ciudad),
+  que sigue siendo el prerrequisito.
+- Mientras tanto el ítem se queda con su chip honesto, que es la equivocación barata.
 
 **Por qué no bloqueó la publicación de VAL-75:** no es una regresión. En v32 ese mismo gesto hacía
 desaparecer el ítem de la lista propuesta **en silencio**, sin nombrarlo en ningún lado. Dejarlo con un chip
 honesto es mejor que perderlo sin avisar, y ninguna de las dos cosas es lo que el PM reportó —él cambió el
 **destino escrito**, que sí funciona y está probado con el dedo.
+
+### VAL-80 · El campo del vuelo te come letras, y eso rompe la cadena entera — P0
+
+**Reproducido el 22/09 en el navegador, con el gesto del PM.** Escribió `SUECIA` en el campo **Destino (IATA)**
+de un vuelo. La app guardó **`SUEC`**: el campo tiene `maxlength="4"` y le comió dos letras **sin decirle nada**.
+
+Y ese `SUEC` hace tres cosas distintas en tres partes del sistema:
+
+| Quién lo lee | Qué concluye |
+|---|---|
+| `destinosDelViaje` (VAL-72) | `SUEC` es un destino en firme y **desplaza al destino escrito** |
+| `deduceInternational` | filtra por `/^[A-Z]{3}$/`, así que **lo ignora** y decide por el texto del viaje |
+| La cabecera de la valija | muestra `trip.destination` → **el destino escrito**, no el que manda |
+
+Y al modelo le llega, textual:
+
+```
+- Destinos, sacados de los vuelos ya cargados, que son lo que manda: SUEC (vuelo).
+  La persona además escribió "Noruega" como destino del viaje: úsalo sólo como contexto.
+```
+
+**El destino que manda es una cadena que no significa nada, y lo único reconocible que ve el modelo es el
+destino viejo.** Por eso el PM veía que le seguía sugiriendo Noruega después de cargar un vuelo a Suecia: no
+es que la app ignorara el vuelo, es que el vuelo le llegó mutilado.
+
+El contraste, medido:
+
+```
+SUEC → internacional: true ← "El destino dice «noruega»."          ← ignoró el vuelo
+ARN  → internacional: true ← "Vuelo con código ARN, fuera del país." ← lo usó
+```
+
+**Lo que hay que arreglar, en orden de tamaño:**
+
+1. **La guarda del motor.** Un `to` que no es un código IATA de 3 letras no puede desplazar al destino escrito:
+   pasa a ser **pista**, igual que una dirección. Es el criterio que `destinosDelViaje` ya tiene escrito para el
+   texto libre — *"una dirección es texto libre y no hay contra qué compararla"*— y que no se le aplicó a un `to`
+   que tampoco es un código. Chico y sin riesgo.
+2. **Que el campo deje de mutilar.** El label dice IATA (3 letras), el campo acepta 4 y el motor sólo reconoce
+   3: tres números distintos para el mismo dato. O avisa, o no deja escribir de más.
+3. **Que acepte nombres de ciudad** además del código. Es lo que el PM intentó hacer, y es lo más grande:
+   necesita traducir ciudad ↔ IATA, o sea **VAL-66**.
+
+**Decisión del PM (22/09): al backlog, no se arregla ahora.** Primero VAL-76 y VAL-77.
 
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
