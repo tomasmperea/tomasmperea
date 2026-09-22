@@ -130,19 +130,77 @@ Entonces se separa lo que siempre fueron dos cosas distintas:
   prueba en el teléfono antes de estar arriba.
 - **Terminado sigue exigiendo el teléfono.** Publicar no cierra nada. VAL-63 no está terminada hasta que
   vuelva el resultado del PM, y eso se escribe en la entrega, no se da por hecho.
-- Si el auditor baja el puntaje por **cualquier motivo que no sea la indisponibilidad del entorno real**, no
-  hay piso de 70 que valga: eso se arregla antes de publicar, como siempre.
+- Si el auditor encuentra **un defecto que bloquea** (la lista está abajo), eso se arregla antes de
+  publicar, como siempre. Lo que **no** bloquea se anota y no frena nada.
 
-  La primera redacción de esta regla listaba "causa raíz, honestidad, calidad interna" y **se olvidaba de
-  las otras dos dimensiones**, contrato y diseño. El auditor lo marcó el mismo día: tal como estaba escrita,
-  alguien podía publicar con un criterio de aceptación incumplido —uno que no tuviera nada que ver con el
-  teléfono— y defenderlo diciendo que esa dimensión no figuraba en la lista.
+La decisión de separar candidato de terminado la tomó el PM el 19/09, con el callejón a la vista.
 
-  Por eso la regla deja de enumerar dimensiones y nombra la única excepción que existe: **que la dimensión
-  esté floja porque todavía no se pudo probar en el aparato.** Si la 4 baja porque el criterio de aceptación
-  exige el teléfono, eso no rompe el candidato. Si baja porque el criterio no se cumple por otra cosa, sí.
+### Qué bloquea una publicación, y qué se anota — la regla del 22/09
 
-La decisión de separarlo la tomó el PM el 19/09, con el callejón a la vista.
+**Acá estaba escrito que bloqueaba "cualquier motivo que no sea el teléfono", y esa frase produjo dieciséis
+rondas de auditoría sobre VAL-72.** Catorce informes, 808 KB de prosa, veinte commits. Las dos pruebas que
+cerraron la historia le tomaron al PM **seis minutos**.
+
+La medición, porque el diagnóstico fácil sería "el auditor se puso pesado" y es falso:
+
+| | Rondas | Qué encontraron |
+|---|---|---|
+| Defectos del producto | 9 | Cosas que le habrían llegado al teléfono |
+| Defectos del andamiaje | 5 | Arneses, mecanismos y prosa del entregador |
+
+**Nueve de catorce encontraron algo real.** El problema no fue auditar de más: fue que el auditor dejó de ser
+el portero de ESTA entrega y se volvió una revisión abierta del motor entero. Que un traslado y una nota no
+llegaran al modelo son defectos de verdad — **y existían desde VAL-44, dos iteraciones antes.** Aparecieron
+tirando del hilo. Eso vale, pero es un **barrido**, no una verificación de entrega, y un barrido no puede
+frenar una publicación: siempre hay un hilo más.
+
+**Entonces bloquea, y sólo bloquea:**
+
+1. **Un criterio de aceptación de la historia que no se cumple.** Es lo que la regla vieja protegía y se
+   conserva entero.
+2. **Un defecto alcanzable con un gesto de la persona**, en lo que esta entrega tocó.
+3. **Una regresión**: algo que andaba antes de esta entrega y ahora no.
+4. **Una afirmación falsa en lo que el PM lee para decidir** — la entrega, el guion de prueba, el backlog.
+   Tres veces en VAL-72 afirmé algo falso y cada una le costó una ronda a alguien. Esto no se negocia.
+
+**Y se anota, sin frenar nada:**
+
+- Defectos **preexistentes** que aparecen de paso. Van al backlog con su reproducción, priorizados como
+  cualquier otra historia.
+- Arneses flojos, mecanismos mejorables, comentarios viejos en el código, documentación de diseño atrasada.
+- Todo lo que **sólo leen los agentes**. La línea es esa: lo que el PM lee para decidir tiene que ser cierto;
+  lo que leemos nosotros, se arregla cuando toca.
+
+**Una auditoría por entrega, no una cadena.** Si hay bloqueantes, se arreglan y el auditor confirma **el
+delta**, no vuelve a auditar todo. Lo que infló VAL-72 fue la cadena: cada confirmación era una auditoría
+completa nueva, y cada una encontraba una cosa más porque siempre hay una cosa más.
+
+### El teléfono primero para lo que sólo el teléfono contesta
+
+La decisión de mandarle al modelo el dato crudo en vez de un resumen quedó declarada **"no verificable desde
+acá" en cinco auditorías seguidas**. Ninguna pudo resolverla. Una captura del PM la resolvió en tres minutos,
+y de la mejor manera: el motivo decía *"cuatro días en Madrid, cinco en París y tres en Roma"*, números que
+el modelo calculó solo del dato crudo.
+
+**Estábamos gastando lo caro para no gastar lo barato.** Entonces: cuando una pregunta sólo la puede contestar
+el aparato —cómo se comporta el modelo, cómo se ve algo en pantalla, si un gesto funciona—, no se gastan
+rondas declarándola no verificable. **Se publica y se pregunta**, con los cuatro `grep` hechos y un guion
+corto.
+
+Y las pruebas del PM se **agrupan**: dos o tres cambios chicos en un guion de tres pasos valen más que tres
+guiones de un paso en tres días distintos.
+
+### Un arreglo no trae una sub-función de polizonte
+
+De los catorce hallazgos de VAL-72, **seis salieron de una sola cosa que el PM nunca pidió**: la anotación de
+cuánto dura cada tramo. Nació de una *observación* del auditor —marcada por él mismo como "no puntúa"— y se
+llevó las rondas 5, 6 y 7 enteras, más tres intentos de arreglarla que mintieron de una forma distinta cada
+vez. Terminó sacándose. El producto quedó mejor sin ella.
+
+**Entonces: si un arreglo necesita una sub-función que nadie pidió, esa sub-función es otra historia.** Se
+escribe en el backlog con lo que se aprendió, y la entrega sale sin ella. Una historia que crece mientras se
+construye no se termina nunca, porque cada cosa nueva trae su propia cola de defectos — y encima esa cola no
+tiene criterio de aceptación contra el cual parar.
 
 ## La palabra "verificado"
 
