@@ -766,6 +766,42 @@ anda: antes no se sumaba nada, así que tampoco se veía lo que quedaba viejo.
 lado. Conviene resolver VAL-72 primero: si el destino sale de las reservas, "el destino con el que se generó
 el ítem" ya no es un campo de texto suelto.
 
+**LA REGLA CAMBIÓ EL 22/09, y la escribió el PM.** Lo de arriba dice "se pisan". Tres días después, mirando
+el caso otra vez, el PM la acotó:
+
+> *"si ya empaqué un ítem, es porque realmente lo necesito y ya está en la valija real; por lo que no tiene
+> sentido sacarlo... lo que verdaderamente no empaqué aún, que no está empacado en la app, es lo que debería
+> cambiar"*
+
+Es más simple que "pisar" y es la que se construyó:
+
+| Estado del ítem | Qué le pasa |
+|---|---|
+| Empacado | intocable — ya está en la valija de verdad |
+| Agregado a mano | intocable — lo escribió la persona |
+| Descartado | no revive — ya dijo que no lo quería |
+| Pendiente, sugerido por la app | se recalcula: se va si ya no corresponde |
+
+**Y dónde estaba el defecto, que no era donde este backlog decía.** El motor ya hacía todo eso: `mergeLists`
+deja pasar sólo lo manual y lo que la persona marcó. Lo que fallaba es que `desactualizada` contaba **sólo lo
+que se agrega**, así que un viaje que sólo necesitaba SACAR terminaba con la app diciendo *"La lista sigue al
+día con lo que cargaste"* y sin guardar nada. Tres ítems de un destino que ya no existe, y la app afirmando
+que está al día.
+
+**Una corrección a este mismo texto, que salió cara.** Más arriba dice *"es un campo, y la medición de bytes
+de VAL-74 ya lo cuenta sola"*. **Es falso.** `parseDestinationItems` enumera los campos que mide y hay que
+agregarlo ahí también; el arnés de VAL-74 lo agarró con 7 bytes por ítem de diferencia. Y el arnés tenía la
+misma enumeración escrita a mano por dentro, así que hubo que arreglar los dos: ahora el arnés **lee la lista
+de campos del código del motor** en vez de repetirla.
+
+**Lo que se anota y no frena nada** (defecto preexistente, encontrado de paso): si la capa de destino no está
+disponible o falla, el recálculo base no puede regenerar sus ítems. Hasta ahora se caían en silencio de la
+lista propuesta. Ahora se retienen —comparando `porDestino` contra el destino del viaje— y el silencio del
+modelo dejó de contar como evidencia de que un ítem sobra.
+
+**Historia aparte, que el PM pidió separar:** avisarle cuando un ítem que YA empacó probablemente no sirva
+para el viaje nuevo. Es informar, no sacar. No entra acá.
+
 ### VAL-76 · Cambiar el tipo de viaje sobre una lista ya armada — P0
 
 **Reporte del PM (19/09):** *"no solo quiero actualizar el viaje sino que quiero actualizar el tipo de viaje
@@ -1487,3 +1523,20 @@ Como viajero quiero saber si mi vuelo se retrasó o cambió de puerta.
 
 - Se consulta el estado del vuelo por número y fecha.
 - Los cambios de horario y puerta actualizan la reserva y disparan aviso.
+
+### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
+
+**Sale de VAL-75, por decisión del PM (22/09).** Ahí la regla quedó clara: lo empacado es intocable, porque
+*"ya está en la valija real"*. Se construyó así, y lo empacado ya no se toca ni se propone sacar.
+
+Pero queda un caso real que esa regla deja sin resolver: el pantalón impermeable que el PM **empacó** para
+Noruega sigue en su valija física cuando el viaje pasó a ser Buenos Aires en enero. La app hoy no dice nada,
+y hace bien en no sacarlo — pero podría **avisarlo**.
+
+- Es informar, nunca sacar ni desmarcar. La valija física la maneja la persona.
+- El dato para saberlo ya existe: el ítem guarda `porDestino`, el destino con el que se lo razonó. Cuando ese
+  destino dejó de ser el del viaje y el ítem está empacado, hay algo para decir.
+- Lo que falta decidir con el caso a la vista: dónde se dice, y con qué texto. Un cartel por ítem es ruido;
+  una línea que diga "tres de las que empacaste eran para Noruega" probablemente no.
+- **No entra en un arreglo de otra historia.** Se separó justamente por eso: en VAL-72 una sub-función que
+  nadie pidió se llevó tres rondas de auditoría y terminó sacándose.

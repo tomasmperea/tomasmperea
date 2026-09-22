@@ -931,7 +931,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    tres árboles, así que la regla se cumple subiéndolo en el commit que va a
    publicarse, no "antes de publicar" como intención.
    ============================================================ */
-const VALIJA_VERSION = "32";
+const VALIJA_VERSION = "33";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -2668,6 +2668,15 @@ function makeItem(fields, at) {
     cantidadEditada:false,
     nota:"",
     orden:fields.orden == null ? orderOf(fields.categoria, 500) : fields.orden,
+    /* DE QUÉ DESTINO SALIÓ, y no cuál es el destino de ahora (VAL-75).
+       El chip de la app decía `por ${trip.destination}`: no contaba de dónde
+       venía el ítem, contaba cuál era el destino en ese momento. Así que en
+       cuanto el PM cambió el viaje de Noruega a Argentina, tres ítems
+       razonados para Noruega pasaron a declarar "por Argentina" sin que nadie
+       los volviera a mirar. Una causa inventada con cara de dato, que es lo
+       que este proyecto tiene prohibido por escrito.
+       Para poder decir la verdad hace falta el dato, y el dato no existía. */
+    porDestino:fields.porDestino || "",
     agregadoEn:at,
     actualizadoEn:at
   };
@@ -2866,6 +2875,9 @@ function mergeLists(previous, fresh) {
       empacadoEn:p.empacadoEn || null,
       // PRECEDENCIA: nunca se pisa el origen con una capa de mayor precedencia
       origen:lowestOrigin(p.origen, f.origen),
+      // La etiqueta de destino es del ítem, no de la generación: si el que
+      // sobrevive es el viejo, sobrevive con su verdad.
+      porDestino:f.porDestino || p.porDestino || "",
       nota:p.nota || "",
       cantidad:p.cantidadEditada ? p.cantidad : f.cantidad,
       cantidadEditada:!!p.cantidadEditada,
@@ -3012,6 +3024,18 @@ function hoursBetween(a, b) {
       `pistas`   toda dirección — no desplaza al escrito, pero se manda igual.
       `hayVuelos` si hay vuelos cargados, aunque estén sin destino.
       `deReservas` si el destino sale de un vuelo y no del campo escrito. */
+/* Cómo se llama, para la persona, el destino con el que se generó un ítem.
+   Sale de lo MISMO que vio el modelo: los vuelos si los hay, y si no el
+   campo que la persona escribió. No se inventa ni se adivina; si no hay
+   nada, queda vacío y el chip cae al texto genérico. */
+function destinoQueRazono(list) {
+  var d = (list && list.base && list.base.destinos) || null;
+  if (d && d.deReservas && d.lugares && d.lugares.length) {
+    return d.lugares.map(function (l) { return l.lugar; }).join(" · ");
+  }
+  return String((list && list.base && list.base.destino) || "").trim();
+}
+
 function destinosDelViaje(trip, items) {
   trip = trip || {}; items = (items || []).filter(Boolean);
   var lugares = [];
@@ -3539,6 +3563,7 @@ function parseDestinationItems(raw, list) {
          miente — por eso van juntos y en el mismo orden. */
       var campos = { clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad,
                      motivo:motivo, origen:ORIGEN.DESTINO, regla:"destino",
+                     porDestino:destinoQueRazono(list),
                      orden:orderOf(categoria, 800 + items.length) };
       var peso = pesoGuardadoDeItem(campos);
       if (peso > libres) return;
@@ -3934,6 +3959,81 @@ function explainNewItem(it, ctx) {
  * @param {string}  [input.now]
  * @returns {{desactualizada:boolean, nuevos:Array, motivo:string, listaPropuesta:Object|null}}
  */
+/* ============================================================
+   VAL-75 · QUÉ SIGNIFICA "YA NO CORRESPONDE"
+
+   Un ítem de regla se juzga solo: si la regla dejó de aplicar, el recálculo
+   no lo vuelve a poner y con eso alcanza. Un ítem de la capa de destino, no.
+   El recálculo base no lo puede volver a poner —no hay ninguna regla que lo
+   genere— y el modelo puede no repetirlo por motivos que no tienen nada que
+   ver con el viaje: no estaba disponible, falló, o esta vez contestó otra
+   cosa. Que el modelo no lo nombre NO es evidencia de que sobre.
+
+   Lo que sí es evidencia está en el ítem: `porDestino` guarda el destino con
+   el que lo razonaron. Si ese destino ya no es el del viaje, el ítem está
+   viejo. Si sigue siendo el mismo, se queda, conteste lo que conteste el
+   modelo. Sin esta distinción, abrir la valija dos veces seguidas sin
+   conexión propondría sacar todo lo que la capa de destino había puesto —
+   que es el peor resultado posible, y el que el control del arnés cuida.
+   ============================================================ */
+
+/** @param {string} razonadoSiNoDice  con qué comparar un ítem viejo que no
+      guarda `porDestino`: las listas generadas antes de VAL-75 no lo tienen,
+      y la del PM es una de ésas. No se adivina — se lee de la propia lista
+      guardada, que en `base.destino` tiene el destino con el que se generó,
+      que es el mismo con el que corrió la capa de destino sobre ella.
+    @returns {boolean} si al ítem lo razonaron para un destino que ya no es éste. */
+function destinoVencido(item, destinoActual, razonadoSiNoDice) {
+  if (!item || item.origen !== ORIGEN.DESTINO) return false;
+  var razonado = String(item.porDestino == null ? "" : item.porDestino).trim() ||
+                 String(razonadoSiNoDice == null ? "" : razonadoSiNoDice).trim();
+  if (!razonado) return false;                                   // no sabemos con qué se razonó
+  if (!String(destinoActual == null ? "" : destinoActual).trim()) return false;  // ni contra qué compararlo
+  return norm(razonado) !== norm(destinoActual);
+}
+
+/** Devuelve a la lista propuesta los ítems de la capa de destino que siguen
+    vigentes y que esta pasada no volvió a generar. Corre ANTES de contar lo
+    que se saca, para que la lista propuesta y `sacados` no puedan decir dos
+    cosas distintas sobre el mismo ítem.
+    @returns {Object} la lista propuesta, con lo retenido adentro */
+function retenerDestinoVigente(previa, propuesta) {
+  var destinoActual = destinoQueRazono(propuesta);
+  var razonadoSiNoDice = destinoQueRazono(previa);
+  var hay = {};
+  itemsArray(propuesta).forEach(function (i) { if (i && i.clave) hay[canonicalKey(i.clave)] = true; });
+
+  var items = Object.assign({}, propuesta.items), cambio = false;
+  itemsArray(previa).forEach(function (p) {
+    if (!p || !p.clave || p.origen !== ORIGEN.DESTINO) return;
+    if (hay[canonicalKey(p.clave)]) return;
+    if (destinoVencido(p, destinoActual, razonadoSiNoDice)) return;
+    items[p.clave] = Object.assign({}, p, { retenido:true });
+    hay[canonicalKey(p.clave)] = true;
+    cambio = true;
+  });
+  if (!cambio) return propuesta;
+  var out = Object.assign({}, propuesta, { items:items });
+  out.conteo = packingProgress(out);
+  return out;
+}
+
+/** Lo que estaba en la lista guardada y no está en la propuesta.
+    Una sola definición, y lee la lista propuesta en vez de recalcular por su
+    cuenta: la propuesta es la verdad, y esto la cuenta. */
+function loQueSeSaca(previa, propuesta) {
+  var quedan = {};
+  itemsArray(propuesta).forEach(function (i) { if (i && i.clave) quedan[canonicalKey(i.clave)] = true; });
+  var sacados = [];
+  itemsArray(previa).forEach(function (p) {
+    if (!p || !p.clave) return;
+    if (quedan[canonicalKey(p.clave)]) return;
+    sacados.push({ clave:p.clave, nombre:p.nombre, categoria:p.categoria,
+                   motivo:p.motivo, origen:p.origen, porDestino:p.porDestino || "" });
+  });
+  return sacados;
+}
+
 function planListUpdate(input) {
   input = input || {};
   var list = input.list;
@@ -3963,17 +4063,47 @@ function planListUpdate(input) {
     });
   });
 
-  var desactualizada = nuevos.length > 0;
-  var listaPropuesta = Object.assign({}, merged, { items:itemsConFlag });
+  /* LO QUE SE SACA CUENTA TANTO COMO LO QUE SE AGREGA (VAL-75).
+
+     `desactualizada` miraba sólo `nuevos.length`, y el PM reportó el caso que
+     eso deja afuera: cambió un viaje de Noruega a Argentina y los ítems
+     razonados para Noruega se quedaron. Reproducido: el motor ya arma bien la
+     lista limpia —`mergeLists` deja pasar sólo lo manual y lo que la persona
+     marcó— pero si el recálculo no encontraba NADA para agregar, la app decía
+     "La lista sigue al día con lo que cargaste" y no guardaba nada. Tres
+     ítems de un destino que ya no existe, y la app afirmando que está al día.
+
+     Una lista a la que hay que sacarle cosas está igual de vieja que una a la
+     que hay que agregarle.
+
+     El orden importa: primero se arma la lista propuesta ENTERA —retención
+     incluida— y recién después se cuenta lo que falta. Al revés, contar por
+     un lado y armar por otro fue exactamente cómo se pudo afirmar "no se saca
+     nada" sobre una lista a la que le faltaban tres ítems. */
+  var listaPropuesta = retenerDestinoVigente(list, Object.assign({}, merged, { items:itemsConFlag }));
+  var sacados = loQueSeSaca(list, listaPropuesta);
+  var desactualizada = nuevos.length > 0 || sacados.length > 0;
 
   return {
     desactualizada:desactualizada,
     nuevos:nuevos,
-    motivo:desactualizada
-      ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
-      : "La lista sigue al día con lo que cargaste.",
+    sacados:sacados,
+    motivo:motivoDelPlan(nuevos.length, sacados.length),
     listaPropuesta:listaPropuesta
   };
+}
+
+/* El texto del aviso, que ahora tiene que cubrir cuatro casos y no dos.
+   Se escribe una vez acá para que la versión con IA y la de sólo reglas no
+   puedan decir cosas distintas: esa duplicación ya fue un defecto en esta
+   misma función. */
+function motivoDelPlan(cuantosNuevos, cuantosSacados) {
+  var frases = [];
+  if (cuantosNuevos) frases.push(cuantosNuevos === 1 ? "sumo 1 ítem" : "sumo " + cuantosNuevos + " ítems");
+  if (cuantosSacados) frases.push(cuantosSacados === 1 ? "saco 1 que ya no corresponde"
+                                                       : "saco " + cuantosSacados + " que ya no corresponden");
+  if (!frases.length) return "La lista sigue al día con lo que cargaste.";
+  return "El viaje cambió: " + frases.join(" y ") + ".";
 }
 
 /**
@@ -4004,14 +4134,19 @@ function planListUpdateAsync(input) {
     });
 
     var nuevos = base.nuevos.concat(nuevosIA);
-    var desactualizada = nuevos.length > 0;
+    /* `sacados` se vuelve a contar contra la lista FINAL, no se hereda de
+       `base`: entre una y otra corrió la capa de destino, y un ítem que el
+       modelo volvió a proponer no se sacó de ningún lado. Contar dos veces
+       sale más barato que dos verdades distintas sobre la misma lista. */
+    var propuesta = Object.assign({}, enriched, { items:itemsConFlag });
+    var sacados = loQueSeSaca(input.list, propuesta);
+    var desactualizada = nuevos.length > 0 || sacados.length > 0;
     return {
       desactualizada:desactualizada,
       nuevos:nuevos,
-      motivo:desactualizada
-        ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
-        : "La lista sigue al día con lo que cargaste.",
-      listaPropuesta:Object.assign({}, enriched, { items:itemsConFlag })
+      sacados:sacados,
+      motivo:motivoDelPlan(nuevos.length, sacados.length),
+      listaPropuesta:propuesta
     };
   });
 }
@@ -4106,7 +4241,11 @@ const CAT_ICON = { documentacion:"doc", ropa:"shirt", calzado:"shoe", higiene:"d
 /** Chip de origen de un ítem, con el destino real del viaje (no "Madrid" fijo). */
 function srcChip(it, trip){
   if(it.origen === "historial") return {cls:"chip accent", tx:"tus viajes"};
-  if(it.origen === "destino")   return {cls:"chip soon",   tx:`por ${trip.destination || "el destino"}`};
+  /* VAL-75: el chip dice de dónde salió el ítem, no cuál es el destino de
+     ahora. `porDestino` lo guarda el motor cuando genera el ítem; una lista
+     armada antes de v33 no lo tiene, y ahí sí cae al destino del viaje, que
+     es lo único que hay. */
+  if(it.origen === "destino")   return {cls:"chip soon",   tx:`por ${it.porDestino || trip.destination || "el destino"}`};
   if(it.origen === "manual")    return {cls:"chip own",    tx:"lo pusiste vos"};
   return {cls:"chip", tx:"lista base"};
 }
@@ -7274,7 +7413,7 @@ function renderPackingEntry(trip, list){
     // Sin lista guardada no hay nada que actualizar y la tira no cambia.
     const plan = planOfrecible(trip.id);
     if(plan){
-      const n = plan.nuevos.length;
+      const n = planCuentas(plan).total;
       const r = planReserva(plan);
       return `<button class="vj-entry live" id="vjentry">
         <span class="band"></span>
@@ -7600,9 +7739,21 @@ function resetPKIfNeeded(tripId){
    Ver docs/design/valija-inteligente-b.md, § 4.2 y § 5 (puntos 3 y 5).
    ============================================================ */
 
+/** Las claves que ofrece un plan, con el signo de lo que hace con cada una.
+    VAL-75: la firma miraba sólo lo que SUMA, así que dos planes que sacan
+    cosas distintas daban la misma firma — y un plan que sólo saca daba la
+    firma vacía, que es la de "no hay nada". El signo hace falta porque sumar
+    y sacar el mismo ítem no son el mismo ofrecimiento.
+    (Las firmas aplazadas guardadas antes de esto no tienen signo: el plan se
+    vuelve a ofrecer una vez, que es el lado seguro del error.) */
+function planClaves(plan){
+  return ((plan && plan.nuevos)  || []).map(n=>"+"+n.clave)
+   .concat(((plan && plan.sacados) || []).map(n=>"-"+n.clave));
+}
+
 /** Firma del plan: qué ítems ofrece, sin importar el orden. */
 function planFirma(plan){
-  return ((plan && plan.nuevos) || []).map(n=>n.clave).sort().join("|");
+  return planClaves(plan).sort().join("|");
 }
 
 /* El aplazamiento vive en ESTE dispositivo, nunca en el documento compartido:
@@ -7633,16 +7784,52 @@ function pkPlanAplazado(tripId, plan){
   const dato = pkAplazadoDe(tripId);
   if(!dato || !dato.firma) return false;
   const previas = new Set(String(dato.firma).split("|").filter(Boolean));
-  const claves = ((plan && plan.nuevos) || []).map(n=>n.clave);
+  const claves = planClaves(plan);
   if(!claves.length) return true;
   return claves.every(c => previas.has(c));
+}
+
+/* VAL-75 · UN PLAN PUEDE SER SÓLO SACAR.
+   Seis lugares de este archivo preguntaban `plan.nuevos.length`, y ninguno
+   miraba lo que el recálculo SACA. Por eso el caso que reportó el PM —cambiar
+   el viaje de Noruega a Argentina— terminaba con la app diciendo "la lista
+   sigue al día" y tres ítems de Noruega en pantalla: el motor armaba bien la
+   lista limpia y nadie la guardaba nunca, porque no había nada que agregar.
+   La cuenta se hace en un solo lugar para que los seis no puedan volver a
+   decir cosas distintas. */
+function planCuentas(plan){
+  const suma = ((plan && plan.nuevos) || []).length;
+  const saca = ((plan && plan.sacados) || []).length;
+  return { suma, saca, total: suma + saca };
+}
+/** El texto del botón y de los contadores: cubre los tres casos. */
+function planVerbo(plan){
+  const {suma, saca} = planCuentas(plan);
+  if(suma && saca) return `Sumar ${suma} y sacar ${saca}`;
+  if(saca)         return `Sacar ${saca}`;
+  return `Sumar ${suma}`;
+}
+
+/* El cartel que le avisa desde afuera de la valija. Dice cuál de las tres
+   cosas es, porque no son la misma noticia: sumarte algo es una sugerencia,
+   sacarte algo es que el viaje cambió. "Cambiar" queda para cuando son las
+   dos, que es lo único que no se puede decir más corto. */
+function planAviso(plan){
+  const {suma, saca} = planCuentas(plan);
+  const n = suma + saca;
+  if(suma && saca) return n === 1 ? "Tengo 1 cosa para cambiar en la valija"
+                                  : `Tengo ${n} cosas para cambiar en la valija`;
+  if(saca)         return saca === 1 ? "Tengo 1 cosa para sacar de la valija"
+                                     : `Tengo ${saca} cosas para sacar de la valija`;
+  return suma === 1 ? "Tengo 1 cosa para sumarte a la valija"
+                    : `Tengo ${suma} cosas para sumarte a la valija`;
 }
 
 /** El plan vigente de este viaje, aplazado o no. */
 function planDe(tripId){
   if(!tripId || App.planTripId !== tripId) return null;
   const p = App.plan;
-  if(!p || !p.desactualizada || !p.nuevos || !p.nuevos.length || !p.listaPropuesta) return null;
+  if(!p || !p.desactualizada || !planCuentas(p).total || !p.listaPropuesta) return null;
   return p;
 }
 /** El plan que corresponde ofrecer solo: vigente y sin aplazar. */
@@ -7666,12 +7853,13 @@ function planReservaIcon(txt){
 }
 /** El texto del aviso 15/16, con la cantidad en mono. */
 function planAvisoTexto(plan){
-  const n = plan.nuevos.length;
-  const cant = n===1 ? `<b class="n">una</b> cosa` : `<b class="n">${n}</b> cosas`;
+  const {suma, saca} = planCuentas(plan);
+  const cosas = n => n===1 ? `<b class="n">una</b> cosa` : `<b class="n">${n}</b> cosas`;
   const r = planReserva(plan);
-  return r
-    ? `Agregaste <b>${esc(r)}</b>. Tengo ${cant} para sumarle a la valija.`
-    : `El viaje cambió y la lista quedó vieja. Tengo ${cant} para sumarle.`;
+  if(suma && r && !saca) return `Agregaste <b>${esc(r)}</b>. Tengo ${cosas(suma)} para sumarle a la valija.`;
+  if(suma && !saca)      return `El viaje cambió y la lista quedó vieja. Tengo ${cosas(suma)} para sumarle.`;
+  if(saca && !suma)      return `El viaje cambió: ${cosas(saca)} de la lista ya no corresponden al destino nuevo.`;
+  return `El viaje cambió: tengo ${cosas(suma)} para sumarle y ${cosas(saca)} que ya no corresponden.`;
 }
 
 /** Ítems de la lista con propuesta de sacar todavía sin resolver. */
@@ -7815,7 +8003,7 @@ async function checkPackingPlan(trip){
   const plan = await recalcularPlanContra(trip, list);
   if(plan === null) return;               // no se pudo calcular: se deja todo como estaba
 
-  if(!plan.desactualizada || !plan.nuevos.length){
+  if(!plan.desactualizada || !planCuentas(plan).total){
     if(App.planTripId === trip.id){ App.plan = null; App.planTripId = null; App.planDesde = null; App.planDock = false; }
     render();
     return null;                          // nada que ofrecer, y quien llamó puede saberlo
@@ -7871,7 +8059,7 @@ function recalcularPlanAlEntrar(tripId){
         tipoViaje: list.tipoViaje, history
       });
     }catch(e){ return; }                       // planListUpdate no lanza; por las dudas
-    if(!plan || !plan.desactualizada || !plan.nuevos.length) return;
+    if(!plan || !plan.desactualizada || !planCuentas(plan).total) return;
     if(planDe(tripId)) return;                 // llegó uno mejor mientras leíamos el historial
     if(Store.packingOf(tripId) !== list){
       // La lista cambió mientras leíamos el historial: este plan salió de una
@@ -8451,9 +8639,9 @@ function packingNotice(trip, list, plan){
 
   // 1 · la lista quedó vieja (15), o su variante sin acciones (24)
   if(plan){
-    const n = plan.nuevos.length;
+    const n = planCuentas(plan).total;
     if(!canWrite){
-      return `<div class="notice">${svg(I.info)}<span class="bd">Estás viendo la valija de este viaje. Quedó vieja: el viaje cambió después de que se armó, y hay <b class="n">${n}</b> ${n===1?"cosa":"cosas"} sin sumar. Las puede sumar quien tenga permiso de edición.</span></div>`;
+      return `<div class="notice">${svg(I.info)}<span class="bd">Estás viendo la valija de este viaje. Quedó vieja: el viaje cambió después de que se armó, y hay <b class="n">${n}</b> ${n===1?"cosa":"cosas"} sin actualizar. Las puede actualizar quien tenga permiso de edición.</span></div>`;
     }
     return `<div class="notice">${svg(I.spark)}<span class="bd">${planAvisoTexto(plan)}
       <span class="acts">
@@ -8467,7 +8655,7 @@ function packingNotice(trip, list, plan){
   // que la persona acaba de hacer.
   if(PK.avisoAplazado && canWrite){
     const p = PK.avisoAplazado;
-    const n = p.nuevos.length;
+    const n = planCuentas(p).total;
     const r = planReserva(p);
     return `<div class="notice">${svg(I.info)}<span class="bd">Listo, no toco nada. ${n===1?`La <b class="n">una</b> cosa`:`Las <b class="n">${n}</b> cosas`}${r?` ${esc(pkDeReserva(r))}`:""} quedan guardadas en <b>De dónde sale esta lista</b>, arriba a la derecha, por si después las querés.
       <span class="acts"><button class="act" data-pk="verplan">Verlas igual</button></span></span></div>`;
@@ -8681,12 +8869,8 @@ function sheetTrip(trip){
          Silencio cuando no hay nada que ofrecer: cambiar una fecha y que la
          lista ya esté bien no es una novedad. */
       if(mueveLaValija) checkPackingPlan(guardado).then(plan=>{
-        if(!plan || !plan.nuevos || !plan.nuevos.length) return;
-        const n = plan.nuevos.length;
-        toast(n === 1 ? "Tengo 1 cosa para sumarte a la valija"
-                      : `Tengo ${n} cosas para sumarte a la valija`,
-              false,
-              ()=> go(`#/trip/${guardado.id}/valija`));
+        if(!plan || !planCuentas(plan).total) return;
+        toast(planAviso(plan), false, ()=> go(`#/trip/${guardado.id}/valija`));
       }).catch(()=>{});
     }catch(e){ toast(writeErr(e), true); }
   };
@@ -11120,10 +11304,34 @@ function planGrupos(plan){
 }
 
 function sheetPackingPlan(trip, plan){
-  const n = plan.nuevos.length;
+  const {suma, saca} = planCuentas(plan);
   const items = (plan.listaPropuesta && plan.listaPropuesta.items) || {};
+
+  /* VAL-75 · LO QUE SE SACA SE MUESTRA. El PM pidió que las sugerencias del
+     destino viejo se vayan, no que se propongan — pero irse en silencio y
+     irse son cosas distintas: una lista que cambia sola sin decir qué cambió
+     es la app decidiendo a escondidas. Se listan con su motivo viejo, que es
+     lo que explica por qué ya no van.
+     Nunca aparece acá nada que la persona haya tocado: `mergeLists` retiene
+     lo empacado, lo descartado y lo que agregó a mano, así que lo que llega
+     a esta lista es sólo lo que sugirió la app y nadie marcó. */
+  const bloqueSaca = saca ? `
+    <div class="pk-plan-g">
+      <div class="pk-plan-hd">${svg(I.info)}<span><b>Saco ${saca === 1 ? "esto" : "estas " + saca + " cosas"}</b>, que ya no ${saca === 1 ? "corresponde" : "corresponden"}</span></div>
+      ${(plan.sacados || []).map(it=>`
+        <div class="pk-plan-it">
+          <span class="ic">${svg(I[CAT_ICON[it.categoria] || "doc"])}</span>
+          <span class="bd">
+            <span class="nm">${esc(it.nombre)}</span>
+            ${it.porDestino?`<span class="r">Lo había sugerido por ${esc(it.porDestino)}.</span>`
+                           :(it.motivo?`<span class="r">${esc(it.motivo)}</span>`:"")}
+          </span>
+        </div>`).join("")}
+    </div>` : "";
+
   const body = `
     <div class="pk-plan">
+      ${bloqueSaca}
       ${planGrupos(plan).map(g=>`
         <div class="pk-plan-g">
           <div class="pk-plan-hd">${svg(I[g.ico] || I.note)}<span>${g.hd}</span></div>
@@ -11139,11 +11347,13 @@ function sheetPackingPlan(trip, plan){
           }).join("")}
         </div>`).join("")}
     </div>
-    <p class="tiny muted" style="margin:0;line-height:1.55">Nada de lo que ya marcaste se toca: lo empacado sigue empacado y lo descartado no vuelve. Si alguna no va, la descartás de la lista con un toque y aprendo para la próxima.</p>`;
+    <p class="tiny muted" style="margin:0;line-height:1.55">Nada de lo que ya marcaste se toca: lo empacado sigue empacado, lo descartado no vuelve, y lo que pusiste vos se queda. ${saca?"Lo que saco es sólo lo que había sugerido yo y no llegaste a marcar. ":""}Si alguna no va, la descartás de la lista con un toque y aprendo para la próxima.</p>`;
 
-  openSheet("Lo que le sumo a la valija", body, Store.canWrite
+  openSheet(saca && !suma ? "Lo que saco de la valija"
+                          : (saca ? "Lo que cambio en la valija" : "Lo que le sumo a la valija"),
+    body, Store.canWrite
     ? `<button class="btn ghost" id="pk-plan-later">Ahora no</button>
-       <button class="btn primary" id="pk-plan-apply">Sumar <span class="mono">${n}</span></button>`
+       <button class="btn primary" id="pk-plan-apply">${esc(planVerbo(plan))}</button>`
     : `<button class="btn block" id="cancel">Cerrar</button>`);
 
   const cancel = document.getElementById("cancel");
@@ -11174,10 +11384,9 @@ function sheetPackingPlan(trip, plan){
    nuestro, como el snapshot de otra persona del viaje. */
 async function aplicarPlan(trip, plan){
   if(!Store.canWrite) return;
-  const n = plan.nuevos.length;
   const btn = document.getElementById("pk-plan-apply");
-  const soltarBoton = ()=>{ if(btn){ btn.disabled = false; btn.innerHTML = `Sumar <span class="mono">${n}</span>`; } };
-  if(btn){ btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Sumando…`; }
+  const soltarBoton = ()=>{ if(btn){ btn.disabled = false; btn.textContent = planVerbo(plan); } };
+  if(btn){ btn.disabled = true; btn.innerHTML = `<span class="spin"></span> Actualizando…`; }
 
   const actual = Store.packingOf(trip.id);
   if(!actual){
@@ -11201,17 +11410,20 @@ async function aplicarPlan(trip, plan){
       aplicado = fresco;                             // mismo ofrecimiento, sobre la lista nueva
     }else{
       // Nada se escribe. Se le muestra lo que corresponde ahora.
-      if(fresco.desactualizada && fresco.nuevos.length){
+      /* `planCuentas(...).total` y no `fresco.nuevos.length`: acá también
+         un plan puede ser sólo sacar, y preguntando por lo que suma se
+         tiraba justo el caso que VAL-75 vino a arreglar. */
+      if(fresco.desactualizada && planCuentas(fresco).total){
         recordarPlan(trip.id, fresco, actual);
         App.planDock = false;
         PK_RECALC_HECHO.add(trip.id);
         sheetPackingPlan(trip, fresco);
-        toast("La lista cambió mientras tanto. Esto es lo que le sumo ahora.");
+        toast("La lista cambió mientras tanto. Esto es lo que le cambio ahora.");
       }else{
         invalidarPlan(trip.id);
         PK_RECALC_HECHO.add(trip.id);
         closeSheet();
-        toast("La lista ya está al día: no quedó nada para sumar.");
+        toast("La lista ya está al día: no quedó nada para cambiar.");
       }
       render();
       return;
@@ -11242,6 +11454,13 @@ async function aplicarPlan(trip, plan){
     setTimeout(()=>{ if(PK.tripId === trip.id) PK.fresh = false; }, 2700);
   }
   closeSheet();
+  /* El cartel verde de la valija cuenta lo que LLEGÓ, y se muestra sólo si
+     hay ítems nuevos marcados. Un plan que sólo saca no deja ninguno, así
+     que sin esto la hoja se cierra y nada dice qué pasó. */
+  const saco = planCuentas(aplicado).saca;
+  if(saco && !planCuentas(aplicado).suma)
+    toast(saco === 1 ? "Saqué 1 cosa que ya no correspondía"
+                     : `Saqué ${saco} cosas que ya no correspondían`);
   render();
 }
 
@@ -11522,7 +11741,7 @@ function sheetPackingInfo(trip, list){
   // 19 · el rastro permanente de lo que se aplazó. Es el único lugar donde nada
   // se esconde, y está a dos toques desde cualquier estado de la valija.
   const planPend = planDe(trip.id);
-  const nPend = planPend ? planPend.nuevos.length : 0;
+  const nPend = planPend ? planCuentas(planPend).total : 0;
   const rPend = planPend ? planReserva(planPend) : null;
   const novedadesHtml = planPend ? `
     <div class="stack" style="gap:7px">

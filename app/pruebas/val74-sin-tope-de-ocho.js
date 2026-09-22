@@ -153,11 +153,26 @@ const VIAJE = { id:"t1", name:"Noruega", destination:"Noruega",
   }), {});
   const claveNueva = Object.keys(conCantidad.items).find(k => !lista.items[k]);
   const guardado = conCantidad.items[claveNueva];
-  const medido = pe.pesoGuardadoDeItem({
-    clave: guardado.clave, nombre: guardado.nombre, categoria: guardado.categoria,
-    cantidad: guardado.cantidad, motivo: guardado.motivo, origen: guardado.origen,
-    regla: guardado.regla, orden: guardado.orden
-  });
+  /* LA LISTA DE CAMPOS SE LEE DEL MOTOR, NO SE ESCRIBE ACÁ.
+
+     Esta prueba enumeraba a mano los campos de `campos` — o sea que tenía
+     adentro el mismo error que vino a cazar, una capa más afuera. VAL-75 le
+     agregó `porDestino` al ítem, el motor lo midió bien, y esto falló igual
+     porque la copia del arnés se había quedado corta.
+
+     Ahora la lista sale de leer el literal en el código del motor. Si alguien
+     agrega un campo al ítem y NO lo suma a `campos`, acá va a faltar: el ítem
+     guardado lo tiene, lo medido no, y los bytes no van a coincidir. Que es
+     exactamente lo que esta prueba tiene que gritar. */
+  const literal = cuerpo.slice(cuerpo.indexOf("var campos = {"));
+  const camposDelMotor = (literal.slice(0, literal.indexOf("};") + 1).match(/(\w+)\s*:/g) || [])
+    .map(s => s.replace(/\s*:$/, ""));
+  info("campos que el motor mide: " + camposDelMotor.join(", "));
+  ok(camposDelMotor.indexOf("clave") === 0 && camposDelMotor.length >= 8,
+     `la lista se leyó del motor y tiene sentido (${camposDelMotor.length} campos)`);
+  const medidoCampos = {};
+  camposDelMotor.forEach(k => { medidoCampos[k] = guardado[k]; });
+  const medido = pe.pesoGuardadoDeItem(medidoCampos);
   const real = pe.bytesSerializados(guardado) + pe.bytesUtf8(guardado.clave) + 4;
   info(`predicho: ${medido} bytes · guardado de verdad: ${real} bytes`);
   ok(medido === real,

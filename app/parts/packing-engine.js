@@ -1280,6 +1280,15 @@ function makeItem(fields, at) {
     cantidadEditada:false,
     nota:"",
     orden:fields.orden == null ? orderOf(fields.categoria, 500) : fields.orden,
+    /* DE QUÉ DESTINO SALIÓ, y no cuál es el destino de ahora (VAL-75).
+       El chip de la app decía `por ${trip.destination}`: no contaba de dónde
+       venía el ítem, contaba cuál era el destino en ese momento. Así que en
+       cuanto el PM cambió el viaje de Noruega a Argentina, tres ítems
+       razonados para Noruega pasaron a declarar "por Argentina" sin que nadie
+       los volviera a mirar. Una causa inventada con cara de dato, que es lo
+       que este proyecto tiene prohibido por escrito.
+       Para poder decir la verdad hace falta el dato, y el dato no existía. */
+    porDestino:fields.porDestino || "",
     agregadoEn:at,
     actualizadoEn:at
   };
@@ -1478,6 +1487,9 @@ function mergeLists(previous, fresh) {
       empacadoEn:p.empacadoEn || null,
       // PRECEDENCIA: nunca se pisa el origen con una capa de mayor precedencia
       origen:lowestOrigin(p.origen, f.origen),
+      // La etiqueta de destino es del ítem, no de la generación: si el que
+      // sobrevive es el viejo, sobrevive con su verdad.
+      porDestino:f.porDestino || p.porDestino || "",
       nota:p.nota || "",
       cantidad:p.cantidadEditada ? p.cantidad : f.cantidad,
       cantidadEditada:!!p.cantidadEditada,
@@ -1624,6 +1636,18 @@ function hoursBetween(a, b) {
       `pistas`   toda dirección — no desplaza al escrito, pero se manda igual.
       `hayVuelos` si hay vuelos cargados, aunque estén sin destino.
       `deReservas` si el destino sale de un vuelo y no del campo escrito. */
+/* Cómo se llama, para la persona, el destino con el que se generó un ítem.
+   Sale de lo MISMO que vio el modelo: los vuelos si los hay, y si no el
+   campo que la persona escribió. No se inventa ni se adivina; si no hay
+   nada, queda vacío y el chip cae al texto genérico. */
+function destinoQueRazono(list) {
+  var d = (list && list.base && list.base.destinos) || null;
+  if (d && d.deReservas && d.lugares && d.lugares.length) {
+    return d.lugares.map(function (l) { return l.lugar; }).join(" · ");
+  }
+  return String((list && list.base && list.base.destino) || "").trim();
+}
+
 function destinosDelViaje(trip, items) {
   trip = trip || {}; items = (items || []).filter(Boolean);
   var lugares = [];
@@ -2151,6 +2175,7 @@ function parseDestinationItems(raw, list) {
          miente — por eso van juntos y en el mismo orden. */
       var campos = { clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad,
                      motivo:motivo, origen:ORIGEN.DESTINO, regla:"destino",
+                     porDestino:destinoQueRazono(list),
                      orden:orderOf(categoria, 800 + items.length) };
       var peso = pesoGuardadoDeItem(campos);
       if (peso > libres) return;
@@ -2546,6 +2571,81 @@ function explainNewItem(it, ctx) {
  * @param {string}  [input.now]
  * @returns {{desactualizada:boolean, nuevos:Array, motivo:string, listaPropuesta:Object|null}}
  */
+/* ============================================================
+   VAL-75 · QUÉ SIGNIFICA "YA NO CORRESPONDE"
+
+   Un ítem de regla se juzga solo: si la regla dejó de aplicar, el recálculo
+   no lo vuelve a poner y con eso alcanza. Un ítem de la capa de destino, no.
+   El recálculo base no lo puede volver a poner —no hay ninguna regla que lo
+   genere— y el modelo puede no repetirlo por motivos que no tienen nada que
+   ver con el viaje: no estaba disponible, falló, o esta vez contestó otra
+   cosa. Que el modelo no lo nombre NO es evidencia de que sobre.
+
+   Lo que sí es evidencia está en el ítem: `porDestino` guarda el destino con
+   el que lo razonaron. Si ese destino ya no es el del viaje, el ítem está
+   viejo. Si sigue siendo el mismo, se queda, conteste lo que conteste el
+   modelo. Sin esta distinción, abrir la valija dos veces seguidas sin
+   conexión propondría sacar todo lo que la capa de destino había puesto —
+   que es el peor resultado posible, y el que el control del arnés cuida.
+   ============================================================ */
+
+/** @param {string} razonadoSiNoDice  con qué comparar un ítem viejo que no
+      guarda `porDestino`: las listas generadas antes de VAL-75 no lo tienen,
+      y la del PM es una de ésas. No se adivina — se lee de la propia lista
+      guardada, que en `base.destino` tiene el destino con el que se generó,
+      que es el mismo con el que corrió la capa de destino sobre ella.
+    @returns {boolean} si al ítem lo razonaron para un destino que ya no es éste. */
+function destinoVencido(item, destinoActual, razonadoSiNoDice) {
+  if (!item || item.origen !== ORIGEN.DESTINO) return false;
+  var razonado = String(item.porDestino == null ? "" : item.porDestino).trim() ||
+                 String(razonadoSiNoDice == null ? "" : razonadoSiNoDice).trim();
+  if (!razonado) return false;                                   // no sabemos con qué se razonó
+  if (!String(destinoActual == null ? "" : destinoActual).trim()) return false;  // ni contra qué compararlo
+  return norm(razonado) !== norm(destinoActual);
+}
+
+/** Devuelve a la lista propuesta los ítems de la capa de destino que siguen
+    vigentes y que esta pasada no volvió a generar. Corre ANTES de contar lo
+    que se saca, para que la lista propuesta y `sacados` no puedan decir dos
+    cosas distintas sobre el mismo ítem.
+    @returns {Object} la lista propuesta, con lo retenido adentro */
+function retenerDestinoVigente(previa, propuesta) {
+  var destinoActual = destinoQueRazono(propuesta);
+  var razonadoSiNoDice = destinoQueRazono(previa);
+  var hay = {};
+  itemsArray(propuesta).forEach(function (i) { if (i && i.clave) hay[canonicalKey(i.clave)] = true; });
+
+  var items = Object.assign({}, propuesta.items), cambio = false;
+  itemsArray(previa).forEach(function (p) {
+    if (!p || !p.clave || p.origen !== ORIGEN.DESTINO) return;
+    if (hay[canonicalKey(p.clave)]) return;
+    if (destinoVencido(p, destinoActual, razonadoSiNoDice)) return;
+    items[p.clave] = Object.assign({}, p, { retenido:true });
+    hay[canonicalKey(p.clave)] = true;
+    cambio = true;
+  });
+  if (!cambio) return propuesta;
+  var out = Object.assign({}, propuesta, { items:items });
+  out.conteo = packingProgress(out);
+  return out;
+}
+
+/** Lo que estaba en la lista guardada y no está en la propuesta.
+    Una sola definición, y lee la lista propuesta en vez de recalcular por su
+    cuenta: la propuesta es la verdad, y esto la cuenta. */
+function loQueSeSaca(previa, propuesta) {
+  var quedan = {};
+  itemsArray(propuesta).forEach(function (i) { if (i && i.clave) quedan[canonicalKey(i.clave)] = true; });
+  var sacados = [];
+  itemsArray(previa).forEach(function (p) {
+    if (!p || !p.clave) return;
+    if (quedan[canonicalKey(p.clave)]) return;
+    sacados.push({ clave:p.clave, nombre:p.nombre, categoria:p.categoria,
+                   motivo:p.motivo, origen:p.origen, porDestino:p.porDestino || "" });
+  });
+  return sacados;
+}
+
 function planListUpdate(input) {
   input = input || {};
   var list = input.list;
@@ -2575,17 +2675,47 @@ function planListUpdate(input) {
     });
   });
 
-  var desactualizada = nuevos.length > 0;
-  var listaPropuesta = Object.assign({}, merged, { items:itemsConFlag });
+  /* LO QUE SE SACA CUENTA TANTO COMO LO QUE SE AGREGA (VAL-75).
+
+     `desactualizada` miraba sólo `nuevos.length`, y el PM reportó el caso que
+     eso deja afuera: cambió un viaje de Noruega a Argentina y los ítems
+     razonados para Noruega se quedaron. Reproducido: el motor ya arma bien la
+     lista limpia —`mergeLists` deja pasar sólo lo manual y lo que la persona
+     marcó— pero si el recálculo no encontraba NADA para agregar, la app decía
+     "La lista sigue al día con lo que cargaste" y no guardaba nada. Tres
+     ítems de un destino que ya no existe, y la app afirmando que está al día.
+
+     Una lista a la que hay que sacarle cosas está igual de vieja que una a la
+     que hay que agregarle.
+
+     El orden importa: primero se arma la lista propuesta ENTERA —retención
+     incluida— y recién después se cuenta lo que falta. Al revés, contar por
+     un lado y armar por otro fue exactamente cómo se pudo afirmar "no se saca
+     nada" sobre una lista a la que le faltaban tres ítems. */
+  var listaPropuesta = retenerDestinoVigente(list, Object.assign({}, merged, { items:itemsConFlag }));
+  var sacados = loQueSeSaca(list, listaPropuesta);
+  var desactualizada = nuevos.length > 0 || sacados.length > 0;
 
   return {
     desactualizada:desactualizada,
     nuevos:nuevos,
-    motivo:desactualizada
-      ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
-      : "La lista sigue al día con lo que cargaste.",
+    sacados:sacados,
+    motivo:motivoDelPlan(nuevos.length, sacados.length),
     listaPropuesta:listaPropuesta
   };
+}
+
+/* El texto del aviso, que ahora tiene que cubrir cuatro casos y no dos.
+   Se escribe una vez acá para que la versión con IA y la de sólo reglas no
+   puedan decir cosas distintas: esa duplicación ya fue un defecto en esta
+   misma función. */
+function motivoDelPlan(cuantosNuevos, cuantosSacados) {
+  var frases = [];
+  if (cuantosNuevos) frases.push(cuantosNuevos === 1 ? "sumo 1 ítem" : "sumo " + cuantosNuevos + " ítems");
+  if (cuantosSacados) frases.push(cuantosSacados === 1 ? "saco 1 que ya no corresponde"
+                                                       : "saco " + cuantosSacados + " que ya no corresponden");
+  if (!frases.length) return "La lista sigue al día con lo que cargaste.";
+  return "El viaje cambió: " + frases.join(" y ") + ".";
 }
 
 /**
@@ -2616,14 +2746,19 @@ function planListUpdateAsync(input) {
     });
 
     var nuevos = base.nuevos.concat(nuevosIA);
-    var desactualizada = nuevos.length > 0;
+    /* `sacados` se vuelve a contar contra la lista FINAL, no se hereda de
+       `base`: entre una y otra corrió la capa de destino, y un ítem que el
+       modelo volvió a proponer no se sacó de ningún lado. Contar dos veces
+       sale más barato que dos verdades distintas sobre la misma lista. */
+    var propuesta = Object.assign({}, enriched, { items:itemsConFlag });
+    var sacados = loQueSeSaca(input.list, propuesta);
+    var desactualizada = nuevos.length > 0 || sacados.length > 0;
     return {
       desactualizada:desactualizada,
       nuevos:nuevos,
-      motivo:desactualizada
-        ? (nuevos.length === 1 ? "Hay 1 ítem nuevo por lo que cargaste." : "Hay " + nuevos.length + " ítems nuevos por lo que cargaste.")
-        : "La lista sigue al día con lo que cargaste.",
-      listaPropuesta:Object.assign({}, enriched, { items:itemsConFlag })
+      sacados:sacados,
+      motivo:motivoDelPlan(nuevos.length, sacados.length),
+      listaPropuesta:propuesta
     };
   });
 }
