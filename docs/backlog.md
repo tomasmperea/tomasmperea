@@ -799,6 +799,22 @@ disponible o falla, el recálculo base no puede regenerar sus ítems. Hasta ahor
 lista propuesta. Ahora se retienen —comparando `porDestino` contra el destino del viaje— y el silencio del
 modelo dejó de contar como evidencia de que un ítem sobra.
 
+**EL BLOQUEANTE QUE ENCONTRÓ LA AUDITORÍA, porque es el caso vecino que no me pregunté.** La primera
+versión decidía si un ítem estaba vencido comparando dos textos. Pero la app nombra el destino de dos
+maneras distintas: el campo que escribiste cuando no hay vuelos (*"Noruega"*), y códigos IATA en cuanto
+aparece uno (*"OSL"*). Así que **cargar un vuelo** —el gesto más común de la app— cambiaba el nombre sin
+cambiar el destino, y la lista proponía sacar ítems válidos diciendo "ya no corresponde". Reproducido en las
+dos direcciones: cargando el vuelo y borrándolo.
+
+Traducir OSL a Noruega es VAL-66 y no existe todavía, así que la regla no adivina: **no compara lo que no es
+comparable.** El ítem guarda también de dónde salió ese destino (`porDestinoFuente`: de las reservas o del
+campo escrito), y si la fuente cambió no hay conclusión posible y el ítem se queda. Retener de más es una
+lista un poco vieja; sacar de más es la app tirando algo que necesitás.
+
+El arnés no lo veía porque todos sus casos cambiaban el destino de verdad o no lo cambiaban nada. Ninguno
+cambiaba **sólo cómo se lo nombra**. Ahora están los tres: cargar el vuelo, borrarlo, y el control de que
+cambiar el vuelo a otra ciudad **sí** saca.
+
 **Historia aparte, que el PM pidió separar:** avisarle cuando un ítem que YA empacó probablemente no sirva
 para el viaje nuevo. Es informar, no sacar. No entra acá.
 

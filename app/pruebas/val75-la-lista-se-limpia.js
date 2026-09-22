@@ -156,6 +156,51 @@ const sinNada = async () => ({ items:[], quitar:[] });
   ok((igual.sacados || []).length === 0, "y no se saca nada");
   ok(/sigue al día/.test(igual.motivo), "y ahí SÍ dice que la lista sigue al día");
 
+  /* ---- EL CASO VECINO, QUE ES EL QUE ME FALTÓ ---- */
+  console.log("\n· EL CASO VECINO · cambió el NOMBRE del destino, no el destino");
+  /* Lo encontró la auditoría del 22/09 y es un defecto de producto, no de
+     arnés. `destinoQueRazono` devuelve el campo escrito cuando no hay vuelos
+     ("Noruega") y códigos IATA en cuanto aparece uno ("OSL"). La primera
+     versión comparaba los dos como si fueran lo mismo, así que CARGAR UN
+     VUELO —el gesto más común de la app— proponía sacar ítems válidos
+     diciendo "ya no corresponde".
+
+     Las pruebas de arriba no lo veían porque todas cambian el destino de
+     verdad o no lo cambian nada. Ninguna cambiaba sólo cómo se lo nombra. */
+  const VUELO = { id:"r1", type:"flight", title:"EZE → OSL", from:"EZE", to:"OSL",
+                  start:"2026-09-14T22:00", end:"2026-09-15T18:00" };
+
+  const alCargarVuelo = await pe.planListUpdateAsync({
+    list:noruega, trip:NORUEGA, items:[VUELO], tipoViaje:"montana", ask:sinNada });
+  const sacaIA = (alCargarVuelo.sacados || []).filter(x => x.origen === "destino").map(x => x.nombre);
+  info("al cargar el vuelo saca de la capa de destino: " + JSON.stringify(sacaIA));
+  ok(sacaIA.length === 0,
+     "cargar un vuelo a Noruega NO propone sacar lo que se razonó para Noruega");
+  ok(pe.itemsArray(alCargarVuelo.listaPropuesta).filter(x => x.origen === "destino").length === 3,
+     "y los tres siguen en la lista propuesta");
+
+  console.log("\n· y al revés: la lista se generó CON el vuelo y después se borra la reserva");
+  let conVuelo = pe.buildPackingList({ trip:NORUEGA, items:[VUELO], tipoViaje:"montana" });
+  conVuelo = await pe.enrichWithDestination(conVuelo, deNoruega, {});
+  const iaVuelo = pe.itemsArray(conVuelo).filter(x => x.origen === "destino");
+  info("porDestino cuando hay vuelo: " + JSON.stringify(iaVuelo.map(x => x.porDestino)));
+  ok(iaVuelo.every(x => x.porDestinoFuente === "reservas"),
+     "el ítem guarda que ese destino salió de las reservas, no del campo escrito");
+  const alBorrarVuelo = await pe.planListUpdateAsync({
+    list:conVuelo, trip:NORUEGA, items:[], tipoViaje:"montana", ask:sinNada });
+  const sacaIA2 = (alBorrarVuelo.sacados || []).filter(x => x.origen === "destino").map(x => x.nombre);
+  info("al borrar el vuelo saca de la capa de destino: " + JSON.stringify(sacaIA2));
+  ok(sacaIA2.length === 0, "borrar el vuelo tampoco propone sacar lo que se razonó con él");
+
+  console.log("\n· el control: con vuelo en las DOS puntas, un destino distinto SÍ se saca");
+  /* Sin esto, «no comparar fuentes distintas» podría estar tapando todo. */
+  const OTRO = Object.assign({}, VUELO, { title:"EZE → MAD", to:"MAD" });
+  const alCambiarVuelo = await pe.planListUpdateAsync({
+    list:conVuelo, trip:NORUEGA, items:[OTRO], tipoViaje:"montana", ask:sinNada });
+  const sacaIA3 = (alCambiarVuelo.sacados || []).filter(x => x.origen === "destino").map(x => x.nombre);
+  info("al cambiar el vuelo de OSL a MAD saca: " + JSON.stringify(sacaIA3));
+  ok(sacaIA3.length === 3, "cambiar el vuelo a otra ciudad sí saca lo que era de la anterior");
+
   /* ---- LA LISTA QUE EL PM YA TIENE EN EL TELÉFONO ---- */
   console.log("\n· LA LISTA VIEJA · la del PM no tiene `porDestino`, porque es de antes");
   /* El fixture se escribe como la app ESCRIBÍA, no como escribe hoy: `porDestino`

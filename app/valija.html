@@ -2677,6 +2677,7 @@ function makeItem(fields, at) {
        que este proyecto tiene prohibido por escrito.
        Para poder decir la verdad hace falta el dato, y el dato no existía. */
     porDestino:fields.porDestino || "",
+    porDestinoFuente:fields.porDestinoFuente || "",
     agregadoEn:at,
     actualizadoEn:at
   };
@@ -2878,6 +2879,7 @@ function mergeLists(previous, fresh) {
       // La etiqueta de destino es del ítem, no de la generación: si el que
       // sobrevive es el viejo, sobrevive con su verdad.
       porDestino:f.porDestino || p.porDestino || "",
+      porDestinoFuente:f.porDestinoFuente || p.porDestinoFuente || "",
       nota:p.nota || "",
       cantidad:p.cantidadEditada ? p.cantidad : f.cantidad,
       cantidadEditada:!!p.cantidadEditada,
@@ -3031,9 +3033,9 @@ function hoursBetween(a, b) {
 function destinoQueRazono(list) {
   var d = (list && list.base && list.base.destinos) || null;
   if (d && d.deReservas && d.lugares && d.lugares.length) {
-    return d.lugares.map(function (l) { return l.lugar; }).join(" · ");
+    return { texto:d.lugares.map(function (l) { return l.lugar; }).join(" · "), fuente:"reservas" };
   }
-  return String((list && list.base && list.base.destino) || "").trim();
+  return { texto:String((list && list.base && list.base.destino) || "").trim(), fuente:"escrito" };
 }
 
 function destinosDelViaje(trip, items) {
@@ -3520,6 +3522,10 @@ function parseDestinationItems(raw, list) {
   /* El techo real, en bytes y no en cantidad: se van sumando los ítems y se
      corta cuando el próximo no entra. Ver `pesoGuardadoDeItem`. */
   var libres = bytesLibresDeLista(list);
+  /* Una sola evaluación para los dos campos: si se llamara una vez por cada
+     uno, podrían llegar a no coincidir, y es justo el par que después decide
+     si un ítem está vencido. */
+  var razonadoCon = destinoQueRazono(list);
 
   var haveOriginal = indexItems(itemsArray(list));
   var haveCanonOriginal = {};
@@ -3563,7 +3569,8 @@ function parseDestinationItems(raw, list) {
          miente — por eso van juntos y en el mismo orden. */
       var campos = { clave:clave, nombre:nombre, categoria:categoria, cantidad:cantidad,
                      motivo:motivo, origen:ORIGEN.DESTINO, regla:"destino",
-                     porDestino:destinoQueRazono(list),
+                     porDestino:razonadoCon.texto,
+                     porDestinoFuente:razonadoCon.fuente,
                      orden:orderOf(categoria, 800 + items.length) };
       var peso = pesoGuardadoDeItem(campos);
       if (peso > libres) return;
@@ -3983,13 +3990,34 @@ function explainNewItem(it, ctx) {
       guardada, que en `base.destino` tiene el destino con el que se generó,
       que es el mismo con el que corrió la capa de destino sobre ella.
     @returns {boolean} si al ítem lo razonaron para un destino que ya no es éste. */
-function destinoVencido(item, destinoActual, razonadoSiNoDice) {
+function destinoVencido(item, actual, siNoDice) {
   if (!item || item.origen !== ORIGEN.DESTINO) return false;
-  var razonado = String(item.porDestino == null ? "" : item.porDestino).trim() ||
-                 String(razonadoSiNoDice == null ? "" : razonadoSiNoDice).trim();
+  actual = actual || {}; siNoDice = siNoDice || {};
+
+  var razonado = String(item.porDestino == null ? "" : item.porDestino).trim();
+  var fuente   = String(item.porDestinoFuente == null ? "" : item.porDestinoFuente).trim();
+  if (!razonado) { razonado = String(siNoDice.texto || "").trim(); fuente = String(siNoDice.fuente || "").trim(); }
+
   if (!razonado) return false;                                   // no sabemos con qué se razonó
-  if (!String(destinoActual == null ? "" : destinoActual).trim()) return false;  // ni contra qué compararlo
-  return norm(razonado) !== norm(destinoActual);
+  if (!String(actual.texto || "").trim()) return false;          // ni contra qué compararlo
+
+  /* LA PRIMERA VERSIÓN DE ESTO COMPARABA DOS NOMBRES DISTINTOS DE LA MISMA COSA.
+
+     `destinoQueRazono` devuelve el campo escrito a mano cuando no hay vuelos
+     ("Noruega") y códigos IATA en cuanto aparece uno ("OSL"). Así que cargar
+     un vuelo —el gesto más común de la app— cambiaba la representación sin
+     que cambiara el destino, y la lista proponía sacar ítems perfectamente
+     válidos diciendo "ya no corresponde". Lo encontró la auditoría y se
+     reprodujo en las dos direcciones: cargando el vuelo y borrándolo.
+
+     No se puede traducir OSL a Noruega desde acá —eso es VAL-66—, así que la
+     regla no es adivinar: es no comparar lo que no es comparable. Si la
+     fuente del destino cambió, no hay conclusión posible y el ítem se queda.
+     Retener de más es una lista un poco vieja; sacar de más es la app
+     tirando algo que la persona necesita. */
+  if (fuente !== String(actual.fuente || "")) return false;
+
+  return norm(razonado) !== norm(actual.texto);
 }
 
 /** Devuelve a la lista propuesta los ítems de la capa de destino que siguen
@@ -3998,8 +4026,8 @@ function destinoVencido(item, destinoActual, razonadoSiNoDice) {
     cosas distintas sobre el mismo ítem.
     @returns {Object} la lista propuesta, con lo retenido adentro */
 function retenerDestinoVigente(previa, propuesta) {
-  var destinoActual = destinoQueRazono(propuesta);
-  var razonadoSiNoDice = destinoQueRazono(previa);
+  var actual = destinoQueRazono(propuesta);
+  var siNoDice = destinoQueRazono(previa);
   var hay = {};
   itemsArray(propuesta).forEach(function (i) { if (i && i.clave) hay[canonicalKey(i.clave)] = true; });
 
@@ -4007,7 +4035,7 @@ function retenerDestinoVigente(previa, propuesta) {
   itemsArray(previa).forEach(function (p) {
     if (!p || !p.clave || p.origen !== ORIGEN.DESTINO) return;
     if (hay[canonicalKey(p.clave)]) return;
-    if (destinoVencido(p, destinoActual, razonadoSiNoDice)) return;
+    if (destinoVencido(p, actual, siNoDice)) return;
     items[p.clave] = Object.assign({}, p, { retenido:true });
     hay[canonicalKey(p.clave)] = true;
     cambio = true;
@@ -7802,6 +7830,15 @@ function planCuentas(plan){
   const saca = ((plan && plan.sacados) || []).length;
   return { suma, saca, total: suma + saca };
 }
+/** Qué dice el botón que abre la hoja. "Ver qué agrego" sobre un plan que
+    sólo saca es falso, y es de lo que el PM lee para decidir si lo toca. */
+function planVerQue(plan){
+  const {suma, saca} = planCuentas(plan);
+  if(saca && !suma) return "Ver qué saco";
+  if(saca)          return "Ver qué cambio";
+  return "Ver qué agrego";
+}
+
 /** El texto del botón y de los contadores: cubre los tres casos. */
 function planVerbo(plan){
   const {suma, saca} = planCuentas(plan);
@@ -7858,7 +7895,7 @@ function planAvisoTexto(plan){
   const r = planReserva(plan);
   if(suma && r && !saca) return `Agregaste <b>${esc(r)}</b>. Tengo ${cosas(suma)} para sumarle a la valija.`;
   if(suma && !saca)      return `El viaje cambió y la lista quedó vieja. Tengo ${cosas(suma)} para sumarle.`;
-  if(saca && !suma)      return `El viaje cambió: ${cosas(saca)} de la lista ya no corresponden al destino nuevo.`;
+  if(saca && !suma)      return `El viaje cambió: ${cosas(saca)} de la lista ya no corresponden.`;
   return `El viaje cambió: tengo ${cosas(suma)} para sumarle y ${cosas(saca)} que ya no corresponden.`;
 }
 
@@ -8645,7 +8682,7 @@ function packingNotice(trip, list, plan){
     }
     return `<div class="notice">${svg(I.spark)}<span class="bd">${planAvisoTexto(plan)}
       <span class="acts">
-        <button class="act" data-pk="verplan">Ver qué agrego</button>
+        <button class="act" data-pk="verplan">${planVerQue(plan)}</button>
         <button class="act sec" data-pk="ahorano">Ahora no</button>
       </span></span></div>`;
   }
@@ -8713,7 +8750,7 @@ function pkRenderDock(trip, plan){
   $pkdock.dataset.firma = firma;
   $pkdock.innerHTML = plan ? `<div class="pk-dock"><div class="notice">${svg(I.spark)}<span class="bd">${planAvisoTexto(plan)}
     <span class="acts">
-      <button class="act" data-pk="verplan">Ver qué agrego</button>
+      <button class="act" data-pk="verplan">${planVerQue(plan)}</button>
       <button class="act sec" data-pk="ahorano">Ahora no</button>
     </span></span></div></div>` : "";
 }

@@ -636,7 +636,12 @@ async function armarLista(page){
     // RECARGA de verdad: App.plan se pierde
     await page.reload();
     await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready, null, { timeout: 15000 });
-    await page.waitForTimeout(200);
+    /* `Store.ready` no garantiza que la LISTA ya esté hidratada, y acá hace
+       falta: `recalcularPlanAlEntrar` sale por su primera guarda si no hay
+       lista, y las tres aserciones de abajo caen juntas con `hayLista:false`.
+       Con 200 ms fijos falló 1 de cada 10 corridas. Se espera la condición
+       que la prueba necesita, no un número. */
+    await page.waitForFunction(() => !!Store.packingOf('t1'), null, { timeout: 10000 });
     assert(await page.evaluate(() => App.plan) === null, 'después de recargar la memoria está vacía');
 
     // GESTO: entrar a la valija
