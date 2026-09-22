@@ -1,0 +1,1129 @@
+<!doctype html><meta charset="utf8">
+<title>Tipo de viaje — muestrario (VAL-76 · VAL-77)</title>
+<!--
+  ============================================================
+  EL TIPO DE VIAJE — VAL-76 y VAL-77
+  Entrega de DISEÑO. No es la app: es el muestrario.
+  Nada de esto está integrado a app/valija.html todavía.
+
+  VAL-76 · el tipo se cambia desde donde se VE el tipo, no desde
+           el ícono de ayuda.
+  VAL-77 · "mixto" deja de ser un tipo suelto y pasa a ser una
+           combinación explícita de dos.
+
+  · Bloque A: tokens y clases copiados tal cual de app/valija.html.
+  · Bloque C: CSS NUEVO de esta entrega — lo único que hay que copiar.
+  · Bloque D: andamiaje del muestrario. NO se copia a la app.
+  Ningún color literal. Ningún token nuevo.
+  ============================================================
+-->
+<style>
+/* ===================== BLOQUE A — la app tal cual ===================== */
+
+/* ============================================================
+   VALIJA — tokens
+   Light es la base. Dark redefine SOLO tokens, dos veces:
+   preferencia del sistema y elección explícita.
+   ============================================================ */
+:root{
+  --ink:#0F1B2E;
+  --ink-2:#54637C;
+  --ink-3:#8695AB;
+  --ground:#EDF0F5;
+  --surface:#FFFFFF;
+  --surface-2:#F5F7FB;
+  --line:#D7DEE9;
+  --line-2:#E7ECF3;
+  --accent:#0B45C4;
+  --accent-soft:#E4EBFC;
+  --accent-ink:#FFFFFF;
+  --flap:#E8A317;
+  --flap-soft:#FBF0D8;
+  --ok:#0B7A5C;
+  --ok-soft:#DDF1EA;
+  --warn:#A96400;
+  --warn-soft:#FBEEDA;
+  --crit:#BE3227;
+  --crit-soft:#FBE4E1;
+  --shadow:0 1px 2px rgba(15,27,46,.06), 0 8px 24px -12px rgba(15,27,46,.18);
+  --shadow-lift:0 2px 4px rgba(15,27,46,.08), 0 18px 40px -18px rgba(15,27,46,.30);
+
+  --f-display:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+
+  --r-s:8px; --r-m:14px; --r-l:20px;
+  --shell:460px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ink:#E9EEF7;
+    --ink-2:#9FAFC6;
+    --ink-3:#6F7F97;
+    --ground:#080D17;
+    --surface:#121B2B;
+    --surface-2:#182234;
+    --line:#26334A;
+    --line-2:#1E2A3E;
+    --accent:#6E9BFF;
+    --accent-soft:#1A2748;
+    --accent-ink:#08122A;
+    --flap:#FFC24D;
+    --flap-soft:#2E2413;
+    --ok:#4FCFA5;
+    --ok-soft:#102E26;
+    --warn:#E9A93C;
+    --warn-soft:#2E2413;
+    --crit:#FF8A7A;
+    --crit-soft:#331A18;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E9EEF7; --ink-2:#9FAFC6; --ink-3:#6F7F97;
+  --ground:#080D17; --surface:#121B2B; --surface-2:#182234;
+  --line:#26334A; --line-2:#1E2A3E;
+  --accent:#6E9BFF; --accent-soft:#1A2748; --accent-ink:#08122A;
+  --flap:#FFC24D; --flap-soft:#2E2413;
+  --ok:#4FCFA5; --ok-soft:#102E26;
+  --warn:#E9A93C; --warn-soft:#2E2413;
+  --crit:#FF8A7A; --crit-soft:#331A18;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--f-body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+/* ---------- shell ---------- */
+.shell{
+  max-width:var(--shell); margin:0 auto; min-height:100vh;
+  background:var(--ground); position:relative;
+  display:flex; flex-direction:column;
+}
+@media (min-width:520px){
+  .shell{border-left:1px solid var(--line);border-right:1px solid var(--line)}
+}
+
+/* ---------- header ---------- */
+.hdr{
+  position:sticky; top:0; z-index:40;
+  background:var(--surface); border-bottom:1px solid var(--line);
+  padding:14px 16px 12px;
+}
+.hdr-row{display:flex;align-items:center;gap:10px;min-height:34px}
+.brand{display:flex;align-items:baseline;gap:8px;flex:1;min-width:0}
+.brand h1{
+  font-family:var(--f-display); font-weight:800; font-size:26px;
+  letter-spacing:-.02em; margin:0; line-height:1;
+}
+.brand .tag{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); white-space:nowrap;
+}
+.hdr-sub{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.06em;
+  color:var(--ink-2); margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;
+  align-items:center;
+}
+.iconbtn{
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  cursor:pointer; flex:none; transition:background .15s,border-color .15s;
+}
+.iconbtn:hover{background:var(--surface-2);border-color:var(--ink-3)}
+.iconbtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- main ---------- */
+main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:14px}
+.eyebrow{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+
+/* ---------- baggage tag (trip card) ---------- */
+.tag-card{
+  display:flex; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r-m); overflow:hidden; box-shadow:var(--shadow);
+  cursor:pointer; text-align:left; width:100%; padding:0;
+  transition:transform .16s ease, box-shadow .16s ease;
+}
+.tag-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.tag-band{
+  width:36px; flex:none; position:relative;
+  background:var(--band); display:grid; place-items:center;
+}
+.tag-band::after{
+  content:""; position:absolute; inset:6px auto 6px 6px; width:0;
+  border-left:2px dotted rgba(255,255,255,.55);
+}
+.tag-band span{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.2em;
+  color:#fff; writing-mode:vertical-rl; text-orientation:mixed;
+  transform:rotate(180deg); text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+.tag-body{padding:13px 14px;flex:1;min-width:0;display:flex;flex-direction:column;gap:9px}
+.route{display:flex;align-items:center;gap:9px;font-family:var(--f-mono);font-weight:500}
+.route .code{font-size:19px;letter-spacing:.05em;color:var(--ink)}
+.route .dash{flex:1;height:1px;background:repeating-linear-gradient(to right,var(--line) 0 4px,transparent 4px 8px);min-width:16px}
+.route svg{width:15px;height:15px;color:var(--ink-3);flex:none;fill:currentColor;stroke:none}
+.trip-name{
+  display:block; font-family:var(--f-display); font-weight:700; font-size:17px;
+  letter-spacing:-.01em; line-height:1.2; margin:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.tag-meta{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.dates{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+
+/* completeness ring */
+.ring{width:34px;height:34px;flex:none;position:relative}
+.ring svg{width:34px;height:34px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:3.5}
+.ring .bg{stroke:var(--line-2)}
+.ring .fg{stroke:var(--ok);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.ring.warn .fg{stroke:var(--flap)}
+.ring.low .fg{stroke:var(--crit)}
+.ring b{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--f-mono);font-size:9.5px;font-weight:500;color:var(--ink-2);
+}
+
+/* ---------- chips & badges ---------- */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.05em;
+  padding:3px 7px; border-radius:6px; background:var(--surface-2);
+  color:var(--ink-2); border:1px solid var(--line-2); white-space:nowrap;
+}
+.chip.alert{background:var(--crit-soft);color:var(--crit);border-color:transparent;font-weight:500}
+.chip.soon{background:var(--flap-soft);color:var(--warn);border-color:transparent;font-weight:500}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.accent{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.chip.live{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:500}
+
+/* ---------- boarding pass (item card) ---------- */
+.pass{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r-m); box-shadow:var(--shadow); overflow:hidden;
+}
+.pass-main{display:flex;gap:12px;padding:13px 14px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;cursor:pointer}
+.pass-icon{
+  width:34px;height:34px;border-radius:9px;flex:none;display:grid;place-items:center;
+  background:var(--accent-soft);color:var(--accent);
+}
+.pass-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pass-icon.stay{background:var(--ok-soft);color:var(--ok)}
+.pass-icon.car{background:var(--flap-soft);color:var(--warn)}
+.pass-icon.act{background:var(--crit-soft);color:var(--crit)}
+.pass-icon.note{background:var(--surface-2);color:var(--ink-2)}
+.pass-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.pass-title{
+  font-family:var(--f-display);font-weight:700;font-size:15.5px;line-height:1.25;
+  letter-spacing:-.005em;margin:0;
+}
+.pass-when{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+.pass-time{
+  font-family:var(--f-mono);font-size:14px;font-weight:500;color:var(--ink);
+  flex:none;text-align:right;line-height:1.3;font-variant-numeric:tabular-nums;
+}
+.pass-time small{display:block;font-size:10px;color:var(--ink-3);font-weight:400}
+
+/* perforated stub */
+.pass-stub{
+  border-top:1.5px dashed var(--line); background:var(--surface-2);
+  padding:10px 14px; display:grid; grid-template-columns:repeat(auto-fit,minmax(88px,1fr));
+  gap:9px 12px; position:relative;
+}
+.pass-stub::before,.pass-stub::after{
+  content:"";position:absolute;top:-7px;width:13px;height:13px;border-radius:50%;
+  background:var(--ground);border:1px solid var(--line);
+}
+.pass-stub::before{left:-7px;clip-path:inset(0 0 0 50%)}
+.pass-stub::after{right:-7px;clip-path:inset(0 50% 0 0)}
+.field{display:flex;flex-direction:column;gap:2px;min-width:0}
+.field .k{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.field .v{
+  font-family:var(--f-mono);font-size:12.5px;color:var(--ink);
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow-wrap:anywhere;line-height:1.35;
+}
+.field .v.miss{color:var(--crit);font-style:italic}
+
+/* ---------- day group ---------- */
+.day{display:flex;flex-direction:column;gap:9px}
+.day-head{display:flex;align-items:center;gap:10px;padding-top:4px}
+.day-n{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;
+  background:var(--ink);color:var(--ground);padding:3px 7px;border-radius:5px;
+  text-transform:uppercase;flex:none;
+}
+.day-date{font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:-.01em}
+.day-rule{flex:1;height:1px;background:var(--line)}
+.day-nights{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3)}
+
+/* ---------- alerts ---------- */
+.alert-row{
+  display:flex;gap:11px;align-items:flex-start;padding:11px 13px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);
+  border-left:3px solid var(--sev);
+}
+.alert-row .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.alert-row .t{font-weight:600;font-size:14px;line-height:1.3}
+.alert-row .d{font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.alert-dot{width:8px;height:8px;border-radius:50%;background:var(--sev);flex:none;margin-top:6px}
+.alert-row .go{
+  border:0;background:var(--surface-2);color:var(--ink-2);border-radius:7px;
+  font-family:var(--f-mono);font-size:10.5px;padding:5px 8px;cursor:pointer;flex:none;
+  letter-spacing:.06em;
+}
+.alert-row .go:hover{background:var(--accent-soft);color:var(--accent)}
+
+/* ---------- buttons ---------- */
+.btn{
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  padding:11px 14px; border-radius:11px; font-weight:600; font-size:14px;
+  cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+  gap:8px; transition:background .15s,border-color .15s,transform .1s;
+}
+.btn:hover{background:var(--surface-2);border-color:var(--ink-3)}
+.btn:active{transform:scale(.985)}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
+.btn.danger{color:var(--crit);border-color:var(--crit-soft);background:var(--crit-soft)}
+.btn.block{width:100%}
+.btn.sm{padding:8px 11px;font-size:13px;border-radius:9px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-row{display:flex;gap:9px;flex-wrap:wrap}
+.btn-row>.btn{flex:1;min-width:130px}
+
+/* FAB */
+.fab{
+  position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  left:50%;transform:translateX(-50%);
+  z-index:45;display:flex;gap:9px;
+  max-width:var(--shell);width:calc(100% - 32px);
+}
+.fab .btn{box-shadow:var(--shadow-lift)}
+
+/* ---------- segmented ---------- */
+.seg{
+  display:flex;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:11px;padding:3px;gap:3px;
+}
+.seg button{
+  flex:1;border:0;background:transparent;color:var(--ink-2);padding:8px 6px;
+  border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:background .15s,color .15s;
+}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg .count{
+  font-family:var(--f-mono);font-size:10px;background:var(--crit);color:#fff;
+  border-radius:20px;padding:1px 5px;line-height:1.5;
+}
+.seg .count.zero{background:var(--ok)}
+
+/* ---------- empty ---------- */
+.empty{
+  text-align:center;padding:34px 20px;background:var(--surface);
+  border:1px dashed var(--line);border-radius:var(--r-l);
+  display:flex;flex-direction:column;gap:9px;align-items:center;
+}
+.empty .ico{font-size:30px;line-height:1}
+.empty h3{font-family:var(--f-display);font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em}
+.empty p{margin:0;color:var(--ink-2);font-size:13.5px;max-width:34ch;line-height:1.5}
+
+/* ---------- sheet (modal) ---------- */
+.scrim{
+  position:fixed;inset:0;background:rgba(15,27,46,.55);z-index:80;
+  display:flex;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(3px);animation:fade .18s ease;
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{
+  background:var(--surface);width:100%;max-width:var(--shell);
+  border-radius:var(--r-l) var(--r-l) 0 0; max-height:92vh;
+  display:flex;flex-direction:column;animation:rise .24s cubic-bezier(.2,.8,.3,1);
+  box-shadow:0 -10px 50px rgba(0,0,0,.28);
+}
+@keyframes rise{from{transform:translateY(26px);opacity:.4}to{transform:none;opacity:1}}
+.sheet-hd{
+  padding:14px 16px 11px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;flex:none;
+}
+.sheet-hd h2{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0;flex:1;letter-spacing:-.01em}
+.sheet-bd{padding:15px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:13px}
+.sheet-ft{padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);display:flex;gap:9px;flex:none}
+.sheet-ft .btn{flex:1}
+
+/* ---------- form ---------- */
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.f input,.f select,.f textarea{
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  padding:10px 11px;border-radius:9px;font-size:15px;width:100%;
+  transition:border-color .15s,background .15s;
+}
+.f input:focus,.f select:focus,.f textarea:focus{background:var(--surface);border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.f textarea{min-height:78px;resize:vertical;font-family:var(--f-body);line-height:1.5}
+.f .hint{font-size:11.5px;color:var(--ink-3);line-height:1.4}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.f input.mono,.f textarea.mono{font-family:var(--f-mono);font-size:14px}
+.req label::after{content:" ·";color:var(--crit)}
+
+/* type picker */
+.tp{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:7px}
+.tp button{
+  border:1px solid var(--line);background:var(--surface-2);border-radius:10px;
+  padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;
+  cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);
+  transition:all .14s;
+}
+.tp button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tp button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));left:50%;
+  transform:translateX(-50%);z-index:120;
+  background:var(--ink);color:var(--ground);padding:11px 16px;border-radius:11px;
+  font-size:13.5px;font-weight:500;box-shadow:var(--shadow-lift);
+  max-width:calc(var(--shell) - 40px);text-align:center;
+  animation:rise .2s ease;
+}
+.toast.err{background:var(--crit);color:#fff}
+/* El cartel que se puede tocar (VAL-63). Se distingue por el "Ver" y por el
+   cursor, no sólo por el color: un aviso que parece igual a los demás no se
+   toca nunca. */
+.toast.tocable{cursor:pointer;display:flex;align-items:center;gap:10px;justify-content:center}
+.toast.tocable .ver{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--ground);color:var(--ink);padding:3px 8px;border-radius:6px;flex:none}
+.toast.tocable:active{filter:brightness(1.15)}
+
+/* ---------- misc ---------- */
+.notice{
+  display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:10px;
+  background:var(--accent-soft);color:var(--accent);font-size:12.5px;line-height:1.45;
+}
+.notice.warn{background:var(--flap-soft);color:var(--warn)}
+.notice.ok{background:var(--ok-soft);color:var(--ok)}
+.notice .bd{flex:1;min-width:0}
+.notice .act{background:none;border:0;padding:0;margin-top:6px;color:inherit;font:inherit;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer;display:block}
+.notice .x{background:none;border:0;color:inherit;opacity:.7;cursor:pointer;padding:0;flex:none;line-height:1}
+.notice .x svg{margin:0}
+.notice svg{width:15px;height:15px;flex:none;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ============================================================
+   VALIJA INTELIGENTE — componentes nuevos (VAL-30..33)
+   Copiados del muestrario aprobado app/parts/packing-ui.html,
+   Bloque C. Sin tokens nuevos: todo sale de los de :root de arriba.
+   ============================================================ */
+.vj-entry{
+  display:flex;align-items:stretch;width:100%;text-align:left;padding:0;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);
+  box-shadow:var(--shadow);overflow:hidden;cursor:pointer;
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.vj-entry:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift)}
+.vj-entry .band{width:8px;flex:none;background:var(--ink-3)}
+.vj-entry.due .band{background:var(--flap)}
+.vj-entry.live .band{background:var(--accent)}
+.vj-entry.done .band{background:var(--ok)}
+.vj-entry .bd{flex:1;min-width:0;padding:12px 4px 12px 13px;display:flex;flex-direction:column;gap:6px}
+.vj-entry .t{display:flex;align-items:baseline;gap:8px;font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.005em;line-height:1.2}
+.vj-entry .s{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em}
+.vj-entry .go{flex:none;display:grid;place-items:center;padding:0 12px;color:var(--ink-3)}
+.vj-entry .go svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Progreso de empacado: DOS tramos (empacado + descartado). Los dos son
+   trabajo resuelto, así que los dos avanzan la barra. */
+.pk-prog{display:flex;align-items:center;gap:9px;width:100%}
+.pk-bar{flex:1;min-width:56px;height:6px;border-radius:99px;background:var(--line-2);overflow:hidden;display:flex}
+.pk-bar i{display:block;height:100%;transition:width .35s ease}
+.pk-bar i.p{background:var(--ok)}
+.pk-bar i.d{background:var(--ink-3);opacity:.5}
+.pk-prog .n{flex:none;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.pk-prog .n b{font-weight:500;color:var(--ink)}
+.pk-prog.full .n{color:var(--ok);font-weight:500}
+.pk-prog.full .n b{color:var(--ok)}
+
+.pk-cat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
+.pk-cat-hd{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:none;border:0;cursor:pointer;text-align:left}
+.pk-cat-hd:hover{background:var(--surface-2)}
+.pk-cat-ico{width:28px;height:28px;border-radius:8px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-2)}
+.pk-cat-ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-cat-hd .nm{flex:1;min-width:0;font-family:var(--f-display);font-weight:700;font-size:14.5px;letter-spacing:-.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pk-cat-hd .cnt{flex:none;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-cat-hd .chev{flex:none;width:16px;height:16px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
+.pk-cat[data-open="false"] .chev{transform:rotate(-90deg)}
+.pk-cat[data-open="false"] .pk-body-wrap{display:none}
+.pk-cat.full .pk-cat-ico{background:var(--ok-soft);color:var(--ok)}
+.pk-body-wrap{border-top:1px solid var(--line-2)}
+
+/* Fila de ítem: TRES estados, distintos por relleno/borde/glifo, no sólo color. */
+.pk-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line-2);position:relative;background:var(--surface)}
+.pk-row:last-child{border-bottom:0}
+.pk-row .pk-swipe{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
+  gap:7px;padding-right:16px;background:var(--surface-2);color:var(--ink-2);
+  font-size:12.5px;font-weight:600;
+}
+.pk-row .pk-swipe svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.pk-slide{display:flex;flex:1;min-width:0;position:relative;background:var(--surface);transition:transform .18s ease}
+
+.pk-mark{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;cursor:pointer;padding:0}
+.pk-state{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--ink-3);display:grid;place-items:center;color:transparent;background:transparent;transition:background .14s,border-color .14s,color .14s}
+.pk-state svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pk-mark:hover .pk-state{border-color:var(--ok)}
+
+.pk-txt{flex:1;min-width:0;background:none;border:0;text-align:left;cursor:pointer;padding:10px 4px 10px 0;display:flex;flex-direction:column;gap:3px}
+.pk-txt:hover .pk-nm .t{color:var(--accent)}
+.pk-nm{display:flex;align-items:baseline;gap:10px}
+.pk-nm .t{flex:1;min-width:0;font-size:14.5px;font-weight:600;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+.pk-nm .q{flex:none;font-family:var(--f-mono);font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-why{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.pk-why .r{font-size:11.5px;color:var(--ink-2);line-height:1.35}
+
+.pk-drop{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;padding:0}
+.pk-drop svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-drop:hover{background:var(--surface-2);color:var(--ink-2)}
+
+.pk-row[data-st="pack"] .pk-mark .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-row[data-st="pack"] .pk-nm .t{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1.5px}
+.pk-row[data-st="pack"] .pk-nm .q{color:var(--ink-3)}
+.pk-row[data-st="pack"] .pk-why{opacity:.5}
+
+.pk-row[data-st="drop"]{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-slide{background:var(--surface-2)}
+.pk-row[data-st="drop"] .pk-state{border-style:dashed;color:var(--ink-3);background:transparent}
+.pk-row[data-st="drop"] .pk-txt{padding-top:7px;padding-bottom:7px}
+.pk-row[data-st="drop"] .pk-nm .t{font-weight:500;font-size:13.5px;color:var(--ink-3)}
+.pk-row[data-st="drop"] .pk-nm .q{display:none}
+.pk-row[data-st="drop"] .pk-why{display:none}
+.pk-back{flex:none;align-self:center;margin-right:8px;background:none;border:0;color:var(--ink-3);cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.05em;padding:7px 8px;border-radius:6px;white-space:nowrap}
+.pk-back:hover{background:var(--accent-soft);color:var(--accent)}
+
+@keyframes pkin{from{background:var(--flap-soft)}to{background:var(--surface)}}
+.pk-row.fresh .pk-slide{animation:pkin 2.6s ease 1}
+
+.pk-row.loading{padding:12px 12px 12px 44px;flex-direction:column;gap:7px;align-items:flex-start}
+.pk-row.loading span{display:block;height:11px;border-radius:5px}
+
+.pk-add{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px 11px;background:none;border:0;border-top:1px solid var(--line-2);color:var(--ink-3);cursor:pointer;font-size:13px;font-weight:600;text-align:left}
+.pk-add svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-add:hover{background:var(--surface-2);color:var(--accent)}
+.pk-addform{display:flex;gap:8px;padding:10px 12px 11px;border-top:1px solid var(--line-2);background:var(--surface-2)}
+.pk-addform input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 11px;border-radius:9px;font-size:15px}
+.pk-addform input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+
+.pk-inputs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+
+.tp.tp3{grid-template-columns:repeat(3,1fr)}
+.tp button .n{font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;color:var(--ink-3);font-weight:400}
+.tp button[aria-pressed="true"] .n{color:var(--accent)}
+.tp button.used{border-color:var(--ink-3)}
+
+.pk-states{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pk-states button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-2);transition:all .14s}
+.pk-states button .pk-state{pointer-events:none}
+.pk-states button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pk-states button[aria-pressed="true"] .pk-state{border-color:currentColor;color:currentColor}
+.pk-states button[data-s="empacado"][aria-pressed="true"] .pk-state{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.pk-states button[data-s="descartado"] .pk-state{border-style:dashed}
+
+.pk-qty{display:flex;align-items:center;gap:14px;justify-content:center;padding:4px 0}
+.pk-qty button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.pk-qty button:hover{background:var(--surface);border-color:var(--ink-3)}
+.pk-qty button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.pk-qty .v{font-family:var(--f-mono);font-size:30px;font-weight:500;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+
+.chip.own{border-style:dashed;border-color:var(--ink-3);color:var(--ink-3)}
+
+/* ============================================================
+   LA VALIJA RAZONA SOBRE EL VIAJE — componentes nuevos
+   (VAL-44, VAL-45, VAL-46, VAL-43). Copiados del muestrario
+   aprobado app/parts/packing-ui-b.html, Bloque C (CB1 a CB7).
+   Sin tokens nuevos: todo sale de los de :root de arriba.
+   ============================================================ */
+
+/* --- CB1. Un aviso con dos acciones ---
+   El .notice ya soporta una acción (.act). Cuando el mismo aviso tiene
+   que ofrecer dos caminos (ver lo que agrego / no ahora), van en fila:
+   dos objetivos separados, nunca uno adentro del otro. */
+.notice .acts{display:flex;gap:16px;flex-wrap:wrap;margin-top:7px}
+.notice .acts .act{margin-top:0}
+.notice .acts .act.sec{font-weight:600;text-decoration:none;opacity:.85}
+.notice .acts .act.sec:hover{text-decoration:underline}
+.notice b.n{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* --- CB2. El aviso anclado al pie ---
+   Cuando el viaje cambia con la pantalla de la valija ABIERTA, el aviso
+   NO puede entrar arriba: correría la lista bajo el pulgar en medio del
+   tildado. Entra desde abajo, encima del FAB, sin mover un píxel de la
+   lista. Mismo contenido y mismas acciones que arriba. */
+.pk-dock{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);z-index:44;
+  width:calc(100% - 32px);max-width:var(--shell);
+  animation:pkdock .26s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes pkdock{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+.pk-dock .notice{box-shadow:var(--shadow-lift);border:1px solid var(--line)}
+
+/* --- CB3. La marca de "ítem nuevo" (nuevo:true) ---
+   Una barra ámbar de 3px al filo izquierdo de la fila, sin alto propio ni
+   layout propio: no empuja nada. Va acompañada de la palabra "nuevo" en
+   la línea de motivo, porque una marca que existe sólo en color no se lee
+   con baja visión al color ni con lector de pantalla.
+   Se limpia con clearNewFlags() cuando la persona las VIO, no cuando las
+   aceptó (ver docs/design/valija-inteligente-b.md, sección 4.3). */
+.pk-row.is-new .pk-slide{box-shadow:inset 3px 0 0 var(--flap)}
+.pk-newtag{font-family:var(--f-mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--warn);font-weight:500;white-space:nowrap}
+.pk-cat-hd .cnt .chip{margin-left:6px}
+
+/* --- CB4. La marca de "te propongo sacarlo" (sugerenciaQuitar) ---
+   La marca va SOBRE el botón que acepta la propuesta: el mismo círculo de
+   descartar que ya existe, teñido. No suma una fila, ni una línea, ni un
+   alto. El texto completo de la propuesta vive en la hoja. */
+.pk-drop{position:relative}
+.pk-drop.sug{color:var(--warn)}
+.pk-drop.sug::before{
+  content:"";position:absolute;top:50%;left:50%;width:30px;height:30px;
+  margin:-15px 0 0 -15px;border-radius:50%;background:var(--flap-soft);
+}
+.pk-drop.sug svg{position:relative}
+.pk-drop.sug:hover{background:none}
+.pk-drop.sug:hover::before{background:var(--flap);opacity:.35}
+
+/* --- CB5. Hoja "Lo que le sumo a la valija" (VAL-46) ---
+   Los ítems nuevos agrupados por la reserva que los motivó. El grupo es
+   la unidad de sentido: se entiende "esto pasó porque cargué el auto",
+   no una lista suelta de cosas. */
+.pk-plan{display:flex;flex-direction:column;gap:12px}
+.pk-plan-g{border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;background:var(--surface)}
+.pk-plan-hd{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;background:var(--surface-2);border-bottom:1px solid var(--line-2);font-size:12.5px;color:var(--ink-2);line-height:1.4}
+.pk-plan-hd b{color:var(--ink);font-weight:600}
+.pk-plan-hd svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-plan-it{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid var(--line-2)}
+.pk-plan-it:last-child{border-bottom:0}
+.pk-plan-it .ic{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-3)}
+.pk-plan-it .ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-plan-it .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pk-plan-it .nm{display:flex;align-items:baseline;gap:9px;font-size:14px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.pk-plan-it .nm .q{flex:none;font-family:var(--f-mono);font-size:12.5px;font-weight:400;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pk-plan-it .r{font-size:11.5px;color:var(--ink-2);line-height:1.4}
+
+/* --- CB6. Hoja "Lo que capaz no necesitás" (VAL-43) ---
+   Una tarjeta por propuesta, cada una con sus dos salidas del mismo peso
+   visual: sacarlo o dejarlo. Ninguna es la opción por defecto, porque la
+   app no sabe cuál es la correcta. Se resuelven de a una. */
+.pk-prop{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);overflow:hidden}
+.pk-prop-bd{padding:12px 12px 0}
+.pk-prop-bd .nm{font-size:14.5px;font-weight:600;line-height:1.3;margin-bottom:3px;overflow-wrap:anywhere}
+.pk-prop-bd .r{font-size:12.5px;color:var(--ink-2);line-height:1.45}
+.pk-prop-bd .was{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pk-prop-ft{display:flex;gap:8px;padding:11px 12px 12px}
+.pk-prop-ft .btn{flex:1}
+.pk-prop.done{background:var(--surface-2);border-style:dashed}
+.pk-prop.done .pk-prop-bd{padding:11px 12px}
+.pk-prop.done .pk-prop-bd .nm{font-size:13.5px;font-weight:500;color:var(--ink-3);margin:0}
+.pk-prop.done .pk-prop-bd .r{font-family:var(--f-mono);font-size:11px;letter-spacing:.05em;color:var(--ink-3);margin-top:3px}
+
+/* --- CB7. La propuesta de sacar, dentro de la hoja del ítem (estado 11) ---
+   Mismo contenido que la tarjeta de la hoja de propuestas, para quien
+   llega por la fila en vez de por el aviso. Va arriba de todo: es lo
+   nuevo que hay que decidir sobre ese ítem. */
+.pk-sug{border-radius:12px;background:var(--flap-soft);color:var(--warn);padding:11px 12px;display:flex;flex-direction:column;gap:9px}
+.pk-sug .hd{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45}
+.pk-sug .hd svg{width:15px;height:15px;flex:none;margin-top:2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pk-sug .hd b{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:500;margin-bottom:3px}
+.pk-sug .ft{display:flex;gap:8px}
+.pk-sug .ft .btn{flex:1}
+
+.spin{
+  width:15px;height:15px;border:2px solid currentColor;border-top-color:transparent;
+  border-radius:50%;animation:sp .7s linear infinite;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.sk{background:linear-gradient(90deg,var(--surface-2) 25%,var(--line-2) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:shim 1.3s infinite;border-radius:var(--r-m);height:88px}
+@keyframes shim{to{background-position:-200% 0}}
+.hr{height:1px;background:var(--line);border:0;margin:2px 0}
+.stack{display:flex;flex-direction:column;gap:10px}
+.mono{font-family:var(--f-mono)}
+.muted{color:var(--ink-2)}
+.tiny{font-size:11.5px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ============================================================
+   IMPORTAR DOCUMENTOS — componentes nuevos (VAL-40, VAL-41, VAL-42)
+   Copiados de app/parts/import-ui.html, Bloque C (C1 a C7), sin
+   tokens nuevos: todo sale de los mismos :root de arriba.
+   ============================================================ */
+/* C1. Chip con glifo chico: identifica de qué archivo salió un dato. */
+.chip.src{display:inline-flex;align-items:center;gap:4px}
+.chip.src svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* C2. Botón de origen del archivo. Es un <button> de verdad, y el toque
+   dispara input.click() en el mismo gesto.
+
+   Antes el campo de archivo iba invisible ENCIMA del botón para que el toque
+   cayera sobre el campo. Eso obliga al navegador a acertarle a algo que no se
+   ve, adentro de una hoja modal fija, y en el teléfono no funciona: el botón
+   queda muerto. Llamar a .click() desde el gesto no depende de dónde esté el
+   campo ni de si se ve.
+
+   El campo igual queda RENDERIZADO, con tamaño real y sin recortar: los
+   navegadores de iPhone ignoran el click() sobre un campo con display:none,
+   visibility:hidden o recortado a un píxel. Va transparente y sin recibir
+   toques, para que nunca compita con el botón. */
+.tp button.tpbtn{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--ink-2);transition:all .14s;font-family:inherit;text-align:center}
+.tp button.tpbtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tp button.tpbtn:active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.imp-pick{position:relative}
+.imp-pick input[type=file]{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;pointer-events:none;border:0;padding:0;margin:0}
+
+/* C3. "Pegar el texto en cambio": un <details> nativo, sin JS. */
+.imp-more{border:0}
+.imp-more summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2);list-style:none;display:flex;align-items:center;gap:7px;padding:2px 0}
+.imp-more summary::-webkit-details-marker{display:none}
+.imp-more summary::before{content:"+";font-family:var(--f-mono);width:18px;height:18px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:13px;flex:none}
+.imp-more[open] summary::before{content:"–"}
+.imp-more[open] summary{margin-bottom:10px}
+.imp-more summary:hover{color:var(--ink)}
+
+/* C4. La cola / el progreso de lectura: una lista de archivos. */
+.imp-files{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
+.imp-file{display:flex;align-items:center;gap:10px;padding:10px 8px 10px 12px;border-bottom:1px solid var(--line-2)}
+.imp-file:last-child{border-bottom:0}
+.imp-file.err{background:var(--crit-soft)}
+.imp-thumb{width:38px;height:38px;border-radius:9px;flex:none;display:grid;place-items:center;background:var(--surface-2);color:var(--ink-2)}
+.imp-thumb svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.imp-thumb.pdf{background:var(--accent-soft);color:var(--accent)}
+.imp-thumb.img{background:var(--flap-soft);color:var(--warn)}
+.imp-file .bd{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.imp-file .nm{font-size:13.5px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-file .meta{font-family:var(--f-mono);font-size:11px;color:var(--ink-2);display:flex;align-items:center;gap:6px;line-height:1.4}
+.imp-file .meta.err{color:var(--crit);font-family:var(--f-body);letter-spacing:0;line-height:1.4}
+.imp-file .meta.ok{color:var(--ok)}
+/* C4b. Archivo "vacío": se leyó bien, no había ninguna reserva ahí. No es un
+   error: misma tipografía de frase larga que .err, pero en ink-2. Nunca lleva
+   fondo rojo (nunca .imp-file.err). */
+.imp-file .meta.info{color:var(--ink-2);font-family:var(--f-body);letter-spacing:0;line-height:1.4}
+/* C4c. La línea de DATO OBSERVADO. No es un mensaje para la persona: es lo
+   que la app vio, escrito para que entre en una captura de pantalla y sirva
+   para arreglar sin adivinar. Va en mono, chica y apagada: se lee si se la
+   busca y no compite con el mensaje de arriba, que es el que importa. */
+.dato,.imp-file .meta.dato{font-family:var(--f-mono);font-size:10px;letter-spacing:.02em;color:var(--ink-3);line-height:1.45;overflow-wrap:anywhere;display:block;margin-top:2px}
+.imp-file .meta svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.imp-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-3);flex:none}
+.imp-file .rm{flex:none;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;border-radius:9px}
+.imp-file .rm:hover{background:var(--surface-2);color:var(--ink-2)}
+.imp-file .rm svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.imp-file .act{flex:none;font-size:12px;font-weight:700;color:var(--accent);background:none;border:0;cursor:pointer;text-decoration:underline;white-space:nowrap;padding:6px 0 6px 6px}
+.imp-file .row-acts{display:flex;align-items:center;flex:none}
+
+/* C5. Tarjeta de revisión: una reserva encontrada, editable. */
+.imp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);overflow:hidden}
+.imp-card-hd{display:flex;align-items:flex-start;gap:10px;padding:12px 6px 10px 13px}
+.imp-card-hd .ttl{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:1px}
+.imp-title{border:0;background:none;padding:0;font-family:var(--f-display);font-weight:700;font-size:15.5px;color:var(--ink);width:100%;letter-spacing:-.005em}
+.imp-title:focus{outline:none;box-shadow:inset 0 -2px 0 var(--accent)}
+.imp-src{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.imp-discard{flex:none;width:36px;height:36px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer;border-radius:9px;margin-top:-2px}
+.imp-discard:hover{background:var(--crit-soft);color:var(--crit)}
+.imp-discard svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.imp-card-bd{padding:0 13px 13px;border-top:1px solid var(--line-2);margin-top:2px;padding-top:11px;display:flex;flex-direction:column;gap:9px}
+.imp-note{font-size:12px;color:var(--ink-2);line-height:1.45;padding:0 13px 12px;margin:0}
+
+/* C6. Tarjeta de embarque: caso de coincidencia con el vuelo cargado. */
+.imp-existing{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-2);border-radius:11px}
+.imp-existing .pass-icon{width:30px;height:30px;flex:none}
+.imp-existing .pass-title{font-size:14px}
+.imp-existing .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.imp-diff{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:9px 12px}
+.imp-diff .field .v{display:inline-block;background:var(--accent-soft);color:var(--accent);padding:2px 7px;border-radius:6px;font-weight:500}
+
+/* C7. Duda entre dos vuelos: lista de opciones tipo radio, más una salida
+   explícita para "ninguno de los dos". Nunca adivina. */
+.imp-choice{display:flex;flex-direction:column;gap:8px}
+.imp-choice button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;cursor:pointer}
+.imp-choice button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.imp-choice .radio{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-3);flex:none;display:grid;place-items:center;background:var(--surface)}
+.imp-choice button[aria-pressed="true"] .radio{border-color:var(--accent)}
+.imp-choice button[aria-pressed="true"] .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.imp-choice .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.imp-choice .t{font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:-.005em}
+.imp-choice .s{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2)}
+.imp-choice .sep{text-align:center;font-size:11px;color:var(--ink-3);padding:1px 0}
+
+/* ============================================================
+   ADJUNTAR EL DOCUMENTO — componentes nuevos (VAL-58, VAL-59)
+   Copiados de app/parts/adjuntar-ui.html, Bloque C (N1 a N4), sin
+   tokens nuevos: todo sale de los mismos :root de arriba.
+   ============================================================ */
+/* N1. El documento adjunto, dentro de la tarjeta de la reserva.
+
+   El problema a evitar: que la reserva se vuelva un depósito. La tarjeta se
+   lee de un vistazo (título, hora, troquelado) y un bloque de adjunto con
+   tamaño, estado de compresión y botón de descarga la convertiría en un
+   formulario. La tira dice sólo QUÉ ES el documento y CUÁNTO PESA; todo lo
+   demás vive en el visor, a un toque. El título y la hora siguen siendo lo
+   único en --ink. */
+.pass-docs{display:flex;flex-direction:column;background:var(--surface-2);border-top:1px solid var(--line-2)}
+/* Sin troquelado arriba (reserva sin datos en el talón) la tira toma el
+   corte perforado, para que el documento nunca quede pegado al título. */
+.pass-main + .pass-docs{border-top:1.5px dashed var(--line)}
+.pass-doc{display:flex;align-items:center;gap:9px;width:100%;text-align:left;min-height:36px;padding:8px 13px;background:none;border:0;border-top:1px solid var(--line-2);cursor:pointer;color:var(--ink-2)}
+.pass-doc:first-child{border-top:0}
+.pass-doc:hover{background:var(--surface);color:var(--ink)}
+.pass-doc>svg{width:14px;height:14px;flex:none;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pass-doc .nm{flex:1;min-width:0;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pass-doc .sz{flex:none;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-3);white-space:nowrap}
+.pass-doc:hover>svg{color:var(--accent)}
+
+/* N2. El visor: el documento en pantalla, lo más grande que se pueda. La
+   imagen manda; los datos del archivo van abajo, chicos y en mono. Cuando no
+   hay imagen que mostrar (PDF sin pdf.js, documento que no se pudo traer), el
+   mismo marco sostiene un texto centrado: nunca un hueco gris sin motivo. */
+.doc-view{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;display:grid;place-items:center;min-height:186px;padding:10px}
+.doc-view img{max-width:100%;max-height:52vh;display:block;border-radius:var(--r-s);box-shadow:var(--shadow)}
+.doc-view .ph{display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;color:var(--ink-2);font-size:12.5px;line-height:1.45;max-width:32ch;padding:20px 12px}
+.doc-view .ph svg{width:26px;height:26px;color:var(--ink-3);fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.doc-view .ph b{font-family:var(--f-display);font-size:14.5px;color:var(--ink);letter-spacing:-.005em}
+.doc-meta{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);line-height:1.5;overflow-wrap:anywhere;margin:0}
+
+/* N3. Bloque de adjunto vacío, adentro de la hoja de la reserva: el .empty de
+   siempre, más chico y sin título (la etiqueta "Documento" ya lo dice). */
+.empty.sm{padding:16px 14px;border-radius:var(--r-m);gap:11px}
+.empty.sm p{font-size:12.5px;max-width:34ch}
+
+/* N4. Acción secundaria de texto dentro de una tarjeta. La salida del caso
+   "coincide y se completa solo": no es un botón del pie —eso volvería a
+   preguntar lo que no hace falta preguntar—, es un enlace al pie de la
+   tarjeta para quien sabe que el match está mal. */
+.imp-card .card-acts{display:flex;gap:16px;flex-wrap:wrap;padding:0 13px 12px}
+.imp-card .act{font-size:12px;font-weight:700;color:var(--accent);background:none;border:0;padding:4px 0;cursor:pointer;text-decoration:underline}
+.imp-card .act.warn{color:var(--warn)}
+
+@media print{
+  .hdr,.fab,.seg,.iconbtn,.btn{display:none !important}
+  body,.shell{background:#fff}
+  main{padding:0}
+}
+
+/* ===================== BLOQUE C — CSS NUEVO ===================== */
+
+/* C1 · EL TIPO, TOCABLE, EN LA CABECERA (VAL-76)
+   Hoy el tipo es texto muerto adentro del `.tag` de la cabecera, y la
+   acción que lo cambia vive en el pie de la hoja del ícono ⓘ — o sea
+   detrás del botón que se toca para LEER de dónde salió la lista.
+   Acá el tipo pasa a ser un botón, en el mismo renglón donde se lee.
+   El área táctil llega a 44px por un pseudo-elemento, así el botón se
+   ve del tamaño de un chip y se toca del tamaño de un pulgar. */
+.pk-typebtn{
+  display:inline-flex;align-items:center;gap:6px;flex:none;position:relative;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  border-radius:8px;padding:5px 9px;cursor:pointer;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;
+  transition:background .15s,border-color .15s;
+}
+.pk-typebtn::after{content:"";position:absolute;inset:-12px -8px}
+.pk-typebtn:hover{background:var(--surface);border-color:var(--ink-3)}
+.pk-typebtn svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-typebtn .chev{width:11px;height:11px;opacity:.55}
+/* Una lista vieja que dice "mixto" y no sabe de qué dos cosas: el chip
+   lo dice sin alarmar. Ámbar de tablero de salidas, no rojo: no está
+   roto, falta un dato. */
+.pk-typebtn.pide{border-color:var(--flap);color:var(--warn);background:var(--flap-soft)}
+
+/* C2 · ELEGIR UNA O DOS (VAL-77)
+   El selector ya existe (.tp.tp3). Lo único nuevo es que ahora se
+   pueden marcar DOS, y que el orden se ve: 1 y 2. Con dos marcadas,
+   las que quedan se apagan en vez de desaparecer — sacar opciones de
+   la pantalla es peor que mostrarlas sin poder tocarlas. */
+.tp button{position:relative}
+.tp .pick{
+  position:absolute;top:5px;right:5px;width:17px;height:17px;border-radius:50%;
+  background:var(--accent);color:var(--accent-ink);display:none;place-items:center;
+  font-family:var(--f-mono);font-size:9.5px;font-weight:500;line-height:1;
+}
+.tp button[aria-pressed="true"] .pick{display:grid}
+.tp button[aria-disabled="true"]{opacity:.4;pointer-events:none}
+
+/* C2b · EL PROGRESO, CUANDO COMPARTE RENGLÓN
+   `.pk-prog` tiene `width:100%` en la app, así que empuja al renglón
+   siguiente a cualquier cosa que esté a su lado. El primer render de la
+   variante A lo mostró: el chip arriba, el progreso abajo — y la leyenda que
+   yo había escrito ("no suma altura a la cabecera") era falsa. Con `auto`
+   entran los dos y la variante recupera el motivo por el que existe. */
+.pk-prog.junto{width:auto;flex:1;min-width:0}
+
+/* C3 · LO QUE SE CONSERVA AL REHACER
+   El backlog lo pide con todas las letras: "que se entienda qué va a
+   pasar antes de tocarlo". Son tres renglones con un número cada uno,
+   no un párrafo: lo que importa es cuántos ítems se tocan y cuántos no. */
+.pk-keep{display:flex;flex-direction:column;gap:7px}
+.pk-keep-row{display:flex;align-items:baseline;gap:9px;font-size:12.5px;line-height:1.4}
+.pk-keep-row .n{
+  font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--ink);
+  min-width:26px;text-align:right;font-variant-numeric:tabular-nums;flex:none;
+}
+.pk-keep-row .d{flex:1;min-width:0;color:var(--ink-2)}
+.pk-keep-row.va .n{color:var(--warn)}
+
+/* ===================== BLOQUE D — andamiaje del muestrario ===================== */
+body{background:#0b1220;padding:22px 16px 40px;margin:0}
+.lienzo{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;justify-content:center;max-width:1320px;margin:0 auto}
+.caso{width:390px;flex:none}
+.caso>h4{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:#8fa3c4;margin:0 0 4px;font-weight:500;
+}
+.caso>p.leyenda{font-family:var(--f-body);font-size:12px;color:#5f7characters;margin:0 0 9px;line-height:1.45}
+.caso>p.leyenda{color:#6f85a8}
+.marco{background:var(--ground);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.marco .hdr{padding:12px 14px 10px}
+.marco main{padding:14px;gap:12px;min-height:0}
+.titulo{
+  width:100%;max-width:1320px;margin:0 auto 6px;font-family:var(--f-display);
+  color:#e9eef7;font-size:20px;font-weight:700;letter-spacing:-.01em;
+}
+.subt{width:100%;max-width:1320px;margin:0 auto 20px;font-family:var(--f-body);color:#8fa3c4;font-size:13px;line-height:1.5}
+.hoy{opacity:.72}
+.hoy .marco{box-shadow:none;outline:1px dashed #33425c}
+</style>
+
+<div class="titulo">El tipo de viaje — VAL-76 y VAL-77</div>
+<div class="subt">Muestrario de diseño. Nada integrado a la app todavía.</div>
+<div class="lienzo">
+
+<!-- ============ 1 · HOY ============ -->
+<div class="caso hoy">
+  <h4>1 · Hoy</h4>
+  <p class="leyenda">El tipo es texto muerto. Lo que lo cambia vive en el pie de la hoja del ⓘ.</p>
+  <div class="marco">
+    <div class="hdr">
+      <div class="hdr-row">
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+        <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA · MONTAÑA</span></div>
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+      </div>
+      <div class="hdr-sub">
+        <span class="pk-prog"><span class="pk-bar"><i class="p" style="width:2%"></i></span>
+        <span class="n"><b>1</b> de 44 · faltan 43</span></span>
+      </div>
+    </div>
+    <main><div class="notice"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/></svg><span class="bd">Para cambiar el tipo hay que tocar el ⓘ, bajar hasta el pie de la hoja y encontrar un botón que dice <b>Cambiar el tipo</b>.</span></div></main>
+  </div>
+</div>
+
+<!-- ============ 2 · VARIANTE A ============ -->
+<div class="caso">
+  <h4>2 · Variante A — el tipo baja al renglón del progreso</h4>
+  <p class="leyenda">Un toque desde donde se lee, en el mismo renglón. Cuesta el «faltan 43» del progreso: ése es todo el precio.</p>
+  <div class="marco">
+    <div class="hdr">
+      <div class="hdr-row">
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+        <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA</span></div>
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+      </div>
+      <div class="hdr-sub">
+        <button class="pk-typebtn"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="chev"><svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg></span></button>
+        <span class="pk-prog junto"><span class="pk-bar"><i class="p" style="width:2%"></i></span>
+        <span class="n"><b>1</b>/44</span></span>
+      </div>
+    </div>
+    <main><div class="notice"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/></svg><span class="bd">El tipo está donde siempre estuvo, y ahora se toca. El progreso pierde el <b>«faltan 43»</b> para hacerle lugar.</span></div></main>
+  </div>
+</div>
+
+<!-- ============ 3 · VARIANTE B ============ -->
+<div class="caso">
+  <h4>3 · Variante B — un renglón propio para el viaje</h4>
+  <p class="leyenda">Más aire y más descubrible. Cuesta 30px de cabecera pegajosa, que es lista que no se ve.</p>
+  <div class="marco">
+    <div class="hdr">
+      <div class="hdr-row">
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+        <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA</span></div>
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+      </div>
+      <div class="hdr-sub">
+        <span class="pk-prog"><span class="pk-bar"><i class="p" style="width:2%"></i></span>
+        <span class="n"><b>1</b> de 44 · faltan 43</span></span>
+      </div>
+      <div class="hdr-sub" style="margin-top:8px">
+        <button class="pk-typebtn"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="chev"><svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg></span></button>
+        <span class="chip">14 días</span><span class="chip">Tomás</span>
+      </div>
+    </div>
+    <main><div class="notice"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/></svg><span class="bd">El renglón es del <b>viaje</b>, no del tipo: mañana entra ahí quién viaja o cuántos días, sin inventar un lugar nuevo.</span></div></main>
+  </div>
+</div>
+
+<!-- ============ 4 · SELECTOR, UNA ============ -->
+<div class="caso">
+  <h4>4 · Elegir — una sola</h4>
+  <p class="leyenda">«Mixto» desaparece de la grilla. El caso normal no cambia en nada.</p>
+  <div class="marco">
+    <div class="hdr"><div class="hdr-row">
+      <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA</span></div>
+    </div></div>
+    <main>
+      <div class="pk-inputs"><span class="chip accent">OSL</span><span class="chip">30 jun – 13 jul 27</span><span class="chip">14 días</span></div>
+      <div class="f">
+        <label>Tipo de viaje</label>
+        <div class="tp tp3">
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+        </div>
+        <span class="hint">Tocá una. Si el viaje es de <b>dos cosas</b>, tocá la segunda y sumo las dos listas.</span>
+      </div>
+      <div class="notice"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/></svg><span class="bd">Te propongo <b>Montaña</b>: por «bariloche», en lo que tenés reservado. Ya usaste ese tipo en 3 viajes anteriores.</span></div>
+    </main>
+    <div class="sheet-ft" style="border-top:1px solid var(--line);background:var(--surface)">
+      <button class="btn ghost">Cancelar</button><button class="btn primary"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/></svg> Armar la lista</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 5 · SELECTOR, DOS ============ -->
+<div class="caso">
+  <h4>5 · Elegir — dos, que es lo que «mixto» quería decir</h4>
+  <p class="leyenda">El orden se ve. El bloque de abajo dice qué suma cada una, con ítems de verdad.</p>
+  <div class="marco">
+    <div class="hdr"><div class="hdr-row">
+      <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA</span></div>
+    </div></div>
+    <main>
+      <div class="pk-inputs"><span class="chip accent">OSL</span><span class="chip">30 jun – 13 jul 27</span><span class="chip">14 días</span></div>
+      <div class="f">
+        <label>Tipo de viaje</label>
+        <div class="tp tp3">
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">2</span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+        </div>
+        <span class="hint">Tocá una de nuevo para sacarla.</span>
+      </div>
+      <div class="notice"><svg viewBox="0 0 24 24"><path d="M3.5 7h4l9 10h4"/><path d="M3.5 17h4l3-3.4"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/></svg><span class="bd"><b>Montaña y ciudad.</b> Sumo las dos listas: abrigo por capas, calzado de trekking y linterna de una; una muda para salir de noche y un par que no sean las zapatillas de caminar, de la otra.</span></div>
+    </main>
+    <div class="sheet-ft" style="border-top:1px solid var(--line);background:var(--surface)">
+      <button class="btn ghost">Cancelar</button><button class="btn primary"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-4.2 3.4 1.3 5.2L12 15.7l-4.1 2.7 1.3-5.2L5 9.8l5.1-1.9z"/></svg> Armar la lista</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 6 · EL TOPE ============ -->
+<div class="caso">
+  <h4>6 · El tope son dos</h4>
+  <p class="leyenda">Las demás se apagan pero no se van: sacarlas de la pantalla sería peor que mostrarlas sin poder tocarlas.</p>
+  <div class="marco">
+    <div class="hdr"><div class="hdr-row">
+      <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA</span></div>
+    </div></div>
+    <main>
+      <div class="f">
+        <label>Tipo de viaje</label>
+        <div class="tp tp3">
+          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">2</span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+        </div>
+        <span class="hint">Con dos alcanza. Si el viaje es de tres cosas, elegí las dos que más pesan y lo demás lo agregás a mano.</span>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ 7 · REHACER ============ -->
+<div class="caso">
+  <h4>7 · Cambiar el tipo con la lista ya armada</h4>
+  <p class="leyenda">Lo que el backlog pide con todas las letras: que se entienda qué va a pasar antes de tocarlo.</p>
+  <div class="marco">
+    <div class="hdr"><div class="hdr-row">
+      <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+      <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA</span></div>
+    </div></div>
+    <main>
+      <div class="f">
+        <label>Tipo de viaje</label>
+        <div class="tp tp3">
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">2</span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+        </div>
+      </div>
+      <div class="notice warn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span class="bd"><b>Rehago la lista con montaña y ciudad.</b> Nada de lo tuyo se pierde:</span></div>
+      <div class="pk-keep">
+        <div class="pk-keep-row"><span class="n">1</span><span class="d">empacado — <b>se queda</b>, y sigue empacado</span></div>
+        <div class="pk-keep-row"><span class="n">3</span><span class="d">descartados — <b>se quedan</b> descartados, no vuelven</span></div>
+        <div class="pk-keep-row"><span class="n">2</span><span class="d">que agregaste vos — <b>se quedan</b></span></div>
+        <div class="pk-keep-row va"><span class="n">38</span><span class="d">sugeridos sin marcar — <b>se recalculan</b></span></div>
+      </div>
+    </main>
+    <div class="sheet-ft" style="border-top:1px solid var(--line);background:var(--surface)">
+      <button class="btn ghost">Cancelar</button><button class="btn primary">Rehacer la lista</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 8 · MIGRACIÓN ============ -->
+<div class="caso">
+  <h4>8 · Una lista vieja que dice «mixto»</h4>
+  <p class="leyenda">No se adivina de qué dos cosas era. Se pregunta, una sola vez, sin bloquear nada.</p>
+  <div class="marco">
+    <div class="hdr">
+      <div class="hdr-row">
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
+        <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">NORUEGA</span></div>
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+      </div>
+      <div class="hdr-sub">
+        <button class="pk-typebtn pide"><svg viewBox="0 0 24 24"><path d="M3.5 7h4l9 10h4"/><path d="M3.5 17h4l3-3.4"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/></svg> Mixto <span class="chev"><svg viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg></span></button>
+        <span class="pk-prog junto"><span class="pk-bar"><i class="p" style="width:2%"></i></span>
+        <span class="n"><b>1</b>/44</span></span>
+      </div>
+    </div>
+    <main>
+      <div class="notice warn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span class="bd">Esta valija dice <b>mixto</b> y no sé de qué dos cosas. Decímelo y afino la lista; mientras tanto sigue funcionando igual.
+        <button class="act">Elegir las dos</button></span></div>
+      <div class="pk-cat" data-open="false">
+        <div class="pk-cat-hd"><span class="pk-cat-ico"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/></svg></span><span class="nm">Documentación</span><span class="cnt">0 de 6</span><svg viewBox="0 0 24 24" class="chev"><path d="M6 9.5l6 6 6-6"/></svg></div>
+      </div>
+      <div class="pk-cat" data-open="false">
+        <div class="pk-cat-hd"><span class="pk-cat-ico"><svg viewBox="0 0 24 24"><path d="M8.5 3 12 5.6 15.5 3 20 5.6l-2 4.2-2-1.1V21H8V8.7l-2 1.1L4 5.6z"/></svg></span><span class="nm">Ropa</span><span class="cnt">1 de 14</span><svg viewBox="0 0 24 24" class="chev"><path d="M6 9.5l6 6 6-6"/></svg></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+</div>
