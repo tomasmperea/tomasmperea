@@ -808,7 +808,7 @@ Y es el caso más común de los viajes reales: nadie se va diez días a un solo 
 
 **Sale junto con VAL-75 y VAL-76**, por decisión del PM.
 
-### VAL-72 · Las reservas mandan sobre el destino escrito a mano — EN CURSO, seis vetos de auditoría
+### VAL-72 · Las reservas mandan sobre el destino escrito a mano — ✅ VERIFICADA en el teléfono del PM (22/09)
 
 Como viajero quiero que si cargué vuelos, traslados o alojamientos, la valija use ESOS destinos y no el que
 escribí al crear el viaje.
@@ -881,6 +881,20 @@ a Oslo no puede valer lo mismo que una palabra en el título del viaje.
 **Relación con VAL-66:** son la misma pieza. VAL-66 es que el motor razone mejor sobre el destino; VAL-72 es
 que razone sobre el destino CORRECTO. No tiene sentido hacer la primera sin la segunda — afinar el
 razonamiento sobre un dato equivocado es afinar el error.
+
+**Verificada en el teléfono del PM el 22/09, con v32 publicada.** Las dos pruebas pasaron y el detalle está
+en `docs/qa/v32-resultado.md`. Lo esencial:
+
+- **Europa con tres vuelos → EUROPA · CIUDAD**, y los tres ítems específicos nombran **Madrid, París y Roma**.
+  Es el criterio de aceptación de esta historia, textual, cumplido en el aparato.
+- **Bariloche con un solo traslado a Ezeiza → BARILOCHE · MONTAÑA**, sin una sola mención a Buenos Aires. Es
+  el caso que volteó las rondas 2 y 3.
+
+**Y la apuesta de la novena ronda quedó resuelta con evidencia.** Un motivo dice *"con más de cuatro días en
+Madrid, cinco en París y tres en Roma"*: **nadie le pasó esos números, el modelo los calculó** del renglón
+`entre-vuelos` con sus horas. La decisión de mandar el dato crudo en vez de resumirlo —la que cerró tres
+rondas de vetos— estaba declarada como no verificable desde acá en cinco auditorías seguidas. Esta captura la
+cierra: el dato crudo alcanzó, y el resumen habría estorbado.
 
 **El encabezado de esta historia decía «✅ entregada en v24» y era falso dos veces:** ni estaba entregada
 —seis rondas de auditoría la vetaron— ni había v24 publicada. El 20/09 se leyó el archivo que sirve el
