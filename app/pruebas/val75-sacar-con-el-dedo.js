@@ -41,6 +41,10 @@ const modelo = () => {
       limits: async () => ({ maxPromptBytes: 65536 }),
       json: async (prompt) => {
         window.__CONSULTAS__.push(prompt);
+        if (/Brasil/i.test(prompt)) return { items: [
+          { nombre:"Repelente de mosquitos", categoria:"salud", cantidad:1,
+            motivo:"El norte de Brasil tiene mosquitos todo el año." }
+        ], quitar: [] };
         if (/Argentina/i.test(prompt)) return { items: [], quitar: [] };
         return { items: [
           { nombre:"Pantalón impermeable", categoria:"ropa", cantidad:1,
@@ -205,6 +209,77 @@ const modelo = () => {
   const cartelesFin = await page.evaluate(() => window.__CARTELES__ || []);
   ok(cartelesFin.some(t => /Saqué \d+ cosas? que ya no correspondían?/.test(t)),
      "y la app confirma lo que hizo, en vez de cerrar la hoja sin decir nada");
+
+  /* ---- EL PLAN MIXTO, que es el que el PM vio en su teléfono ---- */
+  console.log("\n· EL PLAN MIXTO · cuando suma Y saca, el cartel tiene que decir las dos cosas");
+  /* Lo encontró el PM el 22/09 con una captura: un plan de 14 para sumar y 10
+     para sacar se aplicó, y el único cartel decía "Sumé 14 cosas". Los 10 que
+     se fueron no los nombró nadie.
+
+     El toast de `aplicarPlan` no lo cubría: dispara sólo cuando el plan es
+     SÓLO sacar, que es el caso que yo había probado con el dedo. El mixto —el
+     más común cuando cambia el destino— quedaba mudo sobre la mitad de lo que
+     hacía. Misma clase de error que el barrido de textos: arreglé la instancia
+     que estaba mirando. */
+  /* Para que el plan sea MIXTO hace falta que haya algo para sacar. Se
+     desmarca el ítem que estaba empacado —tocando el mismo círculo, que es un
+     interruptor— y vuelve a ser un pendiente sugerido: lo único que el
+     recálculo puede sacar. Es precondición, y se arma con el dedo igual. */
+  await page.evaluate(id => { location.hash = `#/trip/${id}/valija`; }, tripId);
+  await page.waitForTimeout(900);
+  await page.click(`.pk-row[data-row="${deNoruega[1].clave}"] .pk-mark`);
+  await page.waitForTimeout(500);
+  const volvioAPendiente = await page.evaluate(([id,k]) =>
+    (Store.packingOf(id).items[k] || {}).estado, [tripId, deNoruega[1].clave]);
+  ok(volvioAPendiente === "pendiente", `«${deNoruega[1].nombre}» vuelve a pendiente al tocar el círculo`);
+
+  await page.evaluate(id => { location.hash = `#/trip/${id}`; }, tripId);
+  await page.waitForTimeout(700);
+  const editar2 = await page.$("#edittrip");
+  if (editar2) { await editar2.click(); await page.waitForTimeout(700); }
+  await page.fill("#t_dest","Brasil");
+  await page.click("#save");
+  await page.waitForTimeout(3500);
+
+  await page.evaluate(id => { location.hash = `#/trip/${id}/valija`; }, tripId);
+  await page.waitForTimeout(1200);
+
+  const cuentas = await page.evaluate(id => {
+    const p = planDe(id); return p ? planCuentas(p) : null;
+  }, tripId);
+  info("el plan ofrece: " + JSON.stringify(cuentas));
+  ok(!!cuentas && cuentas.suma > 0 && cuentas.saca > 0,
+     "el plan suma Y saca: es el caso mixto, el que el cartel se callaba");
+
+  if (cuentas && cuentas.suma && cuentas.saca) {
+    await page.click('[data-pk="verplan"]');
+    await page.waitForTimeout(600);
+    const botonMixto = await page.evaluate(() => {
+      const b = document.getElementById("pk-plan-apply");
+      return b ? b.innerText.trim() : null;
+    });
+    info("el botón de la hoja dice: " + JSON.stringify(botonMixto));
+    ok(/^Sumar \d+ y sacar \d+$/.test(botonMixto || ""),
+       "el botón nombra las dos acciones, no una sola");
+
+    await page.click("#pk-plan-apply");
+    await page.waitForTimeout(2500);
+
+    const cartel = await page.evaluate(() => {
+      const n = document.querySelector("#main .notice.ok");
+      return n ? n.innerText.replace(/\n+/g, " ") : null;
+    });
+    info("el cartel de confirmación dice: " + JSON.stringify(cartel));
+    ok(!!cartel && /Sum[ée]/.test(cartel), "el cartel nombra lo que sumó");
+    ok(!!cartel && /saqu[ée]/i.test(cartel),
+       "y TAMBIÉN lo que sacó, que es lo que se callaba");
+    /* El número tiene que estar PEGADO a "saqué", no suelto en el cartel: la
+       primera versión de esta línea buscaba el número en cualquier parte y
+       pasaba con el sabotaje puesto, porque "Sumé 1 cosa" ya tiene un 1. Una
+       aserción que sobrevive al sabotaje no prueba nada. */
+    ok(!!cartel && new RegExp("saqu[ée] " + cuentas.saca + "\\b", "i").test(cartel),
+       `y el número va con el verbo: "saqué ${cuentas.saca}"`);
+  }
 
   console.log("\n====================================================");
   console.log(fallos ? `  ${fallos} FALLARON` : "  Todo en verde — sacar de la valija funciona con el dedo");

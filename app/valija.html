@@ -7745,7 +7745,7 @@ function pkEstadoInicial(tripId){
     pickingType:false, selectedType:null, typeCounts:null,
     /* ---------- bloque B: las tres señales nuevas ---------- */
     applied:false,          // se acaba de aplicar un plan: aviso 18
-    appliedN:0, appliedReserva:null,
+    appliedN:0, appliedSaca:0, appliedReserva:null,
     fresh:false,            // animación .fresh de llegada, una sola vez
     avisoAplazado:null,     // acuse "Ahora no" (estado 19), de una sola visita
     hideRemovals:false,     // el aviso 20 se cerró en ESTA visita (§ 4.4)
@@ -8708,7 +8708,19 @@ function packingNotice(trip, list, plan){
   // 3 · sumé N cosas (18). Cerrar la confirmación ES confirmar (§ 4.3).
   if(PK.applied && canWrite && pkItemsNuevos(list).length){
     const n = PK.appliedN;
-    return `<div class="notice ok">${svg(I.check2)}<span class="bd">Sumé <b class="n">${n}</b> ${n===1?"cosa":"cosas"}${PK.appliedReserva?` por <b>${esc(PK.appliedReserva)}</b>`:""}. Quedan marcadas hasta que las mires.
+    /* Y lo que se SACÓ, que hasta la v33 el cartel se callaba. Lo vio el PM en
+       su teléfono: un plan de 14 para sumar y 10 para sacar se aplicó, la lista
+       pasó de 41 ítems a 44, y el único cartel decía "Sumé 14 cosas". Los 10
+       que se fueron no los nombró nadie.
+
+       El toast de `aplicarPlan` no lo cubría porque dispara sólo cuando el plan
+       es SÓLO sacar — el caso que yo había probado con el dedo. El mixto, que
+       es el más común cuando cambia el destino, quedaba mudo sobre la mitad de
+       lo que hizo. Es la misma clase de error que el barrido de textos: arreglé
+       la instancia que estaba mirando. */
+    const saco = PK.appliedSaca;
+    const yTambien = saco ? ` y saqué <b class="n">${saco}</b> que ya no ${saco===1?"correspondía":"correspondían"}` : "";
+    return `<div class="notice ok">${svg(I.check2)}<span class="bd">Sumé <b class="n">${n}</b> ${n===1?"cosa":"cosas"}${PK.appliedReserva?` por <b>${esc(PK.appliedReserva)}</b>`:""}${yTambien}. Quedan marcadas hasta que las mires.
       <span class="acts"><button class="act sec" data-pk="vistas">Listo, ya las vi</button>${verQuitarSec}</span></span>
       <button class="x" aria-label="Cerrar" data-pk="vistas">${svg(I.x)}</button></div>`;
   }
@@ -11485,6 +11497,7 @@ async function aplicarPlan(trip, plan){
   pkOlvidarAplazado(trip.id);
   if(PK.tripId === trip.id){
     PK.applied = true; PK.appliedN = aplicado.nuevos.length; PK.appliedReserva = planReserva(aplicado);
+    PK.appliedSaca = planCuentas(aplicado).saca;
     PK.avisoAplazado = null;
     PK.fresh = true;                 // la animación de llegada, una sola vez
     PK.visitsSinceApply = 1;
