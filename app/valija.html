@@ -930,8 +930,16 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    este número, no se publica encima. Con el "25" volvió a pasar lo mismo en
    tres árboles, así que la regla se cumple subiéndolo en el commit que va a
    publicarse, no "antes de publicar" como intención.
+
+   Y NO SE SUBE POR NÚMERO DE LÍNEA. El 22/09 el bump fue `sed '935s/"33"/"34"/'`
+   sobre un archivo donde un comentario agregado un rato antes ya había corrido
+   esta línea a la 934: el `sed` no encontró nada, no falló, y se publicó un
+   build DISTINTO con el mismo "33" que el PM ya tenía probado en su teléfono —
+   que es exactamente lo que el párrafo de arriba prohíbe. El sello se sube
+   buscando la línea por su texto, y después se lee del archivo SERVIDO, no del
+   repo: los cuatro grep de CLAUDE.md incluyen éste y fue el único que lo vio.
    ============================================================ */
-const VALIJA_VERSION = "33";
+const VALIJA_VERSION = "34";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
