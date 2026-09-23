@@ -849,7 +849,7 @@ no existe.**
 - Y se cuida lo mismo que en VAL-75: lo que la persona ya marcó o agregó no se pierde al rehacer.
 - **El caso del PM:** un viaje de montaña ya armado que pasa a ser de playa, y una lista que queda de playa.
 
-### VAL-77 · "Mixto" no quiere decir nada — P1
+### VAL-77a · "Mixto" no quiere decir nada — P1
 
 **Reporte del PM (19/09):** *"incluso, el viaje mixto no se entiende a qué hace referencia: debería poder
 elegir el mixto entre ciudad/montaña o playa/montaña o playa/ciudad, etc"*.
@@ -868,6 +868,45 @@ Y es el caso más común de los viajes reales: nadie se va diez días a un solo 
   funcionando, y conviene que la app pregunte una vez qué combinación era en vez de adivinar.
 
 **Sale junto con VAL-75 y VAL-76**, por decisión del PM.
+
+**Partida en 77a y 77b el 23/09.** Al revisar el diseño, el PM pidió que el motor sea *"lo suficientemente
+inteligente para entender que si agregué un buzo polar es para montaña y si agregué una remera común o unas
+zapatillas cómodas es para ciudad"*. Eso no es la suma de reglas: es **atribuir cada ítem a una de las dos
+partes**, y hoy el dato no existe. Verificado en `learnFromHistory` (`app/valija.html:2628`): filtra por tipo
+exacto y sólo cuenta repeticiones; ningún ítem guarda a qué tipo pertenece — `makeItem` tiene `origen`,
+`regla`, `porDestino`, y nada de tipo.
+
+Meterlo acá adentro es exactamente la historia que crece mientras se construye, así que sale por separado.
+Lo que 77a **sí** resuelve: las reglas de los dos tipos suman, que es lo que el reporte original pedía.
+
+**La limitación que 77a deja en pie, y se declara:** con dos tipos, el aprendizaje del historial sólo puede
+mirar viajes de *esa misma combinación*. Un viaje montaña+ciudad no aprende de los viajes de montaña a
+secas. No se rompe nada —el aprendizaje es la capa 3 y degrada a no promover nada—, pero se fragmenta, y a
+más combinaciones menos muestra por combinación. Eso es lo que 77b viene a cerrar.
+
+### VAL-77b · Cada ítem sabe a qué parte del viaje pertenece — P1
+
+**Pedido del PM (23/09):** *"el motor tiene que ser lo suficientemente inteligente para entender que si
+agregué un buzo polar es para montaña y si agregué una remera común o unas zapatillas cómodas es para
+ciudad"*.
+
+Como viajero quiero que lo que agrego a mano en un viaje de dos tipos se aprenda para el tipo que
+corresponde, no para la combinación entera.
+
+- Un ítem guarda **a qué tipo se atribuye**. Los que salen de una regla ya lo saben: la regla es de un tipo.
+  El caso abierto es el ítem **manual**, que es justamente el que alimenta el aprendizaje.
+- `learnFromHistory` deja de filtrar por combinación exacta y pasa a contar **por tipo**: un viaje
+  montaña+ciudad aporta a montaña y a ciudad por separado, según a qué se atribuyó cada ítem.
+- Eso cierra la fragmentación que deja 77a, y de paso hace que los viajes de un solo tipo alimenten a los
+  mixtos y al revés.
+
+**Cómo se atribuye un ítem manual — está sin decidir y es la parte cara.** Tres caminos, y no da lo mismo:
+preguntarle a la persona al agregarlo (cuesta un toque en el gesto más frecuente), inferirlo del nombre con
+el modelo (cuesta una llamada y puede equivocarse callado), o inferirlo de las reglas existentes buscando un
+ítem parecido (gratis, pero no sabe de lo que no está en las reglas). **Esta historia no arranca hasta que
+esa decisión esté tomada**, porque el criterio de aceptación depende de cuál sea.
+
+**Depende de VAL-77a.** Sin dos tipos guardados no hay nada que atribuir.
 
 ### VAL-72 · Las reservas mandan sobre el destino escrito a mano — ✅ VERIFICADA en el teléfono del PM (22/09)
 
