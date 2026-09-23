@@ -853,15 +853,22 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 
 /* C2 · ELEGIR UNA O DOS (VAL-77)
    El selector ya existe (.tp.tp3). Lo único nuevo es que ahora se
-   pueden marcar DOS, y que el orden se ve: 1 y 2. Con dos marcadas,
-   las que quedan se apagan en vez de desaparecer — sacar opciones de
-   la pantalla es peor que mostrarlas sin poder tocarlas. */
+   pueden marcar DOS. Con dos marcadas, las que quedan se apagan en vez
+   de desaparecer — sacar opciones de la pantalla es peor que mostrarlas
+   sin poder tocarlas.
+
+   La marca NO lleva número, y es una decisión, no una omisión. La
+   primera versión ponía 1 y 2. No hay un tipo principal y otro
+   secundario: cada ítem se atribuye a la parte del viaje que le
+   corresponde —el buzo polar a la montaña, las zapatillas cómodas a la
+   ciudad—, así que numerarlas afirmaría en pantalla una jerarquía que
+   el motor no tiene. Decisión del PM, 23/09. */
 .tp button{position:relative}
 .tp .pick{
   position:absolute;top:5px;right:5px;width:17px;height:17px;border-radius:50%;
   background:var(--accent);color:var(--accent-ink);display:none;place-items:center;
-  font-family:var(--f-mono);font-size:9.5px;font-weight:500;line-height:1;
 }
+.tp .pick svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
 .tp button[aria-pressed="true"] .pick{display:grid}
 .tp button[aria-disabled="true"]{opacity:.4;pointer-events:none}
 
@@ -906,6 +913,14 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
 .subt{width:100%;max-width:1320px;margin:0 auto 20px;font-family:var(--f-body);color:#8fa3c4;font-size:13px;line-height:1.5}
 .hoy{opacity:.72}
 .hoy .marco{box-shadow:none;outline:1px dashed #33425c}
+.no{opacity:.5}
+.no .marco{box-shadow:none;outline:1px dashed #33425c}
+.si .marco{outline:2px solid #3b82f6;outline-offset:3px}
+.sello{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid #4a5a75;color:#8fa3c4;border-radius:5px;padding:2px 6px;font-weight:500;
+}
+.sello.ok{border-color:#3b82f6;color:#9dc2ff}
 </style>
 
 <div class="titulo">El tipo de viaje — VAL-76 y VAL-77</div>
@@ -933,9 +948,9 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
 </div>
 
 <!-- ============ 2 · VARIANTE A ============ -->
-<div class="caso">
-  <h4>2 · Variante A — el tipo baja al renglón del progreso</h4>
-  <p class="leyenda">Un toque desde donde se lee, en el mismo renglón. Cuesta el «faltan 43» del progreso: ése es todo el precio.</p>
+<div class="caso no">
+  <h4>2 · Variante A — <b class="sello">descartada</b></h4>
+  <p class="leyenda">El tipo baja al renglón del progreso. Un toque desde donde se lee, sin sumar altura — pero cuesta el «faltan 43». Queda acá como registro de la alternativa.</p>
   <div class="marco">
     <div class="hdr">
       <div class="hdr-row">
@@ -954,9 +969,9 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
 </div>
 
 <!-- ============ 3 · VARIANTE B ============ -->
-<div class="caso">
-  <h4>3 · Variante B — un renglón propio para el viaje</h4>
-  <p class="leyenda">Más aire y más descubrible. Cuesta 30px de cabecera pegajosa, que es lista que no se ve.</p>
+<div class="caso si">
+  <h4>3 · Variante B — <b class="sello ok">elegida</b></h4>
+  <p class="leyenda">Un renglón propio para el viaje. Más aire y más descubrible; cuesta 30px de cabecera pegajosa, que es lista que no se ve. Elegida por el PM el 23/09.</p>
   <div class="marco">
     <div class="hdr">
       <div class="hdr-row">
@@ -991,11 +1006,11 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
       <div class="f">
         <label>Tipo de viaje</label>
         <div class="tp tp3">
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
         </div>
         <span class="hint">Tocá una. Si el viaje es de <b>dos cosas</b>, tocá la segunda y sumo las dos listas.</span>
       </div>
@@ -1010,7 +1025,7 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
 <!-- ============ 5 · SELECTOR, DOS ============ -->
 <div class="caso">
   <h4>5 · Elegir — dos, que es lo que «mixto» quería decir</h4>
-  <p class="leyenda">El orden se ve. El bloque de abajo dice qué suma cada una, con ítems de verdad.</p>
+  <p class="leyenda">Sin orden ni jerarquía: las dos pesan igual y la marca no lleva número. El bloque de abajo dice qué suma cada una, con ítems de verdad.</p>
   <div class="marco">
     <div class="hdr"><div class="hdr-row">
       <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>
@@ -1021,11 +1036,11 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
       <div class="f">
         <label>Tipo de viaje</label>
         <div class="tp tp3">
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">2</span></button>
-          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
         </div>
         <span class="hint">Tocá una de nuevo para sacarla.</span>
       </div>
@@ -1050,11 +1065,11 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
       <div class="f">
         <label>Tipo de viaje</label>
         <div class="tp tp3">
-          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">2</span></button>
-          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false" aria-disabled="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
         </div>
         <span class="hint">Con dos alcanza. Si el viaje es de tres cosas, elegí las dos que más pesan y lo demás lo agregás a mano.</span>
       </div>
@@ -1075,11 +1090,11 @@ body{background:#0b1220;padding:22px 16px 40px;margin:0}
       <div class="f">
         <label>Tipo de viaje</label>
         <div class="tp tp3">
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick">2</span></button>
-          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick">1</span></button>
-          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick">1</span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20.5h18"/><path d="M12 20.5V9"/><path d="M4 9a8 8 0 0 1 16 0z"/></svg> Playa <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M4.5 21V7.5l5-3V21"/><path d="M9.5 21v-9l6 2.2V21"/><path d="M15.5 21v-5.5l4 1.6V21"/></svg> Ciudad <span class="n">2 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="true" class="used"><svg viewBox="0 0 24 24"><path d="M2.5 19.5h19L14 5.5l-3.6 6.6L8.2 9.6z"/></svg> Montaña <span class="n">3 viajes</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a1.8 1.8 0 0 1 1.8-1.8h2.4A1.8 1.8 0 0 1 15 6v1.5"/><path d="M3 12.5h18"/></svg> Trabajo <span class="n">—</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
+          <button type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-1.9 5.3-5.3 1.9 1.9-5.3z"/></svg> Aventura <span class="n">1 viaje</span><span class="pick"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span></button>
         </div>
       </div>
       <div class="notice warn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span class="bd"><b>Rehago la lista con montaña y ciudad.</b> Nada de lo tuyo se pierde:</span></div>
