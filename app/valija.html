@@ -533,6 +533,78 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .tp button[aria-pressed="true"] .n{color:var(--accent)}
 .tp button.used{border-color:var(--ink-3)}
 
+/* ============================================================
+   VAL-76 · VAL-77a — copiado de app/parts/tipo-de-viaje-ui.html,
+   bloque C (variante B, la elegida por el PM el 23/09).
+   Ningún color literal, ningún token nuevo.
+   ============================================================ */
+
+/* C1 · EL TIPO, TOCABLE, EN LA CABECERA (VAL-76)
+   Hoy el tipo es texto muerto adentro del `.tag` de la cabecera, y la
+   acción que lo cambia vive en el pie de la hoja del ícono ⓘ — o sea
+   detrás del botón que se toca para LEER de dónde salió la lista.
+   Acá el tipo pasa a ser un botón, en el mismo renglón donde se lee.
+   El área táctil llega a 44px por un pseudo-elemento, así el botón se
+   ve del tamaño de un chip y se toca del tamaño de un pulgar. */
+.pk-typebtn{
+  display:inline-flex;align-items:center;gap:6px;flex:none;position:relative;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+  border-radius:8px;padding:5px 9px;cursor:pointer;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;
+  transition:background .15s,border-color .15s;
+}
+.pk-typebtn::after{content:"";position:absolute;inset:-12px -8px}
+.pk-typebtn:hover{background:var(--surface);border-color:var(--ink-3)}
+.pk-typebtn svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pk-typebtn .chev{width:11px;height:11px;opacity:.55}
+/* Una lista vieja que dice "mixto" y no sabe de qué dos cosas: el chip
+   lo dice sin alarmar. Ámbar de tablero de salidas, no rojo: no está
+   roto, falta un dato. */
+.pk-typebtn.pide{border-color:var(--flap);color:var(--warn);background:var(--flap-soft)}
+/* NO estaba en el muestrario y se agrega acá: cambiar el tipo rehace la
+   lista, así que es un control de ESCRITURA. Sin permiso de edición se
+   deshabilita en vez de fallar al usarlo, y el área táctil ampliada se
+   apaga con él para que no se coma el toque de lo que tiene al lado. */
+.pk-typebtn:disabled{opacity:.55;cursor:default}
+.pk-typebtn:disabled::after{content:none}
+.pk-typebtn:disabled:hover{background:var(--surface-2);border-color:var(--line)}
+
+/* C2 · ELEGIR UNA O DOS (VAL-77a)
+   El selector ya existe (.tp.tp3). Lo único nuevo es que ahora se
+   pueden marcar DOS. Con dos marcadas, las que quedan se apagan en vez
+   de desaparecer — sacar opciones de la pantalla es peor que mostrarlas
+   sin poder tocarlas.
+
+   La marca NO lleva número, y es una decisión, no una omisión. No hay un
+   tipo principal y otro secundario: numerarlas afirmaría en pantalla una
+   jerarquía que el motor no tiene. Decisión del PM, 23/09. */
+.tp button{position:relative}
+.tp .pick{
+  position:absolute;top:5px;right:5px;width:17px;height:17px;border-radius:50%;
+  background:var(--accent);color:var(--accent-ink);display:none;place-items:center;
+}
+.tp .pick svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.tp button[aria-pressed="true"] .pick{display:grid}
+.tp button[aria-disabled="true"]{opacity:.4;pointer-events:none}
+
+/* C2b · EL PROGRESO, CUANDO COMPARTE RENGLÓN
+   `.pk-prog` tiene `width:100%`, así que empuja al renglón siguiente a
+   cualquier cosa que esté a su lado. Con `auto` entran los dos. */
+.pk-prog.junto{width:auto;flex:1;min-width:0}
+
+/* C3 · LO QUE SE CONSERVA AL REHACER
+   El backlog lo pide con todas las letras: "que se entienda qué va a
+   pasar antes de tocarlo". Son renglones con un número cada uno, no un
+   párrafo: lo que importa es cuántos ítems se tocan y cuántos no. */
+.pk-keep{display:flex;flex-direction:column;gap:7px}
+.pk-keep-row{display:flex;align-items:baseline;gap:9px;font-size:12.5px;line-height:1.4}
+.pk-keep-row .n{
+  font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--ink);
+  min-width:26px;text-align:right;font-variant-numeric:tabular-nums;flex:none;
+}
+.pk-keep-row .d{flex:1;min-width:0;color:var(--ink-2)}
+.pk-keep-row.va .n{color:var(--warn)}
+
 .pk-states{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .pk-states button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-2);transition:all .14s}
 .pk-states button .pk-state{pointer-events:none}
@@ -1986,6 +2058,94 @@ function normalizeTripType(t) {
   return TRIP_TYPE_KEYS.indexOf(n) >= 0 ? n : null;
 }
 
+/* ============================================================
+   VAL-77a · EL TIPO DE VIAJE PUEDE SER DOS
+
+   `list.tipoViaje` sigue siendo UN STRING, siempre. Con dos tipos guarda
+   la forma canónica `"montana+ciudad"`, con las partes ordenadas según
+   TRIP_TYPE_KEYS para que sea estable. No hay un campo `tipoViajes` en
+   paralelo: dos campos que dicen lo mismo se desincronizan, y ese es un
+   modo de falla que este proyecto ya pagó.
+
+   UNA SOLA función parte el string y todo el mundo la llama. No hay un
+   segundo `split("+")` en ningún lado.
+
+   `mixto` sobrevive como valor guardado: `tripTypeParts("mixto")` devuelve
+   `["mixto"]`, así que una lista guardada antes de esta iteración matchea
+   exactamente las mismas reglas que antes. Lo que desaparece es de la
+   GRILLA, no del modelo.
+
+   El tope de dos lo pone la interfaz, no el parser: acá se devuelve lo que
+   se encuentra. Truncar callado convertiría una sorpresa en su propio
+   diagnóstico, que es la compuerta que este proyecto pagó en septiembre.
+   ============================================================ */
+
+/**
+ * Parte un tipo de viaje guardado en sus partes normalizadas.
+ * @param {string|Array<string>|null} s `"montana"`, `"montana+ciudad"`, `"mixto"` o un array
+ * @returns {Array<string>} claves de tipo, sin repetidos, en el orden en que vienen
+ */
+function tripTypeParts(s) {
+  var crudo = Array.isArray(s) ? s : String(s == null ? "" : s).split("+");
+  var out = [];
+  crudo.forEach(function (p) {
+    var n = normalizeTripType(p);
+    if (n && out.indexOf(n) < 0) out.push(n);
+  });
+  return out;
+}
+
+/**
+ * Forma canónica de un tipo de viaje: las partes ordenadas por TRIP_TYPE_KEYS
+ * y unidas con "+". `"ciudad+montana"` y `"montana+ciudad"` dan lo mismo.
+ * @param {string|Array<string>|null} s
+ * @returns {string|null} el string a guardar, o null si no hay ninguna parte válida
+ */
+function canonicalTripType(s) {
+  var partes = tripTypeParts(s).slice().sort(function (a, b) {
+    return TRIP_TYPE_KEYS.indexOf(a) - TRIP_TYPE_KEYS.indexOf(b);
+  });
+  return partes.length ? partes.join("+") : null;
+}
+
+/**
+ * Cómo se lee un tipo de viaje en pantalla. Una parte: "Montaña". Dos:
+ * "Montaña y ciudad" — la segunda en minúscula porque es media frase y no
+ * un título.
+ * @param {string|Array<string>|null} s
+ * @returns {string} "" si no hay ninguna parte válida
+ */
+function tripTypeLabel(s) {
+  var etiquetas = tripTypeParts(s).map(function (p) { return TRIP_TYPE_LABEL[p] || p; });
+  if (!etiquetas.length) return "";
+  if (etiquetas.length === 1) return etiquetas[0];
+  return etiquetas.slice(0, -1).join(", ") + " y " +
+         etiquetas[etiquetas.length - 1].toLowerCase();
+}
+
+/**
+ * Las partes del tipo de un contexto. Acepta un contexto armado a mano que
+ * sólo tenga `tripType`: se parte el string en vez de dar por hecho que el
+ * array está. Un contexto de una prueba vieja tiene que seguir andando.
+ * @param {Object} ctx
+ * @returns {Array<string>}
+ */
+function tripTypesOf(ctx) {
+  if (!ctx) return [];
+  return (ctx.tripTypes && ctx.tripTypes.length) ? ctx.tripTypes : tripTypeParts(ctx.tripType);
+}
+
+/**
+ * ¿Este viaje es (también) de tal tipo? Es la pregunta que reemplaza a
+ * `ctx.tripType === "montana"`, que con dos partes deja de alcanzar.
+ * @param {Object} ctx contexto del viaje
+ * @param {string} tipo clave de tipo
+ * @returns {boolean}
+ */
+function tripTypeHas(ctx, tipo) {
+  return tripTypesOf(ctx).indexOf(tipo) >= 0;
+}
+
 /**
  * Los ítems de una lista como array. Acepta el objeto indexado por clave
  * (la forma que se guarda) y también un array, por si viene de una versión
@@ -2279,7 +2439,9 @@ var BASE_RULES = [
   { id:"higiene.protector-solar", nombre:"Protector solar", categoria:"higiene",
     when:{ any:[{ tripTypes:["playa","montana","aventura"] }, { facts:["hasWaterActivity","hasSnow"] }] },
     motivo:function (n, ctx) {
-      if (ctx.tripType === "montana" || ctx.facts.hasSnow) return "En altura y con nieve el sol pega mucho más fuerte.";
+      /* VAL-77a: se pregunta por la PARTE, no por el escalar. Un viaje
+         montaña+ciudad tiene que dar el mismo motivo que uno de montaña. */
+      if (tripTypeHas(ctx, "montana") || ctx.facts.hasSnow) return "En altura y con nieve el sol pega mucho más fuerte.";
       return "Muchas horas de sol directo, todos los días del viaje.";
     } },
 
@@ -2408,8 +2570,17 @@ function matchesCondition(cond, ctx) {
   if (Array.isArray(cond)) return cond.every(function (c) { return matchesCondition(c, ctx); });
 
   if (cond.international !== undefined && ctx.international !== cond.international) return false;
-  if (cond.tripTypes && cond.tripTypes.indexOf(ctx.tripType) < 0) return false;
-  if (cond.notTripTypes && cond.notTripTypes.indexOf(ctx.tripType) >= 0) return false;
+  /* VAL-77a: el tipo puede ser dos, así que la pregunta deja de ser sobre un
+     escalar. `tripTypes` matchea si ALGUNA parte está en la lista de la regla;
+     `notTripTypes` corta si ALGUNA parte está en la de exclusión — la regla de
+     exclusión es una prohibición, y le alcanza con una parte para valer.
+     Con una sola parte las dos preguntas dan exactamente lo de antes, y una
+     lista guardada que dice "mixto" tiene una sola parte: "mixto". */
+  if (cond.tripTypes || cond.notTripTypes) {
+    var partesDelViaje = tripTypesOf(ctx);
+    if (cond.tripTypes && !partesDelViaje.some(function (t) { return cond.tripTypes.indexOf(t) >= 0; })) return false;
+    if (cond.notTripTypes && partesDelViaje.some(function (t) { return cond.notTripTypes.indexOf(t) >= 0; })) return false;
+  }
   if (cond.minDays !== undefined && !(ctx.days >= cond.minDays)) return false;
   if (cond.maxDays !== undefined && !(ctx.days <= cond.maxDays)) return false;
   if (cond.facts && !cond.facts.every(function (f) { return !!ctx.facts[f]; })) return false;
@@ -2477,20 +2648,27 @@ function tripContext(trip, items, opts) {
     days:days, nights:Math.max(0, days - 1), daysKnown:daysKnown,
     international:intl.value, internationalKnown:intl.known,
     internationalSource:intl.source, internationalDetail:intl.detail,
-    facts:{}, tripType:null, tripTypeSource:"sugerido", tripTypeReason:""
+    /* `tripType` es el string canónico —lo que se guarda y lo que se muestra—
+       y `tripTypes` son sus partes. Los dos salen del MISMO lugar dos líneas
+       más abajo: no es un segundo campo que haya que mantener sincronizado. */
+    facts:{}, tripType:null, tripTypes:[], tripTypeSource:"sugerido", tripTypeReason:""
   };
 
   Object.keys(FACTS).forEach(function (name) {
     try { ctx.facts[name] = !!FACTS[name].test(ctx); } catch (e) { ctx.facts[name] = false; }
   });
 
-  var chosen = normalizeTripType(opts.tipoViaje || opts.tripType);
+  /* `canonicalTripType` en vez de `normalizeTripType`: lo que llega puede ser
+     "montana+ciudad". Con un solo tipo devuelve lo mismo que antes, y con
+     "mixto" devuelve "mixto". */
+  var chosen = canonicalTripType(opts.tipoViaje || opts.tripType);
   if (chosen) {
     ctx.tripType = chosen; ctx.tripTypeSource = "elegido"; ctx.tripTypeReason = "Lo elegiste al generar la lista.";
   } else {
     var s = suggestTripType(trip, items, ctx);
     ctx.tripType = s.type; ctx.tripTypeSource = "sugerido"; ctx.tripTypeReason = s.reason; ctx.tripTypeConfidence = s.confidence;
   }
+  ctx.tripTypes = tripTypeParts(ctx.tripType);
   return ctx;
 }
 
@@ -2584,9 +2762,11 @@ function suggestTripType(trip, items, ctx) {
 
   if (ranked.length) {
     var top = ranked[0];
-    // dos familias fuertes a la vez: es un viaje mixto
+    /* Dos familias fuertes a la vez. VAL-77a: eso ya no se llama "mixto" —una
+       etiqueta que no le dice nada al motor—, se propone la COMBINACIÓN de las
+       dos, que es lo que el matcher sabe leer. Las reglas de las dos suman. */
     if (ranked.length > 1 && scores[ranked[1]] === scores[top]) {
-      return { type:"mixto", confidence:"media",
+      return { type:canonicalTripType([top, ranked[1]]), confidence:"media",
                reason:"El viaje mezcla " + TRIP_TYPE_LABEL[top].toLowerCase() + " y " + TRIP_TYPE_LABEL[ranked[1]].toLowerCase() + "." };
     }
     return { type:top, confidence:scores[top] >= 2 ? "alta" : "media",
@@ -2627,13 +2807,18 @@ function bump(map, clave, item) {
  */
 function learnFromHistory(history, tipoViaje) {
   var added = new Map(), dismissed = new Map(), muestra = 0;
-  var tipo = normalizeTripType(tipoViaje);
+  /* VAL-77a: se compara la COMBINACIÓN ENTERA, en forma canónica, para que
+     "ciudad+montana" y "montana+ciudad" sean la misma cosa aunque alguna lista
+     vieja haya quedado al revés. Un viaje montaña+ciudad aprende de otros
+     montaña+ciudad y NO de los de montaña a secas: es una limitación
+     declarada, no un defecto, y es lo que VAL-77b viene a cerrar. */
+  var tipo = canonicalTripType(tipoViaje);
 
   (history || []).forEach(function (list) {
     if (!list) return;
     var arr = itemsArray(list);
     if (!arr.length) return;
-    if (normalizeTripType(list.tipoViaje || list.tripType) !== tipo) return;
+    if (canonicalTripType(list.tipoViaje || list.tripType) !== tipo) return;
     muestra++;
     var seenAdd = {}, seenDis = {};
     arr.forEach(function (it) {
@@ -2798,7 +2983,10 @@ function buildPackingList(input) {
     if (out[e.clave] || findCanonicalMatch(out, e.clave)) return;
     out[e.clave] = makeItem({
       clave:e.clave, nombre:e.nombre, categoria:e.categoria || "otros", cantidad:null,
-      motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (TRIP_TYPE_LABEL[ctx.tripType] || ctx.tripType).toLowerCase() + ".",
+      /* `tripTypeLabel` y no `TRIP_TYPE_LABEL[...]`: con dos tipos la búsqueda
+         directa en el mapa da undefined y el motivo salía diciendo
+         "viajes de montana+ciudad". */
+      motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (tripTypeLabel(ctx.tripType) || String(ctx.tripType || "")).toLowerCase() + ".",
       origen:ORIGEN.HISTORIAL, regla:"historial", orden:orderOf(e.categoria || "otros", 900 + i)
     }, at);
   });
@@ -3438,7 +3626,10 @@ function lineaDestinos(b) {
 function destinationPrompt(list) {
   var b = (list && list.base) || {};
   var yaHay = itemsArray(list).map(function (i) { return i.nombre; }).join(", ");
-  var tipo = TRIP_TYPE_LABEL[list.tipoViaje] || list.tipoViaje || "mixto";
+  /* VAL-77a: con dos tipos la búsqueda directa en el mapa daba undefined y el
+     prompt salía diciendo "Tipo de viaje: montana+ciudad". `tripTypeLabel` lo
+     escribe como se lee: "Montaña y ciudad". */
+  var tipo = tripTypeLabel(list.tipoViaje) || list.tipoViaje || "mixto";
   var reservas = b.reservas || [];
   var lineasReservas = reservas.length
     ? reservas.map(function (r) { return "  - " + JSON.stringify(r); }).join("\n")
@@ -4262,6 +4453,9 @@ return {
 
   // utilidades y control de calidad
   slug:slug, normalizeTripType:normalizeTripType, daysBetweenInclusive:daysBetweenInclusive,
+  // VAL-77a: el tipo puede ser dos. UNA sola función parte el string.
+  tripTypeParts:tripTypeParts, canonicalTripType:canonicalTripType,
+  tripTypeLabel:tripTypeLabel, tripTypeHas:tripTypeHas,
   matchesCondition:matchesCondition, computeQty:computeQty, validateRules:validateRules,
   lowestOrigin:lowestOrigin, itemsArray:itemsArray,
   canonicalKey:canonicalKey, findCanonicalMatch:findCanonicalMatch,
@@ -4270,8 +4464,31 @@ return {
 })();
 
 /* ---------- catálogos derivados del motor, para la interfaz ---------- */
-const TYPE_LABEL = PackingEngine.TRIP_TYPES.reduce((m,t)=>{ m[t.key]=t.label; return m; },{});
 const TYPE_ICON = { playa:"beach", ciudad:"city", montana:"mountain", trabajo:"work", aventura:"adv", mixto:"mix" };
+
+/* VAL-77a · el tipo de viaje, para la pantalla. TODO lo que muestra un tipo
+   pasa por acá: con dos partes `TYPE_LABEL[...]` da undefined, y eso es la
+   clase de error que este proyecto ya pagó cuatro veces —una lista a mano que
+   se queda corta—. `tripTypeLabel` vive en el motor, que es donde vive el
+   parser, y acá sólo se le pone el nombre que usa la interfaz. */
+const typeLabel = s => PackingEngine.tripTypeLabel(s);
+const typeParts = s => PackingEngine.tripTypeParts(s);
+/* Las partes que se pueden MARCAR en la grilla. "mixto" no es un tipo: es la
+   ausencia de uno, y por eso desaparece de la grilla sin desaparecer del
+   modelo. Una lista guardada que dice "mixto" da [] acá y sigue diciendo
+   "mixto" en todos lados donde se lee el dato. */
+const typePartsPickable = s => typeParts(s).filter(t => t !== "mixto");
+/* «Esto dice mixto y no sé de qué dos cosas». UNA sola definición, porque el
+   chip ámbar de la cabecera y el aviso de la lista tienen que estar de acuerdo
+   siempre: si aparece uno sin el otro, la pregunta queda sin lugar donde
+   contestarse o el chip alarma sin decir por qué. */
+const esMixtoSinDefinir = s => PackingEngine.canonicalTripType(s) === "mixto";
+/* `TYPE_LABEL` vivía acá y se fue con esta entrega: era un mapa clave→etiqueta
+   que con dos tipos devolvía `undefined`, y todos sus usos pasaron a
+   `typeLabel`, que sabe de combinaciones. No quedó ninguno. */
+/* El tope son dos, y lo pone la interfaz. El parser devuelve lo que encuentra
+   (ver el comentario de `tripTypeParts` en el motor). */
+const TOPE_TIPOS = 2;
 const CAT_ICON = { documentacion:"doc", ropa:"shirt", calzado:"shoe", higiene:"drop", electronica:"plug", salud:"health", destino:"globe", otros:"doc" };
 
 /** Chip de origen de un ítem, con el destino real del viaje (no "Madrid" fijo). */
@@ -7750,7 +7967,11 @@ function viewTodo(trip, alerts){
 function pkEstadoInicial(tripId){
   return {
     tripId, generating:false, justEnriched:false, openCats:{}, adding:null,
-    pickingType:false, selectedType:null, typeCounts:null,
+    /* VAL-77a: `selectedTypes` es un ARRAY —el tipo puede ser dos—, y vale
+       `null` mientras nadie tocó la grilla. Vacío y null no son lo mismo:
+       vacío quiere decir "destildé las dos". */
+    pickingType:false, selectedTypes:null, typeCounts:null,
+    hideMixtoAsk:false,     // la pregunta de la lista vieja "mixto" se cerró en ESTA visita
     /* ---------- bloque B: las tres señales nuevas ---------- */
     applied:false,          // se acaba de aplicar un plan: aviso 18
     appliedN:0, appliedSaca:0, appliedReserva:null,
@@ -8214,10 +8435,16 @@ function pkObserveNew(main){
 /** Actuar sobre un ítem o abrir su hoja también es haberlo mirado. */
 function pkMarcarVisto(clave){ if(clave) PK.seenNew.add(clave); }
 
+/* VAL-76 · el tipo SALE del rótulo de la cabecera y baja a su propio renglón,
+   como botón. El rótulo se queda con el destino, que es lo que identifica al
+   viaje. Antes decía "NORUEGA · MONTAÑA" y la única forma de cambiar ese
+   "MONTAÑA" era el pie de la hoja del ⓘ.
+   Con eso `opts.noType` se quedó sin caso: era la salida de emergencia para
+   pedir el rótulo sin el tipo, y ahora el rótulo nunca lo trae. No estaba
+   pasándose desde ningún lado (un solo uso, adentro de esta función). */
 function packingHeader(trip, list, opts){
   opts = opts || {};
-  const tagParts = [trip.destination, (list && !opts.noType) ? TYPE_LABEL[list.tipoViaje] : null].filter(Boolean);
-  const tagTxt = tagParts.length ? tagParts.join(" · ") : "Valija";
+  const tagTxt = trip.destination || "Valija";
   return `<div class="hdr-row">
     <button class="iconbtn" id="pk-back" aria-label="Volver">${svg(I.back)}</button>
     <div class="brand"><h1 style="font-size:19px">Valija</h1><span class="tag">${esc(tagTxt)}</span></div>
@@ -8228,6 +8455,35 @@ function bindPackingHeader(trip, onInfo){
   document.getElementById("pk-back").onclick = ()=> go(`#/trip/${trip.id}`);
   const infoBtn = document.getElementById("pk-info");
   if(infoBtn) infoBtn.onclick = onInfo || (()=>{});
+}
+
+/* VAL-76 · el renglón del VIAJE (variante B del muestrario, la elegida).
+   El renglón es del viaje, no del tipo: el botón del tipo más los chips que
+   ya existían. Mañana entra ahí quién viaja o cuántos días sin inventar un
+   lugar nuevo.
+
+   El botón es un control de ESCRITURA —tocar el tipo rehace la lista—, así
+   que sin permiso de edición se deshabilita en vez de fallar al usarlo. */
+function pkTypeBtnHtml(list){
+  const partes = typeParts(list.tipoViaje);
+  /* Una lista guardada antes de esta iteración que dice "mixto" a secas: no
+     se adivina de qué dos cosas era. Se muestra en ámbar, que es "falta un
+     dato", no en rojo, que sería "está roto". */
+  const pide = esMixtoSinDefinir(list.tipoViaje);
+  const ico = partes.length === 1 ? (TYPE_ICON[partes[0]] || "mix") : "mix";
+  const lbl = typeLabel(list.tipoViaje) || "Sin tipo";
+  return `<button class="pk-typebtn${pide?" pide":""}" id="pk-typebtn"
+    aria-label="Tipo de viaje: ${esc(lbl)}. Tocá para cambiarlo"
+    ${Store.canWrite?"":"disabled"}>${svg(I[ico])} ${esc(lbl)} ${svg(I.chevd,"chev")}</button>`;
+}
+
+function pkTripLineHtml(trip, list){
+  const dias = PackingEngine.daysBetweenInclusive(trip.startDate, trip.endDate);
+  const chips = [
+    dias ? `<span class="chip">${dias} ${dias===1?"día":"días"}</span>` : "",
+    trip.travelers ? `<span class="chip">${esc(trip.travelers)}</span>` : ""
+  ].filter(Boolean).join("");
+  return `<div class="hdr-sub" style="margin-top:8px">${pkTypeBtnHtml(list)}${chips}</div>`;
 }
 
 function pkProgHtml(list){
@@ -8335,8 +8591,14 @@ function pkCategoryHtml(cat, trip, canWrite){
 async function runGenerate(trip, tipoViaje, previous){
   // Armar, rehacer o cambiar el tipo reemplaza la lista entera: el plan que
   // hubiera pendiente ofrecía cosas de una lista que ya no existe. Se tira acá
-  // y se recalcula solo contra la lista nueva (H1, capa 1). Los tres caminos
-  // ("Armar la lista", "Rehacer la lista", "Usar este tipo") pasan por acá.
+  // y se recalcula solo contra la lista nueva (H1, capa 1). Los caminos que
+  // pasan por acá: "Armar la lista", "Rehacer la lista" del selector de tipo,
+  // "Rehacer la lista" de la hoja del ⓘ y "Probar de nuevo" del aviso
+  // degradado. VAL-76 agregó una entrada más al selector —el botón del tipo
+  // en la cabecera— y sale por el mismo lugar.
+  // `tipoViaje` puede venir null: eso NO es un error, quiere decir "no elegí
+  // ninguno", y el motor vuelve a sugerir. Es lo que pasa cuando la persona
+  // arma sin marcar nada en la grilla.
   invalidarPlan(trip.id);
   const items = Store.itemsOf(trip.id);
   let history = [];
@@ -8493,11 +8755,48 @@ function renderPackingBlocked(trip){
 }
 
 /* ---------- 01/02: selector de tipo de viaje (también "cambiar el tipo") ---------- */
+
+/* Entrar al selector desde cualquier lado. Se limpia lo marcado a mano para
+   que el selector abra mostrando lo que la lista dice HOY, y no lo que alguien
+   tocó y canceló en una visita anterior. */
+function pkAbrirSelectorDeTipo(){
+  PK.pickingType = true; PK.selectedTypes = null; render();
+}
+
 function typeSelectorFab(trip, list){
   if(!list){
     return `<div class="fab"><button class="btn primary block" id="pk-build" ${Store.canWrite?"":"disabled"}>${svg(I.spark)} Armar la lista</button></div>`;
   }
-  return `<div class="fab"><button class="btn block" id="pk-canceltype">Cancelar</button><button class="btn primary block" id="pk-confirmtype" ${Store.canWrite?"":"disabled"}>${svg(I.spark)} Usar este tipo</button></div>`;
+  return `<div class="fab"><button class="btn block" id="pk-canceltype">Cancelar</button><button class="btn primary block" id="pk-confirmtype" ${Store.canWrite?"":"disabled"}>${svg(I.spark)} Rehacer la lista</button></div>`;
+}
+
+/* Qué le pasa a cada ítem cuando se rehace la lista. No es una promesa: sale
+   de leer `mergeLists`, que es quien lo hace. Cada ítem cae en UN solo cajón,
+   en este orden, para que los números sumen el total y no se pisen. */
+function pkQueSeConserva(list){
+  const c = { empacados:0, descartados:0, tuyos:0, sugeridos:0 };
+  PackingEngine.itemsArray(list).forEach(it=>{
+    if(!it) return;
+    if(it.estado === "empacado")        c.empacados++;
+    else if(it.estado === "descartado") c.descartados++;
+    else if(it.origen === "manual")     c.tuyos++;
+    else                                c.sugeridos++;
+  });
+  return c;
+}
+
+function pkKeepHtml(list){
+  const c = pkQueSeConserva(list);
+  const filas = [
+    [c.empacados,   `${c.empacados===1?"empacado":"empacados"} — <b>se ${c.empacados===1?"queda":"quedan"}</b>, y ${c.empacados===1?"sigue":"siguen"} empacado${c.empacados===1?"":"s"}`, false],
+    [c.descartados, `${c.descartados===1?"descartado":"descartados"} — <b>se ${c.descartados===1?"queda":"quedan"}</b> descartado${c.descartados===1?"":"s"}, no ${c.descartados===1?"vuelve":"vuelven"}`, false],
+    [c.tuyos,       `que agregaste vos — <b>se ${c.tuyos===1?"queda":"quedan"}</b>`, false],
+    [c.sugeridos,   `sugerido${c.sugeridos===1?"":"s"} sin marcar — <b>se ${c.sugeridos===1?"recalcula":"recalculan"}</b>`, true]
+  ].filter(f=> f[0] > 0);
+  if(!filas.length) return "";
+  return `<div class="pk-keep">${filas.map(([n,txt,va])=>
+    `<div class="pk-keep-row${va?" va":""}"><span class="n">${n}</span><span class="d">${txt}</span></div>`
+  ).join("")}</div>`;
 }
 
 function renderTypeSelector(trip, list){
@@ -8506,8 +8805,17 @@ function renderTypeSelector(trip, list){
 
   const items = Store.itemsOf(trip.id);
   const ctx = PackingEngine.tripContext(trip, items, {});
+  /* La sugerencia del motor es un string canónico y puede ser "mixto" a secas,
+     que quiere decir "no tengo pistas". Eso NO se puede marcar en la grilla:
+     `typePartsPickable` lo deja en []. */
   const suggested = ctx.tripType;
-  const chosen = PK.selectedType || (list ? list.tipoViaje : suggested);
+  const sugeridas = typePartsPickable(suggested);
+
+  /* Lo marcado. `PK.selectedTypes` es null mientras nadie tocó nada; una vez
+     tocado es el array vivo, y puede quedar vacío si se destildan las dos. */
+  const marcadas = PK.selectedTypes
+    || (list ? typePartsPickable(list.tipoViaje) : sugeridas);
+  const lleno = marcadas.length >= TOPE_TIPOS;
 
   const [, toCode] = routeCodes(trip, items);
   const chips = [
@@ -8517,23 +8825,72 @@ function renderTypeSelector(trip, list){
     trip.travelers ? `<span class="chip">${esc(trip.travelers)}</span>` : ""
   ].filter(Boolean).join("");
 
-  const counts = PK.typeCounts || {};
-  const rows = PackingEngine.TRIP_TYPES.map(t=>{
-    const n = counts[t.key];
-    const pressed = chosen === t.key;
-    return `<button type="button" aria-pressed="${pressed}" class="${n?"used":""}" data-t="${t.key}">
-      ${svg(I[TYPE_ICON[t.key]])} ${esc(t.label)} <span class="n">${n?`${n} ${n===1?"viaje":"viajes"}`:"—"}</span></button>`;
+  /* Dos cuentas distintas y cada una dice lo suyo:
+       · porTipo  — en cuántos viajes tuyos aparece ESTE tipo, solo o combinado.
+                    Es lo que dice el número chiquito de cada botón.
+       · porCombo — cuántos viajes tuyos son de ESTA misma combinación. Es la
+                    muestra que de verdad alimenta a `learnFromHistory`, que
+                    compara la combinación entera. */
+  const counts = PK.typeCounts || { porTipo:{}, porCombo:{} };
+  const muestraDe = partes => {
+    const k = PackingEngine.canonicalTripType(partes);
+    return (k && counts.porCombo[k]) || 0;
+  };
+
+  /* "Mixto" sale de la grilla: no es un tipo, es la ausencia de uno. Sigue
+     existiendo como valor guardado (VAL-77a, decisión 3). */
+  const rows = PackingEngine.TRIP_TYPES.filter(t=> t.key !== "mixto").map(t=>{
+    const n = counts.porTipo[t.key];
+    const pressed = marcadas.indexOf(t.key) >= 0;
+    /* Con dos marcadas las demás se APAGAN, no se van: sacar opciones de la
+       pantalla es peor que mostrarlas sin poder tocarlas. */
+    const apagada = lleno && !pressed;
+    return `<button type="button" aria-pressed="${pressed}" ${apagada?`aria-disabled="true"`:""} class="${n?"used":""}" data-t="${t.key}">
+      ${svg(I[TYPE_ICON[t.key]])} ${esc(t.label)} <span class="n">${n?`${n} ${n===1?"viaje":"viajes"}`:"—"}</span>
+      <span class="pick">${svg(I.check)}</span></button>`;
   }).join("");
 
-  const suggestedLabel = TYPE_LABEL[suggested] || suggested;
-  const hint = chosen === suggested
-    ? `Te propongo <b>${esc(suggestedLabel)}</b>: ${esc(ctx.tripTypeReason || "por el destino y las fechas del viaje.")}${counts[suggested] ? ` Ya usaste ese tipo en ${counts[suggested]} ${counts[suggested]===1?"viaje":"viajes"} anteriores.` : ""}`
-    : "";
-  const warnBlock = (chosen !== suggested) ? `<div class="notice warn">
-      ${svg(I.info)}
-      <span class="bd">Con <b>${esc(TYPE_LABEL[chosen])}</b> ${counts[chosen] ? `tengo ${counts[chosen]} ${counts[chosen]===1?"viaje":"viajes"} tuyos de ese tipo` : "arranco casi de cero"}. En <b>${esc(suggestedLabel)}</b> ${counts[suggested] ? `ya tengo ${counts[suggested]}` : "no tengo ninguno"}: ${esc(ctx.tripTypeReason)}
-        <button class="act" id="pk-usesugg">Usar ${esc(suggestedLabel)}</button></span>
-    </div>` : "";
+  const hint = marcadas.length >= TOPE_TIPOS
+    ? `Con dos alcanza. Tocá una de nuevo para sacarla; si el viaje es de tres cosas, elegí las dos que más pesan y el resto lo agregás a mano.`
+    : `Tocá una. Si el viaje es de <b>dos cosas</b>, tocá la segunda y sumo las dos listas.`;
+
+  /* El aviso de abajo, uno solo, en este orden:
+       · rehacer     — hay lista y hay algo marcado: qué se conserva y qué no
+       · divergencia — lo marcado no cubre lo que propuse
+       · combinación — dos marcadas
+       · propuesta   — una marcada, y es la que propuse
+       · sin marcar  — nada marcado: qué va a pasar si igual armás */
+  const lblMarcadas = typeLabel(marcadas);
+  /* La etiqueta de la sugerencia sale de `sugeridas` —las partes marcables—,
+     no de `suggested`, que puede traer "mixto". Si dijera "Mixto", el botón
+     "Usar mixto" prometería marcar algo que la grilla no tiene. Las dos ramas
+     que la usan sólo corren cuando `sugeridas` no está vacía. */
+  const lblSugeridas = typeLabel(sugeridas);
+  const motivo = ctx.tripTypeReason || "por el destino y las fechas del viaje.";
+  const nMarcadas = muestraDe(marcadas);
+  const nSugeridas = muestraDe(sugeridas);
+  const divergente = sugeridas.length && !sugeridas.every(p=> marcadas.indexOf(p) >= 0);
+
+  let aviso = "";
+  if(list && marcadas.length){
+    aviso = `<div class="notice warn">${svg(I.info)}<span class="bd"><b>Rehago la lista con ${esc(lblMarcadas.toLowerCase())}.</b> Nada de lo tuyo se pierde:</span></div>
+      ${pkKeepHtml(list)}`;
+  } else if(marcadas.length && divergente){
+    aviso = `<div class="notice warn">${svg(I.info)}
+      <span class="bd">Con <b>${esc(lblMarcadas)}</b> ${nMarcadas ? `tengo ${nMarcadas} ${nMarcadas===1?"viaje tuyo":"viajes tuyos"} de esa misma combinación` : "arranco casi de cero"}. En <b>${esc(lblSugeridas)}</b> ${nSugeridas ? `ya tengo ${nSugeridas}` : "no tengo ninguno"}: ${esc(motivo)}
+        <button class="act" id="pk-usesugg">Usar ${esc(lblSugeridas.toLowerCase())}</button></span>
+    </div>`;
+  } else if(marcadas.length >= TOPE_TIPOS){
+    aviso = `<div class="notice">${svg(I.mix)}<span class="bd"><b>${esc(lblMarcadas)}.</b> Sumo las dos listas: entra lo que pide cada una, en la misma valija.${nMarcadas ? ` Ya armaste ${nMarcadas} ${nMarcadas===1?"valija":"valijas"} de esa combinación.` : ""}</span></div>`;
+  } else if(marcadas.length){
+    aviso = `<div class="notice">${svg(I.spark)}<span class="bd">Te propongo <b>${esc(lblMarcadas)}</b>: ${esc(motivo)}${nMarcadas ? ` Ya usaste ese tipo en ${nMarcadas} ${nMarcadas===1?"viaje":"viajes"} anteriores.` : ""}</span></div>`;
+  } else if(sugeridas.length){
+    aviso = `<div class="notice">${svg(I.info)}<span class="bd">No marcaste ninguna. Si armás así uso lo que te propongo, <b>${esc(lblSugeridas)}</b>: ${esc(motivo)}</span></div>`;
+  } else {
+    /* La sugerencia del motor fue "mixto" a secas: no hay pistas. Se dice, con
+       el motivo del motor, y no se inventa un tipo. */
+    aviso = `<div class="notice warn">${svg(I.info)}<span class="bd">No tengo pistas para proponerte un tipo: ${esc(motivo)} Elegí de qué es el viaje y afino la lista; si no elegís ninguna armo una lista mixta, como hasta ahora.</span></div>`;
+  }
 
   $main.innerHTML = `
     <div class="pk-inputs">${chips}</div>
@@ -8544,38 +8901,60 @@ function renderTypeSelector(trip, list){
     <div class="f">
       <label>Tipo de viaje</label>
       <div class="tp tp3" id="pk-tp">${rows}</div>
-      ${hint ? `<span class="hint">${hint}</span>` : ""}
+      <span class="hint">${hint}</span>
     </div>
-    ${warnBlock}
+    ${aviso}
   `;
 
   $fab.innerHTML = typeSelectorFab(trip, list);
 
   document.querySelectorAll("#pk-tp [data-t]").forEach(b=>{
-    b.onclick = ()=>{ PK.selectedType = b.dataset.t; render(); };
+    b.onclick = ()=>{
+      const t = b.dataset.t;
+      const cur = marcadas.slice();
+      const i = cur.indexOf(t);
+      if(i >= 0) cur.splice(i, 1);
+      /* El tope también acá, y no sólo en el CSS: `pointer-events:none` frena
+         el dedo, no el Enter de un teclado sobre el botón enfocado. */
+      else if(cur.length < TOPE_TIPOS) cur.push(t);
+      else return;
+      PK.selectedTypes = cur;
+      render();
+    };
   });
   const useSugg = document.getElementById("pk-usesugg");
-  if(useSugg) useSugg.onclick = ()=>{ PK.selectedType = suggested; render(); };
+  if(useSugg) useSugg.onclick = ()=>{ PK.selectedTypes = sugeridas.slice(); render(); };
+
+  /* Sin nada marcado se manda `null` y el motor vuelve a sugerir: el resultado
+     guardado es el mismo que antes de esta iteración, y el motivo queda siendo
+     el de verdad en vez de "Lo elegiste al generar la lista". */
+  const elegido = () => marcadas.length ? PackingEngine.canonicalTripType(marcadas) : null;
 
   if(!list){
     const build = document.getElementById("pk-build");
     if(build && Store.canWrite){
-      build.onclick = ()=>{ const t = chosen; PK.selectedType = null; runGenerate(trip, t, null); };
+      build.onclick = ()=>{ const t = elegido(); PK.selectedTypes = null; runGenerate(trip, t, null); };
     }
   } else {
     const cancel = document.getElementById("pk-canceltype");
     const confirm = document.getElementById("pk-confirmtype");
-    if(cancel) cancel.onclick = ()=>{ PK.pickingType = false; PK.selectedType = null; render(); };
+    if(cancel) cancel.onclick = ()=>{ PK.pickingType = false; PK.selectedTypes = null; render(); };
     if(confirm && Store.canWrite){
-      confirm.onclick = ()=>{ const t = chosen; PK.pickingType = false; PK.selectedType = null; runGenerate(trip, t, list); };
+      confirm.onclick = ()=>{ const t = elegido(); PK.pickingType = false; PK.selectedTypes = null; runGenerate(trip, t, list); };
     }
   }
 
   if(!PK.typeCounts){
     Store.packingHistory(trip.id).then(hist=>{
-      const c = {};
-      hist.forEach(l=>{ if(l && l.tipoViaje) c[l.tipoViaje] = (c[l.tipoViaje]||0)+1; });
-      PK.typeCounts = c;
+      const porTipo = {}, porCombo = {};
+      hist.forEach(l=>{
+        if(!l || !l.tipoViaje) return;
+        const canon = PackingEngine.canonicalTripType(l.tipoViaje);
+        if(!canon) return;
+        porCombo[canon] = (porCombo[canon]||0)+1;
+        typeParts(canon).forEach(p=>{ porTipo[p] = (porTipo[p]||0)+1; });
+      });
+      PK.typeCounts = { porTipo, porCombo };
       if(PK.tripId===trip.id) render();
     });
   }
@@ -8591,8 +8970,14 @@ function renderPackingBoard(trip, list){
     ? `<span class="chip">sin ajuste por destino</span>` : "";
   const readonlyChip = !canWrite ? `<span class="chip soon">sólo lectura</span>` : "";
 
-  $hdr.innerHTML = packingHeader(trip, list) + `<div class="hdr-sub">${pkProgHtml(list)}${degradedChip}${readonlyChip}</div>`;
+  $hdr.innerHTML = packingHeader(trip, list)
+    + `<div class="hdr-sub">${pkProgHtml(list)}${degradedChip}${readonlyChip}</div>`
+    + pkTripLineHtml(trip, list);
   bindPackingHeader(trip, ()=> sheetPackingInfo(trip, list));
+  /* El listener se ata en cada render porque `$hdr.innerHTML` se reescribe
+     entero: el botón de antes ya no existe, así que no queda nada colgado. */
+  const typeBtn = document.getElementById("pk-typebtn");
+  if(typeBtn && canWrite) typeBtn.onclick = ()=> pkAbrirSelectorDeTipo();
 
   const destino = trip.destination || "tu destino";
 
@@ -8657,6 +9042,7 @@ function renderPackingBoard(trip, list){
      3b· ajusté la lista al destino (07)  — la misma familia que el 3
      4 · hay N que capaz no necesitás (20)
      5 · valija lista (09)
+     5b· esta lista dice "mixto" y no sé de qué dos (VAL-77a)
      6 · sólo lectura, cuando no queda nada más que decir
 
    El plan va PRIMERO, invirtiendo el orden de la tabla del diseño. El motivo:
@@ -8751,8 +9137,29 @@ function packingNotice(trip, list, plan){
 
   // 5 · valija lista (09)
   if(c.total>0 && c.pendientes===0){
-    const typeLbl = (TYPE_LABEL[list.tipoViaje]||"").toLowerCase();
+    const typeLbl = typeLabel(list.tipoViaje).toLowerCase();
     return `<div class="notice ok">${svg(I.check2)}<span class="bd">Valija lista.${c.descartados?` Los ${c.descartados} que descartaste ya quedaron anotados para tu próximo viaje${typeLbl?` de ${typeLbl}`:""}.`:""}</span></div>`;
+  }
+
+  /* 5b · VAL-77a · la lista que dice "mixto" y no sabe de qué dos cosas.
+     No se adivina: se pregunta, y mientras tanto la lista sigue funcionando
+     exactamente igual que antes — "mixto" es un valor válido y matchea las
+     mismas reglas.
+
+     POR QUÉ VA ACÁ ABAJO Y NO ARRIBA, que es donde lo puse primero: este
+     aviso es PERMANENTE hasta que se cambie el tipo. Arriba tapaba a los
+     avisos puntuales de un gesto que la persona acababa de hacer —lo destapó
+     `val75-sacar-con-el-dedo`, donde "Sumé 1 y saqué 1" dejó de verse—, que
+     es exactamente el motivo por el que el plan se adelantó al degradado.
+     Acá abajo no tapa nada accionable, y el chip ámbar del renglón del viaje
+     está siempre, que es de donde de verdad se cambia el tipo (VAL-76).
+
+     Y LA CRUZ, que el muestrario no dibujaba: siendo permanente, sin cruz
+     sería insistencia. Cerrarlo dura la visita, como el aviso 20. */
+  if(canWrite && !PK.hideMixtoAsk && esMixtoSinDefinir(list.tipoViaje)){
+    return `<div class="notice warn">${svg(I.info)}<span class="bd">Esta valija dice <b>mixto</b> y no sé de qué dos cosas. Decímelo y afino la lista; mientras tanto sigue funcionando igual.
+      <button class="act" data-pk="elegirtipos">Elegir las dos</button></span>
+      <button class="x" aria-label="Cerrar" data-pk="cerrarmixto">${svg(I.x)}</button></div>`;
   }
 
   // 6 · sólo lectura
@@ -8787,6 +9194,8 @@ function bindPackingNotice(root, trip, list){
     if(a==="vistas"){ pkDarPorVistas(trip); return; }
     if(a==="verquitar"){ sheetPackingRemovals(trip); return; }
     if(a==="cerrarquitar"){ PK.hideRemovals = true; render(); return; }
+    if(a==="elegirtipos"){ pkAbrirSelectorDeTipo(); return; }
+    if(a==="cerrarmixto"){ PK.hideMixtoAsk = true; render(); return; }
   });
 }
 
@@ -11793,7 +12202,7 @@ function sheetPackingItem(trip, list, clave){
 function sheetPackingInfo(trip, list){
   const b = list.base || {};
   const muestra = (list.aprendizaje && list.aprendizaje.muestra) || 0;
-  const typeLbl = TYPE_LABEL[list.tipoViaje] || list.tipoViaje || "";
+  const typeLbl = typeLabel(list.tipoViaje) || list.tipoViaje || "sin tipo";
   const d = parseDT(b.desde);
   const destMes = [b.destino, d?MESL[d.getMonth()]:null].filter(Boolean).join(" · ") || "sin destino";
 
@@ -11875,7 +12284,10 @@ function sheetPackingInfo(trip, list){
   if(verQuitar) verQuitar.onclick = ()=> sheetPackingRemovals(trip);
 
   if(Store.canWrite){
-    document.getElementById("pk-changetype").onclick = ()=>{ closeSheet(); PK.pickingType = true; render(); };
+    /* VAL-76: este botón sigue acá y funciona igual. Lo que cambió es que ya
+       no es el ÚNICO camino: el tipo se cambia desde donde se ve el tipo, que
+       es el renglón del viaje en la cabecera. */
+    document.getElementById("pk-changetype").onclick = ()=>{ closeSheet(); pkAbrirSelectorDeTipo(); };
     document.getElementById("pk-redo").onclick = ()=>{ closeSheet(); runGenerate(trip, list.tipoViaje, list); };
   } else {
     document.getElementById("cancel").onclick = closeSheet;

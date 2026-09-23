@@ -78,10 +78,21 @@ const tipoDe = page => page.evaluate(() => Store.packingOf('t1').tipoViaje);
     A(await page.locator('#main [data-pk="verplan"]').count() === 1, 'paso 3 · el aviso está, sin tocarlo');
     await page.evaluate(() => { window.__PLANVIEJO__ = App.plan; });   // la foto que QA vio aplicarse
 
-    // paso 4: cambiar el tipo a Playa, con los gestos reales
+    /* paso 4: cambiar el tipo a Playa, con los gestos reales.
+       VAL-77a cambió el modelo del selector: la grilla dejó de ser un radio y
+       pasó a ser de marcar hasta dos. Pasar de Ciudad a Playa son ahora DOS
+       gestos —destildar Ciudad y tildar Playa—, y así lo hace la persona:
+       el muestrario aprobado el 23/09 lo dice con todas las letras ("Tocá una
+       de nuevo para sacarla"). Si sólo se tildara Playa el resultado sería
+       "playa+ciudad", que es correcto y NO es lo que este escenario prueba. */
     await page.locator('#pk-info').click(); await page.waitForTimeout(200);
     await page.locator('#pk-changetype').click(); await page.waitForTimeout(300);
-    await page.locator('#pk-tp [data-t="playa"]').click();
+    A(await page.locator('#pk-tp [data-t="ciudad"][aria-pressed="true"]').count() === 1,
+      'paso 4 · el selector abre con Ciudad marcada, que es lo que dice la lista');
+    await page.locator('#pk-tp [data-t="ciudad"]').click(); await page.waitForTimeout(200);
+    A(await page.locator('#pk-tp [data-t="ciudad"][aria-pressed="true"]').count() === 0,
+      'paso 4 · al tocarla de nuevo, Ciudad queda destildada');
+    await page.locator('#pk-tp [data-t="playa"]').click(); await page.waitForTimeout(200);
     await page.locator('#pk-confirmtype').click();
     await page.waitForTimeout(1400);
     const playa = await claves(page);

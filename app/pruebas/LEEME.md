@@ -32,6 +32,8 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `tarjeta-y-lote.js` | VAL-59 (los tres casos, el match que no pregunta nada y el descarte) y VAL-60 (tres textos, **una** llamada, aseverado sobre lo que recibió `sample.json`) | 77 aserciones |
 | `motores-desde-html.js` | Las pruebas de los **tres** motores corridas contra la copia **embebida en `valija.html`**, no contra `app/parts/` | 68 + 101 + 39 casos |
 | `tier-del-modelo.js` | Qué `modelTier` pide cada camino, aseverado sobre las opciones que **efectivamente recibe** `sample.json()`: texto `"default"`, imágenes `"complex"`, equipaje `"complex"`. Y qué queda registrado, incluido que `modelTierApplied` no llega por `json()` | 42 aserciones |
+| `val76-el-tipo-con-el-dedo.js` | VAL-76 y VAL-77a desde la pantalla: los **siete** gestos del brief —llegar al selector desde el botón del tipo en la cabecera, marcar una, marcar dos, el tope, destildar, rehacer sin perder lo tuyo, y abrir una lista guardada que dice «mixto»—. El tope se toca con `force:true`, que es lo que hace un pulgar sobre un botón con `pointer-events:none`. Acepta la ruta del HTML | 58 aserciones |
+| `val77-mixto-como-antes.js` | Sin navegador. Que una lista guardada con `tipoViaje:"mixto"` dé **ítem por ítem lo mismo que antes de VAL-77a**, contra un maestro capturado del motor anterior; que dos tipos den la unión exacta de las dos listas; y que la forma canónica no dependa del orden en que se tocó | 29 aserciones |
 
 `importar-botones.js` recibe la ruta del HTML como argumento:
 

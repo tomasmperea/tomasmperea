@@ -57,7 +57,12 @@ const L=[]; const log=m=>{L.push(m);console.log(m);};
   // PASO 4 · cambiar el tipo a Playa, con gestos
   await page.locator('#pk-info').click(); await page.waitForTimeout(300);
   await page.locator('#pk-changetype').click(); await page.waitForTimeout(400);
-  await page.locator('#pk-tp [data-t="playa"]').click();
+  /* VAL-77a: la grilla dejó de ser un radio y pasó a ser de marcar hasta dos.
+     Cambiar de Ciudad a Playa son dos gestos: destildar Ciudad y tildar Playa.
+     Con un solo toque el resultado sería "playa+ciudad", que es correcto y no
+     es lo que este escenario reproduce. */
+  await page.locator('#pk-tp [data-t="ciudad"]').click(); await page.waitForTimeout(200);
+  await page.locator('#pk-tp [data-t="playa"]').click(); await page.waitForTimeout(200);
   await page.locator('#pk-confirmtype').click();
   await page.waitForTimeout(1800);
   const playa = await claves();

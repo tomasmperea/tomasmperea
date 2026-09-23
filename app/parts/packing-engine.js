@@ -590,6 +590,94 @@ function normalizeTripType(t) {
   return TRIP_TYPE_KEYS.indexOf(n) >= 0 ? n : null;
 }
 
+/* ============================================================
+   VAL-77a · EL TIPO DE VIAJE PUEDE SER DOS
+
+   `list.tipoViaje` sigue siendo UN STRING, siempre. Con dos tipos guarda
+   la forma canónica `"montana+ciudad"`, con las partes ordenadas según
+   TRIP_TYPE_KEYS para que sea estable. No hay un campo `tipoViajes` en
+   paralelo: dos campos que dicen lo mismo se desincronizan, y ese es un
+   modo de falla que este proyecto ya pagó.
+
+   UNA SOLA función parte el string y todo el mundo la llama. No hay un
+   segundo `split("+")` en ningún lado.
+
+   `mixto` sobrevive como valor guardado: `tripTypeParts("mixto")` devuelve
+   `["mixto"]`, así que una lista guardada antes de esta iteración matchea
+   exactamente las mismas reglas que antes. Lo que desaparece es de la
+   GRILLA, no del modelo.
+
+   El tope de dos lo pone la interfaz, no el parser: acá se devuelve lo que
+   se encuentra. Truncar callado convertiría una sorpresa en su propio
+   diagnóstico, que es la compuerta que este proyecto pagó en septiembre.
+   ============================================================ */
+
+/**
+ * Parte un tipo de viaje guardado en sus partes normalizadas.
+ * @param {string|Array<string>|null} s `"montana"`, `"montana+ciudad"`, `"mixto"` o un array
+ * @returns {Array<string>} claves de tipo, sin repetidos, en el orden en que vienen
+ */
+function tripTypeParts(s) {
+  var crudo = Array.isArray(s) ? s : String(s == null ? "" : s).split("+");
+  var out = [];
+  crudo.forEach(function (p) {
+    var n = normalizeTripType(p);
+    if (n && out.indexOf(n) < 0) out.push(n);
+  });
+  return out;
+}
+
+/**
+ * Forma canónica de un tipo de viaje: las partes ordenadas por TRIP_TYPE_KEYS
+ * y unidas con "+". `"ciudad+montana"` y `"montana+ciudad"` dan lo mismo.
+ * @param {string|Array<string>|null} s
+ * @returns {string|null} el string a guardar, o null si no hay ninguna parte válida
+ */
+function canonicalTripType(s) {
+  var partes = tripTypeParts(s).slice().sort(function (a, b) {
+    return TRIP_TYPE_KEYS.indexOf(a) - TRIP_TYPE_KEYS.indexOf(b);
+  });
+  return partes.length ? partes.join("+") : null;
+}
+
+/**
+ * Cómo se lee un tipo de viaje en pantalla. Una parte: "Montaña". Dos:
+ * "Montaña y ciudad" — la segunda en minúscula porque es media frase y no
+ * un título.
+ * @param {string|Array<string>|null} s
+ * @returns {string} "" si no hay ninguna parte válida
+ */
+function tripTypeLabel(s) {
+  var etiquetas = tripTypeParts(s).map(function (p) { return TRIP_TYPE_LABEL[p] || p; });
+  if (!etiquetas.length) return "";
+  if (etiquetas.length === 1) return etiquetas[0];
+  return etiquetas.slice(0, -1).join(", ") + " y " +
+         etiquetas[etiquetas.length - 1].toLowerCase();
+}
+
+/**
+ * Las partes del tipo de un contexto. Acepta un contexto armado a mano que
+ * sólo tenga `tripType`: se parte el string en vez de dar por hecho que el
+ * array está. Un contexto de una prueba vieja tiene que seguir andando.
+ * @param {Object} ctx
+ * @returns {Array<string>}
+ */
+function tripTypesOf(ctx) {
+  if (!ctx) return [];
+  return (ctx.tripTypes && ctx.tripTypes.length) ? ctx.tripTypes : tripTypeParts(ctx.tripType);
+}
+
+/**
+ * ¿Este viaje es (también) de tal tipo? Es la pregunta que reemplaza a
+ * `ctx.tripType === "montana"`, que con dos partes deja de alcanzar.
+ * @param {Object} ctx contexto del viaje
+ * @param {string} tipo clave de tipo
+ * @returns {boolean}
+ */
+function tripTypeHas(ctx, tipo) {
+  return tripTypesOf(ctx).indexOf(tipo) >= 0;
+}
+
 /**
  * Los ítems de una lista como array. Acepta el objeto indexado por clave
  * (la forma que se guarda) y también un array, por si viene de una versión
@@ -883,7 +971,9 @@ var BASE_RULES = [
   { id:"higiene.protector-solar", nombre:"Protector solar", categoria:"higiene",
     when:{ any:[{ tripTypes:["playa","montana","aventura"] }, { facts:["hasWaterActivity","hasSnow"] }] },
     motivo:function (n, ctx) {
-      if (ctx.tripType === "montana" || ctx.facts.hasSnow) return "En altura y con nieve el sol pega mucho más fuerte.";
+      /* VAL-77a: se pregunta por la PARTE, no por el escalar. Un viaje
+         montaña+ciudad tiene que dar el mismo motivo que uno de montaña. */
+      if (tripTypeHas(ctx, "montana") || ctx.facts.hasSnow) return "En altura y con nieve el sol pega mucho más fuerte.";
       return "Muchas horas de sol directo, todos los días del viaje.";
     } },
 
@@ -1012,8 +1102,17 @@ function matchesCondition(cond, ctx) {
   if (Array.isArray(cond)) return cond.every(function (c) { return matchesCondition(c, ctx); });
 
   if (cond.international !== undefined && ctx.international !== cond.international) return false;
-  if (cond.tripTypes && cond.tripTypes.indexOf(ctx.tripType) < 0) return false;
-  if (cond.notTripTypes && cond.notTripTypes.indexOf(ctx.tripType) >= 0) return false;
+  /* VAL-77a: el tipo puede ser dos, así que la pregunta deja de ser sobre un
+     escalar. `tripTypes` matchea si ALGUNA parte está en la lista de la regla;
+     `notTripTypes` corta si ALGUNA parte está en la de exclusión — la regla de
+     exclusión es una prohibición, y le alcanza con una parte para valer.
+     Con una sola parte las dos preguntas dan exactamente lo de antes, y una
+     lista guardada que dice "mixto" tiene una sola parte: "mixto". */
+  if (cond.tripTypes || cond.notTripTypes) {
+    var partesDelViaje = tripTypesOf(ctx);
+    if (cond.tripTypes && !partesDelViaje.some(function (t) { return cond.tripTypes.indexOf(t) >= 0; })) return false;
+    if (cond.notTripTypes && partesDelViaje.some(function (t) { return cond.notTripTypes.indexOf(t) >= 0; })) return false;
+  }
   if (cond.minDays !== undefined && !(ctx.days >= cond.minDays)) return false;
   if (cond.maxDays !== undefined && !(ctx.days <= cond.maxDays)) return false;
   if (cond.facts && !cond.facts.every(function (f) { return !!ctx.facts[f]; })) return false;
@@ -1081,20 +1180,27 @@ function tripContext(trip, items, opts) {
     days:days, nights:Math.max(0, days - 1), daysKnown:daysKnown,
     international:intl.value, internationalKnown:intl.known,
     internationalSource:intl.source, internationalDetail:intl.detail,
-    facts:{}, tripType:null, tripTypeSource:"sugerido", tripTypeReason:""
+    /* `tripType` es el string canónico —lo que se guarda y lo que se muestra—
+       y `tripTypes` son sus partes. Los dos salen del MISMO lugar dos líneas
+       más abajo: no es un segundo campo que haya que mantener sincronizado. */
+    facts:{}, tripType:null, tripTypes:[], tripTypeSource:"sugerido", tripTypeReason:""
   };
 
   Object.keys(FACTS).forEach(function (name) {
     try { ctx.facts[name] = !!FACTS[name].test(ctx); } catch (e) { ctx.facts[name] = false; }
   });
 
-  var chosen = normalizeTripType(opts.tipoViaje || opts.tripType);
+  /* `canonicalTripType` en vez de `normalizeTripType`: lo que llega puede ser
+     "montana+ciudad". Con un solo tipo devuelve lo mismo que antes, y con
+     "mixto" devuelve "mixto". */
+  var chosen = canonicalTripType(opts.tipoViaje || opts.tripType);
   if (chosen) {
     ctx.tripType = chosen; ctx.tripTypeSource = "elegido"; ctx.tripTypeReason = "Lo elegiste al generar la lista.";
   } else {
     var s = suggestTripType(trip, items, ctx);
     ctx.tripType = s.type; ctx.tripTypeSource = "sugerido"; ctx.tripTypeReason = s.reason; ctx.tripTypeConfidence = s.confidence;
   }
+  ctx.tripTypes = tripTypeParts(ctx.tripType);
   return ctx;
 }
 
@@ -1188,9 +1294,11 @@ function suggestTripType(trip, items, ctx) {
 
   if (ranked.length) {
     var top = ranked[0];
-    // dos familias fuertes a la vez: es un viaje mixto
+    /* Dos familias fuertes a la vez. VAL-77a: eso ya no se llama "mixto" —una
+       etiqueta que no le dice nada al motor—, se propone la COMBINACIÓN de las
+       dos, que es lo que el matcher sabe leer. Las reglas de las dos suman. */
     if (ranked.length > 1 && scores[ranked[1]] === scores[top]) {
-      return { type:"mixto", confidence:"media",
+      return { type:canonicalTripType([top, ranked[1]]), confidence:"media",
                reason:"El viaje mezcla " + TRIP_TYPE_LABEL[top].toLowerCase() + " y " + TRIP_TYPE_LABEL[ranked[1]].toLowerCase() + "." };
     }
     return { type:top, confidence:scores[top] >= 2 ? "alta" : "media",
@@ -1231,13 +1339,18 @@ function bump(map, clave, item) {
  */
 function learnFromHistory(history, tipoViaje) {
   var added = new Map(), dismissed = new Map(), muestra = 0;
-  var tipo = normalizeTripType(tipoViaje);
+  /* VAL-77a: se compara la COMBINACIÓN ENTERA, en forma canónica, para que
+     "ciudad+montana" y "montana+ciudad" sean la misma cosa aunque alguna lista
+     vieja haya quedado al revés. Un viaje montaña+ciudad aprende de otros
+     montaña+ciudad y NO de los de montaña a secas: es una limitación
+     declarada, no un defecto, y es lo que VAL-77b viene a cerrar. */
+  var tipo = canonicalTripType(tipoViaje);
 
   (history || []).forEach(function (list) {
     if (!list) return;
     var arr = itemsArray(list);
     if (!arr.length) return;
-    if (normalizeTripType(list.tipoViaje || list.tripType) !== tipo) return;
+    if (canonicalTripType(list.tipoViaje || list.tripType) !== tipo) return;
     muestra++;
     var seenAdd = {}, seenDis = {};
     arr.forEach(function (it) {
@@ -1402,7 +1515,10 @@ function buildPackingList(input) {
     if (out[e.clave] || findCanonicalMatch(out, e.clave)) return;
     out[e.clave] = makeItem({
       clave:e.clave, nombre:e.nombre, categoria:e.categoria || "otros", cantidad:null,
-      motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (TRIP_TYPE_LABEL[ctx.tripType] || ctx.tripType).toLowerCase() + ".",
+      /* `tripTypeLabel` y no `TRIP_TYPE_LABEL[...]`: con dos tipos la búsqueda
+         directa en el mapa da undefined y el motivo salía diciendo
+         "viajes de montana+ciudad". */
+      motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (tripTypeLabel(ctx.tripType) || String(ctx.tripType || "")).toLowerCase() + ".",
       origen:ORIGEN.HISTORIAL, regla:"historial", orden:orderOf(e.categoria || "otros", 900 + i)
     }, at);
   });
@@ -2042,7 +2158,10 @@ function lineaDestinos(b) {
 function destinationPrompt(list) {
   var b = (list && list.base) || {};
   var yaHay = itemsArray(list).map(function (i) { return i.nombre; }).join(", ");
-  var tipo = TRIP_TYPE_LABEL[list.tipoViaje] || list.tipoViaje || "mixto";
+  /* VAL-77a: con dos tipos la búsqueda directa en el mapa daba undefined y el
+     prompt salía diciendo "Tipo de viaje: montana+ciudad". `tripTypeLabel` lo
+     escribe como se lee: "Montaña y ciudad". */
+  var tipo = tripTypeLabel(list.tipoViaje) || list.tipoViaje || "mixto";
   var reservas = b.reservas || [];
   var lineasReservas = reservas.length
     ? reservas.map(function (r) { return "  - " + JSON.stringify(r); }).join("\n")
@@ -2866,6 +2985,9 @@ return {
 
   // utilidades y control de calidad
   slug:slug, normalizeTripType:normalizeTripType, daysBetweenInclusive:daysBetweenInclusive,
+  // VAL-77a: el tipo puede ser dos. UNA sola función parte el string.
+  tripTypeParts:tripTypeParts, canonicalTripType:canonicalTripType,
+  tripTypeLabel:tripTypeLabel, tripTypeHas:tripTypeHas,
   matchesCondition:matchesCondition, computeQty:computeQty, validateRules:validateRules,
   lowestOrigin:lowestOrigin, itemsArray:itemsArray,
   canonicalKey:canonicalKey, findCanonicalMatch:findCanonicalMatch,
