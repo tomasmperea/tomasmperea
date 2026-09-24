@@ -45,22 +45,36 @@ NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-botones.js "$PW
 `motores-desde-html.js` no necesita navegador: corre con `node` solo.
 
 `val80-el-codigo-del-vuelo.js` tiene **cuatro** controles negativos, corridos el 24/09 y con lo
-que dan:
+que dan.
+
+**Los números de acá abajo se volvieron a correr el 24/09 y dos estaban mal** (decían 4 y 7; dan 5 y 9).
+Lo encontró la auditoría corriéndolos en vez de creerles. Un conteo escrito de memoria no es un dato, y el
+día que uno de estos controles empiece a fallar de menos —porque alguien aflojó una aserción— el número
+viejo lo va a tapar. Si corrés uno y no da lo que dice acá, el que está mal puede ser el número o puede ser
+el arnés: averigualo antes de seguir.
 
 ```
 # 1 · sacar la guarda del motor → 4 FALLA (el destino escrito deja de encabezar la línea)
 sed 's/var codigo = esCodigoIATA(f.to);/var codigo = true;/' app/valija.html > /tmp/c1.html
 
-# 2 · devolver el maxlength al campo → 4 FALLA (el campo vuelve a comer letras)
+# 2 · devolver el maxlength al campo → 5 FALLA (el campo vuelve a comer letras)
 sed 's|placeholder="MAD" autocomplete|placeholder="MAD" maxlength="4" autocomplete|' \
   app/valija.html > /tmp/c2.html
 
-# 3 · dejar mudo el aviso → 7 FALLA (en las dos pantallas)
+# 3 · dejar mudo el aviso → 9 FALLA (en las dos pantallas)
 sed 's/^function avisoRutaHtml(from, to){$/function avisoRutaHtml(from, to){ return "";/' \
   app/valija.html > /tmp/c3.html
 
 # 4 · sacar el `bind()` de adentro del selector de tipo → 1 FALLA
 #     (el aviso queda muerto después de cambiar de tipo de reserva)
+#     Son dos líneas seguidas, así que el sabotaje no se puede hacer con un
+#     `sed` de una línea: hay que borrar el `bind();` que sigue a la línea de
+#     `fieldsFor(it.type)` DENTRO del onclick del selector, no los otros tres
+#     `bind()` del archivo. Con python:
+#       s = open("app/valija.html").read()
+#       v = '        document.getElementById("fields").innerHTML = fieldsFor(it.type);\n        bind();'
+#       assert s.count(v) == 1
+#       open("/tmp/c4.html","w").write(s.replace(v, v.split("\n")[0]))
 
 NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/val80-el-codigo-del-vuelo.js /tmp/c1.html
 ```

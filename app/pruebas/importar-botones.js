@@ -1,5 +1,12 @@
 const { chromium } = require("playwright");
-const F = process.argv[2];
+const path = require("path");
+/* La ruta por defecto, que hasta el 24/09 este arnés no tenía y los otros 32 sí.
+   Sin ella, correrlo sin argumento navegaba a `file://undefined/` y moría con un
+   error de node en vez de con una aserción roja. Al correr la suite entera daba
+   UN ROJO que no era del producto, y perseguirlo cuesta lo mismo que perseguir
+   uno de verdad — sólo que éste siempre termina en nada. */
+const F = process.argv[2] ? path.resolve(process.argv[2])
+                          : path.resolve(__dirname, "..", "valija.html");
 const BLOQUEAR = process.argv[3] === "bloquear";
 (async () => {
   const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });

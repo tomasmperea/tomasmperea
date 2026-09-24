@@ -375,6 +375,17 @@ async function armarLaValija(page, tripId) {
       ok(/OSLO/.test(linea), "el segundo vuelo sin código también llega");
       ok(!/no dicen adónde llegan/.test(linea),
          "y la línea no afirma que los vuelos no digan adónde llegan: sí lo dicen, sin código");
+      /* LA FRASE QUE LE EXPLICA AL MODELO POR QUÉ ESTO ES UNA PISTA.
+         No la fijaba nadie: la saqué del prompt con un `sed` y ni este arnés ni
+         el de VAL-72 se pusieron rojos. Y es la única línea del pedido que dice
+         por qué un lugar sin código no se puede tomar como destino — o sea, la
+         mitad de VAL-80 que mira al modelo. Sin esto, alguien puede borrarla
+         mañana limpiando prosa y la única señal sería que las sugerencias
+         empeoran, que es justo lo que no se ve desde acá.
+         Control negativo, corrido: sacando esa frase del `lineaPistas` de
+         `destinosDelViaje`, esta aserción FALLA y ninguna otra se mueve. */
+      ok(/no se puede comparar con el c[oó]digo del aeropuerto/i.test(linea),
+         "y le dice al modelo POR QUÉ es una pista: un nombre de ciudad no se compara con un código");
       await page.close();
     });
 
