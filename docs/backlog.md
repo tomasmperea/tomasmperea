@@ -1666,6 +1666,37 @@ ARN  → internacional: true ← "Vuelo con código ARN, fuera del país." ← l
 
 **Decisión del PM (22/09): al backlog, no se arregla ahora.** Primero VAL-76 y VAL-77.
 
+### VAL-81 · La banda de la etiqueta abrevia cualquier destino a tres letras — P3
+
+**Sale del arreglo de VAL-80, anotado en vez de hecho.** `routeCodes` corta a 3 caracteres con `.slice(0,3)`
+para la banda vertical de la tarjeta del viaje. Con un destino escrito `SUECIA` la tarjeta muestra `EZE → SUE`.
+
+**No es el mismo defecto que VAL-80 y por eso no entró en ese arreglo.** Ahí el problema era que el motor le
+creía a un valor que no era un código; acá no hay ninguna suposición de que lo sea — la misma línea abrevia
+igual el destino escrito a mano (`Noruega` → `NOR`). Es el ancho fijo de la banda, y no alimenta ni al motor
+ni al modelo.
+
+**Pero es lo único que va a seguir mostrando tres letras después de VAL-80**, así que si el PM lo ve puede
+sonarle a "todavía me come letras". Lo que hay que decidir con el caso a la vista: si abrevia, si elide con
+puntos suspensivos, o si la banda muestra otra cosa.
+
+### VAL-82 · Un fixture usa un tipo de reserva que no existe — P2
+
+**Preexistente, encontrado de paso al barrer VAL-80.** `app/pruebas/val76-el-tipo-con-el-dedo.js:69` tiene un
+alojamiento declarado como `type:"lodging"`. Ese tipo **no existe en la app**: la clave real es `stay`, y
+`lodging` no aparece ni una vez en `app/valija.html` ni en `app/parts/packing-engine.js` (comprobado).
+
+Consecuencia: ese hotel nunca llega a `destinosDelViaje`, así que una de las aserciones de ese arnés puede
+estar **pasando por la razón equivocada** — que es exactamente lo que este proyecto tiene escrito bajo "un
+fixture al que le falta un campo hace pasar una prueba que debería fallar".
+
+- Corregir el fixture a `stay` y **volver a correr el arnés**: si alguna aserción se pone roja, ahí había un
+  defecto tapado.
+- Y la pregunta que hay que hacerse después: **¿qué otro fixture del repo usa una clave que la app no
+  conoce?** Es una forma, no un caso. Se barre con `grep` de los tipos contra `TYPES`, no a ojo.
+- Lo natural es que esto deje de depender de la memoria: un arnés que compare las claves de los fixtures
+  contra las de `TYPES` encuentra la próxima sola.
+
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
 **Sale de VAL-75, por decisión del PM (22/09).** Ahí la regla quedó clara: lo empacado es intocable, porque
