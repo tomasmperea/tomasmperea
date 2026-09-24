@@ -827,7 +827,7 @@ mudo sobre la mitad. Arreglado en v34, con el caso mixto entero en el arnés de 
 **Historia aparte, que el PM pidió separar:** avisarle cuando un ítem que YA empacó probablemente no sirva
 para el viaje nuevo. Es informar, no sacar. No entra acá.
 
-### VAL-76 · Cambiar el tipo de viaje sobre una lista ya armada — P0
+### VAL-76 · Cambiar el tipo de viaje sobre una lista ya armada — ✅ TERMINADA, verificada en el teléfono del PM (24/09)
 
 **Reporte del PM (19/09):** *"no solo quiero actualizar el viaje sino que quiero actualizar el tipo de viaje
 para que alimente al motor: playa, montaña, mixto, etc. no hay paso atrás una vez elegido esto y la lista,
@@ -849,7 +849,7 @@ no existe.**
 - Y se cuida lo mismo que en VAL-75: lo que la persona ya marcó o agregó no se pierde al rehacer.
 - **El caso del PM:** un viaje de montaña ya armado que pasa a ser de playa, y una lista que queda de playa.
 
-### VAL-77a · "Mixto" no quiere decir nada — P1
+### VAL-77a · "Mixto" no quiere decir nada — ✅ TERMINADA, verificada en el teléfono del PM (24/09)
 
 **Reporte del PM (19/09):** *"incluso, el viaje mixto no se entiende a qué hace referencia: debería poder
 elegir el mixto entre ciudad/montaña o playa/montaña o playa/ciudad, etc"*.
@@ -868,6 +868,12 @@ Y es el caso más común de los viajes reales: nadie se va diez días a un solo 
   funcionando, y conviene que la app pregunte una vez qué combinación era en vez de adivinar.
 
 **Sale junto con VAL-75 y VAL-76**, por decisión del PM.
+
+**Cerrada el 24/09.** El PM probó el guion de cinco pasos en su teléfono: *"todo el guión funciona
+correctamente"*. Lo que sólo contestaba el aparato —el área táctil real del botón, el tercer estado del botón
+de tema, y que con dos tipos entren ítems de los dos— quedó contestado. El registro está en
+`docs/qa/v35-resultado.md`; la auditoría, en `docs/auditoria/2026-09-23-val76-val77a.md` (81/100, candidato,
+sin bloqueantes).
 
 **Partida en 77a y 77b el 23/09.** Al revisar el diseño, el PM pidió que el motor sea *"lo suficientemente
 inteligente para entender que si agregué un buzo polar es para montaña y si agregué una remera común o unas
