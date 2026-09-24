@@ -381,6 +381,27 @@ function norm(s) {
     .toLowerCase().trim();
 }
 
+/* ¿ES UN CÓDIGO DE AEROPUERTO? — VAL-80, y es UNA sola función a propósito.
+
+   El `/^[A-Z]{3}$/` vivía escrito a mano dentro de `deduceInternational` y en
+   ningún otro lado: `destinosDelViaje` le creía al `to` de un vuelo por venir
+   de un vuelo, sin preguntar nada. Las dos funciones leen EL MISMO campo y
+   contestaban distinto sobre el mismo dato — `SUEC` era ignorado por una y
+   tomado como destino en firme por la otra.
+
+   Eso es la forma que este proyecto ya pagó cuatro rondas: una regla sobre un
+   tipo de dato, mantenida a mano, repetida en un lugar y olvidada en el de al
+   lado. Así que la regla deja de estar escrita en cada sitio y pasa a ser una
+   función que todos preguntan: el motor, el formulario manual y la pantalla de
+   revisar lo importado.
+
+   Qué afirma, exactamente: tres letras A-Z, ni más ni menos. NO afirma que ese
+   código exista ni que sea el aeropuerto que la persona quiso. Traducir ciudad
+   ↔ IATA es VAL-66 y no se hace acá. */
+function esCodigoIATA(v) {
+  return /^[A-Z]{3}$/.test(String(v == null ? "" : v).trim().toUpperCase());
+}
+
 /**
  * Singular de una palabra, en castellano y por heurística.
  * No busca ser gramaticalmente perfecto: busca ser determinístico y que
@@ -759,7 +780,9 @@ function deduceInternational(trip, items) {
     if (!it || it.type !== "flight") return;
     [it.from, it.to].forEach(function (c) {
       var v = String(c || "").trim().toUpperCase();
-      if (/^[A-Z]{3}$/.test(v)) codes.push(v);
+      // VAL-80: la misma pregunta que hace `destinosDelViaje`, y ahora es
+      // literalmente la misma función. Ver `esCodigoIATA`.
+      if (esCodigoIATA(v)) codes.push(v);
     });
   });
   codes = uniq(codes);
@@ -1833,10 +1856,40 @@ function destinosDelViaje(trip, items) {
   // que ya se eligió para el vuelo sin origen.
   var ordenConfiable = vuelos.length > 1 &&
     vuelos.every(function (f) { return String(f.start == null ? "" : f.start).trim(); });
+  //
+  // `casa` SIGUE SALIENDO DE `from` TAL CUAL, Y NO SE LE PIDE QUE SEA UN
+  // CÓDIGO — VAL-80 lo puso en duda y la respuesta salió de leer qué pregunta
+  // hace esta línea. No pregunta "¿qué lugar es?": pregunta "¿el último vuelo
+  // aterriza en la misma cadena de la que salió el primero?". Es una identidad
+  // de texto normalizado, y una identidad vale igual entre dos códigos que
+  // entre dos nombres de ciudad: si los dos dicen "Buenos Aires", el dato dice
+  // que se volvió al punto de partida, sin inferir nada.
+  //
+  // Exigirle `esCodigoIATA` sería sacar una condición que un caso necesita: un
+  // viaje cargado con "Buenos Aires" en los dos extremos dejaría de descartar
+  // la vuelta, y ese "Buenos Aires" —que ahora, por la guarda de abajo, entra
+  // como PISTA— le llegaría al modelo con la invitación a mirarlo como
+  // destino. O sea: casa disfrazada de destino, que es exactamente el defecto
+  // que este descarte vino a cerrar.
+  //
+  // Lo que sí cambia es qué pasa cuando NO hay identidad: antes el `to` de la
+  // vuelta entraba en firme igual; ahora, si no es código, entra como pista.
   var casa = ordenConfiable ? norm(vuelos[0].from) : "";
   vuelos.forEach(function (f, k) {
     if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
-    sumar(String(f.to).toUpperCase(), "vuelo", f, true);
+    /* LA GUARDA DE VAL-80. Un `to` que no es un código de aeropuerto no puede
+       desplazar al destino escrito, y el porqué es el mismo que ya estaba
+       escrito arriba para las direcciones: sólo se puede afirmar que un lugar
+       no es el punto de partida cuando hay contra qué compararlo, y lo que hay
+       guardado son códigos. `SUEC`, `SUECIA`, `OS` u `oslo` no se comparan con
+       nada — antes los tres entraban en firme y le tapaban a la persona el
+       destino que había escrito.
+
+       No se descartan: bajan a PISTA, con su fuente y sus fechas, igual que
+       una dirección. Se manda de más, que es el lado seguro y el mismo que ya
+       eligió esta función dos veces. */
+    var codigo = esCodigoIATA(f.to);
+    sumar(codigo ? String(f.to).trim().toUpperCase() : String(f.to).trim(), "vuelo", f, codigo);
   });
 
     /* ACÁ HABÍA UNA ANOTACIÓN DE TIEMPO, y la sacó el PM el 21/09 con los
@@ -2100,10 +2153,18 @@ function lineaDestinos(b) {
     var f = [l.desde, l.hasta].filter(Boolean).join(" a ");
     return "\"" + l.lugar + "\" (" + l.fuente + (f ? ", " + f : "") + ")";
   });
+  /* VAL-80: esta frase decía "una dirección" y desde la guarda del motor una
+     pista puede venir de un vuelo cuyo destino no es un código de aeropuerto.
+     Decirle al modelo que todas las pistas son direcciones sería afirmar algo
+     falso sobre el dato que le estoy mandando, que es de las pocas cosas que
+     este proyecto no negocia. Se reescribe sin afirmar QUÉ es cada pista: dice
+     por qué ninguna alcanza para desplazar al destino, que es lo único que las
+     junta en esta lista. */
   var lineaPistas = pistas.length
-    ? " Hay además " + pistas.join(" y ") + ". Una dirección no dice si está en el destino o en el lugar " +
-      "de donde se sale —un hotel junto al aeropuerto la noche antes de viajar se escribe igual que uno al llegar—, " +
-      "así que fijate en las fechas y en el resto del viaje antes de tomarla como destino."
+    ? " Hay además " + pistas.join(" y ") + ". Ninguna de esas alcanza para afirmar cuál es el destino: " +
+      "un hotel junto al aeropuerto la noche antes de viajar se escribe igual que uno al llegar, y un lugar " +
+      "escrito con el nombre de la ciudad no se puede comparar con el código del aeropuerto de donde se sale. " +
+      "Fijate en las fechas y en el resto del viaje antes de tomar alguna como destino."
     : "";
 
   /* Sin destino escrito y sin vuelos no hay nada que encabece la línea, y la
@@ -2122,8 +2183,13 @@ function lineaDestinos(b) {
        le corresponde. */
     var porQue = [];
     if (!String((b && b.destino) || "").trim()) porQue.push("la persona no escribió ninguno");
+    /* VAL-80: decía "los vuelos cargados no dicen adónde llegan" y con un
+       `to` que no es código eso es falso — el vuelo dice adónde llega, lo que
+       no trae es un código con el que compararlo, y por eso bajó a pista. La
+       frase se corrige para cubrir los dos casos que llegan acá (sin `to`, y
+       con un `to` que no es código) sin mentir en ninguno. */
     porQue.push(d && d.hayVuelos
-      ? "los vuelos cargados no dicen adónde llegan"
+      ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino"
       : "no hay vuelos cargados");
     return "- Destino: " + porQue.join(" y ") + "." + lineaPistas;
   }
@@ -2137,7 +2203,10 @@ function lineaDestinos(b) {
        haberlo arreglado. */
     return "- Destino: " + partes.join(", ") +
            ". Lo escribió la persona al crear el viaje; " +
-           (d.hayVuelos ? "los vuelos cargados no dicen adónde llegan, así que nada lo confirma."
+           /* VAL-80, mismo motivo que la rama de arriba: un vuelo con
+              `to` = "SUECIA" sí dice adónde llega. Lo que no trae es el
+              código, y eso es lo que lo dejó sin confirmar nada. */
+           (d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino, así que nada lo confirma."
                         : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
   }
@@ -2963,6 +3032,8 @@ return {
   suggestTripType:suggestTripType,
   tripContext:tripContext,
   deduceInternational:deduceInternational,
+  // VAL-80: la interfaz pregunta lo mismo que el motor, con la misma función.
+  esCodigoIATA:esCodigoIATA,
 
   // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,

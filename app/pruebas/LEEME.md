@@ -34,6 +34,7 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `tier-del-modelo.js` | Qué `modelTier` pide cada camino, aseverado sobre las opciones que **efectivamente recibe** `sample.json()`: texto `"default"`, imágenes `"complex"`, equipaje `"complex"`. Y qué queda registrado, incluido que `modelTierApplied` no llega por `json()` | 42 aserciones |
 | `val76-el-tipo-con-el-dedo.js` | VAL-76 y VAL-77a desde la pantalla: los **siete** gestos del brief —llegar al selector desde el botón del tipo en la cabecera, marcar una, marcar dos, el tope, destildar, rehacer sin perder lo tuyo, y abrir una lista guardada que dice «mixto»—. El tope se toca con `force:true`, que es lo que hace un pulgar sobre un botón con `pointer-events:none`. Acepta la ruta del HTML | 58 aserciones |
 | `val77-mixto-como-antes.js` | Sin navegador. Que una lista guardada con `tipoViaje:"mixto"` dé **ítem por ítem lo mismo que antes de VAL-77a**, contra un maestro capturado del motor anterior; que dos tipos den la unión exacta de las dos listas; y que la forma canónica no dependa del orden en que se tocó | 29 aserciones |
+| `val80-el-codigo-del-vuelo.js` | VAL-80 desde la pantalla: los **seis** gestos del brief —escribir `SUECIA` en Destino (IATA) y guardar, escribir `ARN`, el multidestino MAD·CDG·FCO de VAL-72, un destino sin código ya guardado que llega al modelo como pista con sus fechas, lo mismo entrando por revisar lo importado, y una lista guardada antes del cambio—, más el barrido de `to` de 2, 3 y 4 caracteres en minúscula y en mayúscula, y los dos vecinos que el arreglo tocó (cambiar el tipo de reserva, abrir una reserva ya guardada). Acepta la ruta del HTML | 56 aserciones |
 
 `importar-botones.js` recibe la ruta del HTML como argumento:
 
@@ -42,6 +43,27 @@ NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-botones.js "$PW
 ```
 
 `motores-desde-html.js` no necesita navegador: corre con `node` solo.
+
+`val80-el-codigo-del-vuelo.js` tiene **cuatro** controles negativos, corridos el 24/09 y con lo
+que dan:
+
+```
+# 1 · sacar la guarda del motor → 4 FALLA (el destino escrito deja de encabezar la línea)
+sed 's/var codigo = esCodigoIATA(f.to);/var codigo = true;/' app/valija.html > /tmp/c1.html
+
+# 2 · devolver el maxlength al campo → 4 FALLA (el campo vuelve a comer letras)
+sed 's|placeholder="MAD" autocomplete|placeholder="MAD" maxlength="4" autocomplete|' \
+  app/valija.html > /tmp/c2.html
+
+# 3 · dejar mudo el aviso → 7 FALLA (en las dos pantallas)
+sed 's/^function avisoRutaHtml(from, to){$/function avisoRutaHtml(from, to){ return "";/' \
+  app/valija.html > /tmp/c3.html
+
+# 4 · sacar el `bind()` de adentro del selector de tipo → 1 FALLA
+#     (el aviso queda muerto después de cambiar de tipo de reserva)
+
+NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/val80-el-codigo-del-vuelo.js /tmp/c1.html
+```
 
 `tier-del-modelo.js` también acepta la ruta del HTML, y por el mismo motivo: una prueba de
 configuración que no puede fallar no prueba nada. Los tres controles negativos:

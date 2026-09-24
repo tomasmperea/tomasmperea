@@ -1849,6 +1849,27 @@ function norm(s) {
     .toLowerCase().trim();
 }
 
+/* ¿ES UN CÓDIGO DE AEROPUERTO? — VAL-80, y es UNA sola función a propósito.
+
+   El `/^[A-Z]{3}$/` vivía escrito a mano dentro de `deduceInternational` y en
+   ningún otro lado: `destinosDelViaje` le creía al `to` de un vuelo por venir
+   de un vuelo, sin preguntar nada. Las dos funciones leen EL MISMO campo y
+   contestaban distinto sobre el mismo dato — `SUEC` era ignorado por una y
+   tomado como destino en firme por la otra.
+
+   Eso es la forma que este proyecto ya pagó cuatro rondas: una regla sobre un
+   tipo de dato, mantenida a mano, repetida en un lugar y olvidada en el de al
+   lado. Así que la regla deja de estar escrita en cada sitio y pasa a ser una
+   función que todos preguntan: el motor, el formulario manual y la pantalla de
+   revisar lo importado.
+
+   Qué afirma, exactamente: tres letras A-Z, ni más ni menos. NO afirma que ese
+   código exista ni que sea el aeropuerto que la persona quiso. Traducir ciudad
+   ↔ IATA es VAL-66 y no se hace acá. */
+function esCodigoIATA(v) {
+  return /^[A-Z]{3}$/.test(String(v == null ? "" : v).trim().toUpperCase());
+}
+
 /**
  * Singular de una palabra, en castellano y por heurística.
  * No busca ser gramaticalmente perfecto: busca ser determinístico y que
@@ -2227,7 +2248,9 @@ function deduceInternational(trip, items) {
     if (!it || it.type !== "flight") return;
     [it.from, it.to].forEach(function (c) {
       var v = String(c || "").trim().toUpperCase();
-      if (/^[A-Z]{3}$/.test(v)) codes.push(v);
+      // VAL-80: la misma pregunta que hace `destinosDelViaje`, y ahora es
+      // literalmente la misma función. Ver `esCodigoIATA`.
+      if (esCodigoIATA(v)) codes.push(v);
     });
   });
   codes = uniq(codes);
@@ -3301,10 +3324,40 @@ function destinosDelViaje(trip, items) {
   // que ya se eligió para el vuelo sin origen.
   var ordenConfiable = vuelos.length > 1 &&
     vuelos.every(function (f) { return String(f.start == null ? "" : f.start).trim(); });
+  //
+  // `casa` SIGUE SALIENDO DE `from` TAL CUAL, Y NO SE LE PIDE QUE SEA UN
+  // CÓDIGO — VAL-80 lo puso en duda y la respuesta salió de leer qué pregunta
+  // hace esta línea. No pregunta "¿qué lugar es?": pregunta "¿el último vuelo
+  // aterriza en la misma cadena de la que salió el primero?". Es una identidad
+  // de texto normalizado, y una identidad vale igual entre dos códigos que
+  // entre dos nombres de ciudad: si los dos dicen "Buenos Aires", el dato dice
+  // que se volvió al punto de partida, sin inferir nada.
+  //
+  // Exigirle `esCodigoIATA` sería sacar una condición que un caso necesita: un
+  // viaje cargado con "Buenos Aires" en los dos extremos dejaría de descartar
+  // la vuelta, y ese "Buenos Aires" —que ahora, por la guarda de abajo, entra
+  // como PISTA— le llegaría al modelo con la invitación a mirarlo como
+  // destino. O sea: casa disfrazada de destino, que es exactamente el defecto
+  // que este descarte vino a cerrar.
+  //
+  // Lo que sí cambia es qué pasa cuando NO hay identidad: antes el `to` de la
+  // vuelta entraba en firme igual; ahora, si no es código, entra como pista.
   var casa = ordenConfiable ? norm(vuelos[0].from) : "";
   vuelos.forEach(function (f, k) {
     if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
-    sumar(String(f.to).toUpperCase(), "vuelo", f, true);
+    /* LA GUARDA DE VAL-80. Un `to` que no es un código de aeropuerto no puede
+       desplazar al destino escrito, y el porqué es el mismo que ya estaba
+       escrito arriba para las direcciones: sólo se puede afirmar que un lugar
+       no es el punto de partida cuando hay contra qué compararlo, y lo que hay
+       guardado son códigos. `SUEC`, `SUECIA`, `OS` u `oslo` no se comparan con
+       nada — antes los tres entraban en firme y le tapaban a la persona el
+       destino que había escrito.
+
+       No se descartan: bajan a PISTA, con su fuente y sus fechas, igual que
+       una dirección. Se manda de más, que es el lado seguro y el mismo que ya
+       eligió esta función dos veces. */
+    var codigo = esCodigoIATA(f.to);
+    sumar(codigo ? String(f.to).trim().toUpperCase() : String(f.to).trim(), "vuelo", f, codigo);
   });
 
     /* ACÁ HABÍA UNA ANOTACIÓN DE TIEMPO, y la sacó el PM el 21/09 con los
@@ -3568,10 +3621,18 @@ function lineaDestinos(b) {
     var f = [l.desde, l.hasta].filter(Boolean).join(" a ");
     return "\"" + l.lugar + "\" (" + l.fuente + (f ? ", " + f : "") + ")";
   });
+  /* VAL-80: esta frase decía "una dirección" y desde la guarda del motor una
+     pista puede venir de un vuelo cuyo destino no es un código de aeropuerto.
+     Decirle al modelo que todas las pistas son direcciones sería afirmar algo
+     falso sobre el dato que le estoy mandando, que es de las pocas cosas que
+     este proyecto no negocia. Se reescribe sin afirmar QUÉ es cada pista: dice
+     por qué ninguna alcanza para desplazar al destino, que es lo único que las
+     junta en esta lista. */
   var lineaPistas = pistas.length
-    ? " Hay además " + pistas.join(" y ") + ". Una dirección no dice si está en el destino o en el lugar " +
-      "de donde se sale —un hotel junto al aeropuerto la noche antes de viajar se escribe igual que uno al llegar—, " +
-      "así que fijate en las fechas y en el resto del viaje antes de tomarla como destino."
+    ? " Hay además " + pistas.join(" y ") + ". Ninguna de esas alcanza para afirmar cuál es el destino: " +
+      "un hotel junto al aeropuerto la noche antes de viajar se escribe igual que uno al llegar, y un lugar " +
+      "escrito con el nombre de la ciudad no se puede comparar con el código del aeropuerto de donde se sale. " +
+      "Fijate en las fechas y en el resto del viaje antes de tomar alguna como destino."
     : "";
 
   /* Sin destino escrito y sin vuelos no hay nada que encabece la línea, y la
@@ -3590,8 +3651,13 @@ function lineaDestinos(b) {
        le corresponde. */
     var porQue = [];
     if (!String((b && b.destino) || "").trim()) porQue.push("la persona no escribió ninguno");
+    /* VAL-80: decía "los vuelos cargados no dicen adónde llegan" y con un
+       `to` que no es código eso es falso — el vuelo dice adónde llega, lo que
+       no trae es un código con el que compararlo, y por eso bajó a pista. La
+       frase se corrige para cubrir los dos casos que llegan acá (sin `to`, y
+       con un `to` que no es código) sin mentir en ninguno. */
     porQue.push(d && d.hayVuelos
-      ? "los vuelos cargados no dicen adónde llegan"
+      ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino"
       : "no hay vuelos cargados");
     return "- Destino: " + porQue.join(" y ") + "." + lineaPistas;
   }
@@ -3605,7 +3671,10 @@ function lineaDestinos(b) {
        haberlo arreglado. */
     return "- Destino: " + partes.join(", ") +
            ". Lo escribió la persona al crear el viaje; " +
-           (d.hayVuelos ? "los vuelos cargados no dicen adónde llegan, así que nada lo confirma."
+           /* VAL-80, mismo motivo que la rama de arriba: un vuelo con
+              `to` = "SUECIA" sí dice adónde llega. Lo que no trae es el
+              código, y eso es lo que lo dejó sin confirmar nada. */
+           (d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino, así que nada lo confirma."
                         : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
   }
@@ -4431,6 +4500,8 @@ return {
   suggestTripType:suggestTripType,
   tripContext:tripContext,
   deduceInternational:deduceInternational,
+  // VAL-80: la interfaz pregunta lo mismo que el motor, con la misma función.
+  esCodigoIATA:esCodigoIATA,
 
   // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,
@@ -9373,6 +9444,63 @@ function writeErr(e){
   return "Guardado en este dispositivo. No se pudo sincronizar todavía";
 }
 
+/* ---------- VAL-80 · la ruta de un vuelo que no trae códigos ----------
+
+   El campo dejó de comer letras (se le sacó el `maxlength="4"`), así que
+   ahora "SUECIA" se guarda entero. Lo que no puede pasar es que se guarde
+   entero Y EN SILENCIO: la guarda del motor lo va a tratar como pista, no
+   como destino, y eso hay que decirlo donde la persona lo escribe.
+
+   NO BLOQUEA EL GUARDADO, y es una decisión, no una omisión: con la guarda
+   del motor un `to` que no es código ya funciona —viaja al modelo entero y
+   con sus fechas—, así que impedir guardar sería tirar un dato válido para
+   cobrarse un formato. Se avisa y se guarda.
+
+   LO QUE EL AVISO NO DICE: que el destino del viaje "sigue siendo el que
+   escribiste". Sería falso en cuanto haya otro vuelo del mismo viaje con un
+   código de verdad — ése manda y el escrito pasa a contexto. El aviso afirma
+   sólo lo que vale siempre: con esto no se puede fijar el destino.
+
+   Las dos pantallas que escriben una ruta preguntan acá: el formulario
+   manual (`sheetItem`) y la de revisar lo importado (`renderReview`). El
+   aviso al lado del campo es el mismo en las dos; el cartel al guardar es
+   sólo de la primera, y eso se decidió leyendo cada pantalla:
+
+     · `sheetItem` CIERRA la hoja al guardar, así que el aviso que estaba al
+       lado del campo desaparece justo cuando se confirma. Ahí hace falta el
+       cartel, y reemplaza al "Reserva guardada".
+     · `renderReview` tiene el botón de guardar en el pie de la MISMA hoja
+       donde está la tarjeta: el aviso está a la vista en el momento del
+       toque. Y su cierre ya tiene cinco ramas contando documentos adjuntos,
+       reservas sin comprobante y vuelos completados; meterle un cartel más
+       sería pisar uno de ésos (ver el comentario de `toast`). */
+function rutaSinCodigo(from, to){
+  const malos = [];
+  const mirar = (rotulo, v)=>{
+    const s = String(v==null?"":v).trim();
+    if(s && !PackingEngine.esCodigoIATA(s)) malos.push({rotulo, valor:s});
+  };
+  mirar("Origen", from); mirar("Destino", to);
+  return malos;
+}
+/** El aviso largo, el que vive al lado del campo mientras se escribe. */
+function avisoRutaHtml(from, to){
+  const malos = rutaSinCodigo(from, to);
+  if(!malos.length) return "";
+  const cuales = malos.map(m=>`${m.rotulo} dice <b>${esc(m.valor)}</b>`).join(" y ");
+  return `<div class="notice warn">${svg(I.info)}<span class="bd">${cuales}. Ahí va el código de
+    tres letras del aeropuerto —EZE, MAD, ARN—, y todavía no sé traducir el nombre de una ciudad.
+    Lo guardo tal como lo escribís y se lo mando entero a la valija como pista, pero con eso no puedo
+    fijar el destino del viaje.</span></div>`;
+}
+/** La misma cosa en un renglón, para el cartel que sale al guardar. */
+function avisoRutaToast(from, to){
+  const malos = rutaSinCodigo(from, to);
+  if(!malos.length) return "";
+  const cuales = malos.map(m=>`«${m.valor}»`).join(" y ");
+  return `Guardado. ${cuales} no ${malos.length>1?"son códigos":"es un código"} de aeropuerto de tres letras: ${malos.length>1?"van":"va"} como pista y con eso no puedo fijar el destino del viaje.`;
+}
+
 /* ---------- reserva ---------- */
 function sheetItem(trip, item, prefill){
   const it = item || Object.assign({id:uid(), type:"flight"}, prefill||{});
@@ -9397,9 +9525,13 @@ function sheetItem(trip, item, prefill){
 
     if(type==="flight") return common + `
       <div class="f2">
-        <div class="f req"><label for="i_from">Origen (IATA)</label><input id="i_from" class="mono" value="${esc(it.from||"")}" placeholder="EZE" maxlength="4" autocomplete="off" style="text-transform:uppercase"></div>
-        <div class="f req"><label for="i_to">Destino (IATA)</label><input id="i_to" class="mono" value="${esc(it.to||"")}" placeholder="MAD" maxlength="4" autocomplete="off" style="text-transform:uppercase"></div>
+        <div class="f req"><label for="i_from">Origen (IATA)</label><input id="i_from" class="mono" value="${esc(it.from||"")}" placeholder="EZE" autocomplete="off" style="text-transform:uppercase"></div>
+        <div class="f req"><label for="i_to">Destino (IATA)</label><input id="i_to" class="mono" value="${esc(it.to||"")}" placeholder="MAD" autocomplete="off" style="text-transform:uppercase"></div>
       </div>
+      <!-- VAL-80: acá sale el aviso cuando lo escrito no es un código de tres
+           letras. Se pinta al abrir (una reserva vieja puede traer el dato
+           malo ya guardado) y en cada tecla. Ver avisoRutaHtml(). -->
+      <div id="i_ruta_aviso">${avisoRutaHtml(it.from, it.to)}</div>
       <div class="f2">
         <div class="f req"><label for="i_start">Sale</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
         <div class="f"><label for="i_end">Llega</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
@@ -9485,6 +9617,16 @@ function sheetItem(trip, item, prefill){
     `<button class="btn ghost" id="cancel">Cancelar</button>
      <button class="btn primary" id="save">Guardar</button>`);
 
+  /* VAL-80 · el aviso de la ruta se repinta en cada tecla. Vive dentro de
+     `#fields`, que se reemplaza entero al cambiar el tipo de reserva: por eso
+     `bind()` se vuelve a llamar después del reemplazo y no alcanza con
+     enganchar una vez. Sin eso, cambiar a "Vuelo" dejaba el campo sin aviso. */
+  const pintarAvisoRuta = ()=>{
+    const caja = document.getElementById("i_ruta_aviso");
+    if(!caja) return;                       // el tipo actual no tiene ruta de vuelo
+    const g = id => document.getElementById(id)?.value?.trim() || "";
+    caja.innerHTML = avisoRutaHtml(g("i_from"), g("i_to"));
+  };
   const bind = ()=>{
     document.querySelectorAll("#tp button").forEach(b=>{
       b.onclick = ()=>{
@@ -9492,7 +9634,12 @@ function sheetItem(trip, item, prefill){
         collect();
         document.querySelectorAll("#tp button").forEach(x=> x.setAttribute("aria-pressed", x.dataset.t===it.type));
         document.getElementById("fields").innerHTML = fieldsFor(it.type);
+        bind();
       };
+    });
+    ["i_from","i_to"].forEach(id=>{
+      const inp = document.getElementById(id);
+      if(inp) inp.oninput = pintarAvisoRuta;
     });
   };
   const collect = ()=>{
@@ -9605,7 +9752,14 @@ function sheetItem(trip, item, prefill){
       DOC.quitados.forEach(id=> Store.delDocBody(trip.id, id));
       DOC.quitados = [];
       closeSheet();
+      /* VAL-80 · el aviso de la ruta reemplaza al "Reserva guardada", no se
+         suma: dos carteles seguidos se pisan (ver el comentario de `toast`) y
+         éste ya dice que guardó. El error de documentos sigue primero porque
+         es lo único que falló; en ese caso el aviso de la ruta queda sólo en
+         la hoja, que es donde estuvo visible mientras se escribía. */
+      const avisoRuta = it.type==="flight" ? avisoRutaToast(it.from, it.to) : "";
       if(fallados.length) toast(fallados[0].info.mensaje, true);
+      else if(avisoRuta) toast(avisoRuta);
       else toast(item?"Reserva actualizada":"Reserva guardada");
       checkPackingPlan(trip);   // VAL-46: ¿la lista quedó vieja?
     }catch(e){ toast(writeErr(e), true); }
@@ -10132,6 +10286,10 @@ function cardFieldsHtml(r, chip){
         <div class="f"><label>Origen</label><input data-f="from" class="mono" value="${v(r.from)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
         <div class="f"><label>Destino</label><input data-f="to" class="mono" value="${v(r.to)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>
       </div>
+      <!-- VAL-80 · el dato malo entra por las DOS pantallas, no sólo por el
+           formulario manual: acá el campo nunca truncó, pero un destino con el
+           nombre de la ciudad rompe igual. Mismo aviso, mismo texto. -->
+      <div data-rutaaviso="1">${avisoRutaHtml(r.from, r.to)}</div>
       <div class="f2">
         <div class="f"><label>Sale</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
         <div class="f"><label>Llega</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
@@ -11333,6 +11491,11 @@ async function sheetImport(trip){
         ${p.vacios.length?`<hr class="hr">
         <div class="imp-src"><span class="chip src">${svg(I.dash)}${p.vacios.length} campos · vacíos, no están en la tarjeta</span></div>
         ${p.vacios.map(f=>campoHtml(f,true)).join("")}`:""}
+        <!-- VAL-80 · el vuelo precargado desde una tarjeta de embarque también
+             trae origen y destino, y pueden salir sin código. Va después de los dos
+             grupos porque origen y destino pueden caer en grupos distintos
+             (uno leído de la tarjeta, el otro vacío). -->
+        <div data-rutaaviso="1">${avisoRutaHtml(r.from, r.to)}</div>
         ${tiraAdjuntoHtml(card.meta, "Queda adjunta a este vuelo")}
       </div>
     </div>`;
@@ -11421,6 +11584,20 @@ async function sheetImport(trip){
       };
     });
     bindIssuesActions();
+    /* VAL-80 · el aviso de la ruta, vivo mientras se corrige. Se engancha por
+       tarjeta y no por delegación en el documento, porque la hoja se vuelve a
+       dibujar entera en cada descarte y un listener colgado del contenedor
+       viejo se quedaría escuchando a un nodo que ya no está. */
+    document.querySelectorAll("[data-card]").forEach(el=>{
+      const caja = el.querySelector("[data-rutaaviso]");
+      if(!caja) return;                    // no es un vuelo, o es una coincidencia sin inputs
+      const leer = f => el.querySelector(`[data-f="${f}"]`)?.value?.trim() || "";
+      const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); };
+      ["from","to"].forEach(f=>{
+        const inp = el.querySelector(`[data-f="${f}"]`);
+        if(inp) inp.oninput = pintar;
+      });
+    });
     if(total) document.getElementById("im-save").onclick = doSaveReview;
   }
   /** Vuelve a plantear la pregunta de VAL-59 con los vuelos que quedan. El

@@ -176,7 +176,13 @@ info(lineaBari.slice(0, 200));
 ok(!/Ezeiza.*lo que manda|manda.*Ezeiza/i.test(lineaBari), "la línea NO dice que Ezeiza mande");
 ok(!/NUNCA por encima/.test(lineaBari), "y NO le dice al modelo que ignore Bariloche");
 ok(/Ezeiza/.test(lineaBari), "pero el traslado se manda igual: callarlo sería perder información");
-ok(/antes de tomarla como destino/i.test(lineaBari), "presentado como pista, con las dos lecturas a la vista");
+/* VAL-80 reescribió esta frase porque empezó a mentir: desde la guarda del
+   motor una pista puede venir de un vuelo cuyo destino no es un código, y el
+   texto decía "una dirección". La aserción se vuelve a anclar en lo que de
+   verdad tiene que pasar —que la pista llegue con las dos lecturas a la vista
+   y con la invitación a mirar las fechas— en vez de en la redacción. */
+ok(/fijate en las fechas y en el resto del viaje/i.test(lineaBari) && /como destino/i.test(lineaBari),
+   "presentado como pista, con las dos lecturas a la vista");
 
 console.log("\n· HALLAZGO 1, SEGUNDA RONDA · el alojamiento en el ORIGEN, que es el caso espejo");
 /* La segunda ronda de auditoría volteó el arreglo de la primera: yo le había
@@ -333,7 +339,13 @@ const lineaMuda = pe.destinationPrompt(pe.buildPackingList({
   .split("\n").find(l => /^- Destino/.test(l)) || "";
 info(lineaMuda.slice(0, 130));
 ok(!/no hay vuelos cargados/.test(lineaMuda), "con un vuelo cargado, NO dice que no hay vuelos");
-ok(/no dicen adónde llegan/.test(lineaMuda), "dice lo que sí pasa: el vuelo está, sin destino");
+/* Misma reescritura de VAL-80, mismo motivo: "los vuelos cargados no dicen
+   adónde llegan" es falso cuando el vuelo trae to:"SUECIA" —sí dice adónde
+   llega, lo que no trae es el código—, y este renglón lo comparte con ese
+   caso. Lo que la aserción cuida sigue siendo lo mismo: que nombre al vuelo
+   que está cargado en vez de afirmar que no hay ninguno. */
+ok(/vuelos cargados/.test(lineaMuda) && /código de aeropuerto/.test(lineaMuda),
+   "dice lo que sí pasa: el vuelo está y no trae código de aeropuerto en el destino");
 ok(/Hotel X, Lima/.test(lineaMuda), "y la pista se manda igual");
 
 console.log("\n· el control: sin ningún vuelo, sí dice que no hay vuelos");
