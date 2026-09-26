@@ -1622,7 +1622,7 @@ desaparecer el ítem de la lista propuesta **en silencio**, sin nombrarlo en nin
 honesto es mejor que perderlo sin avisar, y ninguna de las dos cosas es lo que el PM reportó —él cambió el
 **destino escrito**, que sí funciona y está probado con el dedo.
 
-### VAL-80 · El campo del vuelo te come letras, y eso rompe la cadena entera — P0
+### VAL-80 · El campo del vuelo te come letras, y eso rompe la cadena entera — ✅ TERMINADA, verificada en el teléfono del PM (26/09)
 
 **Reproducido el 22/09 en el navegador, con el gesto del PM.** Escribió `SUECIA` en el campo **Destino (IATA)**
 de un vuelo. La app guardó **`SUEC`**: el campo tiene `maxlength="4"` y le comió dos letras **sin decirle nada**.
@@ -1665,6 +1665,11 @@ ARN  → internacional: true ← "Vuelo con código ARN, fuera del país." ← l
    necesita traducir ciudad ↔ IATA, o sea **VAL-66**.
 
 **Decisión del PM (22/09): al backlog, no se arregla ahora.** Primero VAL-76 y VAL-77.
+
+**Cerrada el 26/09**, en la v36. El PM corrió el guion completo en su teléfono: *"esta OK"*. Se arreglaron los
+puntos 1 y 2; el 3 —que el campo acepte nombres de ciudad— sigue siendo VAL-66. Al reproducirlo el 24/09
+apareció más ancho de lo que decía esta entrada: no era el truncado, era que **cualquier** `to` que no fuera un
+código desplazaba al destino escrito. Registro en `docs/qa/v36-resultado.md`.
 
 ### VAL-81 · La banda de la etiqueta abrevia cualquier destino a tres letras — P3
 
