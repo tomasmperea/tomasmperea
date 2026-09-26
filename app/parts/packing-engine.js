@@ -3060,21 +3060,47 @@ function planListUpdate(input) {
     desactualizada:desactualizada,
     nuevos:nuevos,
     sacados:sacados,
-    motivo:motivoDelPlan(nuevos.length, sacados.length),
+    motivo:motivoDelPlan(nuevos, sacados),
     listaPropuesta:listaPropuesta
   };
+}
+
+/**
+ * VAL-77b · ¿lo ÚNICO que trae el plan es lo aprendido de otros viajes?
+ *
+ * Con la regla nueva de `learnFromHistory`, una lista ya guardada puede quedar
+ * con algo para sumar sin que su viaje se haya tocado: alcanza con que la
+ * persona agregue lo mismo a mano en otros viajes. Y todos los textos del
+ * plan decían "El viaje cambió", que en ese caso es una causa inventada.
+ *
+ * Es verdad cuando no se saca nada y TODO lo que se suma es de origen
+ * historial: esos ítems sólo pueden venir de otros viajes. Si hay aunque sea
+ * uno de otra capa, o algo que se saca, el texto de antes se queda como está.
+ * Una sola definición, acá, para que el motor y la pantalla no puedan decir
+ * cosas distintas.
+ * @param {Array} nuevos  `plan.nuevos`
+ * @param {Array} sacados `plan.sacados`
+ * @returns {boolean}
+ */
+function planSoloAprendido(nuevos, sacados) {
+  nuevos = nuevos || [];
+  return !(sacados || []).length && nuevos.length > 0 &&
+    nuevos.every(function (n) { return !!n && n.origen === ORIGEN.HISTORIAL; });
 }
 
 /* El texto del aviso, que ahora tiene que cubrir cuatro casos y no dos.
    Se escribe una vez acá para que la versión con IA y la de sólo reglas no
    puedan decir cosas distintas: esa duplicación ya fue un defecto en esta
-   misma función. */
-function motivoDelPlan(cuantosNuevos, cuantosSacados) {
+   misma función. Recibe las listas y no las cuentas desde VAL-77b: para
+   nombrar la causa hace falta saber de dónde sale cada cosa. */
+function motivoDelPlan(nuevos, sacados) {
+  var cuantosNuevos = (nuevos || []).length, cuantosSacados = (sacados || []).length;
   var frases = [];
   if (cuantosNuevos) frases.push(cuantosNuevos === 1 ? "sumo 1 ítem" : "sumo " + cuantosNuevos + " ítems");
   if (cuantosSacados) frases.push(cuantosSacados === 1 ? "saco 1 que ya no corresponde"
                                                        : "saco " + cuantosSacados + " que ya no corresponden");
   if (!frases.length) return "La lista sigue al día con lo que cargaste.";
+  if (planSoloAprendido(nuevos, sacados)) return "Por lo que agregaste a mano en otros viajes: " + frases.join(" y ") + ".";
   return "El viaje cambió: " + frases.join(" y ") + ".";
 }
 
@@ -3117,7 +3143,7 @@ function planListUpdateAsync(input) {
       desactualizada:desactualizada,
       nuevos:nuevos,
       sacados:sacados,
-      motivo:motivoDelPlan(nuevos.length, sacados.length),
+      motivo:motivoDelPlan(nuevos, sacados),
       listaPropuesta:propuesta
     };
   });
@@ -3192,6 +3218,7 @@ return {
   // VAL-46: la lista se actualiza cuando el viaje crece
   planListUpdate:planListUpdate,
   planListUpdateAsync:planListUpdateAsync,
+  planSoloAprendido:planSoloAprendido,
   clearNewFlags:clearNewFlags,
 
   // estado de la lista (VAL-31)
