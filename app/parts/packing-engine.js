@@ -1349,12 +1349,69 @@ function bump(map, clave, item) {
 }
 
 /**
- * Mira las listas de viajes anteriores del mismo tipo y decide qué promover
- * y qué suprimir. Un ítem cuenta una sola vez por viaje.
+ * VAL-77b · las partes del viaje para las que la persona declaró un ítem
+ * manual. `[]` si no declaró ninguna —que es lo que tienen todos los ítems
+ * guardados antes de esta historia, con el campo AUSENTE— o si lo que hay no
+ * se entiende como tipo. Ausente, vacío y basura dan lo mismo: no declarado.
+ * No se inventa ninguna parte.
+ * @param {Object} it ítem de una lista
+ * @returns {Array<string>} claves de tipo normalizadas, sin repetidos
+ */
+function paraTiposDe(it) {
+  return (it && Array.isArray(it.paraTipos)) ? tripTypeParts(it.paraTipos) : [];
+}
+
+/**
+ * Mira las listas de viajes anteriores y decide qué promover y qué suprimir.
+ * Un ítem cuenta una sola vez por viaje.
+ *
+ * PROMOVER (VAL-77b). Para un viaje nuevo con partes P, un ítem MANUAL de una
+ * lista pasada con partes Q cuenta así:
+ *
+ *   fila 1 · declaró `paraTipos`              -> si alguna de sus claves está en P
+ *   fila 2 · no declaró, canonical(Q) === canonical(P) -> cuenta: la regla de 77a
+ *   fila 3 · no declaró, Q es de UNA parte y está en P -> cuenta
+ *   fila 4 · no declaró, Q es de dos partes que no son P -> NO cuenta: no se
+ *            sabe para cuál de las dos era
+ *
+ * LA FILA 2 NO SE BORRA aunque parezca cubierta por la 3. No lo está: un
+ * montaña+ciudad no es "una parte", y sin la fila 2 lo que la persona agregó
+ * en dos viajes de montaña+ciudad dejaría de sugerirse en el tercero. Tampoco
+ * cubre el viaje sin tipo (null === null). Que ningún ítem guardado pierda lo
+ * aprendido no es una intención: lo prueba app/pruebas/val77b-superconjunto.js
+ * contra la función de antes de VAL-77b, con un control negativo que borra
+ * esta fila y exige que falle.
+ *
+ * SUPRIMIR NO CAMBIA: lo descartado cuenta sólo en la MISMA combinación.
+ * Suprimir es SACAR algo de la lista, y sacar de más es el error caro:
+ * retener de más es una lista un poco vieja; sacar de más es la app tirando
+ * algo que la persona necesita. El pedido del PM fue sobre lo que se agrega;
+ * lo que se aprende a sacar no se amplía hasta que alguien lo pida con un
+ * caso a la vista.
  *
  * Precedencia: si un ítem fue agregado a mano dos veces Y descartado dos veces,
  * gana la promoción. Agregarlo a mano es una acción más costosa que descartarlo,
- * así que es la señal más fuerte.
+ * así que es la señal más fuerte. Consecuencia declarada de VAL-77b: como
+ * promover se volvió más amplio que suprimir, esta precedencia puede disparar
+ * en más casos. Es el lado correcto del error.
+ *
+ * Y la protección se calcula con las DOS reglas, la de ahora y la de 77a
+ * (`agregadoEnCombinacion`). Con sólo la de ahora, un ítem declarado para una
+ * parte que el viaje ya no tiene —el viaje cambió de tipo después— deja de
+ * contar para promover, y entonces sus descartes en la misma combinación lo
+ * suprimían donde antes no: la batería de val77b-superconjunto.js lo encontró
+ * en 3 de 20000 historiales. Con las dos, lo que se suprime es lo de 77a menos
+ * lo que ahora se promueve, y nunca algo que 77a no suprimía.
+ *
+ * `muestra` cuenta las listas pasadas de la misma combinación o que comparten
+ * alguna parte con el viaje nuevo: son las que se leyeron para aprender. Es el
+ * número de la hoja "De dónde sale esta lista", y con la regla nueva cuentan
+ * viajes que antes no contaban.
+ *
+ * Cada entrada promovida lleva `partes` —las partes de P por las que contó,
+ * en orden canónico— y `combinacion` —true si TODAS las veces contó por la
+ * combinación entera—, para que el motivo nombre la parte por la que se
+ * aprendió y no la combinación del viaje nuevo (ver `motivoAprendido`).
  *
  * @param {Array<Object>} history listas guardadas de viajes anteriores
  * @param {string} tipoViaje tipo del viaje que se está armando
@@ -1362,32 +1419,51 @@ function bump(map, clave, item) {
  */
 function learnFromHistory(history, tipoViaje) {
   var added = new Map(), dismissed = new Map(), muestra = 0;
-  /* VAL-77a: se compara la COMBINACIÓN ENTERA, en forma canónica, para que
+  /* Lo que la regla de 77a habría contado como agregado: manual, en la MISMA
+     combinación, sin mirar `paraTipos`. No promueve nada —para eso está
+     `added`—: sólo protege de la supresión, abajo. Ver "Precedencia". */
+  var agregadoEnCombinacion = new Map();
+  /* VAL-77a: la combinación se compara en forma canónica, para que
      "ciudad+montana" y "montana+ciudad" sean la misma cosa aunque alguna lista
-     vieja haya quedado al revés. Un viaje montaña+ciudad aprende de otros
-     montaña+ciudad y NO de los de montaña a secas: es una limitación
-     declarada, no un defecto, y es lo que VAL-77b viene a cerrar. */
+     vieja haya quedado al revés. */
   var tipo = canonicalTripType(tipoViaje);
+  var partesP = tripTypeParts(tipo);
 
   (history || []).forEach(function (list) {
     if (!list) return;
     var arr = itemsArray(list);
     if (!arr.length) return;
-    if (canonicalTripType(list.tipoViaje || list.tripType) !== tipo) return;
-    muestra++;
-    var seenAdd = {}, seenDis = {};
+    var tipoQ = list.tipoViaje || list.tripType;
+    var partesQ = tripTypeParts(tipoQ);
+    var enComun = partesQ.filter(function (p) { return partesP.indexOf(p) >= 0; });
+    var mismaCombinacion = canonicalTripType(tipoQ) === tipo;
+    var unaParteDeP = partesQ.length === 1 && enComun.length === 1;
+    if (mismaCombinacion || enComun.length) muestra++;
+    var seenAdd = {}, seenDis = {}, seenCombo = {};
     arr.forEach(function (it) {
       if (!it) return;
       var clave = it.clave || slug(it.nombre || it.label);
       if (!clave) return;
-      if (it.origen === ORIGEN.MANUAL && !seenAdd[clave]) { seenAdd[clave] = true; bump(added, clave, it); }
-      if (it.estado === ESTADO.DESCARTADO && !seenDis[clave]) { seenDis[clave] = true; bump(dismissed, clave, it); }
+      if (mismaCombinacion && it.origen === ORIGEN.MANUAL && !seenCombo[clave]) { seenCombo[clave] = true; bump(agregadoEnCombinacion, clave, it); }
+      if (it.origen === ORIGEN.MANUAL && !seenAdd[clave]) {
+        var declaradas = paraTiposDe(it), por = [], cuenta = false;
+        if (declaradas.length) {                                              // fila 1
+          por = declaradas.filter(function (p) { return partesP.indexOf(p) >= 0; });
+          cuenta = por.length > 0;
+        }
+        else if (mismaCombinacion) { por = partesP.slice(); cuenta = true; }  // fila 2: NO SE BORRA
+        else if (unaParteDeP) { por = enComun.slice(); cuenta = true; }       // fila 3
+        // fila 4: no declaró y Q es de dos partes que no son P. No cuenta.
+        if (cuenta) { seenAdd[clave] = true; anotarPartes(bump(added, clave, it), por, partesP); }
+      }
+      if (mismaCombinacion && it.estado === ESTADO.DESCARTADO && !seenDis[clave]) { seenDis[clave] = true; bump(dismissed, clave, it); }
     });
   });
 
   var promover = [];
   added.forEach(function (e) { if (e.veces >= HISTORY_PROMOTE_AT) promover.push(e); });
   var promoverClaves = promover.reduce(function (m, e) { m[e.clave] = true; return m; }, {});
+  agregadoEnCombinacion.forEach(function (e) { if (e.veces >= HISTORY_PROMOTE_AT) promoverClaves[e.clave] = true; });
 
   var suprimir = [];
   dismissed.forEach(function (e) {
@@ -1396,6 +1472,50 @@ function learnFromHistory(history, tipoViaje) {
 
   var porVeces = function (a, b) { return b.veces - a.veces || a.clave.localeCompare(b.clave); };
   return { tipoViaje:tipo, muestra:muestra, promover:promover.sort(porVeces), suprimir:suprimir.sort(porVeces) };
+}
+
+/**
+ * VAL-77b: anota en una entrada del aprendizaje por qué partes contó esta vez.
+ * `por` es un subconjunto de P sin repetidos, así que "tiene el mismo largo"
+ * es "son las mismas". El orden de `partes` es el canónico (TRIP_TYPE_KEYS),
+ * no el orden en que fueron llegando.
+ * @param {Object} e entrada de `bump`
+ * @param {Array<string>} por partes de P por las que contó en este viaje
+ * @param {Array<string>} partesP partes del viaje nuevo
+ * @returns {Object} la misma entrada
+ */
+function anotarPartes(e, por, partesP) {
+  e.combinacion = e.combinacion !== false && por.length === partesP.length;
+  var todas = (e.partes || []).concat(por);
+  e.partes = TRIP_TYPE_KEYS.filter(function (k) { return todas.indexOf(k) >= 0; });
+  return e;
+}
+
+/**
+ * El motivo de un ítem aprendido (VAL-77b, decisión 5). Nombra la parte por la
+ * que se aprendió, no la combinación del viaje nuevo: un buzo polar aprendido
+ * para montaña, sugerido en un montaña+ciudad, dice "de montaña".
+ *
+ *   · contó siempre por la combinación entera -> la frase de siempre
+ *   · contó por una sola parte                -> "viajes de montaña"
+ *   · contó por las dos, en viajes distintos  -> "viajes de ciudad o montaña":
+ *     ninguno de esos viajes tiene por qué haber sido de las dos cosas, así
+ *     que "y" afirmaría algo que no pasó.
+ *
+ * `tripTypeLabel` y no `TRIP_TYPE_LABEL[...]` para la combinación: con dos
+ * tipos la búsqueda directa en el mapa da undefined y el motivo salía
+ * diciendo "viajes de montana+ciudad".
+ * @param {Object} e entrada promovida de `learnFromHistory`
+ * @param {string} tipoViaje tipo del viaje nuevo
+ * @returns {string}
+ */
+function motivoAprendido(e, tipoViaje) {
+  var partes = e.partes || [];
+  var de;
+  if (e.combinacion !== false || !partes.length) de = tripTypeLabel(tipoViaje) || String(tipoViaje || "");
+  else if (partes.length === 1) de = tripTypeLabel(partes);
+  else de = partes.map(function (p) { return TRIP_TYPE_LABEL[p] || p; }).join(" o ");
+  return "Lo agregaste a mano en " + e.veces + " viajes de " + de.toLowerCase() + ".";
 }
 
 /* ============================================================
@@ -1538,10 +1658,8 @@ function buildPackingList(input) {
     if (out[e.clave] || findCanonicalMatch(out, e.clave)) return;
     out[e.clave] = makeItem({
       clave:e.clave, nombre:e.nombre, categoria:e.categoria || "otros", cantidad:null,
-      /* `tripTypeLabel` y no `TRIP_TYPE_LABEL[...]`: con dos tipos la búsqueda
-         directa en el mapa da undefined y el motivo salía diciendo
-         "viajes de montana+ciudad". */
-      motivo:"Lo agregaste a mano en " + e.veces + " viajes de " + (tripTypeLabel(ctx.tripType) || String(ctx.tripType || "")).toLowerCase() + ".",
+      /* VAL-77b: el motivo nombra la parte por la que se aprendió. */
+      motivo:motivoAprendido(e, ctx.tripType),
       origen:ORIGEN.HISTORIAL, regla:"historial", orden:orderOf(e.categoria || "otros", 900 + i)
     }, at);
   });
@@ -1621,7 +1739,7 @@ function mergeLists(previous, fresh) {
     var p = prev[f.clave] || prevPorCanon[canonicalKey(f.clave)];
     if (!p) { merged[f.clave] = f; return; }
     usados[p.clave] = true;
-    merged[f.clave] = Object.assign({}, f, {
+    var m = merged[f.clave] = Object.assign({}, f, {
       // el estado de la persona manda: lo descartado no revive, lo empacado sigue empacado
       estado:ESTADOS.indexOf(p.estado) >= 0 ? p.estado : ESTADO.PENDIENTE,
       empacadoEn:p.empacadoEn || null,
@@ -1638,6 +1756,15 @@ function mergeLists(previous, fresh) {
       agregadoEn:p.agregadoEn || f.agregadoEn,
       actualizadoEn:fresh.generadaEn
     });
+    /* VAL-77b: la parte declarada es de la persona, como la nota. Si el que
+       sobrevive sigue siendo propio, sobrevive con lo que ella dijo. Si otra
+       capa se lo quedó por precedencia, dejó de ser manual y el campo no va:
+       sólo los ítems manuales lo llevan. El camino de abajo (`retenido`)
+       copia el ítem entero, así que ahí el campo viaja solo. Si ninguno de
+       los dos declaró nada, no se le agrega un campo que no tenía. */
+    var declarado = paraTiposDe(p).length ? paraTiposDe(p) : paraTiposDe(f);
+    if (m.origen !== ORIGEN.MANUAL) delete m.paraTipos;
+    else if (declarado.length) m.paraTipos = declarado;
   });
 
   var claveCanonEnMerged = {};
@@ -2607,6 +2734,15 @@ function setQty(list, clave, cantidad, opts) {
  * el origen, porque la precedencia dice que gana la capa más básica.
  * VAL-45: "ya existía" incluye un sinónimo declarado (`canonicalKey`), no
  * sólo el mismo texto — así tampoco se duplica a mano lo que ya puso otra capa.
+ *
+ * VAL-77b: `fields.paraTipos` dice a qué partes del viaje pertenece. Lo decide
+ * quien llama —la pantalla sabe si preguntó, o si el viaje es de un solo tipo
+ * y no hacía falta—; acá sólo se normaliza. `[]` es "no declarado", y es lo
+ * que queda si la persona no elige.
+ * Si el ítem ya existía COMO PROPIO y ahora eligió una parte, se guarda lo que
+ * eligió: es su última respuesta a la misma pregunta, en la misma lista. No
+ * elegir no borra lo que ya había. A un ítem de regla, destino o historial no
+ * se le pone parte: el aprendizaje sólo lee lo manual para promover.
  * @returns {Object} lista nueva
  */
 function addManualItem(list, fields, opts) {
@@ -2616,8 +2752,15 @@ function addManualItem(list, fields, opts) {
   if (!nombre) return list;
   var clave = slug(nombre);
   if (!clave) return list;
+  var para = Array.isArray(fields.paraTipos) ? tripTypeParts(fields.paraTipos) : [];
   var existente = (list.items || {})[clave] ? clave : findCanonicalMatch(list.items, clave);
-  if (existente) return setItemState(list, existente, ESTADO.PENDIENTE, { now:at });
+  if (existente) {
+    var vuelta = setItemState(list, existente, ESTADO.PENDIENTE, { now:at });
+    if (para.length && vuelta.items[existente].origen === ORIGEN.MANUAL) {
+      vuelta = replaceItem(vuelta, existente, function (i) { return Object.assign({}, i, { paraTipos:para }); });
+    }
+    return vuelta;
+  }
 
   var categoria = CATEGORY_ORDER[fields.categoria] !== undefined ? fields.categoria : "otros";
   var it = makeItem({
@@ -2626,6 +2769,7 @@ function addManualItem(list, fields, opts) {
     motivo:fields.motivo || "Lo agregaste vos.",
     origen:ORIGEN.MANUAL, regla:"", orden:orderOf(categoria, 950)
   }, at);
+  it.paraTipos = para;
 
   var items = Object.assign({}, list.items);
   items[clave] = it;
@@ -3029,6 +3173,8 @@ return {
   enrichWithDestination:enrichWithDestination,
   mergeLists:mergeLists,
   learnFromHistory:learnFromHistory,
+  // VAL-77b: a qué parte del viaje pertenece un ítem propio, leído una sola vez.
+  paraTiposDe:paraTiposDe, motivoAprendido:motivoAprendido,
   suggestTripType:suggestTripType,
   tripContext:tripContext,
   deduceInternational:deduceInternational,

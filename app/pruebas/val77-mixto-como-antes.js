@@ -182,7 +182,13 @@ ok(E.tripTypeLabel("montana+ciudad") === "Montaña y ciudad",
    `la etiqueta se lee como una frase: "${E.tripTypeLabel("montana+ciudad")}"`);
 ok(E.tripTypeLabel("mixto") === "Mixto", "y \"mixto\" se sigue leyendo \"Mixto\"");
 
-console.log("\n· el aprendizaje compara la COMBINACIÓN entera (limitación declarada de 77a)");
+/* Esta sección decía "limitación declarada de 77a" y exigía que un viaje de
+   montaña a secas NO contara para un montaña+ciudad. VAL-77b cierra
+   exactamente esa limitación, así que la aserción se da vuelta: ahora cuentan,
+   porque un ítem sin parte declarada en un viaje de UNA parte se cuenta para
+   esa parte. Lo que no cambia —la misma combinación sigue contando— queda
+   aseverado igual que antes. El detalle está en val77b-superconjunto.js. */
+console.log("\n· el aprendizaje: la misma combinación cuenta, y desde VAL-77b también sus partes sueltas");
 const viajeAnterior = (tipo) => ({
   version:E.VERSION, tipoViaje:tipo,
   /* Un ítem que NINGUNA regla base pone: si lo pusiera una regla, la
@@ -201,8 +207,13 @@ const conSueltos = E.buildPackingList({
   trip:VIAJE, items:RESERVAS, tipoViaje:"montana+ciudad", now:AT,
   history:[viajeAnterior("montana"), viajeAnterior("ciudad")]
 });
-ok(conSueltos.aprendizaje.muestra === 0,
-   "y los de montaña o ciudad a secas NO cuentan: es lo que VAL-77b viene a cerrar, y está declarado");
+ok(conSueltos.aprendizaje.muestra === 2,
+   `y desde VAL-77b los de montaña o ciudad a secas también cuentan (${conSueltos.aprendizaje.muestra})`);
+const sueltoPromovido = E.itemsArray(conSueltos).find(i => i.clave === "buzo-polar");
+ok(!!sueltoPromovido && sueltoPromovido.origen === "historial",
+   "y el ítem agregado en uno de montaña y en uno de ciudad se sugiere");
+ok(!!sueltoPromovido && /viajes de ciudad o montaña\./.test(sueltoPromovido.motivo),
+   `con un motivo que no afirma que algún viaje fue de las dos cosas: ${JSON.stringify(sueltoPromovido && sueltoPromovido.motivo)}`);
 const viejoMixto = E.buildPackingList({
   trip:VIAJE, items:RESERVAS, tipoViaje:"mixto", now:AT,
   history:[viajeAnterior("mixto"), viajeAnterior("mixto")]
