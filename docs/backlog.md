@@ -1738,6 +1738,48 @@ montaña+ciudad—, así que este vaivén va a pasar más seguido que antes.
   mano sigue siendo "suyo" aunque la app ya lo sugiera?** Si sí, la precedencia de origen está al revés para
   este caso, y el cambio toca la regla que VAL-45 fijó para no duplicar.
 
+### VAL-85 · Lo que se aprendió a sacar también dice que "el viaje cambió" — P1
+
+**Preexistente, reproducido el 26/09 contra el motor de antes y el de después de VAL-77b: sale idéntico.**
+Es la misma forma que VAL-77b arregló para lo que se aprende a **sumar**, del otro lado: cuando lo aprendido
+**suprime** un ítem —algo descartado en dos viajes de la misma combinación—, el plan lo trae para sacar y el
+texto dice:
+
+```
+«El viaje cambió: saco 1 que ya no corresponde.»
+```
+
+sobre un viaje que no cambió. Otra causa inventada.
+
+**Por qué no entró en el arreglo de VAL-77b:** no lo introdujo esa historia —la supresión no cambió, y con 77b
+se suprime menos, no más—, y el alcance que se le fijó fue no tocar los planes que sacan algo. Además, para
+distinguirlo el plan tendría que saber **por qué** se saca cada ítem, y hoy no lo sabe: `loQueSeSaca` cuenta
+lo que falta en la lista propuesta, sin causa.
+
+- El plan necesita distinguir un ítem que se saca porque **su regla dejó de aplicar** (el viaje cambió) de uno
+  que se saca porque **se aprendió a no sugerirlo** (lo aprendido).
+- Los cinco sitios que VAL-77b ya tocó (`motivoDelPlan`, la tira, `planAvisoTexto`, el aviso de sólo lectura y
+  la hoja «De dónde sale») tienen la forma lista: `planSoloAprendido` hoy pregunta sólo por lo que se suma.
+
+### VAL-86 · `tier-del-modelo.js` falla a veces, y ya se sabe de qué lado — P3
+
+**Andamiaje, no producto.** La aserción «y sigue ahí después de recargar» —que el registro de llamadas al
+modelo sobreviva a una recarga— falló una vez en siete durante VAL-77b, y cero en dieciséis corridas medidas
+después contra la versión de antes y la de después: no es una regresión de 77b.
+
+El 26/09 se le hizo decir lo que ve, en vez de sólo "FALLA". **Y en la corrida siguiente habló:** *"encontré 0
+entradas"*. Eso descarta una de las dos causas posibles —una llamada de fondo que se registra de más, que habría
+dado 2— y deja la otra: **la recarga pierde la escritura.**
+
+Lo que queda por averiguar, y hay dos lecturas que se distinguen con un dato más:
+
+- El guardián del arnés que limpia el registro sólo en la primera carga —`if (!localStorage.getItem("valija.v1"))`—
+  entró en la recarga, o sea que `valija.v1` no estaba.
+- O la escritura de `localStorage` todavía no había llegado al proceso del navegador cuando la página se
+  recargó.
+
+El próximo paso es que el guardián también diga qué rama tomó. **No se arregla adivinando cuál de las dos es.**
+
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
 **Sale de VAL-75, por decisión del PM (22/09).** Ahí la regla quedó clara: lo empacado es intocable, porque
