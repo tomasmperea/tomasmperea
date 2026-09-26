@@ -885,6 +885,13 @@ exacto y sólo cuenta repeticiones; ningún ítem guarda a qué tipo pertenece �
 Meterlo acá adentro es exactamente la historia que crece mientras se construye, así que sale por separado.
 Lo que 77a **sí** resuelve: las reglas de los dos tipos suman, que es lo que el reporte original pedía.
 
+**Un borde que encontró la auditoría de 77b (26/09), inalcanzable hoy y anotado para que no sorprenda:** la
+regla nueva de `learnFromHistory` puede promover MENOS que la vieja con ítems que ya declaran `paraTipos`,
+evaluados contra un viaje sin tipo. No ocurre con ningún dato guardado —la garantía de "nadie pierde lo
+aprendido" es sobre ítems SIN `paraTipos`, que son todos los de antes de 77b— ni con ningún gesto: el tipo del
+viaje nunca queda vacío, porque `tripContext` cae a `suggestTripType` y ésa siempre devuelve uno. Si algún día
+el tipo pudiera quedar vacío, esto deja de ser teórico.
+
 **La limitación que 77a deja en pie, y se declara:** con dos tipos, el aprendizaje del historial sólo puede
 mirar viajes de *esa misma combinación*. Un viaje montaña+ciudad no aprende de los viajes de montaña a
 secas. No se rompe nada —el aprendizaje es la capa 3 y degrada a no promover nada—, pero se fragmenta, y a
