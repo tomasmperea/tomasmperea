@@ -461,7 +461,17 @@ function assertClavesLimpias(ls, donde) {
     // Sobrevive a la recarga: el registro es del dispositivo, no de la sesión.
     await page.reload();
     await page.waitForFunction(() => typeof Store !== "undefined" && Store.ready, null, { timeout: 15000 });
-    assert((await registro(page)).length === 1, "y sigue ahí después de recargar");
+    /* QUE DIGA LO QUE VIO. Esta aserción falló UNA vez en siete el 26/09 y en
+       cero de dieciséis corridas medidas después, contra la versión de antes y
+       la de después de VAL-77b. Que falle a veces no es una causa: puede ser
+       que la recarga pierda la escritura (cero entradas) o que una llamada de
+       fondo se registre de más (dos). Son dos defectos distintos y el mensaje
+       viejo no distinguía uno del otro — decía "FALLA" y nada más.
+       No se arregla adivinando cuál es: se hace que la próxima vez lo diga. */
+    const trasRecargar = await registro(page);
+    assert(trasRecargar.length === 1, "y sigue ahí después de recargar" +
+      (trasRecargar.length === 1 ? "" : " — encontré " + trasRecargar.length + " entradas: " +
+        JSON.stringify(trasRecargar.map(x => ({ tarea:x.tarea, estado:x.estado, ts:x.ts })))));
     await page.close();
   });
 
