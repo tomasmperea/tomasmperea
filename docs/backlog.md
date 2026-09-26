@@ -1702,6 +1702,42 @@ fixture al que le falta un campo hace pasar una prueba que debería fallar".
 - Lo natural es que esto deje de depender de la memoria: un arnés que compare las claves de los fixtures
   contra las de `TYPES` encuentra la próxima sola.
 
+### VAL-83 · El formulario de la categoría pierde lo que escribiste si la pantalla se redibuja — P1
+
+**Preexistente, encontrado integrando VAL-77b (26/09).** El campo de «Agregar a ropa» (`pk-add-{categoría}`) se
+rearma sin `value` en cada `render()`, y nada guarda lo que la persona escribió: lo único que sobrevive es la
+parte elegida, que vive en `PK.addPara`. Comprobado leyendo el código de `ec0a390`.
+
+Así que cualquier redibujado a mitad de camino **vacía el campo**. Con base compartida alcanza con que llegue
+un snapshot —una escritura de otra persona del viaje, o la confirmación de una propia—. Y el síntoma es de
+los peores: la persona toca «Agregar» y no pasa nada, porque el campo ya estaba vacío.
+
+**Por qué importa ahora:** VAL-77b alarga el gesto. Antes era escribir y tocar Agregar; con dos tipos es
+escribir, tocar un chip y tocar Agregar. Más tiempo con el campo abierto es más ventana para que un
+redibujado lo borre. No lo introdujo 77b, pero lo expone más.
+
+- Lo escrito vive en el estado, igual que la parte elegida, y se repone al redibujar.
+- El arnés de VAL-77b hoy espera a que no queden escrituras en vuelo para no tropezar con esto, y lo dice en
+  un comentario. Cuando se arregle, esa espera tiene que poder sacarse.
+
+### VAL-84 · Un ítem propio pierde su origen cuando el historial lo empieza a sugerir — P2
+
+**Preexistente, encontrado integrando VAL-77b (26/09).** Comprobado leyendo el código: `mergeLists` se queda
+con el origen de **menor** precedencia (`regla:0 · historial:1 · destino:2 · manual:3`). Si la persona agregó
+un ítem a mano y el historial pasa a promoverlo, al rehacer la lista ese ítem deja de ser «manual» y pasa a
+ser «historial».
+
+Y el aprendizaje **sólo cuenta lo manual**. O sea que ese viaje deja de contar como "lo agregaste a mano", la
+cuenta puede bajar del umbral, el ítem deja de promoverse, y la próxima vez que la persona lo agregue vuelve a
+contar. **El aprendizaje puede ir y volver.**
+
+**Por qué importa ahora:** VAL-77b amplía lo que se promueve —un viaje de montaña sola ahora alimenta a un
+montaña+ciudad—, así que este vaivén va a pasar más seguido que antes.
+
+- La pregunta de producto, que hay que contestar antes de tocar código: **¿un ítem que la persona agregó a
+  mano sigue siendo "suyo" aunque la app ya lo sugiera?** Si sí, la precedencia de origen está al revés para
+  este caso, y el cambio toca la regla que VAL-45 fijó para no duplicar.
+
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
 **Sale de VAL-75, por decisión del PM (22/09).** Ahí la regla quedó clara: lo empacado es intocable, porque
