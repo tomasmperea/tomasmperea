@@ -40,6 +40,8 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `val77b-lo-aprendido-no-es-un-cambio.js` | Un plan que sólo trae lo aprendido de otros viajes no dice «El viaje cambió». El historial crece con el dedo y los **cinco** textos que nombran la causa (motivo del plan, tira de entrada, aviso de la valija, sólo lectura, «De dónde sale esta lista») se leen por los **dos** disparadores: entrar a la valija y guardar una reserva. Controles: un vuelo da textos idénticos a `git show ec0a390`, y cambiar el destino (plan mixto) sigue diciendo que el viaje cambió. El control negativo corre el build anterior y exige que reproduzca el defecto. Acepta la ruta del HTML | 27 aserciones |
 | `val85-la-causa-de-lo-que-se-saca.js` | Sin navegador, contra el motor **embebido** en el HTML. Cada ítem de `plan.sacados` lleva su causa (`aprendido`, `viaje`, `sin-determinar`): sólo saca, sólo suma, las dos, un cambio real de tipo, **el vecino** (suprimido y además su regla dejó de aplicar → `viaje`), el plan mixto, `planListUpdateAsync` con IA simulada (la causa sobrevive al recálculo; lo que suma la IA no es lo aprendido), un ítem aprendido que dejó de promoverse y un destino vencido. El control negativo corre `git show 7f3a1e5` y exige que reproduzca el defecto. Acepta la ruta del HTML | 32 aserciones |
 | `val85-lo-aprendido-a-sacar.js` | VAL-85 desde la pantalla: el historial crece **tocando el botón de descartar** en otros dos viajes, y los **cinco** textos de VAL-77b se leen en las formas sólo saca y las dos, por los **dos** disparadores (entrar a la valija después de recargar, guardar una nota), más guardar **con IA simulada** —el camino de `planListUpdateAsync`—. Controles: borrar el vuelo (cambio real, plan mixto) y el vecino (líquidos descartados en otros dos viajes y el vuelo borrado) dan los cinco textos idénticos a `git show 7f3a1e5`. El control negativo corre ese build y exige «El viaje cambió». Acepta la ruta del HTML | 53 aserciones |
+| `val87-ciudad-o-aeropuerto.js` | VAL-87 desde la pantalla: los **catorce** criterios del brief, cada uno con el gesto —tocar el campo, escribir con `page.keyboard.type`, tocar la opción con `click`, y salir tocando otro campo—, y los que dependen de la pantalla corridos **por separado** en el formulario manual y en la revisión de lo importado: elegir Bariloche, lo que encuentra cada búsqueda, las **cuatro** filas de «al salir sin tocar ninguna», editar después de elegir, la reserva guardada, lo que trajo el modelo, la etiqueta del viaje, los temas (claro y oscuro, por sistema y elegidos), el foco con Tab y el área táctil. Más los vecinos: la lista que se cierra sin comerse el toque, cambiar de tipo de reserva, Guardar sin salir del campo, `tap`, y el traslado importado que no cambia. A 390 px con `isMobile:false` (la app no trae meta viewport). `VAL87_SOLO=<regex>` corre sólo esos bloques. Acepta la ruta del HTML | 276 aserciones |
+| `val87-controles.js` | Los **nueve** controles negativos de VAL-87, más uno de `las-dos-copias.js`: cada uno sabotea una copia del HTML, asevera que el sabotaje llegó (aparece una vez y la copia cambió), corre el arnés y exige que falle **en la aserción que corresponde**. Antes corre los mismos bloques sobre el original y exige verde | 10 controles |
 
 `importar-botones.js` recibe la ruta del HTML como argumento:
 
@@ -59,10 +61,15 @@ viejo lo va a tapar. Si corrés uno y no da lo que dice acá, el que está mal p
 el arnés: averigualo antes de seguir.
 
 ```
-# 1 · sacar la guarda del motor → 4 FALLA (el destino escrito deja de encabezar la línea)
+# 1 · sacar la guarda del motor → 5 FALLA (el destino escrito deja de encabezar la línea)
+#     Decía 4. El 02/10 dio 5 también con el build y el arnés de 42007f1, antes de VAL-87:
+#     el número estaba viejo, no cambió con VAL-87.
 sed 's/var codigo = esCodigoIATA(f.to);/var codigo = true;/' app/valija.html > /tmp/c1.html
 
 # 2 · devolver el maxlength al campo → 5 FALLA (el campo vuelve a comer letras)
+#     YA NO APLICA desde VAL-87: el campo dejó de tener placeholder="MAD", así que este
+#     `sed` no encuentra nada y no sabotea nada. Si se quiere volver a correr, el ancla es
+#     `placeholder="Ciudad o aeropuerto" autocomplete`.
 sed 's|placeholder="MAD" autocomplete|placeholder="MAD" maxlength="4" autocomplete|' \
   app/valija.html > /tmp/c2.html
 
@@ -83,6 +90,13 @@ sed 's/^function avisoRutaHtml(from, to){$/function avisoRutaHtml(from, to){ ret
 
 NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/val80-el-codigo-del-vuelo.js /tmp/c1.html
 ```
+
+**VAL-87 tocó tres bloques de `val80-el-codigo-del-vuelo.js`, y sólo donde el brief cambió el
+contrato** (tabla «al salir del campo sin tocar ninguna» de `docs/briefs/ciudad-o-aeropuerto.md`):
+en el barrido, un código del dato se ve como su ciudad con el código en el sello, y un texto
+(`oslo`) se guarda tal cual en vez de en mayúsculas; y en «los vecinos» y el gesto 5 se sale
+del campo tocando otro antes de leer el aviso, porque el aviso ahora aparece al salir y no en
+cada tecla. Ninguna aserción sobre la guarda del motor ni sobre lo que llega al modelo cambió.
 
 `tier-del-modelo.js` también acepta la ruta del HTML, y por el mismo motivo: una prueba de
 configuración que no puede fallar no prueba nada. Los tres controles negativos:

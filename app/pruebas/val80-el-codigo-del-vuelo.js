@@ -273,11 +273,23 @@ async function armarLaValija(page, tripId) {
         await ir(page, "#/trip/tv");
         await cargarVueloAMano(page, { title:"Vuelo", from:"EZE", to:c.to, end:"" });
         const enPantalla = await page.locator("#i_to").inputValue();
+        const sello = (await page.locator("#fields .ap-sello").allInnerTexts()).join(" ");
         const aviso = await avisoEnLaHoja(page);
         await guardar(page);
         const v = (await reservasDe(page, "tv")).find(i => i.type === "flight");
-        ok(enPantalla.length === c.to.length, `«${c.to}» entra entero en el campo (${c.por})`);
-        ok(v && v.to === c.to.toUpperCase(), `«${c.to}» se guarda como ${c.to.toUpperCase()}`);
+        /* VAL-87 cambió dos cosas de este barrido, y las dos son del brief
+           (docs/briefs/ciudad-o-aeropuerto.md, tabla "al salir del campo sin
+           tocar ninguna"): un código del dato se VE como su ciudad, con el
+           código en el sello; y un texto se guarda "tal cual se escribió, sin
+           mayúsculas forzadas". Lo que VAL-80 protegía —que no se coman
+           letras, y qué es código y qué es pista— se sigue aseverando igual. */
+        if (c.codigo) {
+          ok(sello.indexOf(c.to.toUpperCase()) >= 0, `«${c.to}» entra entero: el sello dice ${c.to.toUpperCase()} (${c.por})`);
+          ok(v && v.to === c.to.toUpperCase(), `«${c.to}» se guarda como ${c.to.toUpperCase()}`);
+        } else {
+          ok(enPantalla.length === c.to.length, `«${c.to}» entra entero en el campo (${c.por})`);
+          ok(v && v.to === c.to, `«${c.to}» se guarda tal cual se escribió`);
+        }
         ok(c.codigo ? aviso.trim() === "" : /tres letras/.test(aviso),
            `«${c.to}» ${c.codigo ? "NO dispara aviso" : "dispara el aviso"}`);
         await page.close();
@@ -304,6 +316,8 @@ async function armarLaValija(page, tripId) {
       await page.locator('#tp button[data-t="flight"]').click();
       await page.waitForTimeout(200);
       await page.locator("#i_to").fill("SUECIA");
+      // VAL-87: el aviso aparece al SALIR del campo (tabla del brief), no en cada tecla.
+      await page.locator("#i_title").click();
       await page.waitForTimeout(200);
       ok(/SUECIA/.test(await avisoEnLaHoja(page)),
          "y al volver a Vuelo el aviso sigue vivo: el campo reemplazado se vuelve a enganchar");
@@ -414,10 +428,13 @@ async function armarLaValija(page, tripId) {
       /* El aviso está VIVO: se corrige a un código y desaparece. Es el gesto
          que sigue al aviso, y sin esto el aviso sería un cartel muerto. */
       await page.locator('.stack [data-f="to"]').first().fill("ARN");
+      // VAL-87: el aviso se decide al SALIR del campo (tabla del brief).
+      await page.locator('.stack [data-f="provider"]').first().click();
       await page.waitForTimeout(150);
       ok((await page.locator("[data-rutaaviso]").first().innerText()).trim() === "",
          "y se apaga solo al escribir un código de verdad");
       await page.locator('.stack [data-f="to"]').first().fill("SUECIA");
+      await page.locator('.stack [data-f="provider"]').first().click();
       await page.waitForTimeout(150);
       ok(/SUECIA/.test(await page.locator("[data-rutaaviso]").first().innerText()),
          "y vuelve si se vuelve a escribir lo otro");

@@ -3,6 +3,8 @@
 
    `app/parts/packing-engine.js` y `app/parts/adjuntos-engine.js` viven
    también embebidos dentro de `app/valija.html`, sin el envoltorio UMD.
+   Desde VAL-87 también `aeropuertos-dato.js` y `aeropuertos-motor.js`,
+   pegados tal cual entre dos marcas (ver el final de este archivo).
    La app corre la copia del HTML; las pruebas de `parts/` corren la otra.
    Entre las dos hay un paso a mano, y ese paso ya se quedó corto una vez.
 
@@ -178,6 +180,84 @@ console.log("\n· el control: el arnés detecta una diferencia metida a mano");
   ok(saboteada[nombre] !== real[nombre], `el sabotaje se aplicó sobre «${nombre}»`);
   ok(!real[nombre].startsWith(saboteada[nombre]),
      "y la comparación que usa el arnés lo ve como divergencia, no como cola de más");
+})();
+
+/* ============================================================
+   VAL-87 · EL DATO Y EL MOTOR DE AEROPUERTOS
+
+   Éstos no tienen envoltorio UMD ni IIFE: son dos archivos de JavaScript
+   plano que la app lleva pegados TAL CUAL, entre dos marcas de texto. Así
+   que acá no hace falta comparar función por función: se exige que lo que
+   hay entre las marcas sea el archivo de `parts/` byte por byte. Es la
+   comparación más dura posible y la más simple de leer.
+
+   Las marcas se buscan por su texto exacto y cada una tiene que aparecer
+   UNA vez: dos copias pegadas serían dos verdades, y la segunda pisaría a
+   la primera sin que nadie lo vea.
+   ============================================================ */
+const COPIAS = ["aeropuertos-dato.js", "aeropuertos-motor.js"];
+const abreCopia  = a => "/* >>> COPIA DE app/parts/" + a + " >>> */\n";
+const cierraCopia = a => "/* <<< FIN DE LA COPIA DE app/parts/" + a + " <<< */";
+function copiaEmbebida(fuente, archivo) {
+  const abre = abreCopia(archivo), cierra = cierraCopia(archivo);
+  const veces = s => fuente.split(s).length - 1;
+  if (veces(abre) !== 1) throw new Error(`la marca de apertura de ${archivo} aparece ${veces(abre)} veces en el HTML`);
+  if (veces(cierra) !== 1) throw new Error(`la marca de cierre de ${archivo} aparece ${veces(cierra)} veces en el HTML`);
+  const i = fuente.indexOf(abre) + abre.length, j = fuente.indexOf(cierra);
+  if (j < i) throw new Error(`la marca de cierre de ${archivo} está antes que la de apertura`);
+  return fuente.slice(i, j);
+}
+/** Dónde difieren dos textos, para que una falla diga algo útil. */
+function primeraDiferencia(a, b) {
+  let k = 0;
+  while (k < a.length && k < b.length && a[k] === b[k]) k++;
+  return { k, parts: JSON.stringify(a.slice(Math.max(0, k - 30), k + 30)), html: JSON.stringify(b.slice(Math.max(0, k - 30), k + 30)) };
+}
+
+COPIAS.forEach(function (archivo) {
+  console.log("\n· " + archivo + " contra su copia en el HTML (byte por byte)");
+  const enParts = fs.readFileSync(path.join(PARTS, archivo), "utf8");
+  let enHtml = null;
+  try { enHtml = copiaEmbebida(html, archivo); ok(true, "las dos marcas están, una vez cada una"); }
+  catch (e) { ok(false, e.message); return; }
+  info(`${enParts.length} caracteres en parts, ${enHtml.length} en el HTML`);
+  ok(enParts.length > 1000, "el archivo de parts tiene contenido que comparar");
+  if (enHtml === enParts) ok(true, "la copia del HTML es idéntica al archivo de parts");
+  else {
+    const d = primeraDiferencia(enParts, enHtml);
+    ok(false, `la copia DIVERGE en el carácter ${d.k}`);
+    console.log("     parts: " + d.parts);
+    console.log("     html : " + d.html);
+  }
+});
+
+/* EL CONTROL de la copia de aeropuertos. Tres sabotajes, y cada uno asevera
+   primero que se APLICÓ: un sabotaje que no llega deja todo en verde y
+   parece que el arnés funciona. */
+console.log("\n· el control de las copias de aeropuertos: el arnés ve lo que se le mete a mano");
+(function () {
+  const dato = copiaEmbebida(html, COPIAS[0]);
+  const parts = fs.readFileSync(path.join(PARTS, COPIAS[0]), "utf8");
+
+  // 1 · una letra cambiada adentro del renglón de 150 KB del dato.
+  const unaLetra = html.replace("BRC|San Carlos De Bariloche", "BRX|San Carlos De Bariloche");
+  ok(unaLetra !== html, "el sabotaje de una letra en el dato se aplicó");
+  ok(copiaEmbebida(unaLetra, COPIAS[0]) !== parts, "y una letra cambiada en el dato se ve");
+
+  // 2 · un alias de ciudad agregado sólo en la copia del HTML.
+  const alias = html.replace('"Cordoba":"Córdoba"', '"Cordoba":"Córdoba","Lobos":"Lobos"');
+  ok(alias !== html, "el sabotaje del alias de más se aplicó");
+  ok(copiaEmbebida(alias, COPIAS[0]) !== parts, "y un alias que está sólo en el HTML se ve");
+
+  // 3 · la copia pegada dos veces: la segunda pisaría a la primera.
+  const i = html.indexOf(abreCopia(COPIAS[1]));
+  const j = html.indexOf(cierraCopia(COPIAS[1])) + cierraCopia(COPIAS[1]).length;
+  ok(i > 0 && j > i, "el sabotaje de la copia duplicada encontró qué duplicar");
+  const doble = html.slice(0, j) + "\n" + html.slice(i, j) + html.slice(j);
+  let tiro = false;
+  try { copiaEmbebida(doble, COPIAS[1]); } catch (e) { tiro = /2 veces/.test(e.message); }
+  ok(tiro, "y una copia pegada dos veces se rechaza");
+  ok(dato.length > 0, "(la copia real sigue leyéndose bien)");
 })();
 
 console.log("\n====================================================");
