@@ -38,6 +38,8 @@ apunta a `/opt/pw-browsers`. **No corras `playwright install`.**
 | `val77b-la-parte-del-viaje.js` | VAL-77b desde la pantalla: los **nueve** casos del brief armando **varios viajes seguidos** —el gesto se ve en el viaje siguiente—, tocando la grilla de tipos, «Armar la lista», los chips de «Es para» y «Agregar» por los **dos** caminos (el formulario de la categoría y la hoja del botón grande). Los casos 1 a 4 corren dos veces: sin base ni IA, y con `db-mock.js`. Más los vecinos del brief (re-agregar eligiendo parte, cambiar el tipo después, rehacer, la cuenta de «De dónde sale»), sólo lectura, foco con teclado, los dos temas, y el alto del formulario medido contra `git show 38ae74f`. Tres controles negativos en la cabecera, con lo que dan. Acepta la ruta del HTML | 75 aserciones |
 | `val77b-superconjunto.js` | Sin navegador. La `learnFromHistory` de `git show 38ae74f` contra la de ahora: lo promovido por la nueva **incluye** lo de la vieja en una batería sistemática (todo par de tipos guardados por todo viaje nuevo, sin `paraTipos` en sus tres formas) y en 20000 historiales al azar con semilla fija; lo descartado da idéntico, y la nueva nunca suprime algo que la vieja no suprimía. Tres controles negativos **adentro** del arnés —borrar la fila `canonical(Q) === canonical(P)`, ampliar la supresión, y proteger la supresión sólo con la regla nueva—, cada uno asevera que su sabotaje llegó. Acepta la ruta del HTML | 39 aserciones |
 | `val77b-lo-aprendido-no-es-un-cambio.js` | Un plan que sólo trae lo aprendido de otros viajes no dice «El viaje cambió». El historial crece con el dedo y los **cinco** textos que nombran la causa (motivo del plan, tira de entrada, aviso de la valija, sólo lectura, «De dónde sale esta lista») se leen por los **dos** disparadores: entrar a la valija y guardar una reserva. Controles: un vuelo da textos idénticos a `git show ec0a390`, y cambiar el destino (plan mixto) sigue diciendo que el viaje cambió. El control negativo corre el build anterior y exige que reproduzca el defecto. Acepta la ruta del HTML | 27 aserciones |
+| `val85-la-causa-de-lo-que-se-saca.js` | Sin navegador, contra el motor **embebido** en el HTML. Cada ítem de `plan.sacados` lleva su causa (`aprendido`, `viaje`, `sin-determinar`): sólo saca, sólo suma, las dos, un cambio real de tipo, **el vecino** (suprimido y además su regla dejó de aplicar → `viaje`), el plan mixto, `planListUpdateAsync` con IA simulada (la causa sobrevive al recálculo; lo que suma la IA no es lo aprendido), un ítem aprendido que dejó de promoverse y un destino vencido. El control negativo corre `git show 7f3a1e5` y exige que reproduzca el defecto. Acepta la ruta del HTML | 32 aserciones |
+| `val85-lo-aprendido-a-sacar.js` | VAL-85 desde la pantalla: el historial crece **tocando el botón de descartar** en otros dos viajes, y los **cinco** textos de VAL-77b se leen en las formas sólo saca y las dos, por los **dos** disparadores (entrar a la valija después de recargar, guardar una nota), más guardar **con IA simulada** —el camino de `planListUpdateAsync`—. Controles: borrar el vuelo (cambio real, plan mixto) y el vecino (líquidos descartados en otros dos viajes y el vuelo borrado) dan los cinco textos idénticos a `git show 7f3a1e5`. El control negativo corre ese build y exige «El viaje cambió». Acepta la ruta del HTML | 53 aserciones |
 
 `importar-botones.js` recibe la ruta del HTML como argumento:
 
@@ -119,6 +121,65 @@ sed 's/^  renderPreparando();$//' app/valija.html > /tmp/sin-preparando.html
 NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/importar-arranque.js /tmp/sin-preparando.html
 → FALLA  hubo un cambio visible en pantalla dentro de los 300 ms del toque
 ```
+
+## Controles negativos de VAL-85, corridos el 02/10
+
+Los dos arneses de VAL-85 aceptan la ruta del HTML. Cada sabotaje cambia **una** cosa en
+una copia de `app/valija.html`, con un `assert` de que el texto a cambiar aparece una sola
+vez (si no aparece, el sabotaje no llegó y el script se corta antes de correr nada):
+
+```
+python3 - <<'EOF'
+s = open("app/valija.html").read()
+sab = {
+  # la definición de antes: exigir que no se saque nada
+  "/tmp/s1.html": ("function planSoloAprendido(nuevos, sacados) {\n  nuevos = nuevos || [];\n",
+                   "function planSoloAprendido(nuevos, sacados) {\n  nuevos = nuevos || [];\n  if ((sacados || []).length) return false;\n"),
+  # el vecino: atribuirle a lo aprendido aunque la regla ya no aplique
+  "/tmp/s2.html": ("    if (!matchesCondition(regla.when, ctx)) return CAUSA_SACADO.VIAJE;\n", ""),
+  # la causa no sobrevive al recálculo de planListUpdateAsync
+  "/tmp/s3.html": ("loQueSeSaca(input.list, propuesta, contextoDelPlan(input))", "loQueSeSaca(input.list, propuesta)"),
+  # un sitio por vez
+  "/tmp/m.html":  ("  if (planSoloAprendido(nuevos, sacados)) {\n    var items =", "  if (false) {\n    var items ="),
+  "/tmp/t.html":  ("PK_TIRA_APRENDIDO[pkFormaAprendida(plan)]", "PK_TIRA_APRENDIDO[null]"),
+  "/tmp/a.html":  ('  const forma = pkFormaAprendida(plan);\n  if(forma === "suma")  return', '  const forma = null;\n  if(forma === "suma")  return'),
+  "/tmp/r.html":  ("      const forma = pkFormaAprendida(plan);\n      const {suma, saca} = planCuentas(plan);",
+                   "      const forma = null;\n      const {suma, saca} = planCuentas(plan);"),
+  "/tmp/h.html":  ("const formaPend = pkFormaAprendida(planPend);", "const formaPend = null;"),
+}
+for out, (a, b) in sab.items():
+    assert s.count(a) == 1, out
+    open(out, "w").write(s.replace(a, b))
+EOF
+```
+
+| Copia | `val85-la-causa-de-lo-que-se-saca.js` | `val85-lo-aprendido-a-sacar.js` |
+|---|---|---|
+| `s1` sin la distinción | 5 FALLA | 32 FALLA: los cinco sitios, en las dos formas y por los dos disparadores |
+| `s2` sin el vecino | 3 FALLA | 8 FALLA: C y D dejan de ser idénticos al build anterior |
+| `s3` la IA sin contexto | 3 FALLA (caso 7) | 6 FALLA, todas de B-IA: la causa y los cinco textos |
+| `m` motivo | — | 6 FALLA, sólo el motivo |
+| `t` tira | — | 8 FALLA, sólo la tira |
+| `a` aviso | — | 6 FALLA, sólo el aviso |
+| `r` sólo lectura | — | 6 FALLA, sólo ese aviso |
+| `h` hoja | — | 6 FALLA, sólo la hoja |
+
+Y los dos tienen además el control negativo **adentro**: corren `git show 7f3a1e5` y exigen
+que diga «El viaje cambió». Si no lo dice, la reproducción no llegó.
+
+`val85-lo-aprendido-a-sacar.js` recarga la página, igual que el arnés de VAL-77b, y por eso
+puede tropezar con VAL-86. La primera corrida del sabotaje `m`, con la máquina cargada,
+falló en el control negativo esperando `#pk-info`, que sólo falta cuando la pantalla de la
+valija no tiene lista. **Por qué no la tenía no se sabe**: esa corrida no guardó más dato que
+ése. El mismo síntoma —después de recargar, la lista no está— apareció ese día dos veces
+más en arneses que no son de VAL-85: el control negativo de
+`val77b-lo-aprendido-no-es-un-cambio.js` (que corre `ec0a390`, no el build bajo prueba),
+una vez en tres corridas, y `valija-bloque-b.js` esperando `Store.packingOf('t1')` después de
+recargar, una vez, corriendo a la par de otro arnés (solo dio 111 en verde). Desde entonces
+el arnés espera a que las tres listas estén en `localStorage` antes de recargar, y después
+de recargar pregunta qué rama tomó la semilla. Si la recarga no encontró lo guardado, lo
+dice con esas palabras —«es la falla de VAL-86, no de VAL-85»— en vez de fallar más
+adelante con un botón que no aparece. Sin carga, tres corridas seguidas dieron 53 en verde.
 
 ## Una regla para correrlos: de a uno
 

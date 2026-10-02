@@ -345,6 +345,13 @@ var ORIGEN = { REGLA:"regla", DESTINO:"destino", HISTORIAL:"historial", MANUAL:"
  */
 var ORIGEN_PRECEDENCIA = { regla:0, historial:1, destino:2, manual:3 };
 
+/**
+ * VAL-85: por qué el plan saca un ítem de una lista ya guardada. Cada ítem de
+ * `plan.sacados` lleva una, igual que cada ítem de `plan.nuevos` lleva su
+ * origen. Qué significa cada una, y cómo se decide, en `causaDeSacado`.
+ */
+var CAUSA_SACADO = { APRENDIDO:"aprendido", VIAJE:"viaje", SIN_DETERMINAR:"sin-determinar" };
+
 /** Categorías, en el orden en que se muestran. */
 var CATEGORIES = [
   { key:"documentacion", label:"Documentación" },
@@ -2992,18 +2999,99 @@ function retenerDestinoVigente(previa, propuesta) {
 
 /** Lo que estaba en la lista guardada y no está en la propuesta.
     Una sola definición, y lee la lista propuesta en vez de recalcular por su
-    cuenta: la propuesta es la verdad, y esto la cuenta. */
-function loQueSeSaca(previa, propuesta) {
+    cuenta: la propuesta es la verdad, y esto la cuenta.
+    VAL-85: cada ítem sale con su `causa` (ver `causaDeSacado`). Los dos
+    caminos del plan —el sincrónico y el que corre después de la IA— cuentan
+    con esta función, así que la causa no se hereda de un conteo al otro: se
+    vuelve a leer cada vez, del mismo dato.
+    @param {Object} ctx contexto del viaje (`contextoDelPlan`) */
+function loQueSeSaca(previa, propuesta, ctx) {
   var quedan = {};
   itemsArray(propuesta).forEach(function (i) { if (i && i.clave) quedan[canonicalKey(i.clave)] = true; });
+  var destinos = { actual:destinoQueRazono(propuesta), siNoDice:destinoQueRazono(previa) };
   var sacados = [];
   itemsArray(previa).forEach(function (p) {
     if (!p || !p.clave) return;
     if (quedan[canonicalKey(p.clave)]) return;
     sacados.push({ clave:p.clave, nombre:p.nombre, categoria:p.categoria,
-                   motivo:p.motivo, origen:p.origen, porDestino:p.porDestino || "" });
+                   motivo:p.motivo, origen:p.origen, porDestino:p.porDestino || "",
+                   causa:causaDeSacado(p, propuesta, ctx, destinos) });
   });
   return sacados;
+}
+
+/**
+ * VAL-85 · ¿Por qué se saca este ítem? Se decide leyendo el dato, y lo que no
+ * se puede leer no se adivina.
+ *
+ *   aprendido       la regla que lo puso SIGUE aplicando a este viaje y la
+ *                   lista propuesta la tiene en `aprendizaje.suprimidos`: lo
+ *                   único que lo saca es que se aprendió a no sugerirlo. Sin
+ *                   lo aprendido, la base lo volvería a poner.
+ *   viaje           la regla que lo puso ya no aplica, o la capa de destino lo
+ *                   razonó para un destino que ya no es éste (`destinoVencido`,
+ *                   la misma pregunta con la que `retenerDestinoVigente` lo
+ *                   dejó afuera). Una regla sólo deja de aplicar si cambió lo
+ *                   que lee: el viaje, sus reservas o su tipo —`tripContext`
+ *                   no mira la fecha de hoy—. O sea, el viaje cambió.
+ *   sin-determinar  todo lo demás. Un ítem aprendido que dejó de promoverse
+ *                   (pudo cambiar el historial o el tipo del viaje, y desde
+ *                   acá no se distingue), o uno cuya regla ya no existe.
+ *
+ * EL VECINO, decidido: un ítem suprimido cuya regla ADEMÁS dejó de aplicar es
+ * `viaje`, no `aprendido`. El cambio del viaje alcanza solo para sacarlo —sin
+ * lo aprendido se iría igual—, así que "El viaje cambió: saco 1 que ya no
+ * corresponde" es cierto entero. "Por lo que descartaste en otros viajes"
+ * sería cierto a medias: le atribuiría a lo aprendido un ítem que el viaje ya
+ * había sacado. A lo aprendido se le atribuye sólo lo que, sin lo aprendido,
+ * seguiría en la lista.
+ *
+ * Hace las MISMAS dos preguntas que `buildPackingList` para decidir si pone
+ * una regla —`matchesCondition` sobre el contexto, y la clave literal en lo
+ * suprimido—, sobre el mismo contexto y la misma supresión que usó para armar
+ * la propuesta. Si se separaran, esto diría una causa que no fue.
+ * @param {Object} p        ítem de la lista guardada que no está en la propuesta
+ * @param {Object} propuesta lista propuesta: de ahí sale `aprendizaje.suprimidos`
+ * @param {Object} ctx      contexto del viaje; sin él no se afirma nada
+ * @param {Object} destinos {actual, siNoDice} de `destinoQueRazono`
+ * @returns {string} un valor de CAUSA_SACADO
+ */
+function causaDeSacado(p, propuesta, ctx, destinos) {
+  if (!ctx) return CAUSA_SACADO.SIN_DETERMINAR;
+  if (p.origen === ORIGEN.REGLA) {
+    var regla = reglaDeClave(p.clave);
+    if (!regla) return CAUSA_SACADO.SIN_DETERMINAR;
+    if (!matchesCondition(regla.when, ctx)) return CAUSA_SACADO.VIAJE;
+    return suprimidaEn(propuesta, regla.clave) ? CAUSA_SACADO.APRENDIDO : CAUSA_SACADO.SIN_DETERMINAR;
+  }
+  if (p.origen === ORIGEN.DESTINO && destinos && destinoVencido(p, destinos.actual, destinos.siNoDice)) {
+    return CAUSA_SACADO.VIAJE;
+  }
+  return CAUSA_SACADO.SIN_DETERMINAR;
+}
+
+/** La regla base que pone este ítem, por familia canónica. Hay una sola por
+    familia: `validateRules` lo exige y la prueba del catálogo lo corre. */
+function reglaDeClave(clave) {
+  var canon = canonicalKey(clave);
+  for (var i = 0; i < BASE_RULES.length; i++) {
+    if (canonicalKey(BASE_RULES[i].clave) === canon) return BASE_RULES[i];
+  }
+  return null;
+}
+
+/** ¿Lo aprendido de esta lista deja de sugerir esta clave? Literal, como en
+    `buildPackingList`. */
+function suprimidaEn(list, clave) {
+  return ((list && list.aprendizaje && list.aprendizaje.suprimidos) || []).some(function (e) {
+    return !!e && e.clave === clave;
+  });
+}
+
+/** El contexto con el que se calcula un plan. Una sola definición: el plan
+    sincrónico y el que corre después de la IA leen el viaje igual. */
+function contextoDelPlan(input) {
+  return tripContext(input.trip || {}, input.items || [], { tipoViaje:input.tipoViaje });
 }
 
 function planListUpdate(input) {
@@ -3018,7 +3106,7 @@ function planListUpdate(input) {
     trip:trip, items:items, tipoViaje:input.tipoViaje, history:input.history, now:at
   });
   var merged = mergeLists(list, freshBase);
-  var ctx = tripContext(trip, items, { tipoViaje:input.tipoViaje });
+  var ctx = contextoDelPlan(input);
 
   var yaHabia = {};
   itemsArray(list).forEach(function (i) { if (i && i.clave) yaHabia[canonicalKey(i.clave)] = true; });
@@ -3053,7 +3141,7 @@ function planListUpdate(input) {
      un lado y armar por otro fue exactamente cómo se pudo afirmar "no se saca
      nada" sobre una lista a la que le faltaban tres ítems. */
   var listaPropuesta = retenerDestinoVigente(list, Object.assign({}, merged, { items:itemsConFlag }));
-  var sacados = loQueSeSaca(list, listaPropuesta);
+  var sacados = loQueSeSaca(list, listaPropuesta, ctx);
   var desactualizada = nuevos.length > 0 || sacados.length > 0;
 
   return {
@@ -3073,34 +3161,52 @@ function planListUpdate(input) {
  * persona agregue lo mismo a mano en otros viajes. Y todos los textos del
  * plan decían "El viaje cambió", que en ese caso es una causa inventada.
  *
- * Es verdad cuando no se saca nada y TODO lo que se suma es de origen
- * historial: esos ítems sólo pueden venir de otros viajes. Si hay aunque sea
- * uno de otra capa, o algo que se saca, el texto de antes se queda como está.
- * Una sola definición, acá, para que el motor y la pantalla no puedan decir
- * cosas distintas.
+ * VAL-85: lo mismo del otro lado. Lo descartado en dos viajes de la misma
+ * combinación deja de sugerirse, y una lista armada antes lo trae para sacar
+ * sin que el viaje haya cambiado.
+ *
+ * Es verdad cuando TODO lo que se suma es de origen historial (esos ítems
+ * sólo pueden venir de otros viajes), TODO lo que se saca tiene causa
+ * `aprendido` (ver `causaDeSacado`), y hay al menos una de las dos cosas. Si
+ * hay aunque sea un cambio de otra causa —una regla, la IA, un destino
+ * vencido, o una causa que no se pudo determinar—, el texto de antes se queda
+ * como está. Una sola definición, acá, para que el motor y la pantalla no
+ * puedan decir cosas distintas.
  * @param {Array} nuevos  `plan.nuevos`
  * @param {Array} sacados `plan.sacados`
  * @returns {boolean}
  */
 function planSoloAprendido(nuevos, sacados) {
   nuevos = nuevos || [];
-  return !(sacados || []).length && nuevos.length > 0 &&
-    nuevos.every(function (n) { return !!n && n.origen === ORIGEN.HISTORIAL; });
+  sacados = sacados || [];
+  return nuevos.length + sacados.length > 0 &&
+    nuevos.every(function (n) { return !!n && n.origen === ORIGEN.HISTORIAL; }) &&
+    sacados.every(function (s) { return !!s && s.causa === CAUSA_SACADO.APRENDIDO; });
 }
 
 /* El texto del aviso, que ahora tiene que cubrir cuatro casos y no dos.
    Se escribe una vez acá para que la versión con IA y la de sólo reglas no
    puedan decir cosas distintas: esa duplicación ya fue un defecto en esta
    misma función. Recibe las listas y no las cuentas desde VAL-77b: para
-   nombrar la causa hace falta saber de dónde sale cada cosa. */
+   nombrar la causa hace falta saber de dónde sale cada cosa.
+   VAL-85: lo aprendido tiene tres formas —sólo suma, sólo saca, las dos— y
+   cada una nombra lo que la persona hizo en otros viajes. Lo sacado por lo
+   aprendido no dice "ya no corresponde": eso es lo que dice un viaje que
+   cambió. */
 function motivoDelPlan(nuevos, sacados) {
   var cuantosNuevos = (nuevos || []).length, cuantosSacados = (sacados || []).length;
+  if (!cuantosNuevos && !cuantosSacados) return "La lista sigue al día con lo que cargaste.";
+  if (planSoloAprendido(nuevos, sacados)) {
+    var items = function (n) { return n === 1 ? "1 ítem" : n + " ítems"; };
+    if (!cuantosSacados) return "Por lo que agregaste a mano en otros viajes: sumo " + items(cuantosNuevos) + ".";
+    if (!cuantosNuevos) return "Por lo que descartaste en otros viajes: saco " + items(cuantosSacados) + ".";
+    return "Por lo que agregaste a mano y descartaste en otros viajes: sumo " + items(cuantosNuevos) +
+           " y saco " + items(cuantosSacados) + ".";
+  }
   var frases = [];
   if (cuantosNuevos) frases.push(cuantosNuevos === 1 ? "sumo 1 ítem" : "sumo " + cuantosNuevos + " ítems");
   if (cuantosSacados) frases.push(cuantosSacados === 1 ? "saco 1 que ya no corresponde"
                                                        : "saco " + cuantosSacados + " que ya no corresponden");
-  if (!frases.length) return "La lista sigue al día con lo que cargaste.";
-  if (planSoloAprendido(nuevos, sacados)) return "Por lo que agregaste a mano en otros viajes: " + frases.join(" y ") + ".";
   return "El viaje cambió: " + frases.join(" y ") + ".";
 }
 
@@ -3137,7 +3243,11 @@ function planListUpdateAsync(input) {
        modelo volvió a proponer no se sacó de ningún lado. Contar dos veces
        sale más barato que dos verdades distintas sobre la misma lista. */
     var propuesta = Object.assign({}, enriched, { items:itemsConFlag });
-    var sacados = loQueSeSaca(input.list, propuesta);
+    /* VAL-85: y la causa de cada uno se vuelve a leer acá, con el mismo
+       contexto que usó el plan de arriba. Si se dejara sin contexto, todo lo
+       sacado quedaría "sin determinar" en este camino —el que corre cuando
+       hay IA— y el texto volvería a decir que el viaje cambió. */
+    var sacados = loQueSeSaca(input.list, propuesta, contextoDelPlan(input));
     var desactualizada = nuevos.length > 0 || sacados.length > 0;
     return {
       desactualizada:desactualizada,
@@ -3219,6 +3329,8 @@ return {
   planListUpdate:planListUpdate,
   planListUpdateAsync:planListUpdateAsync,
   planSoloAprendido:planSoloAprendido,
+  // VAL-85: por qué se saca cada ítem de `plan.sacados`.
+  CAUSA_SACADO:CAUSA_SACADO, causaDeSacado:causaDeSacado,
   clearNewFlags:clearNewFlags,
 
   // estado de la lista (VAL-31)
