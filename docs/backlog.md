@@ -1792,8 +1792,11 @@ de la valija no estaba: en el arnés nuevo de VAL-85 (con la máquina cargada), 
 `val77b-lo-aprendido-no-es-un-cambio.js`, y en `valija-bloque-b.js` (`packingOf('t1')` nulo 10 s después de
 recargar). La causa sigue sin determinar. El arnés de VAL-85 ya hace lo que pedía el párrafo de arriba: antes
 de recargar espera que las listas estén escritas, y la semilla anota qué rama tomó. Si vuelve a pasar ahí,
-va a decirlo como falla de VAL-86 en vez de fallar más adelante. **Sigue siendo andamiaje**: ninguna de las
-tres veces fue en la app de una persona, y todas fueron con arneses que recargan.
+va a decirlo como falla de VAL-86 en vez de fallar más adelante. Las tres veces fueron en arneses que
+recargan, y ninguna en la app de una persona. **Que sea sólo del andamiaje es una inferencia, no un dato**:
+la causa sigue sin determinar, y la auditoría de VAL-85 lo señaló. En esa auditoría, la recarga perdió
+`valija.v1` en 2 de 3 corridas con sabotaje, siempre en el bloque «E · entrando»; en las corridas limpias,
+nunca.
 
 ### VAL-88 · Cinco textos de la valija que quedaron de antes, vistos durante VAL-85 — P2
 
