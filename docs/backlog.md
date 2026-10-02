@@ -1745,7 +1745,7 @@ montaña+ciudad—, así que este vaivén va a pasar más seguido que antes.
   mano sigue siendo "suyo" aunque la app ya lo sugiera?** Si sí, la precedencia de origen está al revés para
   este caso, y el cambio toca la regla que VAL-45 fijó para no duplicar.
 
-### VAL-85 · Lo que se aprendió a sacar también dice que "el viaje cambió" — P1
+### VAL-85 · Lo que se aprendió a sacar también dice que "el viaje cambió" — P1 · construida el 02/10 (`a9e67f8`), en auditoría
 
 **Preexistente, reproducido el 26/09 contra el motor de antes y el de después de VAL-77b: sale idéntico.**
 Es la misma forma que VAL-77b arregló para lo que se aprende a **sumar**, del otro lado: cuando lo aprendido
@@ -1786,6 +1786,35 @@ Lo que queda por averiguar, y hay dos lecturas que se distinguen con un dato má
   recargó.
 
 El próximo paso es que el guardián también diga qué rama tomó. **No se arregla adivinando cuál de las dos es.**
+
+**02/10, durante VAL-85: el síntoma apareció tres veces en un día.** Después de recargar la página, la lista
+de la valija no estaba: en el arnés nuevo de VAL-85 (con la máquina cargada), en el control negativo de
+`val77b-lo-aprendido-no-es-un-cambio.js`, y en `valija-bloque-b.js` (`packingOf('t1')` nulo 10 s después de
+recargar). La causa sigue sin determinar. El arnés de VAL-85 ya hace lo que pedía el párrafo de arriba: antes
+de recargar espera que las listas estén escritas, y la semilla anota qué rama tomó. Si vuelve a pasar ahí,
+va a decirlo como falla de VAL-86 en vez de fallar más adelante. **Sigue siendo andamiaje**: ninguna de las
+tres veces fue en la app de una persona, y todas fueron con arneses que recargan.
+
+### VAL-88 · Cinco textos de la valija que quedaron de antes, vistos durante VAL-85 — P2
+
+Los encontró el agente de VAL-85 mientras trabajaba. **Ninguno lo trajo esa entrega**: todos se ven igual en
+la versión de antes (`7f3a1e5`). VAL-85 los dejó como estaban a propósito, porque su criterio 5 pedía no tocar
+el texto de ningún plan que no fuera "sólo aprendido".
+
+1. **Error de concordancia** cuando el viaje cambió y el plan sólo saca una cosa: *«El viaje cambió: una cosa
+   de la lista ya no corresponden.»* (`planAvisoTexto`). Es de gramática, pero está en pantalla.
+2. **`sin-determinar` sigue diciendo «El viaje cambió»** sobre un viaje que nadie tocó. Pasa cuando se
+   borra uno de los viajes que hacían sugerir un ítem aprendido. VAL-85 ya guarda que la causa no se sabe,
+   pero el texto no lo usa. **Es el más importante de los cinco**, porque afirma algo falso. La regla del
+   proyecto pide que, si no se sabe la causa, el texto no la afirme.
+3. **«Ver qué saco»** sigue con el encabezado *«Saco esto, que ya no corresponde»*. Debajo de lo que se saca
+   por lo aprendido, muestra el motivo viejo de la regla (*«Paisaje que el celular no rinde.»*). Mostrar la
+   causa de cada ítem ahí es la pieza que falta.
+4. **La tira dice «1 cosa nueva»** también cuando el plan sólo saca. Pasa igual con todos los planes que
+   sólo sacan.
+5. **Plan mixto:** si lo aprendido saca uno y una regla suma otro, el texto dice *«El viaje cambió: sumo 1 y
+   saco 1 que ya no corresponde»*, aunque lo que se saca vino de lo aprendido. Distinguirlo exige un texto
+   que nombre las dos causas a la vez.
 
 ### VAL-87 · Escribís la ciudad, la app pone el código — P0 · brief escrito el 02/10
 
