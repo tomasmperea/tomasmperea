@@ -897,7 +897,7 @@ mirar viajes de *esa misma combinación*. Un viaje montaña+ciudad no aprende de
 secas. No se rompe nada —el aprendizaje es la capa 3 y degrada a no promover nada—, pero se fragmenta, y a
 más combinaciones menos muestra por combinación. Eso es lo que 77b viene a cerrar.
 
-### VAL-77b · Cada ítem sabe a qué parte del viaje pertenece — P1
+### VAL-77b · Cada ítem sabe a qué parte del viaje pertenece — ✅ TERMINADA, verificada en el teléfono del PM (02/10)
 
 **Pedido del PM (23/09):** *"el motor tiene que ser lo suficientemente inteligente para entender que si
 agregué un buzo polar es para montaña y si agregué una remera común o unas zapatillas cómodas es para
