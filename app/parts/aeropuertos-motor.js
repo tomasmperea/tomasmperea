@@ -1,5 +1,5 @@
 /* ============================================================
-   AEROPUERTOS — el motor. VAL-66.
+   AEROPUERTOS — el motor. VAL-87.
    JavaScript puro, sin DOM. Recibe el dato, devuelve dos cosas:
 
    · buscar(texto)  → lo que escribe un viajero ("bari", "ezeiza",

@@ -1787,6 +1787,20 @@ Lo que queda por averiguar, y hay dos lecturas que se distinguen con un dato má
 
 El próximo paso es que el guardián también diga qué rama tomó. **No se arregla adivinando cuál de las dos es.**
 
+### VAL-87 · Escribís la ciudad, la app pone el código — P0 · brief escrito el 02/10
+
+**Pedido textual del PM (02/10):** *"que la UI no pida código IATA sino que como cualquier buscador de vuelos
+que existe hoy en el mercado, cuando vos empezás a escribir la ciudad, el motor de búsqueda te sugiere los
+aeropuertos que hacen match con la búsqueda; eso es UX pura"*. Va después de VAL-85.
+
+Brief: `docs/briefs/ciudad-o-aeropuerto.md`. Muestrario aprobado: `app/parts/aeropuerto-ui.html`.
+
+- Decisiones del PM: el dato sale de **dos bases combinadas** (OurAirports más OpenFlights); origen y destino
+  van **uno debajo del otro**; la etiqueta del viaje muestra **la ciudad debajo del código**; y la opción
+  muestra **el nombre oficial** del aeropuerto ("Ezeiza - Ministro Pistarini").
+- **Es la pieza que necesitan VAL-66 y VAL-79**: saber que BRC es Bariloche. No es ninguna de las dos. El
+  muestrario se commiteó rotulado "VAL-66" por error de quien lo escribió, y se corrigió.
+
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
 **Sale de VAL-75, por decisión del PM (22/09).** Ahí la regla quedó clara: lo empacado es intocable, porque
