@@ -23,12 +23,13 @@ function crearMotorAeropuertos(dato, paises, ciudadEs, apodos) {
     return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
       .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   }
-  /* Cómo se nombra el aeropuerto en la segunda línea: el apodo si lo hay
-     ("Ezeiza"), si no el nombre sin la ciudad adelante ("London Heathrow" →
-     "Heathrow"), y nada si el nombre ES la ciudad ("San Carlos De
-     Bariloche"): repetirla no dice nada. */
+  /* Cómo se nombra el aeropuerto en la segunda línea: su nombre OFICIAL,
+     sin la ciudad adelante ("London Heathrow" → "Heathrow"), y nada si el
+     nombre ES la ciudad: repetirla no dice nada.
+     El apodo NO se muestra, sólo se busca. Decisión del PM (02/10): "buenos
+     aires" tiene que devolver Ministro Pistarini y Jorge Newbery, que es
+     como se llaman; "ezeiza" los sigue encontrando por el apodo. */
   function etiqueta(nombre, apodo, ciudadDato, ciudad) {
-    if (apodo) return apodo;
     var n = nombre, c = ciudadDato;
     if (n.toLowerCase().indexOf(c.toLowerCase()) === 0) n = n.slice(c.length);
     n = n.replace(/^[\s\-–,/]+/, "").trim();
