@@ -47,7 +47,8 @@ Ya está construido en `app/parts/aeropuertos-dato.js`. **No se rehace.**
 
 Lo que el PM aceptó al elegir C, y que no es un defecto:
 
-- **La app pesa unos 160 KB más** (de 657 KB a ~816 KB).
+- **La app pesa unos 180 KB más.** Medido al integrar: de 666 KB a 848 KB. Antes de integrar este brief decía
+  "unos 160 KB": era una estimación, y la auditoría la midió.
 - **"Acerca de" lleva una línea con la fuente.** La ODbL lo exige.
 - **El dato no se actualiza solo.** Un aeropuerto que abre después no aparece hasta regenerarlo; mientras
   tanto, el código de tres letras se puede escribir igual.

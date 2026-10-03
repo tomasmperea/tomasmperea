@@ -1819,7 +1819,7 @@ el texto de ningún plan que no fuera "sólo aprendido".
    saco 1 que ya no corresponde»*, aunque lo que se saca vino de lo aprendido. Distinguirlo exige un texto
    que nombre las dos causas a la vez.
 
-### VAL-87 · Escribís la ciudad, la app pone el código — P0 · integrada el 02/10 (`1298375`), en auditoría
+### VAL-87 · Escribís la ciudad, la app pone el código — P0 · auditoría 83, candidato, sale en la v39
 
 **Pedido textual del PM (02/10):** *"que la UI no pida código IATA sino que como cualquier buscador de vuelos
 que existe hoy en el mercado, cuando vos empezás a escribir la ciudad, el motor de búsqueda te sugiere los
@@ -1856,6 +1856,27 @@ visor real.
 
 **Anterior a VAL-87.** Una dirección como «Hotel Llao Llao» se guarda como «HOTEL LLAO LLAO». VAL-87 sacó las
 mayúsculas forzadas del vuelo y no tocó el traslado porque su brief lo excluía.
+
+### VAL-92 · Enter en el campo de aeropuerto no elige la opción que se ve marcada — P2
+
+Sale de la auditoría de VAL-87. Escribís «bari», la primera opción se ve resaltada, apretás Enter y no pasa
+nada. Las flechas tampoco mueven la marca. Se elige tocando, que es lo que pedían los criterios.
+- **No es una regresión:** en la v38 Enter tampoco hacía nada en ese campo.
+- **Medido en Chromium.** Qué hace la tecla Enter/Ir del teclado del teléfono va en el guion de la v39.
+- **Lo que hoy afirma algo falso** es la marca: la primera opción lleva `aria-selected="true"` y el teclado no puede
+  accionarla. Viene del muestrario aprobado. O se hace que Enter la elija, o se deja de marcar.
+
+### VAL-93 · Ciudades del dato que no son inglés sino ruido — P3
+
+Sale de la auditoría de VAL-87. `TLL` aparece como «Tallinn-ulemiste International» y `SCZ` como «Santa
+Cruz/Graciosa Bay/Luova», en la lista y en la etiqueta del viaje. El brief aceptó que las ciudades sin alias se vean
+en inglés, pero estas no son inglés. Se arreglan con alias, sin tocar código, y conviene barrer el dato
+buscando la forma (barras, «International», «Airport» dentro de la ciudad) en vez de corregir la que se vio.
+
+**Y una decisión del brief que el PM puede querer revisar:** tres letras que son una palabra («mar», «rio»,
+«lon»), si se sale del campo sin elegir, se guardan como código. `MAR` es Maracaibo; `RIO` y `LON` no están en la
+lista y salen con la línea «no está en mi lista». Es lo que pide la tabla del brief. Si en el teléfono molesta, es
+otra historia.
 
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
