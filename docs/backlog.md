@@ -1819,7 +1819,7 @@ el texto de ningún plan que no fuera "sólo aprendido".
    saco 1 que ya no corresponde»*, aunque lo que se saca vino de lo aprendido. Distinguirlo exige un texto
    que nombre las dos causas a la vez.
 
-### VAL-87 · Escribís la ciudad, la app pone el código — P0 · brief escrito el 02/10
+### VAL-87 · Escribís la ciudad, la app pone el código — P0 · integrada el 02/10 (`1298375`), en auditoría
 
 **Pedido textual del PM (02/10):** *"que la UI no pida código IATA sino que como cualquier buscador de vuelos
 que existe hoy en el mercado, cuando vos empezás a escribir la ciudad, el motor de búsqueda te sugiere los
@@ -1832,6 +1832,30 @@ Brief: `docs/briefs/ciudad-o-aeropuerto.md`. Muestrario aprobado: `app/parts/aer
   muestra **el nombre oficial** del aeropuerto ("Ezeiza - Ministro Pistarini").
 - **Es la pieza que necesitan VAL-66 y VAL-79**: saber que BRC es Bariloche. No es ninguna de las dos. El
   muestrario se commiteó rotulado "VAL-66" por error de quien lo escribió, y se corrigió.
+
+### VAL-89 · A 390 px el formulario de la reserva es más ancho que la pantalla, y se corre al tocarlo — P2
+
+**Anterior a VAL-87: reproducido idéntico contra la v38 (`42007f1`), paso por paso.** Los campos «Sale» y
+«Llega» (`.f2` con `datetime-local`) no entran en dos columnas a 390 px: el contenido de la hoja mide 551 px de
+ancho en una pantalla de 390. «Llega» queda cortado a la derecha. Y al tocar el primer campo, la hoja se
+desplaza 16 px de costado (`.sheet-bd` con `scrollLeft` 16): los rótulos quedan pegados al borde.
+
+No se reprodujo en todas las corridas: con el mismo recorrido, algunas quedan en 0 y otras en 16, en las dos
+versiones por igual. La causa del ancho sí está a la vista (el `datetime-local`). Lo que hace que unas veces se
+corra y otras no, no se determinó. Lo encontró el agente de VAL-87 y lo midió el PO.
+
+### VAL-90 · En sólo lectura se puede abrir una reserva con «Guardar» y «Eliminar» habilitados — P1
+
+**Anterior a VAL-87.** El toque sobre una reserva (`[data-item]`) llama a `sheetItem` sin mirar
+`Store.canWrite`, así que quien tiene permiso de ver ve los botones de guardar y eliminar como si pudiera usarlos.
+Falta comprobar qué pasa al tocarlos: si la base rechaza la escritura, el defecto es de pantalla; si no, es de
+permisos. **Eso se averigua antes de arreglar nada.** Lo encontró el agente de VAL-87, no se reprodujo con un
+visor real.
+
+### VAL-91 · Importar pasa a mayúsculas el «Desde» y el «Hasta» de un traslado — P3
+
+**Anterior a VAL-87.** Una dirección como «Hotel Llao Llao» se guarda como «HOTEL LLAO LLAO». VAL-87 sacó las
+mayúsculas forzadas del vuelo y no tocó el traslado porque su brief lo excluía.
 
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 
