@@ -666,6 +666,20 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .chip.parte{border-style:dashed;border-color:var(--line);color:var(--ink-3)}
 
 /* ============================================================
+   VAL-79 · LA PREGUNTA CUANDO EL VUELO VA A OTRO LADO
+   Diseño aprobado por el PM el 07/10:
+   docs/design/val79-destino-del-vuelo-claro.png y -oscuro.png.
+   Va en el azul del .notice común y no en ámbar: no hay nada mal, la app
+   no sabe y pregunta. Ningún color literal, ningún token nuevo.
+   ============================================================ */
+.dv-preg .bd b.q{display:block;margin-bottom:2px}
+.dv-ops{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.dv-ops .btn{justify-content:flex-start;width:100%;min-height:44px;background:var(--surface);border-color:var(--line);color:var(--ink);font-size:13.5px;text-align:left}
+.dv-ops .btn.con-nota{flex-direction:column;align-items:flex-start;gap:2px}
+.dv-ops .btn small{font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3);font-weight:400}
+.dv-nota{display:block;margin-top:9px;font-size:11.5px;opacity:.85}
+
+/* ============================================================
    LA VALIJA RAZONA SOBRE EL VIAJE — componentes nuevos
    (VAL-44, VAL-45, VAL-46, VAL-43). Copiados del muestrario
    aprobado app/parts/packing-ui-b.html, Bloque C (CB1 a CB7).
@@ -2012,6 +2026,31 @@ function norm(s) {
    ↔ IATA es VAL-66 y no se hace acá. */
 function esCodigoIATA(v) {
   return /^[A-Z]{3}$/.test(String(v == null ? "" : v).trim().toUpperCase());
+}
+
+/* ¿SON EL MISMO LUGAR? — VAL-79.
+
+   Devuelve true, false o null (no se sabe). El motor no conoce el dato de
+   aeropuertos de VAL-87, así que la app le pasa una función que sí lo conoce
+   (`setComparadorDeLugares`). Sin ella, este motor contesta lo que contestaba
+   antes de VAL-79: dos códigos distintos son lugares distintos, dos textos
+   distintos también (la regla de VAL-75: Noruega → Argentina es un cambio), y
+   un código contra un texto NO SE COMPARA — sin el dato no hay cómo saber si
+   OSL es Noruega. Por eso `app/parts/packing-engine.js` se sigue probando solo
+   en Node y da lo mismo que antes. */
+var comparadorDeLugares = null;
+function setComparadorDeLugares(fn) { comparadorDeLugares = typeof fn === "function" ? fn : null; }
+function coincidenLugares(a, b) {
+  var na = norm(a), nb = norm(b);
+  if (!na || !nb) return null;
+  if (na === nb) return true;
+  if (comparadorDeLugares) {
+    var r = null;
+    try { r = comparadorDeLugares(String(a).trim(), String(b).trim()); } catch (e) { r = null; }
+    if (r === true || r === false) return r;
+  }
+  if (esCodigoIATA(a) !== esCodigoIATA(b)) return null;
+  return false;
 }
 
 /**
@@ -3523,9 +3562,11 @@ function hoursBetween(a, b) {
 function destinoQueRazono(list) {
   var d = (list && list.base && list.base.destinos) || null;
   if (d && d.deReservas && d.lugares && d.lugares.length) {
-    return { texto:d.lugares.map(function (l) { return l.lugar; }).join(" · "), fuente:"reservas" };
+    return { texto:d.lugares.map(function (l) { return l.lugar; }).join(" · "), fuente:"reservas",
+             escrito:String((list && list.base && list.base.destino) || "").trim() };
   }
-  return { texto:String((list && list.base && list.base.destino) || "").trim(), fuente:"escrito" };
+  var escrito = String((list && list.base && list.base.destino) || "").trim();
+  return { texto:escrito, fuente:"escrito", escrito:escrito };
 }
 
 function destinosDelViaje(trip, items) {
@@ -3627,6 +3668,9 @@ function destinosDelViaje(trip, items) {
        No se descartan: bajan a PISTA, con su fuente y sus fechas, igual que
        una dirección. Se manda de más, que es el lado seguro y el mismo que ya
        eligió esta función dos veces. */
+    // VAL-79: la persona dijo que este vuelo es una escala. No cuenta como
+    // destino ni como pista: "no cuenta para la valija" es lo que leyó.
+    if (f.destinoDecision === "escala") return;
     var codigo = esCodigoIATA(f.to);
     sumar(codigo ? String(f.to).trim().toUpperCase() : String(f.to).trim(), "vuelo", f, codigo);
   });
@@ -3681,6 +3725,17 @@ function destinosDelViaje(trip, items) {
      Cuando coinciden, gana el escrito y la pista se cae por redundante: dice
      lo mismo con menos respaldo. */
   var escrito = String(trip.destination == null ? "" : trip.destination).trim();
+  /* VAL-79 · "VOY A LOS DOS LUGARES". La persona confirmó que además del
+     lugar del vuelo va al que escribió. Entonces el escrito deja de ser
+     contexto y es un destino más, en firme, con la misma fuente de siempre
+     para que el prompt diga de dónde salió. */
+  var sumaEscrito = deReservas && escrito && vuelos.some(function (f) { return f.destinoDecision === "suma"; }) &&
+    destinos.every(function (l) { return norm(l.lugar) !== norm(escrito); });
+  if (sumaEscrito) {
+    destinos = destinos.concat([{ lugar:escrito, fuente:"escrito-a-mano", desde:trip.startDate || "",
+                                  hasta:trip.endDate || "", firme:true }]);
+    pistas = pistas.filter(function (l) { return norm(l.lugar) !== norm(escrito); });
+  }
   if (!deReservas && escrito) {
     destinos = [{ lugar:escrito, fuente:"escrito-a-mano", desde:trip.startDate || "",
                   hasta:trip.endDate || "", firme:false }];
@@ -3949,7 +4004,10 @@ function lineaDestinos(b) {
                         : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
   }
-  var extra = (b.destino && norm(b.destino) !== norm(d.lugares[0].lugar))
+  /* VAL-79: con "voy a los dos lugares" el escrito está ENTRE los destinos.
+     Decirle al modelo que lo use "sólo como contexto" contradiría la línea. */
+  var confirmado = d.lugares.some(function (l) { return l.fuente === "escrito-a-mano"; });
+  var extra = (b.destino && d.lugares.every(function (l) { return norm(l.lugar) !== norm(b.destino); }))
     ? " La persona además escribió \"" + b.destino + "\" como destino del viaje: úsalo sólo como contexto, NUNCA por encima de lo de arriba."
     : "";
   /* El aviso de multidestino se queda como estaba, contando TODOS los
@@ -3958,7 +4016,9 @@ function lineaDestinos(b) {
      que era multidestino. Las escalas ya vienen con sus horas y con la
      advertencia; el modelo decide con eso, que es el criterio de toda la
      función. */
-  return "- Destinos, sacados de los vuelos ya cargados, que son lo que manda: " + partes.join(" · ") +
+  return "- Destinos, sacados de los vuelos ya cargados" +
+         (confirmado ? " y del destino que la persona escribió y confirmó que también visita" : "") +
+         ", que son lo que manda: " + partes.join(" · ") +
          (d.lugares.length > 1 ? ". Es un viaje multidestino: lo que sugieras tiene que servir para TODOS esos lugares, no para uno." : ".") +
          avisoEscala + extra + lineaPistas;
 }
@@ -4571,9 +4631,39 @@ function destinoVencido(item, actual, siNoDice) {
      fuente del destino cambió, no hay conclusión posible y el ítem se queda.
      Retener de más es una lista un poco vieja; sacar de más es la app
      tirando algo que la persona necesita. */
-  if (fuente !== String(actual.fuente || "")) return false;
+  /* VAL-79 · LA GUARDA DE ARRIBA SE REEMPLAZA, Y ESTO ES LO QUE ELLA ESPERABA.
+     Decía "si la fuente cambió, no hay conclusión posible" porque no se podía
+     traducir OSL a Noruega. VAL-87 trajo esa traducción, y `coincidenLugares`
+     la usa cuando la app se la pasa. El PM reportó lo que costaba esperar: un
+     viaje a Bariloche con un vuelo a Madrid seguía sugiriendo para Bariloche,
+     sin sacar ni proponer sacar nada.
 
-  return norm(razonado) !== norm(actual.texto);
+     La pregunta es ahora UNA, para cualquier par de fuentes: ¿alguno de los
+     lugares para los que se razonó el ítem PUEDE ser alguno de los de ahora?
+     "Puede" es true o null: ante la duda, el ítem se queda — retener de más
+     es una lista un poco vieja; sacar de más es tirar algo que se necesita.
+
+     A un ítem razonado con el destino ESCRITO, los lugares de ahora le suman
+     el escrito actual. Eso protege el caso por el que existía la guarda
+     (Noruega + vuelo a OSL: el ítem de Noruega se queda) y hace cierto el
+     aviso de la valija mientras nadie conteste ("sugiero para los dos
+     lugares"). Cuando la persona contesta "el viaje ahora es a Madrid", el
+     escrito pasa a Madrid y lo de Bariloche deja de tener dónde agarrarse.
+
+     A un ítem razonado con los VUELOS, no. La primera versión se lo sumaba a
+     todos y la prueba de VAL-75 lo volteó: en un viaje a "Noruega", cambiar el
+     vuelo de OSL a MAD dejaba de sacar lo de Oslo, porque Oslo "puede ser"
+     Noruega. Lo que se razonó con un vuelo se compara contra los vuelos. */
+  var partes = function (t) {
+    return String(t == null ? "" : t).split(" · ").map(function (s) { return s.trim(); }).filter(Boolean);
+  };
+  var ahora = partes(actual.texto);
+  var escrito = String(actual.escrito == null ? "" : actual.escrito).trim();
+  if (escrito && fuente !== "reservas" && ahora.every(function (a) { return norm(a) !== norm(escrito); })) ahora.push(escrito);
+  var antes = fuente === "reservas" ? partes(razonado) : [razonado];
+  return antes.every(function (r) {
+    return ahora.every(function (a) { return coincidenLugares(r, a) === false; });
+  });
 }
 
 /** Devuelve a la lista propuesta los ítems de la capa de destino que siguen
@@ -4921,6 +5011,8 @@ return {
   deduceInternational:deduceInternational,
   // VAL-80: la interfaz pregunta lo mismo que el motor, con la misma función.
   esCodigoIATA:esCodigoIATA,
+  // VAL-79: ¿son el mismo lugar? La app le pasa el dato de aeropuertos.
+  setComparadorDeLugares:setComparadorDeLugares, coincidenLugares:coincidenLugares,
 
   // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,
@@ -8191,6 +8283,44 @@ if (typeof module !== "undefined") module.exports = { crearMotorAeropuertos: cre
 /** El motor de aeropuertos de la app: uno solo, armado una vez. */
 const Aeropuertos = crearMotorAeropuertos(AEROPUERTOS_DATO, AEROPUERTOS_PAISES, AEROPUERTOS_CIUDAD_ES, AEROPUERTOS_APODO);
 
+/* VAL-79 · ¿SON EL MISMO LUGAR? Lo que el motor de la valija no puede saber
+   solo —si MAD es o no Bariloche— lo contesta el dato de VAL-87. Devuelve
+   true, false o null (el dato no reconoce el texto: «Patagonia», «Europa»).
+     · un código es su ciudad (la del dato y su alias en español) y su país;
+     · un texto es un país si es el nombre en español de uno del dato, una
+       ciudad si es una ciudad del dato (con todos los países donde existe:
+       «Córdoba» es de Argentina y de España), o nada;
+     · si alguno es un país, se comparan países; si no, ciudades. */
+const Lugares = (()=>{
+  const n = Aeropuertos.norm;
+  const porCiudad = new Map(), porPais = new Map(), porCod = new Map();
+  String(AEROPUERTOS_DATO).split("\n").forEach(l=>{
+    const [cod, ciudadDato, cc] = l.split("|");
+    if(!cod) return;
+    const ciudades = [ciudadDato, AEROPUERTOS_CIUDAD_ES[ciudadDato]].filter(Boolean).map(n).filter(Boolean);
+    if(!porCod.has(cod)) porCod.set(cod, {ciudades:new Set(ciudades), paises:new Set([cc])});
+    ciudades.forEach(k=>{ if(!porCiudad.has(k)) porCiudad.set(k, new Set()); porCiudad.get(k).add(cc); });
+  });
+  Object.keys(AEROPUERTOS_PAISES).forEach(cc=>{ const k = n(AEROPUERTOS_PAISES[cc]); if(k) porPais.set(k, cc); });
+  function info(x){
+    const t = String(x == null ? "" : x).trim();
+    if(PackingEngine.esCodigoIATA(t)) return porCod.get(t.toUpperCase()) || null;
+    const k = n(t);
+    if(porPais.has(k)) return {ciudades:new Set(), paises:new Set([porPais.get(k)]), esPais:true};
+    if(porCiudad.has(k)) return {ciudades:new Set([k]), paises:porCiudad.get(k)};
+    return null;
+  }
+  const cruzan = (a, b)=> [...a].some(x=> b.has(x));
+  function coinciden(a, b){
+    const A = info(a), B = info(b);
+    if(!A || !B) return null;
+    if(A.esPais || B.esPais) return cruzan(A.paises, B.paises);
+    return cruzan(A.ciudades, B.ciudades);
+  }
+  return {coinciden};
+})();
+PackingEngine.setComparadorDeLugares(Lugares.coinciden);
+
 /* ============================================================
    ROUTER
    ============================================================ */
@@ -9733,9 +9863,15 @@ function renderPackingBoard(trip, list){
 
   // 25 · un solo aviso arriba de la lista, siempre. La regla vive en una sola
   // función para que no se rompa sola cuando aparezca el sexto aviso.
+  /* VAL-79 · un viaje que ya tiene un vuelo a otro lado recibe la pregunta
+     arriba de la valija. Ocupa el lugar del aviso de siempre y no se suma a
+     él: la regla 25 es UN aviso arriba de la lista. Contestarla dispara el
+     plan, que es el aviso que venía detrás. Sin permiso de edición no se
+     muestra: no hay cómo contestarla. */
+  const dvPend = (canWrite && !generating) ? dvPendienteDeLaValija(trip) : null;
   const notices = generating
     ? `<div class="notice"><span class="spin"></span><span class="bd">Buscando lo específico de ${esc(destino)}…</span></div>`
-    : packingNotice(trip, list, planArriba);
+    : (dvPend ? dvPreguntaHtml(dvPend, true, dvPend.vueloId) : packingNotice(trip, list, planArriba));
 
   const grouped = PackingEngine.groupByCategory(list, {includeDismissed:true});
   const groups = grouped.map(g=> pkCategoryHtml(g, trip, canWrite, list));
@@ -9757,6 +9893,9 @@ function renderPackingBoard(trip, list){
     </div>` : "";
 
   $main.innerHTML = notices + groups.join("") + skeletonCat;
+  $main.querySelectorAll("[data-dvop][data-dvvuelo]").forEach(b=>{
+    b.onclick = ()=>{ b.disabled = true; dvContestarEnValija(trip, b.dataset.dvvuelo, b.dataset.dvop); };
+  });
 
   if(canWrite && !generating){
     $fab.innerHTML = `<div class="fab"><button class="btn primary block" id="pk-additem">${svg(I.plus)} Agregar ítem</button></div>`;
@@ -10327,7 +10466,17 @@ function apConfirmar(wrap){
   if(!inp.dataset.editando && !wrap.querySelector(".ap-lista")) return;   // sólo pasó el foco
   delete inp.dataset.editando;
   if(!inp.dataset.cod){
-    const r = apResolver(inp.value);
+    /* VAL-92 · decisión del PM (07/10): salir del campo con UNA sola opción en
+       la lista la toma. Escribió «aeroparqu», tocó afuera y quedó lo escrito
+       con Aeroparque solo en pantalla. Con varias, queda lo escrito: tomar Bari
+       en vez de Bariloche sin querer sería peor.
+       EXCEPTO tres letras. «toj» trae una sola opción —Tojo Una-Una, en
+       Indonesia— y la tabla de VAL-87 dice que tres letras que el dato no
+       tiene se guardan como código. Si la opción única ganara, alguien que
+       escribió el código de Torrejón terminaría con un vuelo a Indonesia. */
+    const ops = wrap.querySelectorAll(".ap-op");
+    const r = (ops.length === 1 && !PackingEngine.esCodigoIATA(inp.value))
+      ? apResolver(ops[0].dataset.cod) : apResolver(inp.value);
     if(r.codigo){ inp.dataset.cod = r.guarda; inp.value = apVisible(r); }
   }
   apRepintar(wrap, false);
@@ -10382,6 +10531,31 @@ function apEnganchar(wrap, alCambiar){
     apRepintar(wrap, true);
     avisar();
   });
+  /* VAL-92 · Enter elige la opción marcada y las flechas mueven la marca.
+     La primera opción ya se dibujaba marcada (`aria-selected`) y el teclado no
+     la podía accionar: la marca afirmaba algo que no era cierto.
+     Con tres letras que ninguna opción tiene como código («toj»), Enter no
+     elige: vale la tabla de VAL-87, igual que al salir del campo. */
+  inp.addEventListener("keydown", e=>{
+    if(e.isComposing) return;
+    const ops = [...wrap.querySelectorAll(".ap-op")];
+    if(!ops.length) return;
+    const i = Math.max(0, ops.findIndex(b=> b.getAttribute("aria-selected") === "true"));
+    if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+      e.preventDefault();
+      const j = (i + (e.key === "ArrowDown" ? 1 : -1) + ops.length) % ops.length;
+      ops.forEach((b, k)=> b.setAttribute("aria-selected", String(k === j)));
+      ops[j].scrollIntoView({block:"nearest"});
+      return;
+    }
+    if(e.key === "Enter"){
+      const t = inp.value.trim();
+      if(PackingEngine.esCodigoIATA(t) && !ops.some(b=> b.dataset.cod === t.toUpperCase())) return;
+      e.preventDefault();
+      apElegir(wrap, ops[i].dataset.cod);
+      avisar();
+    }
+  });
   // Tocar una opción no le saca el foco al campo: si se lo sacara, la lista
   // se cerraría antes de que llegue el click de la opción.
   wrap.addEventListener("mousedown", e=>{ if(e.target.closest(".ap-op")) e.preventDefault(); });
@@ -10399,6 +10573,100 @@ function apEnganchar(wrap, alCambiar){
       avisar();
     });
   });
+}
+
+/* ============================================================
+   VAL-79 · CUANDO EL VUELO VA A OTRO LADO, LA APP PREGUNTA
+   Brief: docs/briefs/destino-del-vuelo.md. Diseño aprobado el 07/10.
+
+   La respuesta se guarda EN EL VUELO —`destinoDecision`— junto con el
+   destino al que se contestó —`destinoDecisionPara`—: si después se cambia
+   el destino del vuelo, la respuesta vieja no vale para el nuevo y la
+   pregunta vuelve. El motor lee "suma" y "escala" en `destinosDelViaje`;
+   "cambia" además pasa el destino escrito del viaje a la ciudad del vuelo.
+   ============================================================ */
+const DV = {CAMBIA:"cambia", SUMA:"suma", ESCALA:"escala"};
+/** La respuesta de un vuelo, si es para el destino que tiene ahora. */
+function dvRespuesta(v){
+  if(!v || !v.destinoDecision || !v.destinoDecisionPara) return "";
+  return Aeropuertos.norm(v.destinoDecisionPara) === Aeropuertos.norm(v.to) ? v.destinoDecision : "";
+}
+/** ¿Este vuelo va a otro lado que el destino escrito? Devuelve
+    {escrito, ciudad, codigo} o null. Las condiciones son las del brief:
+    hay destino escrito; el vuelo va a un código del dato; no coinciden
+    (`true` no pregunta; `false` y `null` sí); y no es la vuelta a casa. */
+function dvEvaluar(trip, vuelo, items){
+  const escrito = String((trip && trip.destination) || "").trim();
+  if(!escrito || !vuelo) return null;
+  const to = String(vuelo.to || "").trim();
+  if(!PackingEngine.esCodigoIATA(to)) return null;
+  const aero = Aeropuertos.porCodigo(to);
+  if(!aero) return null;
+  if(PackingEngine.coincidenLugares(escrito, to) === true) return null;
+  /* Casa es de donde sale el primer vuelo, por fecha. Sin fechas no hay
+     "primero": se pregunta de más, que es el lado seguro. */
+  const vuelos = (items || []).filter(f=> f && f.type === "flight" && f.id !== vuelo.id).concat([vuelo])
+    .filter(f=> String(f.start || "").trim())
+    .sort((a, b)=> String(a.start).localeCompare(String(b.start)));
+  const casa = vuelos.length ? String(vuelos[0].from || "").trim() : "";
+  if(casa && PackingEngine.coincidenLugares(to, casa) === true) return null;
+  return {escrito, ciudad:aero.ciudad, codigo:to.toUpperCase()};
+}
+function dvPreguntaHtml(p, enValija, vueloId){
+  const ops = [
+    [DV.CAMBIA, `El viaje ahora es a ${esc(p.ciudad)}`, ""],
+    [DV.SUMA, "Voy a los dos lugares", ""],
+    [DV.ESCALA, "Es una escala", "no cuenta para la valija"]];
+  return `<div class="notice dv-preg" role="group" aria-label="Destino del vuelo">${svg(I.info)}<span class="bd">` +
+    `<b class="q">${enValija
+      ? `Tenés un vuelo a ${esc(p.ciudad)} y el viaje dice ${esc(p.escrito)}.`
+      : `Tu viaje dice ${esc(p.escrito)} y este vuelo va a ${esc(p.ciudad)}.`}</b>` +
+    (enValija ? "Mientras no me digas, sugiero para los dos lugares. ¿Qué pasó?" : "¿Qué pasó?") +
+    `<span class="dv-ops">${ops.map(([k, tx, nota])=>
+      `<button type="button" class="btn sm${nota ? " con-nota" : ""}" data-dvop="${k}"${vueloId ? ` data-dvvuelo="${esc(vueloId)}"` : ""}>${tx}${nota ? `<small>${nota}</small>` : ""}</button>`).join("")}</span>` +
+    (enValija ? "" : `<span class="dv-nota">Si no contestás ahora, te lo pregunto en la valija.</span>`) +
+    `</span></div>`;
+}
+/** Lo que la respuesta hizo. "Saca" y "sugiere" se dicen sólo si hay una
+    valija armada: sin lista no hay nada que sacar ni que sugerir. */
+function dvListoTexto(k, p, hayLista){
+  if(k === DV.CAMBIA) return `Listo: el viaje pasa a ser a <b>${esc(p.ciudad)}</b>.` +
+    (hayLista ? ` La valija saca lo que era para ${esc(p.escrito)} y no empacaste.` : "");
+  if(k === DV.SUMA) return `Listo: el viaje es a <b>${esc(p.escrito)} y ${esc(p.ciudad)}</b>.` +
+    (hayLista ? " La valija sugiere para los dos." : "");
+  return "Listo: este vuelo es una <b>escala</b>. No cuenta para la valija.";
+}
+function dvListoHtml(k, p, hayLista){
+  return `<div class="notice ok">${svg(I.check)}<span class="bd">${dvListoTexto(k, p, hayLista)} ` +
+    `<button type="button" class="act" data-dvop="" style="display:inline;margin:0 0 0 4px">Cambiar</button></span></div>`;
+}
+/** El primer vuelo del viaje que todavía necesita respuesta, para la valija. */
+function dvPendienteDeLaValija(trip){
+  const items = Store.itemsOf(trip.id);
+  const vuelos = items.filter(f=> f.type === "flight" && !dvRespuesta(f))
+    .sort((a, b)=> String(a.start || "").localeCompare(String(b.start || "")));
+  for(const f of vuelos){
+    const p = dvEvaluar(trip, f, items);
+    if(p) return Object.assign(p, {vueloId:f.id});
+  }
+  return null;
+}
+/** Contestar desde la valija se aplica al tocar: no hay un Guardar después. */
+async function dvContestarEnValija(trip, vueloId, k){
+  const items = Store.itemsOf(trip.id);
+  const f = items.find(x=> x.id === vueloId);
+  if(!f || !k) return;
+  const p = dvEvaluar(trip, f, items);
+  try{
+    await Store.saveItem(trip.id, Object.assign({}, f, {destinoDecision:k, destinoDecisionPara:f.to}));
+    const actual = Store.trips.get(trip.id) || trip;
+    if(k === DV.CAMBIA && p){
+      await Store.saveTrip(Object.assign({}, actual, {destination:p.ciudad}));
+      trip.destination = p.ciudad;
+    }
+    if(p) toast(dvListoTexto(k, p, !!Store.packingOf(trip.id)).replace(/<[^>]+>/g, ""));
+    checkPackingPlan(Store.trips.get(trip.id) || trip);
+  }catch(e){ toast(writeErr(e), true); }
 }
 
 /* ---------- reserva ---------- */
@@ -10433,6 +10701,8 @@ function sheetItem(trip, item, prefill){
            letras. Se pinta al abrir (una reserva vieja puede traer el dato
            malo ya guardado) y al salir de cada campo. Ver avisoRutaHtml(). -->
       <div id="i_ruta_aviso">${avisoRutaHtml(it.from, it.to)}</div>
+      <!-- VAL-79: la pregunta cuando el vuelo va a otro lado. Ver pintarDv(). -->
+      <div id="i_dv"></div>
       <div class="f2">
         <div class="f req"><label for="i_start">Sale</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
         <div class="f"><label for="i_end">Llega</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
@@ -10525,11 +10795,32 @@ function sheetItem(trip, item, prefill){
      dejaba el campo sin aviso.
      VAL-87 · lee lo que el campo GUARDA (el código), no lo que muestra (la
      ciudad), y no cuenta el campo que se está escribiendo. */
+  /* VAL-79 · la respuesta vive acá hasta Guardar: tocar una opción no
+     escribe nada. Si se cierra sin guardar, no pasó nada. */
+  let dv = dvRespuesta(it), dvPara = dv ? it.to : "";
+  const pintarDv = ()=>{
+    const caja = document.getElementById("i_dv");
+    if(!caja) return;                       // el tipo actual no es un vuelo
+    const g = id => apValorParaAviso(document.getElementById(id));
+    const to = g("i_to");
+    if(dv && Aeropuertos.norm(dvPara) !== Aeropuertos.norm(to)) dv = "";
+    const vuelo = Object.assign({}, it, {type:"flight", from:g("i_from"), to,
+      start:(document.getElementById("i_start") || {}).value || it.start || ""});
+    const p = dvEvaluar(trip, vuelo, Store.itemsOf(trip.id));
+    caja.innerHTML = !p ? "" : (dv ? dvListoHtml(dv, p, !!Store.packingOf(trip.id)) : dvPreguntaHtml(p, false));
+    caja.onclick = e=>{
+      const b = e.target.closest("[data-dvop]");
+      if(!b) return;
+      dv = b.dataset.dvop; dvPara = dv ? to : "";
+      pintarDv();
+    };
+  };
   const pintarAvisoRuta = ()=>{
     const caja = document.getElementById("i_ruta_aviso");
     if(!caja) return;                       // el tipo actual no tiene ruta de vuelo
     const g = id => apValorParaAviso(document.getElementById(id));
     caja.innerHTML = avisoRutaHtml(g("i_from"), g("i_to"));
+    pintarDv();
   };
   const bind = ()=>{
     document.querySelectorAll("#tp button").forEach(b=>{
@@ -10544,6 +10835,7 @@ function sheetItem(trip, item, prefill){
     // VAL-87 · sólo el vuelo tiene el campo de ciudad o aeropuerto; el
     // traslado sigue con "Desde" y "Hasta" en texto libre.
     document.querySelectorAll("#fields [data-ap]").forEach(w=> apEnganchar(w, pintarAvisoRuta));
+    pintarDv();
   };
   const collect = ()=>{
     const g = id => document.getElementById(id)?.value?.trim();
@@ -10643,6 +10935,13 @@ function sheetItem(trip, item, prefill){
   document.getElementById("save").onclick = async ()=>{
     collect();
     if(!it.title){ toast("Poné un título", true); return; }
+    /* VAL-79 · la respuesta va en el vuelo sólo si es para el destino que
+       queda guardado. Una respuesta vieja para otro destino se borra. */
+    let dvCambia = null;
+    if(it.type === "flight" && dv && Aeropuertos.norm(dvPara) === Aeropuertos.norm(it.to)){
+      if(dv === DV.CAMBIA) dvCambia = dvEvaluar(trip, it, Store.itemsOf(trip.id));
+      it.destinoDecision = dv; it.destinoDecisionPara = it.to;
+    }else{ delete it.destinoDecision; delete it.destinoDecisionPara; }
     if(it.start && it.end && it.end < it.start){ toast("La fecha de fin es anterior a la de inicio", true); return; }
     if(DOC.preparando){ toast("Esperá a que termine de prepararse el documento", true); return; }
     try{
@@ -10657,6 +10956,10 @@ function sheetItem(trip, item, prefill){
       }
       it.docs = DOC.lista.filter(e=> !fallados.some(f=>f.e===e)).map(e=>e.doc);
       await Store.saveItem(trip.id, it);
+      if(dvCambia){
+        await Store.saveTrip(Object.assign({}, Store.trips.get(trip.id) || trip, {destination:dvCambia.ciudad}));
+        trip.destination = dvCambia.ciudad;
+      }
       DOC.quitados.forEach(id=> Store.delDocBody(trip.id, id));
       DOC.quitados = [];
       closeSheet();
@@ -11199,6 +11502,7 @@ function cardFieldsHtml(r, chip){
            formulario manual: acá el campo nunca truncó, pero un destino con el
            nombre de la ciudad rompe igual. Mismo aviso, mismo texto. -->
       <div data-rutaaviso="1">${avisoRutaHtml(r.from, r.to)}</div>
+      <div data-dvslot="1"></div>
       <div class="f2">
         <div class="f"><label>Sale</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
         <div class="f"><label>Llega</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
@@ -12407,6 +12711,7 @@ async function sheetImport(trip){
              grupos porque origen y destino pueden caer en grupos distintos
              (uno leído de la tarjeta, el otro vacío). -->
         <div data-rutaaviso="1">${avisoRutaHtml(r.from, r.to)}</div>
+        <div data-dvslot="1"></div>
         ${tiraAdjuntoHtml(card.meta, "Queda adjunta a este vuelo")}
       </div>
     </div>`;
@@ -12506,8 +12811,28 @@ async function sheetImport(trip){
       const caja = el.querySelector("[data-rutaaviso]");
       if(!caja) return;                    // no es un vuelo, o es una coincidencia sin inputs
       const leer = f => apValorParaAviso(el.querySelector(`[data-f="${f}"]`));
-      const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); };
+      /* VAL-79 · la respuesta vive en la tarjeta (`reserva`) hasta Guardar. */
+      const slot = el.querySelector("[data-dvslot]");
+      const card = st.reviewList.find(c=> String(c.id) === el.dataset.card);
+      const pintarDv = ()=>{
+        if(!slot || !card) return;
+        const r = card.reserva, to = leer("to");
+        if(r.destinoDecision && Aeropuertos.norm(r.destinoDecisionPara) !== Aeropuertos.norm(to)){
+          delete r.destinoDecision; delete r.destinoDecisionPara;
+        }
+        const p = dvEvaluar(trip, {id:"__importando", type:"flight", from:leer("from"), to, start:r.start || ""}, Store.itemsOf(trip.id));
+        slot.innerHTML = !p ? "" : (r.destinoDecision ? dvListoHtml(r.destinoDecision, p, !!Store.packingOf(trip.id)) : dvPreguntaHtml(p, false));
+      };
+      if(slot) slot.onclick = e=>{
+        const b = e.target.closest("[data-dvop]");
+        if(!b || !card) return;
+        if(b.dataset.dvop){ card.reserva.destinoDecision = b.dataset.dvop; card.reserva.destinoDecisionPara = leer("to"); }
+        else { delete card.reserva.destinoDecision; delete card.reserva.destinoDecisionPara; }
+        pintarDv();
+      };
+      const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); pintarDv(); };
       el.querySelectorAll("[data-ap]").forEach(w=> apEnganchar(w, pintar));
+      pintarDv();
     });
     if(total) document.getElementById("im-save").onclick = doSaveReview;
   }
@@ -12591,9 +12916,18 @@ async function sheetImport(trip){
         if(t) t.referenciado = true;
         if(doc) st.adjuntos.push({doc, destino: ex.title || "el vuelo"});
       }
+      let dvCambia = null;
       for(const c of nuevas){
         const r = c.reserva, t = trabajoDe(c), doc = t ? t.r.doc : null;
         const type = TYPES[r.type] ? r.type : "note";
+        /* VAL-79 · la respuesta va sólo si es para el destino que se guarda. */
+        const toGuardado = type==="flight" ? apResolver(r.to).guarda : "";
+        const dvOk = type==="flight" && r.destinoDecision &&
+          Aeropuertos.norm(r.destinoDecisionPara) === Aeropuertos.norm(toGuardado);
+        if(dvOk && r.destinoDecision === DV.CAMBIA && !dvCambia){
+          dvCambia = dvEvaluar(trip, {id:c.destinoId, type:"flight", from:apResolver(r.from).guarda, to:toGuardado, start:r.start || ""},
+                               Store.itemsOf(trip.id));
+        }
         await Store.saveItem(trip.id, {
           id: c.destinoId, type,
           title:r.title||"", start:r.start||"", end:r.end||"",
@@ -12608,10 +12942,15 @@ async function sheetImport(trip){
           boardingTime:r.boardingTime||"",
           address:r.address||"", phone:r.phone||"", cost:r.cost||"",
           currency:(r.currency||"").toUpperCase(), notes:r.notes||"", source:"import",
-          docs: doc?[doc]:[]
+          docs: doc?[doc]:[],
+          ...(dvOk ? {destinoDecision:r.destinoDecision, destinoDecisionPara:toGuardado} : {})
         });
         if(t) t.referenciado = true;
         if(doc) st.adjuntos.push({doc, destino: r.title || (TYPES[type]||TYPES.note).label});
+      }
+      if(dvCambia){
+        await Store.saveTrip(Object.assign({}, Store.trips.get(trip.id) || trip, {destination:dvCambia.ciudad}));
+        trip.destination = dvCambia.ciudad;
       }
       /* D14 · un archivo que trajo varias reservas deja su documento en UNA
          sola, a propósito (un archivo, un documento). Las otras se guardan sin

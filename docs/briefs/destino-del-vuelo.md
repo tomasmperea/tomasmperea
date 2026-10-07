@@ -123,6 +123,9 @@ no hay nada que sacar y la línea no lo promete.
 - **Enter** con la lista abierta elige la opción marcada (la primera).
 - **Flechas** arriba y abajo mueven la marca.
 - **Salir del campo** con **una sola** opción en la lista la toma. Con varias, queda lo escrito, como hoy.
+- **Excepción, encontrada al construir:** tres letras. «toj» trae una sola opción —Tojo Una-Una, Indonesia— y
+  la tabla de VAL-87 dice que tres letras que el dato no tiene se guardan como código. Ni salir ni Enter eligen
+  una opción cuyo código no sea lo escrito: queda TOJ. Si no, el código de Torrejón terminaba en Indonesia.
 - **No se puede verificar desde acá** qué manda la tecla «→|» de Gboard (Enter o pasar de campo). Con
   cualquiera de las dos se elige: Enter por la regla de Enter, y pasar de campo por la de una sola opción
   (con varias, queda lo escrito). Se pregunta en el guion.

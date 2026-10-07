@@ -409,6 +409,31 @@ function esCodigoIATA(v) {
   return /^[A-Z]{3}$/.test(String(v == null ? "" : v).trim().toUpperCase());
 }
 
+/* ¿SON EL MISMO LUGAR? — VAL-79.
+
+   Devuelve true, false o null (no se sabe). El motor no conoce el dato de
+   aeropuertos de VAL-87, así que la app le pasa una función que sí lo conoce
+   (`setComparadorDeLugares`). Sin ella, este motor contesta lo que contestaba
+   antes de VAL-79: dos códigos distintos son lugares distintos, dos textos
+   distintos también (la regla de VAL-75: Noruega → Argentina es un cambio), y
+   un código contra un texto NO SE COMPARA — sin el dato no hay cómo saber si
+   OSL es Noruega. Por eso `app/parts/packing-engine.js` se sigue probando solo
+   en Node y da lo mismo que antes. */
+var comparadorDeLugares = null;
+function setComparadorDeLugares(fn) { comparadorDeLugares = typeof fn === "function" ? fn : null; }
+function coincidenLugares(a, b) {
+  var na = norm(a), nb = norm(b);
+  if (!na || !nb) return null;
+  if (na === nb) return true;
+  if (comparadorDeLugares) {
+    var r = null;
+    try { r = comparadorDeLugares(String(a).trim(), String(b).trim()); } catch (e) { r = null; }
+    if (r === true || r === false) return r;
+  }
+  if (esCodigoIATA(a) !== esCodigoIATA(b)) return null;
+  return false;
+}
+
 /**
  * Singular de una palabra, en castellano y por heurística.
  * No busca ser gramaticalmente perfecto: busca ser determinístico y que
@@ -1918,9 +1943,11 @@ function hoursBetween(a, b) {
 function destinoQueRazono(list) {
   var d = (list && list.base && list.base.destinos) || null;
   if (d && d.deReservas && d.lugares && d.lugares.length) {
-    return { texto:d.lugares.map(function (l) { return l.lugar; }).join(" · "), fuente:"reservas" };
+    return { texto:d.lugares.map(function (l) { return l.lugar; }).join(" · "), fuente:"reservas",
+             escrito:String((list && list.base && list.base.destino) || "").trim() };
   }
-  return { texto:String((list && list.base && list.base.destino) || "").trim(), fuente:"escrito" };
+  var escrito = String((list && list.base && list.base.destino) || "").trim();
+  return { texto:escrito, fuente:"escrito", escrito:escrito };
 }
 
 function destinosDelViaje(trip, items) {
@@ -2022,6 +2049,9 @@ function destinosDelViaje(trip, items) {
        No se descartan: bajan a PISTA, con su fuente y sus fechas, igual que
        una dirección. Se manda de más, que es el lado seguro y el mismo que ya
        eligió esta función dos veces. */
+    // VAL-79: la persona dijo que este vuelo es una escala. No cuenta como
+    // destino ni como pista: "no cuenta para la valija" es lo que leyó.
+    if (f.destinoDecision === "escala") return;
     var codigo = esCodigoIATA(f.to);
     sumar(codigo ? String(f.to).trim().toUpperCase() : String(f.to).trim(), "vuelo", f, codigo);
   });
@@ -2076,6 +2106,17 @@ function destinosDelViaje(trip, items) {
      Cuando coinciden, gana el escrito y la pista se cae por redundante: dice
      lo mismo con menos respaldo. */
   var escrito = String(trip.destination == null ? "" : trip.destination).trim();
+  /* VAL-79 · "VOY A LOS DOS LUGARES". La persona confirmó que además del
+     lugar del vuelo va al que escribió. Entonces el escrito deja de ser
+     contexto y es un destino más, en firme, con la misma fuente de siempre
+     para que el prompt diga de dónde salió. */
+  var sumaEscrito = deReservas && escrito && vuelos.some(function (f) { return f.destinoDecision === "suma"; }) &&
+    destinos.every(function (l) { return norm(l.lugar) !== norm(escrito); });
+  if (sumaEscrito) {
+    destinos = destinos.concat([{ lugar:escrito, fuente:"escrito-a-mano", desde:trip.startDate || "",
+                                  hasta:trip.endDate || "", firme:true }]);
+    pistas = pistas.filter(function (l) { return norm(l.lugar) !== norm(escrito); });
+  }
   if (!deReservas && escrito) {
     destinos = [{ lugar:escrito, fuente:"escrito-a-mano", desde:trip.startDate || "",
                   hasta:trip.endDate || "", firme:false }];
@@ -2344,7 +2385,10 @@ function lineaDestinos(b) {
                         : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
   }
-  var extra = (b.destino && norm(b.destino) !== norm(d.lugares[0].lugar))
+  /* VAL-79: con "voy a los dos lugares" el escrito está ENTRE los destinos.
+     Decirle al modelo que lo use "sólo como contexto" contradiría la línea. */
+  var confirmado = d.lugares.some(function (l) { return l.fuente === "escrito-a-mano"; });
+  var extra = (b.destino && d.lugares.every(function (l) { return norm(l.lugar) !== norm(b.destino); }))
     ? " La persona además escribió \"" + b.destino + "\" como destino del viaje: úsalo sólo como contexto, NUNCA por encima de lo de arriba."
     : "";
   /* El aviso de multidestino se queda como estaba, contando TODOS los
@@ -2353,7 +2397,9 @@ function lineaDestinos(b) {
      que era multidestino. Las escalas ya vienen con sus horas y con la
      advertencia; el modelo decide con eso, que es el criterio de toda la
      función. */
-  return "- Destinos, sacados de los vuelos ya cargados, que son lo que manda: " + partes.join(" · ") +
+  return "- Destinos, sacados de los vuelos ya cargados" +
+         (confirmado ? " y del destino que la persona escribió y confirmó que también visita" : "") +
+         ", que son lo que manda: " + partes.join(" · ") +
          (d.lugares.length > 1 ? ". Es un viaje multidestino: lo que sugieras tiene que servir para TODOS esos lugares, no para uno." : ".") +
          avisoEscala + extra + lineaPistas;
 }
@@ -2966,9 +3012,39 @@ function destinoVencido(item, actual, siNoDice) {
      fuente del destino cambió, no hay conclusión posible y el ítem se queda.
      Retener de más es una lista un poco vieja; sacar de más es la app
      tirando algo que la persona necesita. */
-  if (fuente !== String(actual.fuente || "")) return false;
+  /* VAL-79 · LA GUARDA DE ARRIBA SE REEMPLAZA, Y ESTO ES LO QUE ELLA ESPERABA.
+     Decía "si la fuente cambió, no hay conclusión posible" porque no se podía
+     traducir OSL a Noruega. VAL-87 trajo esa traducción, y `coincidenLugares`
+     la usa cuando la app se la pasa. El PM reportó lo que costaba esperar: un
+     viaje a Bariloche con un vuelo a Madrid seguía sugiriendo para Bariloche,
+     sin sacar ni proponer sacar nada.
 
-  return norm(razonado) !== norm(actual.texto);
+     La pregunta es ahora UNA, para cualquier par de fuentes: ¿alguno de los
+     lugares para los que se razonó el ítem PUEDE ser alguno de los de ahora?
+     "Puede" es true o null: ante la duda, el ítem se queda — retener de más
+     es una lista un poco vieja; sacar de más es tirar algo que se necesita.
+
+     A un ítem razonado con el destino ESCRITO, los lugares de ahora le suman
+     el escrito actual. Eso protege el caso por el que existía la guarda
+     (Noruega + vuelo a OSL: el ítem de Noruega se queda) y hace cierto el
+     aviso de la valija mientras nadie conteste ("sugiero para los dos
+     lugares"). Cuando la persona contesta "el viaje ahora es a Madrid", el
+     escrito pasa a Madrid y lo de Bariloche deja de tener dónde agarrarse.
+
+     A un ítem razonado con los VUELOS, no. La primera versión se lo sumaba a
+     todos y la prueba de VAL-75 lo volteó: en un viaje a "Noruega", cambiar el
+     vuelo de OSL a MAD dejaba de sacar lo de Oslo, porque Oslo "puede ser"
+     Noruega. Lo que se razonó con un vuelo se compara contra los vuelos. */
+  var partes = function (t) {
+    return String(t == null ? "" : t).split(" · ").map(function (s) { return s.trim(); }).filter(Boolean);
+  };
+  var ahora = partes(actual.texto);
+  var escrito = String(actual.escrito == null ? "" : actual.escrito).trim();
+  if (escrito && fuente !== "reservas" && ahora.every(function (a) { return norm(a) !== norm(escrito); })) ahora.push(escrito);
+  var antes = fuente === "reservas" ? partes(razonado) : [razonado];
+  return antes.every(function (r) {
+    return ahora.every(function (a) { return coincidenLugares(r, a) === false; });
+  });
 }
 
 /** Devuelve a la lista propuesta los ítems de la capa de destino que siguen
@@ -3316,6 +3392,8 @@ return {
   deduceInternational:deduceInternational,
   // VAL-80: la interfaz pregunta lo mismo que el motor, con la misma función.
   esCodigoIATA:esCodigoIATA,
+  // VAL-79: ¿son el mismo lugar? La app le pasa el dato de aeropuertos.
+  setComparadorDeLugares:setComparadorDeLugares, coincidenLugares:coincidenLugares,
 
   // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,

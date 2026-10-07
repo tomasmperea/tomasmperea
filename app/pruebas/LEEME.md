@@ -292,3 +292,23 @@ llegado, y que guardar haya producido una llamada nueva—. El control negativo 
 la salida completa de cada una (`> /tmp/t$i.txt 2>&1`, no por tubería), y buscar la línea
 con `FALLA`. Y antes de tocar el producto, correr el mismo arnés contra la versión
 commiteada: el 14/09 eso separó en dos minutos una falla de la máquina de una del código.
+
+## VAL-79 + VAL-92 — `val79-destino-del-vuelo.js` (07/10)
+
+Cuando el vuelo va a otro lado que el destino escrito, la app pregunta; y Enter elige en
+el campo de aeropuerto. Brief: `docs/briefs/destino-del-vuelo.md`. **75 aserciones**, por
+gesto: escribe en los campos, toca la opción, toca la respuesta y toca Guardar.
+
+**La valija se siembra y la página se RECARGA.** Cambiar sólo el `#` de la dirección no
+recarga, y la app no relee lo sembrado: la primera versión de la prueba de humo pasaba con
+la lista sin los ítems sembrados, y el plan "no sacaba nada" por eso. Por eso hay una
+aserción que cuenta que la siembra llegó.
+
+Control negativo adentro: una copia sin `PackingEngine.setComparadorDeLugares(...)` tiene
+que dejar la campera de Bariloche sin proponer sacarla. Sabotajes de afuera, corridos el 07/10:
+
+| Copia | Resultado |
+|---|---|
+| sin la excepción de tres letras en `apConfirmar` | 2 FALLA: «toj» termina en OJU |
+| Enter desactivado | 2 FALLA: Enter y flecha + Enter |
+| sin la regla de la escala en `destinosDelViaje` | 1 FALLA: la escala no saca lo de MAD |
