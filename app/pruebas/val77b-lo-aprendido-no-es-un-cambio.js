@@ -143,7 +143,9 @@ async function leerLosCinco(page) {
   await ir(page, "#/trip/x/valija");
   await page.waitForFunction(() => !!App.plan, null, { timeout:8000 }).catch(() => {});
   t.motivo = await page.evaluate(() => (App.plan && App.plan.motivo) || "");
-  t.aviso = await page.locator("#main .notice").first().innerText().catch(() => "");
+  // VAL-79: la pregunta del destino del vuelo también es un .notice y va arriba;
+  // lo que esta prueba lee es el aviso del plan, que va debajo.
+  t.aviso = await page.locator("#main .notice:not(.dv-preg)").first().innerText().catch(() => "");
   await page.locator("#pk-info").click();
   await page.waitForTimeout(250);
   t.hoja = await page.locator("#modal .sheet-bd .stack p").first().innerText().catch(() => "");

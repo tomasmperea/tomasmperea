@@ -9864,14 +9864,17 @@ function renderPackingBoard(trip, list){
   // 25 · un solo aviso arriba de la lista, siempre. La regla vive en una sola
   // función para que no se rompa sola cuando aparezca el sexto aviso.
   /* VAL-79 · un viaje que ya tiene un vuelo a otro lado recibe la pregunta
-     arriba de la valija. Ocupa el lugar del aviso de siempre y no se suma a
-     él: la regla 25 es UN aviso arriba de la lista. Contestarla dispara el
-     plan, que es el aviso que venía detrás. Sin permiso de edición no se
-     muestra: no hay cómo contestarla. */
+     arriba de la valija, Y el aviso de siempre sigue debajo. La primera
+     versión la ponía EN LUGAR del aviso (por la regla 25, un aviso arriba de
+     la lista) y las regresiones de VAL-85 y VAL-77b lo volteaban: el aviso de
+     lo aprendido desaparecía en un viaje a Mendoza con un vuelo a Bariloche
+     hasta que alguien contestara. Lo que se veía antes, se sigue viendo. El
+     diseño que aprobó el PM (panel 4) ya mostraba los dos. Sin permiso de
+     edición la pregunta no se muestra: no hay cómo contestarla. */
   const dvPend = (canWrite && !generating) ? dvPendienteDeLaValija(trip) : null;
   const notices = generating
     ? `<div class="notice"><span class="spin"></span><span class="bd">Buscando lo específico de ${esc(destino)}…</span></div>`
-    : (dvPend ? dvPreguntaHtml(dvPend, true, dvPend.vueloId) : packingNotice(trip, list, planArriba));
+    : (dvPend ? dvPreguntaHtml(dvPend, true, dvPend.vueloId) : "") + packingNotice(trip, list, planArriba);
 
   const grouped = PackingEngine.groupByCategory(list, {includeDismissed:true});
   const groups = grouped.map(g=> pkCategoryHtml(g, trip, canWrite, list));

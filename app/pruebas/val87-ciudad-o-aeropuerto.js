@@ -373,20 +373,23 @@ const AVISO_VIEJO = /no s[eé] traducir/i;
         await P.salir(page);
         await inp.click();
         await page.keyboard.press("End");
-        await page.keyboard.press("Backspace");
+        /* VAL-92 (07/10): salir con UNA sola opción la toma, y «Bariloch» tiene una
+           (BRC): volvería a Bariloche. Lo que este criterio protege es que editar
+           borra la elección; borrando hasta «Bari» quedan cinco opciones. */
+        for (let k = 0; k < 5; k++) await page.keyboard.press("Backspace");
         await page.waitForTimeout(150);
         let e = await estadoDelCampo(campo);
         info("editando: " + JSON.stringify(e));
-        ok(e.visible === "Bariloch", "el campo dice «Bariloch»");
+        ok(e.visible === "Bari", "el campo dice «Bari»");
         ok(e.sello === "", "y el sello se fue en la primera tecla");
         await P.salir(page);
         await page.waitForTimeout(200);
         e = await estadoDelCampo(campo);
-        ok(e.sello === "", "al salir no vuelve: «Bariloch» no es un código");
-        ok(/Bariloch/.test(await P.aviso(page)), "y aparece el aviso, como cualquier texto");
+        ok(e.sello === "", "al salir no vuelve: «Bari» no es un código");
+        ok(/Bari/.test(await P.aviso(page)), "y aparece el aviso, como cualquier texto");
         const v = await P.guardar(page);
         ok(v && v.to !== "BRC", `lo guardado dejó de ser BRC: ${JSON.stringify(v && v.to)}`);
-        ok(v && v.to === "Bariloch", "es lo que quedó escrito");
+        ok(v && v.to === "Bari", "es lo que quedó escrito");
         await page.close();
       });
     }
@@ -697,10 +700,12 @@ const AVISO_VIEJO = /no s[eé] traducir/i;
       await page.waitForTimeout(150);
       const e = await estadoDelCampo(MANUAL.destino(page));
       ok(e.visible === "Bariloche" && e.sello === "BRC", "y de vuelta en Vuelo es Bariloche con su sello");
-      await escribir(page, page.locator("#i_from"), "Lobos");
+      // VAL-92: «Lobos» trae UNA opción (FSD, por una palabra del nombre) y salir la toma.
+      // Lo que se prueba es el aviso de un texto: «Lobería» no trae ninguna.
+      await escribir(page, page.locator("#i_from"), "Lobería");
       await MANUAL.salir(page);
       await page.waitForTimeout(200);
-      ok(/Lobos/.test(await MANUAL.aviso(page)), "el aviso sigue vivo después de cambiar de tipo dos veces");
+      ok(/Lobería/.test(await MANUAL.aviso(page)), "el aviso sigue vivo después de cambiar de tipo dos veces");
       await page.close();
     });
 

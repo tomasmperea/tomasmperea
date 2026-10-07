@@ -266,7 +266,9 @@ async function armarLaValija(page, tripId) {
         { to:"ARN",  codigo:true,  por:"tres en mayúscula es el caso bueno" },
         { to:"arn",  codigo:true,  por:"tres en minúscula: el campo las sube" },
         { to:"SUEC", codigo:false, por:"cuatro: lo que el maxlength dejaba pasar" },
-        { to:"oslo", codigo:false, por:"cuatro en minúscula" }
+        // VAL-92 (07/10): salir con UNA sola opción la toma, y «oslo» tiene una (OSL).
+        // Lo que este caso protege es un texto de cuatro en minúscula: «roma» trae cinco.
+        { to:"roma", codigo:false, por:"cuatro en minúscula" }
       ];
       for (const c of casos) {
         const page = await nuevaPagina(browser, SEMILLA);
