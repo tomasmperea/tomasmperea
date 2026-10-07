@@ -1601,7 +1601,31 @@ Como viajero quiero saber si mi vuelo se retrasó o cambió de puerta.
 - Se consulta el estado del vuelo por número y fecha.
 - Los cambios de horario y puerta actualizan la reserva y disparan aviso.
 
-### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P1
+### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P0 · subida por el PM el 07/10
+
+**Reporte del PM (07/10), en la ronda de la v39, con captura.** Viaje con destino escrito **Bariloche**. Cargó
+un vuelo AEP → MAD eligiendo de la lista nueva (VAL-87). La valija sumó ítems «por MAD», pero **dejó los «por
+Bariloche»** —por ejemplo «Campera o piloto impermeable liviano»—, sin sacarlos ni proponer sacarlos, y sin
+estar empacados. Textual: *"eso está mal porque debería primar ya un vuelo cargado, importado que por sobre el
+destino"*.
+
+**Diagnóstico, leyendo el código.** `destinoVencido` retiene todo ítem de destino cuando la *fuente* del
+destino cambió (escrito → vuelos): `if (fuente !== actual.fuente) return false;`. Es la guarda que se escribió
+abajo, a propósito, porque no había cómo comparar «MAD» con «Bariloche». **VAL-87 trae esa comparación**
+(`porCodigo("MAD")` → Madrid, España), así que el prerrequisito que se esperaba de VAL-66 ya existe.
+
+**La propuesta del PM (07/10), textual:** *"hay que incluir algún warning en alguna parte del flujo cuando se
+cargue/importe algún destino distinto al principal del viaje en el editor preguntando si esto está Ok y si se
+confirma entonces más aún toma peso para el motor de la valija todos los destinos de los vuelos para
+alimentarse"*.
+
+Por qué la pregunta hace falta aunque ya se pueda traducir: un destino escrito como «Argentina» se puede
+comparar con BRC (mismo país), pero «Patagonia» o «Europa» no se pueden comparar con ninguna ciudad. Y un vuelo
+a Madrid en un viaje a Bariloche puede ser un cambio de planes o un segundo destino: la app no lo puede saber.
+
+**Antes de construir:** diseño con imágenes y OK del PM (cuándo aparece la pregunta, qué opciones tiene, qué
+pasa con los viajes que ya tienen el vuelo cargado). Lo que sigue abajo es la historia hasta el 22/09.
+
 
 **Sale de la segunda ronda de auditoría de VAL-75 (22/09), reproducida en Node.** La valija se arma con el
 destino **escrito** ("Noruega") y sin vuelos. Después se carga un vuelo a **MAD** y no se corrige el texto.
