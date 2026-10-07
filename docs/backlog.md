@@ -1623,8 +1623,21 @@ Por qué la pregunta hace falta aunque ya se pueda traducir: un destino escrito 
 comparar con BRC (mismo país), pero «Patagonia» o «Europa» no se pueden comparar con ninguna ciudad. Y un vuelo
 a Madrid en un viaje a Bariloche puede ser un cambio de planes o un segundo destino: la app no lo puede saber.
 
-**Antes de construir:** diseño con imágenes y OK del PM (cuándo aparece la pregunta, qué opciones tiene, qué
-pasa con los viajes que ya tienen el vuelo cargado). Lo que sigue abajo es la historia hasta el 22/09.
+**DECISIONES DEL PM (07/10):**
+
+1. **Tres opciones**, cuando un vuelo va a otro lugar que el destino del viaje:
+   - **«El viaje ahora es a Madrid»:** el destino del viaje pasa a ese lugar y la valija pisa lo del anterior
+     (la regla de VAL-75).
+   - **«Voy a los dos lugares»:** el viaje queda multidestino y la valija sugiere para los dos.
+   - **«Es una escala»:** ese vuelo no cuenta como destino para la valija.
+2. **Sólo pregunta si no coinciden.** Si la app puede confirmar que es el mismo lugar —misma ciudad o mismo
+   país, con el dato de VAL-87—, no pregunta. Pregunta cuando no coinciden o cuando no puede saberlo
+   («Patagonia», «Europa»).
+3. **Los viajes que ya tienen el vuelo cargado también la reciben**, arriba de la valija y mientras no se
+   conteste. Así el viaje del PM se arregla sin volver a cargar el vuelo.
+
+Falta el diseño con imágenes y el OK del PM antes de construir. Lo que sigue abajo es la historia hasta el
+22/09.
 
 
 **Sale de la segunda ronda de auditoría de VAL-75 (22/09), reproducida en Node.** La valija se arma con el
@@ -1881,7 +1894,14 @@ visor real.
 **Anterior a VAL-87.** Una dirección como «Hotel Llao Llao» se guarda como «HOTEL LLAO LLAO». VAL-87 sacó las
 mayúsculas forzadas del vuelo y no tocó el traslado porque su brief lo excluía.
 
-### VAL-92 · Enter en el campo de aeropuerto no elige la opción que se ve marcada — P2
+### VAL-92 · Enter en el campo de aeropuerto no elige la opción que se ve marcada — P1 · decidido el 07/10
+
+**DECISIÓN DEL PM (07/10):** Enter elige la opción marcada. Y **salir del campo con UNA sola opción en la lista
+la toma**: el PM escribió «aeroparqu», tocó afuera y quedó lo escrito con Aeroparque solo en la lista. Con
+varias opciones, salir sin elegir deja lo escrito como hoy, porque tomar Bari en vez de Bariloche sin querer
+sería peor. En Gboard la tecla de la esquina es «→|» (siguiente campo), no «Ir»: hay que medir qué evento
+manda antes de dar por cerrado que «Enter elige».
+
 
 Sale de la auditoría de VAL-87. Escribís «bari», la primera opción se ve resaltada, apretás Enter y no pasa
 nada. Las flechas tampoco mueven la marca. Se elige tocando, que es lo que pedían los criterios.
