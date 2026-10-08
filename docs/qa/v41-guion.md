@@ -15,13 +15,15 @@
 1. Viaje nuevo «Prueba EEUU», destino **EEUU**.
 2. Cargá tres vuelos con **Agregar**: Buenos Aires → **Orlando**, Orlando → **Miami**, Miami → **Nueva York**.
    **Al cargarlos no tiene que aparecer ninguna pregunta.**
-3. Abrí la **Valija**: tampoco tiene que haber pregunta arriba.
+3. Abrí la **Valija**, elegí el tipo y tocá **Armar la lista**. Arriba no tiene que haber pregunta.
 
 ## B · Un viaje a Australia con un vuelo a Escocia sí pregunta, en la valija
 
 1. Viaje nuevo «Prueba Australia», destino **Australia**. Cargá un vuelo Buenos Aires → **Edimburgo**. Al
    cargarlo, nada.
-2. Abrí la **Valija**. Arriba: *«Tenés un vuelo a Edimburgo y el viaje dice Australia…»*. **Captura.**
+2. Abrí la **Valija**, elegí el tipo y tocá **Armar la lista**. Arriba aparece: *«Tenés un vuelo a Edimburgo y el
+   viaje dice Australia…»*. **Captura.**
+   (La pregunta aparece cuando la valija está armada: antes no hay nada que actualizar.)
 3. Tocá **«Es una escala»**. La pregunta se va.
 
 ## C · Si le cambiás el destino a ese vuelo, la respuesta vieja deja de valer
