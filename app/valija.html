@@ -3749,6 +3749,9 @@ function destinosDelViaje(trip, items) {
     // llegan. La línea del prompt necesita distinguirlos para no afirmar que
     // no hay ninguno cuando lo que pasa es que están incompletos.
     hayVuelos:items.some(function (i) { return i.type === "flight"; }),
+    // VAL-79: la persona marcó algún vuelo como escala. La línea del prompt lo
+    // necesita para no decir que los vuelos "no traen código" cuando lo traen.
+    hayEscalas:vuelos.some(function (f) { return f.destinoDecision === "escala"; }),
     deReservas:deReservas
   };
 }
@@ -3773,6 +3776,8 @@ function summarizeReservationsForAI(trip, items) {
       destino:String(f.to || "").trim().toUpperCase(),
       notas:sanitizeNotesForAI(f.notes)
     });
+    // VAL-79: el vuelo sigue yendo crudo, pero con lo que dijo la persona.
+    if (f.destinoDecision === "escala") out[out.length - 1].escala = "la persona marcó este vuelo como escala: no es un destino";
   });
 
   /* EL TIEMPO ENTRE DOS VUELOS, sin llamarlo escala.
@@ -3982,7 +3987,12 @@ function lineaDestinos(b) {
        no trae es un código con el que compararlo, y por eso bajó a pista. La
        frase se corrige para cubrir los dos casos que llegan acá (sin `to`, y
        con un `to` que no es código) sin mentir en ninguno. */
-    porQue.push(d && d.hayVuelos
+    /* VAL-79: con un vuelo marcado como escala, "no trae código" es falso: lo
+       trae, y la persona dijo que es de paso. Si no queda ningún destino en
+       firme, todo vuelo con código es una escala. Lo encontró la auditoría. */
+    porQue.push(d && d.hayEscalas
+      ? "la persona marcó como escala los vuelos que llegan a otro lado"
+      : d && d.hayVuelos
       ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino"
       : "no hay vuelos cargados");
     return "- Destino: " + porQue.join(" y ") + "." + lineaPistas;
@@ -4000,8 +4010,9 @@ function lineaDestinos(b) {
            /* VAL-80, mismo motivo que la rama de arriba: un vuelo con
               `to` = "SUECIA" sí dice adónde llega. Lo que no trae es el
               código, y eso es lo que lo dejó sin confirmar nada. */
-           (d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino, así que nada lo confirma."
-                        : "no hay ningún vuelo cargado que lo confirme.") +
+           (d.hayEscalas ? "la persona marcó como escala los vuelos que llegan a otro lado, así que no lo cambian."
+            : d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino, así que nada lo confirma."
+                          : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
   }
   /* VAL-79: con "voy a los dos lugares" el escrito está ENTRE los destinos.
@@ -10633,14 +10644,21 @@ function dvPreguntaHtml(p, enValija, vueloId){
 /** Lo que la respuesta hizo. "Saca" y "sugiere" se dicen sólo si hay una
     valija armada: sin lista no hay nada que sacar ni que sugerir. */
 function dvListoTexto(k, p, hayLista){
+  /* "Te va a proponer sacar", no "saca": el plan se propone y lo aplica la
+     persona, y lo empacado no se toca (VAL-75). La primera versión decía
+     "saca" y la auditoría lo marcó: es lo que el PM lee para decidir. */
   if(k === DV.CAMBIA) return `Listo: el viaje pasa a ser a <b>${esc(p.ciudad)}</b>.` +
-    (hayLista ? ` La valija saca lo que era para ${esc(p.escrito)} y no empacaste.` : "");
+    (hayLista ? ` La valija te va a proponer sacar lo que era para ${esc(p.escrito)} y no empacaste.` : "");
   if(k === DV.SUMA) return `Listo: el viaje es a <b>${esc(p.escrito)} y ${esc(p.ciudad)}</b>.` +
     (hayLista ? " La valija sugiere para los dos." : "");
   return "Listo: este vuelo es una <b>escala</b>. No cuenta para la valija.";
 }
-function dvListoHtml(k, p, hayLista){
-  return `<div class="notice ok">${svg(I.check)}<span class="bd">${dvListoTexto(k, p, hayLista)} ` +
+/** `alGuardar`: en el formulario y al importar, la respuesta se aplica
+    recién al tocar Guardar, y la línea lo dice. En la valija se aplica al
+    tocar y no hace falta. */
+function dvListoHtml(k, p, hayLista, alGuardar){
+  return `<div class="notice ok">${svg(I.check)}<span class="bd">${dvListoTexto(k, p, hayLista)}` +
+    (alGuardar ? " Se aplica al guardar." : "") + " " +
     `<button type="button" class="act" data-dvop="" style="display:inline;margin:0 0 0 4px">Cambiar</button></span></div>`;
 }
 /** El primer vuelo del viaje que todavía necesita respuesta, para la valija. */
@@ -10810,7 +10828,7 @@ function sheetItem(trip, item, prefill){
     const vuelo = Object.assign({}, it, {type:"flight", from:g("i_from"), to,
       start:(document.getElementById("i_start") || {}).value || it.start || ""});
     const p = dvEvaluar(trip, vuelo, Store.itemsOf(trip.id));
-    caja.innerHTML = !p ? "" : (dv ? dvListoHtml(dv, p, !!Store.packingOf(trip.id)) : dvPreguntaHtml(p, false));
+    caja.innerHTML = !p ? "" : (dv ? dvListoHtml(dv, p, !!Store.packingOf(trip.id), true) : dvPreguntaHtml(p, false));
     caja.onclick = e=>{
       const b = e.target.closest("[data-dvop]");
       if(!b) return;
@@ -12810,11 +12828,26 @@ async function sheetImport(trip){
        tarjeta y no por delegación en el documento, porque la hoja se vuelve a
        dibujar entera en cada descarte y un listener colgado del contenedor
        viejo se quedaría escuchando a un nodo que ya no está. */
+    /* VAL-79 · los otros vuelos del lote, leídos de sus tarjetas. */
+    const dvPintores = [];
+    const dvInicio = (el, r)=>{ const i = el.querySelector('[data-f="start"]'); return (i && i.value.trim()) || r.start || ""; };
+    const dvVuelosDelLote = yo => [...document.querySelectorAll("[data-card]")]
+      .filter(x=> x !== yo && x.querySelector("[data-rutaaviso]"))
+      .map(x=>{
+        const g = f => apValorParaAviso(x.querySelector(`[data-f="${f}"]`));
+        const c = st.reviewList.find(k=> String(k.id) === x.dataset.card);
+        return {id:"__lote" + x.dataset.card, type:"flight", from:g("from"), to:g("to"),
+                start:dvInicio(x, (c && c.reserva) || {})};
+      });
     document.querySelectorAll("[data-card]").forEach(el=>{
       const caja = el.querySelector("[data-rutaaviso]");
       if(!caja) return;                    // no es un vuelo, o es una coincidencia sin inputs
       const leer = f => apValorParaAviso(el.querySelector(`[data-f="${f}"]`));
-      /* VAL-79 · la respuesta vive en la tarjeta (`reserva`) hasta Guardar. */
+      /* VAL-79 · la respuesta vive en la tarjeta (`reserva`) hasta Guardar.
+         Cada tarjeta cuenta los OTROS vuelos del lote, como están escritos
+         ahora: importar la ida y la vuelta juntas hacía que la vuelta,
+         evaluada sola, dejara de ser casa y preguntara "este vuelo va a
+         Buenos Aires". Lo encontró la auditoría. */
       const slot = el.querySelector("[data-dvslot]");
       const card = st.reviewList.find(c=> String(c.id) === el.dataset.card);
       const pintarDv = ()=>{
@@ -12823,9 +12856,11 @@ async function sheetImport(trip){
         if(r.destinoDecision && Aeropuertos.norm(r.destinoDecisionPara) !== Aeropuertos.norm(to)){
           delete r.destinoDecision; delete r.destinoDecisionPara;
         }
-        const p = dvEvaluar(trip, {id:"__importando", type:"flight", from:leer("from"), to, start:r.start || ""}, Store.itemsOf(trip.id));
-        slot.innerHTML = !p ? "" : (r.destinoDecision ? dvListoHtml(r.destinoDecision, p, !!Store.packingOf(trip.id)) : dvPreguntaHtml(p, false));
+        const p = dvEvaluar(trip, {id:"__importando", type:"flight", from:leer("from"), to, start:dvInicio(el, r)},
+                            Store.itemsOf(trip.id).concat(dvVuelosDelLote(el)));
+        slot.innerHTML = !p ? "" : (r.destinoDecision ? dvListoHtml(r.destinoDecision, p, !!Store.packingOf(trip.id), true) : dvPreguntaHtml(p, false));
       };
+      dvPintores.push(pintarDv);
       if(slot) slot.onclick = e=>{
         const b = e.target.closest("[data-dvop]");
         if(!b || !card) return;
@@ -12833,10 +12868,11 @@ async function sheetImport(trip){
         else { delete card.reserva.destinoDecision; delete card.reserva.destinoDecisionPara; }
         pintarDv();
       };
-      const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); pintarDv(); };
+      // Un cambio en una tarjeta puede cambiar la pregunta de las otras.
+      const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); dvPintores.forEach(f=> f()); };
       el.querySelectorAll("[data-ap]").forEach(w=> apEnganchar(w, pintar));
-      pintarDv();
     });
+    dvPintores.forEach(f=> f());
     if(total) document.getElementById("im-save").onclick = doSaveReview;
   }
   /** Vuelve a plantear la pregunta de VAL-59 con los vuelos que quedan. El
@@ -12928,8 +12964,11 @@ async function sheetImport(trip){
         const dvOk = type==="flight" && r.destinoDecision &&
           Aeropuertos.norm(r.destinoDecisionPara) === Aeropuertos.norm(toGuardado);
         if(dvOk && r.destinoDecision === DV.CAMBIA && !dvCambia){
+          const lote = nuevas.filter(x=> x !== c && x.reserva && x.reserva.type === "flight")
+            .map(x=> ({id:"__lote" + x.id, type:"flight", from:apResolver(x.reserva.from).guarda,
+                       to:apResolver(x.reserva.to).guarda, start:x.reserva.start || ""}));
           dvCambia = dvEvaluar(trip, {id:c.destinoId, type:"flight", from:apResolver(r.from).guarda, to:toGuardado, start:r.start || ""},
-                               Store.itemsOf(trip.id));
+                               Store.itemsOf(trip.id).concat(lote));
         }
         await Store.saveItem(trip.id, {
           id: c.destinoId, type,

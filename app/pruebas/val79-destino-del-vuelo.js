@@ -84,6 +84,15 @@ async function valijaComoLaDelPM(p) {
   await p.locator('#pk-tp [data-t="ciudad"]').click(); await p.waitForTimeout(150);
   await p.locator("#pk-build").click();
   await p.waitForFunction(() => { const l = Store.packingOf("t1"); return l && l.items && Object.keys(l.items).length && !PK.generating; }, null, { timeout:15000 });
+  /* La auditoría vio caer esta prueba 3 veces con "reading 'items'": la lista ya
+     estaba en memoria y todavía no en localStorage. Se espera la escritura, y si
+     no llega se dice con el nombre que tiene (VAL-86) en vez de reventar. */
+  const escrita = await p.waitForFunction(() => {
+    try { const d = JSON.parse(localStorage.getItem("valija.v1")); return !!(d && d.packing && d.packing.t1 && d.packing.t1.items); }
+    catch (e) { return false; }
+  }, null, { timeout:10000 }).then(() => true, () => false);
+  ok(escrita, "la valija armada llegó a localStorage antes de sembrar (si falla: es VAL-86, no esta historia)");
+  if (!escrita) return;
   await p.evaluate(() => {
     const d = JSON.parse(localStorage.getItem("valija.v1")), l = d.packing.t1, at = new Date().toISOString();
     const it = (clave, nombre, por, fuente, estado) => ({ clave, nombre, categoria:"ropa", cantidad:1, motivo:"x",
@@ -165,6 +174,7 @@ async function contestarEnValija(p, k) {
       const listo = (await p.locator("#i_dv").innerText()).replace(/\s+/g, " ");
       ok(/^Listo/.test(listo.trim()) && /Cambiar/.test(listo), `«${k}»: la línea verde con «Cambiar» → ${listo.trim().slice(0, 70)}…`);
       ok(!/La valija/.test(listo), `«${k}»: sin valija armada, la línea no promete nada de la valija`);
+      ok(/Se aplica al guardar/.test(listo), `«${k}»: dice que se aplica al guardar`);
       await p.locator("#save").click(); await p.waitForTimeout(500);
       const r = await p.evaluate(() => ({ f:Store.itemsOf("t1").find(i => i.type === "flight"), d:Store.trips.get("t1").destination }));
       ok(r.f && r.f.destinoDecision === k && r.f.destinoDecisionPara === "MAD", `«${k}» queda en el vuelo, para MAD`);
@@ -208,6 +218,58 @@ async function contestarEnValija(p, k) {
       const r = await p.evaluate(() => ({ f:Store.itemsOf("t1").find(i => i.type === "flight"), d:Store.trips.get("t1").destination }));
       ok(r.f && r.f.destinoDecision === k && r.f.destinoDecisionPara === "MAD", `importado: «${k}» queda en el vuelo`);
       ok(r.d === (k === "cambia" ? "Madrid" : "Bariloche"), `importado: el destino del viaje queda en «${r.d}»`);
+      await p.close();
+    }
+
+    /* ---------------------------------------------------------- */
+    titulo("CRITERIOS 2 y 8 · importar la ida y la vuelta JUNTAS: sólo la ida pregunta (bloqueante B1)");
+    {
+      const extra = { seat:"", terminal:"", gate:"", boardingTime:"", address:"", phone:"", cost:"", currency:"", notes:"" };
+      const ida = Object.assign({}, VUELO, extra, { id:undefined });
+      const vuelta = Object.assign({}, VUELO, extra, { id:undefined, title:"Madrid > Buenos Aires", from:"MAD", to:"AEP",
+        start:"2026-10-09T10:00", end:"2026-10-09T20:00", confirmation:"IB6845" });
+      const p = await pagina(browser, HTML, viaje("Bariloche"), { vuelosIA:[vuelta, ida] });   // la vuelta primero, a propósito
+      await ir(p, "#/trip/t1");
+      await p.locator("#imp").click();
+      await p.waitForSelector("#imp-live", { state:"attached", timeout:10000 }); await p.waitForTimeout(200);
+      if (!(await p.locator(".imp-more").evaluate(e => e.open))) { await p.locator(".imp-more summary").click(); await p.waitForTimeout(150); }
+      await p.locator("#im_text").fill("Reserva VAL79\nIda y vuelta");
+      await p.locator("#im-run").click();
+      await p.waitForSelector("#im-save", { timeout:15000 }); await p.waitForTimeout(300);
+      const tarjetas = await p.locator(".imp-card").evaluateAll(cs => cs.map(c => ({
+        to:(c.querySelector('[data-f="to"]') || {}).value || "", preg:(c.querySelector("[data-dvslot]") || {}).innerText || "" })));
+      info("tarjetas: " + JSON.stringify(tarjetas.map(t => [t.to, t.preg.replace(/\s+/g, " ").slice(0, 50)])));
+      const tIda = tarjetas.find(t => /Madrid/.test(t.to)), tVuelta = tarjetas.find(t => /Buenos Aires/.test(t.to));
+      ok(tIda && /este vuelo va a Madrid/.test(tIda.preg), "la tarjeta de la ida pregunta");
+      ok(tVuelta && tVuelta.preg.trim() === "", "la tarjeta de la vuelta NO pregunta: llega a casa");
+      const idaSlot = p.locator(".imp-card", { has:p.locator('[data-f="to"][data-cod="MAD"]') }).locator("[data-dvslot]");
+      await idaSlot.locator('[data-dvop="cambia"]').click(); await p.waitForTimeout(150);
+      ok(/Se aplica al guardar/.test(await idaSlot.innerText()), "la línea de la ida dice que se aplica al guardar");
+      await p.locator("#im-save").click();
+      await p.waitForFunction(() => Store.itemsOf("t1").filter(i => i.type === "flight").length === 2, null, { timeout:8000 });
+      await p.waitForTimeout(500);
+      const r = await p.evaluate(() => ({ d:Store.trips.get("t1").destination,
+        vs:Store.itemsOf("t1").filter(i => i.type === "flight").map(f => f.to + ":" + (f.destinoDecision || "")) }));
+      ok(r.d === "Madrid", `contestar «cambia» en la ida deja el viaje en Madrid, como dijo la línea (${r.d})`);
+      ok(r.vs.indexOf("AEP:") >= 0, "la vuelta se guarda sin respuesta");
+      await p.close();
+    }
+
+    /* ---------------------------------------------------------- */
+    titulo("ESCALA · el prompt no dice que los vuelos «no traen código» (anotado por la auditoría)");
+    {
+      const p = await pagina(browser, HTML, viaje("Bariloche"));
+      await ir(p, "#/");
+      const linea = await p.evaluate(v => {
+        const trip = Store.trips.get("t1");
+        const lista = PackingEngine.buildPackingList({ trip, items:[Object.assign({}, v, { destinoDecision:"escala", destinoDecisionPara:"MAD" })] });
+        const pr = PackingEngine.destinationPrompt(lista);
+        return { destino:(pr.split("\n").find(l => /^- Destino/.test(l)) || ""), escala:/marcó este vuelo como escala/.test(pr) };
+      }, VUELO);
+      info("línea: " + linea.destino);
+      ok(!/ninguno de los vuelos cargados trae un código/.test(linea.destino), "con una escala no afirma que los vuelos no traen código");
+      ok(/marcó como escala/.test(linea.destino), "dice que la persona marcó la escala");
+      ok(linea.escala, "y el vuelo va marcado como escala en las reservas que ve el modelo");
       await p.close();
     }
 

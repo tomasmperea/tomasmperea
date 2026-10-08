@@ -1636,8 +1636,10 @@ a Madrid en un viaje a Bariloche puede ser un cambio de planes o un segundo dest
 3. **Los viajes que ya tienen el vuelo cargado también la reciben**, arriba de la valija y mientras no se
    conteste. Así el viaje del PM se arregla sin volver a cargar el vuelo.
 
-Falta el diseño con imágenes y el OK del PM antes de construir. Lo que sigue abajo es la historia hasta el
-22/09.
+**Diseño aprobado por el PM el 07/10** (`docs/design/val79-destino-del-vuelo-*.png`) y **construida** con
+VAL-92 (brief `docs/briefs/destino-del-vuelo.md`). Auditoría del 07/10: 70, con dos bloqueantes que se
+arreglaron (importar la ida y la vuelta juntas hacía preguntar a la vuelta; esta línea decía que faltaba el
+diseño). Lo que sigue abajo es la historia hasta el 22/09.
 
 
 **Sale de la segunda ronda de auditoría de VAL-75 (22/09), reproducida en Node.** La valija se arma con el
@@ -1921,6 +1923,26 @@ buscando la forma (barras, «International», «Airport» dentro de la ciudad) e
 «lon»), si se sale del campo sin elegir, se guardan como código. `MAR` es Maracaibo; `RIO` y `LON` no están en la
 lista y salen con la línea «no está en mi lista». Es lo que pide la tabla del brief. Si en el teléfono molesta, es
 otra historia.
+
+### VAL-94 · Lo que la auditoría de VAL-79 midió de paso — P2, una decisión para el PM
+
+Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena VAL-79.
+
+1. **DECISIÓN DEL PM · multidestino.** Un ítem razonado para «MAD · FCO» (los dos tramos juntos): si después se
+   borra o se cambia el tramo a Roma, **ahora se queda**, porque Madrid sigue estando. Antes se proponía sacar.
+   Retener es la equivocación barata de este proyecto, pero el ítem pudo ser específico de Roma, y el dato no
+   dice para cuál de los dos se pensó.
+2. **Borrar el destino escrito** con un vuelo cargado ahora propone sacar lo que se había razonado para ese
+   destino escrito. Es coherente (el destino ya no está), pero antes no lo hacía.
+3. **«lobos» + salir del campo termina en FSD** (Sioux Falls, Estados Unidos): tiene una sola opción por una
+   palabra del nombre del aeropuerto, y VAL-92 la toma. Es el costo de «una sola opción la toma» que no se le
+   mostró al PM antes de decidir.
+4. **Un destino escrito «USA» pregunta de más** con un vuelo a JFK: el dato tiene los países en español
+   («Estados Unidos») y no reconoce la sigla. Pregunta de más es el lado seguro, pero molesta.
+5. **Arneses inestables, sin causa determinada.** `val79-destino-del-vuelo.js` cayó 3 veces con «reading
+   'items'» antes de esperar la escritura en localStorage (ahora la espera y lo informa como VAL-86).
+   `val77b-lo-aprendido-no-es-un-cambio.js` dio un timeout en su control negativo y pasó al repetir.
+   `valija-bloque-b.js` dio un timeout una vez y 111/111 en dos corridas. Las tres son el síntoma de VAL-86.
 
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 

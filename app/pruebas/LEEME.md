@@ -296,7 +296,9 @@ commiteada: el 14/09 eso separó en dos minutos una falla de la máquina de una 
 ## VAL-79 + VAL-92 — `val79-destino-del-vuelo.js` (07/10)
 
 Cuando el vuelo va a otro lado que el destino escrito, la app pregunta; y Enter elige en
-el campo de aeropuerto. Brief: `docs/briefs/destino-del-vuelo.md`. **75 aserciones**, por
+el campo de aeropuerto. Brief: `docs/briefs/destino-del-vuelo.md`. **90 aserciones** (75 hasta la
+auditoría del 07/10; se sumaron la ida y la vuelta importadas juntas, la escala en el prompt y «Se aplica al
+guardar»), por
 gesto: escribe en los campos, toca la opción, toca la respuesta y toca Guardar.
 
 **La valija se siembra y la página se RECARGA.** Cambiar sólo el `#` de la dirección no
@@ -312,3 +314,9 @@ que dejar la campera de Bariloche sin proponer sacarla. Sabotajes de afuera, cor
 | sin la excepción de tres letras en `apConfirmar` | 2 FALLA: «toj» termina en OJU |
 | Enter desactivado | 2 FALLA: Enter y flecha + Enter |
 | sin la regla de la escala en `destinosDelViaje` | 1 FALLA: la escala no saca lo de MAD |
+
+**Inestable antes de la auditoría, y lo que se hizo.** La auditoría la vio caer 3 veces con «reading 'items'»
+al sembrar: la valija armada ya estaba en memoria y todavía no en localStorage. Ahora espera la escritura y,
+si no llega en 10 s, lo dice como VAL-86 en vez de reventar. La causa de fondo sigue siendo la de VAL-86.
+
+Contra el build de antes del arreglo de la auditoría (`5a4e882`) fallan 8, exactamente las aserciones nuevas.

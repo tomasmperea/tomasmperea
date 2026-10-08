@@ -2130,6 +2130,9 @@ function destinosDelViaje(trip, items) {
     // llegan. La línea del prompt necesita distinguirlos para no afirmar que
     // no hay ninguno cuando lo que pasa es que están incompletos.
     hayVuelos:items.some(function (i) { return i.type === "flight"; }),
+    // VAL-79: la persona marcó algún vuelo como escala. La línea del prompt lo
+    // necesita para no decir que los vuelos "no traen código" cuando lo traen.
+    hayEscalas:vuelos.some(function (f) { return f.destinoDecision === "escala"; }),
     deReservas:deReservas
   };
 }
@@ -2154,6 +2157,8 @@ function summarizeReservationsForAI(trip, items) {
       destino:String(f.to || "").trim().toUpperCase(),
       notas:sanitizeNotesForAI(f.notes)
     });
+    // VAL-79: el vuelo sigue yendo crudo, pero con lo que dijo la persona.
+    if (f.destinoDecision === "escala") out[out.length - 1].escala = "la persona marcó este vuelo como escala: no es un destino";
   });
 
   /* EL TIEMPO ENTRE DOS VUELOS, sin llamarlo escala.
@@ -2363,7 +2368,12 @@ function lineaDestinos(b) {
        no trae es un código con el que compararlo, y por eso bajó a pista. La
        frase se corrige para cubrir los dos casos que llegan acá (sin `to`, y
        con un `to` que no es código) sin mentir en ninguno. */
-    porQue.push(d && d.hayVuelos
+    /* VAL-79: con un vuelo marcado como escala, "no trae código" es falso: lo
+       trae, y la persona dijo que es de paso. Si no queda ningún destino en
+       firme, todo vuelo con código es una escala. Lo encontró la auditoría. */
+    porQue.push(d && d.hayEscalas
+      ? "la persona marcó como escala los vuelos que llegan a otro lado"
+      : d && d.hayVuelos
       ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino"
       : "no hay vuelos cargados");
     return "- Destino: " + porQue.join(" y ") + "." + lineaPistas;
@@ -2381,8 +2391,9 @@ function lineaDestinos(b) {
            /* VAL-80, mismo motivo que la rama de arriba: un vuelo con
               `to` = "SUECIA" sí dice adónde llega. Lo que no trae es el
               código, y eso es lo que lo dejó sin confirmar nada. */
-           (d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino, así que nada lo confirma."
-                        : "no hay ningún vuelo cargado que lo confirme.") +
+           (d.hayEscalas ? "la persona marcó como escala los vuelos que llegan a otro lado, así que no lo cambian."
+            : d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino, así que nada lo confirma."
+                          : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
   }
   /* VAL-79: con "voy a los dos lugares" el escrito está ENTRE los destinos.
