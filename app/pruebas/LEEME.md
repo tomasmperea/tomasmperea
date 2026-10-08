@@ -315,8 +315,16 @@ que dejar la campera de Bariloche sin proponer sacarla. Sabotajes de afuera, cor
 | Enter desactivado | 2 FALLA: Enter y flecha + Enter |
 | sin la regla de la escala en `destinosDelViaje` | 1 FALLA: la escala no saca lo de MAD |
 
+**93 aserciones** desde el 08/10: se sumó el multidestino de VAL-94 (borrar el tramo a Roma propone sacar lo
+pensado para «MAD · FCO»; agregar un tramo no saca nada), decisión del PM.
+
 **Inestable antes de la auditoría, y lo que se hizo.** La auditoría la vio caer 3 veces con «reading 'items'»
 al sembrar: la valija armada ya estaba en memoria y todavía no en localStorage. Ahora espera la escritura y,
-si no llega en 10 s, lo dice como VAL-86 en vez de reventar. La causa de fondo sigue siendo la de VAL-86.
+si no llega en 10 s, lo dice como VAL-86 en vez de reventar. **Eso NO la estabilizó** (la auditoría del 08/10 la
+vio caer 2 de 4 después de esa espera): la valija está guardada antes de recargar y, en algunas corridas,
+después de recargar el almacenamiento vuelve al estado inicial de la siembra, sin valija. Se probó sembrar con
+`Store.savePacking` en vez de escribir a mano, por si se pisaban: también cayó 2 de 3, así que no era eso. En
+24 corridas sueltas (recargando al instante y esperando 1 s) no apareció. Causa sin determinar; la prueba ahora
+dice, cuando pasa, si la siembra volvió a escribir y qué había guardado. Es VAL-86.
 
 Contra el build de antes del arreglo de la auditoría (`5a4e882`) fallan 8, exactamente las aserciones nuevas.

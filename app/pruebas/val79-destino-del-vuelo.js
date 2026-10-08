@@ -51,7 +51,10 @@ async function pagina(browser, archivo, datos, opts) {
   await p.addInitScript(simulador, opts.vuelosIA || null);
   await p.addInitScript(([d, tema]) => {
     try {
-      if (!localStorage.getItem("valija.v1")) localStorage.setItem("valija.v1", JSON.stringify(d));
+      // VAL-86: la siembra anota si escribió, para que una recarga sin valija diga por qué.
+      const habia = localStorage.getItem("valija.v1");
+      window.__semilla = habia ? "ya había" : "sembró";
+      if (!habia) localStorage.setItem("valija.v1", JSON.stringify(d));
       if (tema) localStorage.setItem("valija.tema", tema);
     } catch (e) {}
   }, [datos, opts.tema || null]);
@@ -93,19 +96,32 @@ async function valijaComoLaDelPM(p) {
   }, null, { timeout:10000 }).then(() => true, () => false);
   ok(escrita, "la valija armada llegó a localStorage antes de sembrar (si falla: es VAL-86, no esta historia)");
   if (!escrita) return;
-  await p.evaluate(() => {
-    const d = JSON.parse(localStorage.getItem("valija.v1")), l = d.packing.t1, at = new Date().toISOString();
+  /* La siembra va por `Store.savePacking`, el mismo camino con el que la app
+     guarda la valija. Se cambió creyendo que la escritura a mano se pisaba con
+     la de la app, y la hipótesis era FALSA: con `savePacking` también cayó 2 de
+     3. Queda por ser el camino de la app, no porque arregle nada. */
+  await p.evaluate(async () => {
+    const l = JSON.parse(JSON.stringify(Store.packingOf("t1"))), at = new Date().toISOString();
     const it = (clave, nombre, por, fuente, estado) => ({ clave, nombre, categoria:"ropa", cantidad:1, motivo:"x",
       origen:"destino", estado, empacadoEn:estado === "empacado" ? at : null, regla:"", cantidadEditada:false, nota:"",
       orden:0, porDestino:por, porDestinoFuente:fuente, agregadoEn:at, actualizadoEn:at });
     l.items["dest-campera"] = it("dest-campera", "Campera impermeable", "Bariloche", "escrito", "pendiente");
     l.items["dest-guantes"] = it("dest-guantes", "Guantes de abrigo", "Bariloche", "escrito", "empacado");
     l.items["dest-gorra"]   = it("dest-gorra", "Gorra liviana", "MAD", "reservas", "pendiente");
-    localStorage.setItem("valija.v1", JSON.stringify(d));
+    await Store.savePacking("t1", l);
   });
   await recargar(p);
   await ir(p, "#/trip/t1/valija");
-  const hay = await p.evaluate(() => Object.keys(Store.packingOf("t1").items).filter(k => /^dest-/.test(k)).length);
+  const hay = await p.evaluate(() => { const l = Store.packingOf("t1"); return l ? Object.keys(l.items).filter(k => /^dest-/.test(k)).length : -1; });
+  if (hay < 0) {
+    /* VAL-86, hablando. Dos lecturas posibles: la escritura de la app no se
+       asentó antes de recargar, o la recarga leyó vacío y la siembra volvió a
+       escribir el estado inicial. `__semilla` las separa. */
+    const dato = await p.evaluate(() => { let g = "?"; try { const d = JSON.parse(localStorage.getItem("valija.v1"));
+      g = JSON.stringify({ packing:Object.keys(d.packing || {}), trips:(d.trips || []).length }); } catch (e) { g = "error"; }
+      return "la siembra: " + window.__semilla + " · guardado: " + g; });
+    info("después de recargar la valija no está — VAL-86 · " + dato);
+  }
   ok(hay === 3, `la siembra llegó: ${hay} de 3 ítems de destino en la lista`);
 }
 /** Contestar en la valija y leer lo que el plan propone sacar. */
@@ -293,6 +309,39 @@ async function contestarEnValija(p, k) {
       saca.forEach(n => ok(r.sacados.indexOf(n) >= 0, `«${k}»: el plan propone sacar «${n}»`));
       noSaca.forEach(n => ok(r.sacados.indexOf(n) < 0, `«${k}»: el plan NO propone sacar «${n}»`));
       ok(await p.locator(".dv-preg").count() === 0, `«${k}»: contestada, la pregunta se va`);
+      await p.close();
+    }
+
+    /* ---------------------------------------------------------- */
+    titulo("VAL-94 · multidestino: borrar el tramo a Roma propone sacar lo pensado para Madrid y Roma (decisión del PM, 08/10)");
+    {
+      const p = await pagina(browser, HTML, viaje("Europa"));
+      await ir(p, "#/");
+      const r = await p.evaluate(async () => {
+        const trip = Store.trips.get("t1");
+        const vMAD = { id:"m", type:"flight", from:"EZE", to:"MAD", start:"2026-09-23T19:15", end:"2026-09-24T12:30" };
+        const vFCO = { id:"r", type:"flight", from:"MAD", to:"FCO", start:"2026-09-28T10:00", end:"2026-09-28T12:30" };
+        const sinNada = async () => ({ items:[], quitar:[] });
+        const conItem = (items, por) => {
+          const l = PackingEngine.buildPackingList({ trip, items, tipoViaje:"ciudad" });
+          const at = new Date().toISOString();
+          l.items["dest-x"] = { clave:"dest-x", nombre:"Adaptador de enchufe", categoria:"electronica", cantidad:1, motivo:"x",
+            origen:"destino", estado:"pendiente", empacadoEn:null, regla:"", cantidadEditada:false, nota:"", orden:0,
+            porDestino:por, porDestinoFuente:"reservas", agregadoEn:at, actualizadoEn:at };
+          return l;
+        };
+        const saca = async (lista, items) => ((await PackingEngine.planListUpdateAsync({ list:lista, trip, items, tipoViaje:"ciudad", ask:sinNada })).sacados || [])
+          .map(i => i.nombre);
+        return {
+          borrarRoma: await saca(conItem([vMAD, vFCO], "MAD · FCO"), [vMAD]),
+          agregarRoma: await saca(conItem([vMAD], "MAD"), [vMAD, vFCO]),
+          igual: await saca(conItem([vMAD, vFCO], "MAD · FCO"), [vMAD, vFCO])
+        };
+      });
+      info(JSON.stringify(r));
+      ok(r.borrarRoma.indexOf("Adaptador de enchufe") >= 0, "borrar el tramo a Roma propone sacar lo pensado para «MAD · FCO»");
+      ok(r.agregarRoma.indexOf("Adaptador de enchufe") < 0, "control: agregar el tramo a Roma NO saca lo pensado para Madrid");
+      ok(r.igual.indexOf("Adaptador de enchufe") < 0, "control: sin cambios en los vuelos no se saca nada");
       await p.close();
     }
 

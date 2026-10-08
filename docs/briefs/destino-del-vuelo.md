@@ -54,8 +54,10 @@ compara. Así `app/parts/packing-engine.js` sigue probándose solo en Node.
 
 ### 2 · Qué ítem de destino quedó viejo (`destinoVencido`)
 
-Un ítem de la capa de destino queda **vencido** sólo si **ninguno** de los lugares para los que se lo razonó
-puede ser alguno de los lugares de ahora. «Puede ser» es `true` o `null`: ante la duda, se queda.
+Un ítem de la capa de destino queda **vencido** si **alguno** de los lugares para los que se lo razonó ya no
+puede ser ninguno de los lugares de ahora. «Puede ser» es `true` o `null`: ante la duda, ese lugar cuenta como
+presente. (Decía «ninguno»; el PM decidió el 08/10 que un ítem pensado para Madrid y Roma juntos se proponga
+sacar cuando se borra Roma.)
 
 Los lugares de ahora son los destinos que salen de las reservas **más el destino escrito del viaje**. Eso es
 lo que hace que, mientras nadie conteste, la valija siga sugiriendo para los dos (lo que dice el aviso).
@@ -71,6 +73,8 @@ Casos que definen el éxito, y cada uno con prueba:
 | Noruega | se borra el vuelo a OSL | OSL | se queda (Oslo es Noruega) |
 | Noruega → Argentina (sin vuelos) | | Noruega | vencido — VAL-75 sin cambios |
 | Bariloche | AEP→MAD «voy a los dos» | MAD y Bariloche | se quedan los dos |
+| Europa | EZE→MAD y MAD→FCO; se borra el de Roma | «MAD · FCO» | **vencido** — decisión del PM, 08/10 (VAL-94) |
+| Europa | EZE→MAD; se agrega MAD→FCO | MAD | se queda |
 
 ### 3 · Lo que cada respuesta guarda
 

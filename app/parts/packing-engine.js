@@ -3053,7 +3053,13 @@ function destinoVencido(item, actual, siNoDice) {
   var escrito = String(actual.escrito == null ? "" : actual.escrito).trim();
   if (escrito && fuente !== "reservas" && ahora.every(function (a) { return norm(a) !== norm(escrito); })) ahora.push(escrito);
   var antes = fuente === "reservas" ? partes(razonado) : [razonado];
-  return antes.every(function (r) {
+  /* VAL-94 · DECISIÓN DEL PM (08/10). Un ítem razonado para VARIOS lugares
+     («MAD · FCO») queda vencido en cuanto CUALQUIERA de ellos ya no está: si se
+     borra el tramo a Roma, lo pensado para Madrid y Roma juntos se propone sacar.
+     La primera versión pedía que no quedara NINGUNO, y retenía: el dato no dice
+     para cuál de los dos se pensó el ítem, y el PM eligió proponer sacarlo.
+     Agregar un tramo no vence nada: todo lugar razonado sigue estando. */
+  return antes.some(function (r) {
     return ahora.every(function (a) { return coincidenLugares(r, a) === false; });
   });
 }

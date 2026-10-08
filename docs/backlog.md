@@ -1826,6 +1826,12 @@ Lo que queda por averiguar, y hay dos lecturas que se distinguen con un dato má
 
 El próximo paso es que el guardián también diga qué rama tomó. **No se arregla adivinando cuál de las dos es.**
 
+**08/10, durante VAL-79: un dato más.** Con la valija guardada antes de recargar (se leyó del almacenamiento en
+la misma página), después de recargar el almacenamiento volvió al estado inicial de la siembra del arnés:
+el viaje y sus reservas, y `packing` vacío. Pasó 1 vez en 6 en un experimento suelto, y 0 en 24 después,
+recargando al instante y esperando 1 s. Las dos lecturas de arriba siguen vivas, y ahora el arnés de VAL-79
+anota cuál fue (`__semilla`) la próxima vez. **No se vio nunca en el teléfono del PM ni sin recargar.**
+
 **02/10, durante VAL-85: el síntoma apareció tres veces en un día.** Después de recargar la página, la lista
 de la valija no estaba: en el arnés nuevo de VAL-85 (con la máquina cargada), en el control negativo de
 `val77b-lo-aprendido-no-es-un-cambio.js`, y en `valija-bloque-b.js` (`packingOf('t1')` nulo 10 s después de
@@ -1928,10 +1934,10 @@ otra historia.
 
 Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena VAL-79.
 
-1. **DECISIÓN DEL PM · multidestino.** Un ítem razonado para «MAD · FCO» (los dos tramos juntos): si después se
-   borra o se cambia el tramo a Roma, **ahora se queda**, porque Madrid sigue estando. Antes se proponía sacar.
-   Retener es la equivocación barata de este proyecto, pero el ítem pudo ser específico de Roma, y el dato no
-   dice para cuál de los dos se pensó.
+1. **DECIDIDO POR EL PM (08/10): que se proponga sacarlo.** Un ítem razonado para «MAD · FCO» (los dos tramos
+   juntos): si después se borra o se cambia el tramo a Roma, la primera versión de VAL-79 lo retenía porque
+   Madrid seguía estando. Textual: *"que se proponga sacarlo"*. Hecho en la v40: queda vencido en cuanto
+   CUALQUIERA de sus lugares ya no está. Agregar un tramo no saca nada. Probado en `val79-destino-del-vuelo.js`.
 2. **Borrar el destino escrito** con un vuelo cargado ahora propone sacar lo que se había razonado para ese
    destino escrito. Es coherente (el destino ya no está), pero antes no lo hacía.
 3. **«lobos» + salir del campo termina en FSD** (Sioux Falls, Estados Unidos): tiene una sola opción por una
@@ -1939,8 +1945,9 @@ Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena
    mostró al PM antes de decidir.
 4. **Un destino escrito «USA» pregunta de más** con un vuelo a JFK: el dato tiene los países en español
    («Estados Unidos») y no reconoce la sigla. Pregunta de más es el lado seguro, pero molesta.
-5. **Arneses inestables, sin causa determinada.** `val79-destino-del-vuelo.js` cayó 3 veces con «reading
-   'items'» antes de esperar la escritura en localStorage (ahora la espera y lo informa como VAL-86).
+5. **Arneses inestables, sin causa determinada.** `val79-destino-del-vuelo.js` cae a veces al recargar la
+   página con la valija sembrada. Esperar la escritura en localStorage **no lo arregló** (la auditoría la vio caer
+   2 de 4 después), y sembrar con `Store.savePacking` tampoco (2 de 3). Ver VAL-86.
    `val77b-lo-aprendido-no-es-un-cambio.js` dio un timeout en su control negativo y pasó al repetir.
    `valija-bloque-b.js` dio un timeout una vez y 111/111 en dos corridas. Las tres son el síntoma de VAL-86.
 
