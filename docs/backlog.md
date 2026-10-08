@@ -1948,7 +1948,15 @@ Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena
    palabra del nombre del aeropuerto, y VAL-92 la toma. Es el costo de «una sola opción la toma» que no se le
    mostró al PM antes de decidir.
 4. ~~Un destino escrito «USA» pregunta de más con un vuelo a JFK.~~ **Resuelto en la ronda 2 de VAL-79 (v41):**
-   el comparador reconoce siglas, nombres en inglés y continentes.
+   el comparador reconoce siglas, nombres en inglés y continentes. Lo que la auditoría de la ronda 2 midió del
+   comparador nuevo, para que el PM lo sepa:
+   - **«Inglaterra» con un vuelo a Edimburgo no pregunta**: los dos son Reino Unido.
+   - **«Europa» con un vuelo a Estambul pregunta**: OurAirports pone a Turquía en Asia.
+   - **«Caribe» y «Centroamérica» valen toda Norteamérica**: Miami cuenta como Caribe.
+   - **Un destino escrito con dos lugares («Madrid y Roma») no pregunta nunca**: no se reconoce, y desde la ronda
+     2 lo que no se reconoce no pregunta.
+   - De 37.421 combinaciones comparadas, sólo una cambió de resultado contra la v40: la ciudad de Lebanon (EEUU)
+     contra LEB.
 5. **Arneses inestables, sin causa determinada.** `val79-destino-del-vuelo.js` cae a veces al recargar la
    página con la valija sembrada. Esperar la escritura en localStorage **no lo arregló** (la auditoría la vio caer
    2 de 4 después), y sembrar con `Store.savePacking` tampoco (2 de 3). Ver VAL-86.

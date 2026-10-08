@@ -421,6 +421,16 @@ function esCodigoIATA(v) {
    en Node y da lo mismo que antes. */
 var comparadorDeLugares = null;
 function setComparadorDeLugares(fn) { comparadorDeLugares = typeof fn === "function" ? fn : null; }
+
+/* La respuesta de la persona sobre un vuelo ("suma" o "escala"), SÓLO si es
+   para el destino que el vuelo tiene ahora. La auditoría de la ronda 2 la
+   encontró leída cruda: un vuelo marcado escala cuando iba a MAD, editado a
+   FCO, seguía siendo escala y Roma desaparecía de los destinos. Se pregunta
+   acá, en el motor, para que valga por cualquier camino que edite el vuelo. */
+function decisionDelVuelo(f) {
+  if (!f || !f.destinoDecision || !f.destinoDecisionPara) return "";
+  return norm(f.destinoDecisionPara) === norm(f.to) ? f.destinoDecision : "";
+}
 function coincidenLugares(a, b) {
   var na = norm(a), nb = norm(b);
   if (!na || !nb) return null;
@@ -2051,7 +2061,7 @@ function destinosDelViaje(trip, items) {
        eligió esta función dos veces. */
     // VAL-79: la persona dijo que este vuelo es una escala. No cuenta como
     // destino ni como pista: "no cuenta para la valija" es lo que leyó.
-    if (f.destinoDecision === "escala") return;
+    if (decisionDelVuelo(f) === "escala") return;
     var codigo = esCodigoIATA(f.to);
     sumar(codigo ? String(f.to).trim().toUpperCase() : String(f.to).trim(), "vuelo", f, codigo);
   });
@@ -2110,7 +2120,7 @@ function destinosDelViaje(trip, items) {
      lugar del vuelo va al que escribió. Entonces el escrito deja de ser
      contexto y es un destino más, en firme, con la misma fuente de siempre
      para que el prompt diga de dónde salió. */
-  var sumaEscrito = deReservas && escrito && vuelos.some(function (f) { return f.destinoDecision === "suma"; }) &&
+  var sumaEscrito = deReservas && escrito && vuelos.some(function (f) { return decisionDelVuelo(f) === "suma"; }) &&
     destinos.every(function (l) { return norm(l.lugar) !== norm(escrito); });
   if (sumaEscrito) {
     destinos = destinos.concat([{ lugar:escrito, fuente:"escrito-a-mano", desde:trip.startDate || "",
@@ -2132,7 +2142,7 @@ function destinosDelViaje(trip, items) {
     hayVuelos:items.some(function (i) { return i.type === "flight"; }),
     // VAL-79: la persona marcó algún vuelo como escala. La línea del prompt lo
     // necesita para no decir que los vuelos "no traen código" cuando lo traen.
-    hayEscalas:vuelos.some(function (f) { return f.destinoDecision === "escala"; }),
+    hayEscalas:vuelos.some(function (f) { return decisionDelVuelo(f) === "escala"; }),
     deReservas:deReservas
   };
 }
@@ -2158,7 +2168,7 @@ function summarizeReservationsForAI(trip, items) {
       notas:sanitizeNotesForAI(f.notes)
     });
     // VAL-79: el vuelo sigue yendo crudo, pero con lo que dijo la persona.
-    if (f.destinoDecision === "escala") out[out.length - 1].escala = "la persona marcó este vuelo como escala: no es un destino";
+    if (decisionDelVuelo(f) === "escala") out[out.length - 1].escala = "la persona marcó este vuelo como escala: no es un destino";
   });
 
   /* EL TIEMPO ENTRE DOS VUELOS, sin llamarlo escala.
@@ -3410,7 +3420,7 @@ return {
   // VAL-80: la interfaz pregunta lo mismo que el motor, con la misma función.
   esCodigoIATA:esCodigoIATA,
   // VAL-79: ¿son el mismo lugar? La app le pasa el dato de aeropuertos.
-  setComparadorDeLugares:setComparadorDeLugares, coincidenLugares:coincidenLugares,
+  setComparadorDeLugares:setComparadorDeLugares, coincidenLugares:coincidenLugares, decisionDelVuelo:decisionDelVuelo,
 
   // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,

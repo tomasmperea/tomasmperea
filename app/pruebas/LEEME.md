@@ -339,3 +339,9 @@ el caso del PM ya no pregunta (antes: no sacaba la campera). Sabotajes del 09/10
 |---|---|
 | volver a preguntar cuando «no se sabe» (`=== true` en vez de `!== false`) | 2 FALLA: Patagonia pregunta, y el control |
 | sin los nombres de uso de países (`PAIS_ALIAS`) | 6 FALLA: EEUU, USA y Escocia en el comparador, y «USA» en la valija |
+
+**Bloqueante B1 de la auditoría de la ronda 2 (09/10), 85 aserciones.** Cambiar el destino de un vuelo con una
+respuesta guardada dejaba la respuesta vieja para el motor (un vuelo marcado escala a MAD, editado a FCO, seguía
+siendo escala). Ahora el motor lee la respuesta con `decisionDelVuelo`, que sólo la toma si es para el destino de
+ahora, y el formulario la borra del dato. Contra `4363112` fallan las 3 aserciones nuevas.
+`app/parts/continentes-desde-ourairports.py` regenera y compara `CONTINENTE_DE_PAIS` contra OurAirports.

@@ -190,6 +190,30 @@ async function contestarEnValija(p, k) {
     }
 
     /* ---------------------------------------------------------- */
+    titulo("RONDA 2 · cambiar el destino de un vuelo con respuesta guardada: la respuesta deja de valer (bloqueante B1)");
+    {
+      const escala = Object.assign({}, VUELO, { destinoDecision:"escala", destinoDecisionPara:"MAD" });
+      const p = await pagina(browser, HTML, viaje("Roma", [escala]));
+      await ir(p, "#/trip/t1");
+      const antes = await p.evaluate(() => PackingEngine.destinosDelViaje(Store.trips.get("t1"), Store.itemsOf("t1")).lugares.map(l => l.lugar));
+      ok(antes.indexOf("MAD") < 0, `antes de editar, MAD es escala y no es destino (${JSON.stringify(antes)})`);
+      await p.locator('[data-item="f1"]').first().click(); await p.waitForSelector("#i_to");
+      await escribir(p, "#i_to", "roma"); await p.locator('#fields .ap-op[data-cod="FCO"]').click();
+      await p.locator("#save").click(); await p.waitForTimeout(500);
+      const r = await p.evaluate(() => { const f = Store.itemsOf("t1").find(i => i.id === "f1");
+        return { to:f.to, dec:f.destinoDecision || "", para:f.destinoDecisionPara || "",
+                 destinos:PackingEngine.destinosDelViaje(Store.trips.get("t1"), Store.itemsOf("t1")).lugares.map(l => l.lugar) }; });
+      info(JSON.stringify(r));
+      ok(r.to === "FCO" && !r.dec && !r.para, "al cambiar el destino a FCO, la respuesta vieja se borra del vuelo");
+      ok(r.destinos.indexOf("FCO") >= 0, "y FCO cuenta como destino para la valija");
+      // El motor solo, con el dato viejo sin limpiar (otro camino que edite el vuelo):
+      const motor = await p.evaluate(v => PackingEngine.destinosDelViaje({ destination:"Roma" },
+        [Object.assign({}, v, { to:"FCO", destinoDecision:"escala", destinoDecisionPara:"MAD" })]).lugares.map(l => l.lugar), VUELO);
+      ok(motor.indexOf("FCO") >= 0, `el motor ignora una respuesta que era para otro destino (${JSON.stringify(motor)})`);
+      await p.close();
+    }
+
+    /* ---------------------------------------------------------- */
     titulo("RONDA 2 · importar NO pregunta (PM, 09/10)");
     {
       const extra = { seat:"", terminal:"", gate:"", boardingTime:"", address:"", phone:"", cost:"", currency:"", notes:"" };
@@ -357,7 +381,7 @@ async function contestarEnValija(p, k) {
     }
 
     /* ---------------------------------------------------------- */
-    titulo("CONTROL NEGATIVO · sin el comparador de lugares, el caso del PM vuelve a fallar");
+    titulo("CONTROL NEGATIVO · sin el comparador de lugares, el caso del PM no pregunta");
     {
       const s = fs.readFileSync(HTML, "utf8");
       const quitar = "PackingEngine.setComparadorDeLugares(Lugares.coinciden);";
