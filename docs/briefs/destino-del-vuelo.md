@@ -160,3 +160,37 @@ no hay nada que sacar y la línea no lo promete.
 11. Claro y oscuro, 390 px, foco visible, 44 px de área táctil en las tres respuestas.
 
 **Candidato con 70, terminado con 85 y el teléfono.** Sale como v40.
+
+---
+
+## Ronda 2 — decisiones del PM del 09/10, después de probar la v40
+
+Textual en `docs/qa/v40-resultado.md`. Sale como **v41**.
+
+1. **La pregunta vive sólo en la valija.** Sale del formulario del vuelo y de la revisión de lo importado,
+   con todo lo que la acompañaba (la respuesta al guardar, el lote de tarjetas). Una respuesta ya guardada en
+   el vuelo se conserva al editarlo; si cambia el destino del vuelo, deja de valer y la valija vuelve a
+   preguntar.
+2. **Sólo se pregunta cuando se puede AFIRMAR que son lugares distintos** (`coincidenLugares` = `false`).
+   Interpretación del PO, declarada al PM: cuando no se puede saber («Patagonia» con BRC, «Florida» con MIA)
+   **no** se pregunta, y la valija sugiere para los dos, que es lo que pasa sin respuesta. Cambiarlo es una
+   línea.
+3. **El comparador reconoce más formas de nombrar un lugar**:
+   - siglas y nombres de uso de países, hechos a mano («EEUU», «USA», «UK», «Escocia», «Holanda»…);
+   - nombres de países en inglés (los da el navegador);
+   - continentes («Europa», «Sudamérica», «Caribe»…), con el continente de cada país tomado de OurAirports
+     (`countries.csv`).
+   - Países y continentes se reconocen **antes** que los códigos: «USA» es también el código de un
+     aeropuerto de Carolina del Norte, y leído como código, «USA» contra JFK daba "distintos".
+
+| Viaje escrito | Vuelos | ¿Pregunta? |
+|---|---|---|
+| EEUU | MCO, MIA, JFK | no |
+| USA | JFK | no |
+| Europa | MAD, FCO | no |
+| Patagonia | BRC | no (no se sabe) |
+| Australia | EDI | **sí** |
+| Bariloche | MAD | **sí** |
+
+Lo que la ronda 1 decía sobre preguntar en el formulario y al importar (puntos 5.1, 5.2 y criterios 1 y 2)
+queda reemplazado por esto.

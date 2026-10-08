@@ -8319,18 +8319,51 @@ const Lugares = (()=>{
     ciudades.forEach(k=>{ if(!porCiudad.has(k)) porCiudad.set(k, new Set()); porCiudad.get(k).add(cc); });
   });
   Object.keys(AEROPUERTOS_PAISES).forEach(cc=>{ const k = n(AEROPUERTOS_PAISES[cc]); if(k) porPais.set(k, cc); });
+  /* VAL-79, ronda 2 (PM, 09/10): "si el destino principal del viaje es EEUU, y
+     los vuelos tengo destinos a Orlando, Miami y NY, no me esté preguntando".
+     El dato tiene los países en español y sólo así; la gente escribe siglas,
+     nombres en inglés, una parte del país o un continente.
+       · nombres en inglés: los genera el navegador (Intl), no se escriben a mano;
+       · siglas y nombres de uso: HECHO A MANO, lo que no es el nombre oficial;
+       · continentes: el de cada país sale de OurAirports (countries.csv), no de
+         memoria. «Escocia» es Reino Unido: un viaje a Australia con un vuelo a
+         Edimburgo pregunta, que es el ejemplo del PM. */
+  try{
+    const en = new Intl.DisplayNames(["en"], {type:"region"});
+    Object.keys(AEROPUERTOS_PAISES).forEach(cc=>{ const k = n(en.of(cc)); if(k && !porPais.has(k)) porPais.set(k, cc); });
+  }catch(e){}
+  const PAIS_ALIAS = {"eeuu":"US","ee uu":"US","usa":"US","u s a":"US","estados unidos de america":"US",
+    "uk":"GB","u k":"GB","inglaterra":"GB","escocia":"GB","gales":"GB","irlanda del norte":"GB","gran bretana":"GB",
+    "holanda":"NL","paises bajos":"NL","emiratos":"AE","emiratos arabes":"AE","dubai":"AE",
+    "corea":"KR","rusia":"RU","republica dominicana":"DO","rep dominicana":"DO","dominicana":"DO",
+    "republica checa":"CZ","chequia":"CZ","nueva zelanda":"NZ","sudafrica":"ZA","tailandia":"TH"};
+  Object.keys(PAIS_ALIAS).forEach(k=>{ if(AEROPUERTOS_PAISES[PAIS_ALIAS[k]] && !porPais.has(k)) porPais.set(k, PAIS_ALIAS[k]); });
+  const CONTINENTE_DE_PAIS = {"US":"NA","CN":"AS","GB":"EU","FR":"EU","DE":"EU","NL":"EU","SG":"AS","ES":"EU","KR":"AS","TR":"AS","AE":"AS","HK":"AS","IT":"EU","TH":"AS","RU":"EU","CA":"NA","BE":"EU","AT":"EU","JP":"AS","TW":"AS","IN":"AS","MY":"AS","CH":"EU","MX":"NA","DK":"EU","SE":"EU","PT":"EU","IE":"EU","AU":"OC","GR":"EU","BR":"SA","PH":"AS","SA":"AS","QA":"AS","ID":"AS","NO":"EU","CZ":"EU","ZA":"AF","FI":"EU","CO":"SA","EG":"AF","IL":"AS","KE":"AF","MA":"AF","PL":"EU","KW":"AS","PE":"SA","RO":"EU","MT":"EU","JO":"AS","VN":"AS","ET":"AF","NZ":"OC","PA":"NA","OM":"AS","PR":"NA","LK":"AS","LV":"EU","HU":"EU","CY":"AS","VE":"SA","DZ":"AF","TN":"AF","RS":"EU","BH":"AS","UZ":"AS","CL":"SA","MO":"AS","CR":"NA","AR":"SA","BD":"AS","DO":"NA","LU":"EU","BS":"NA","KZ":"AS","LB":"AS","BG":"EU","IR":"AS","AZ":"AS","PK":"AS","HR":"EU","NG":"AF","LT":"EU","SX":"NA","BY":"EU","GH":"AF","TJ":"AS","SV":"NA","PG":"OC","CI":"AF","MM":"AS","CM":"AF","AO":"AF","IS":"EU","AW":"NA","AM":"AS","JM":"NA","NP":"AS","CU":"NA","MV":"AS","FJ":"OC","MU":"AF","SD":"AF","BJ":"AF","RW":"AF","EC":"SA","GT":"NA","PF":"OC","EE":"EU","YE":"AS","AL":"EU","GU":"OC","TT":"NA","AG":"NA","GE":"AS","ZM":"AF","TZ":"AF","UG":"AF","BF":"AF","SI":"EU","VI":"NA","CW":"NA","TC":"NA","IQ":"AS","KG":"AS","GP":"NA","ZW":"AF","BZ":"NA","VU":"OC","CD":"AF","ML":"AF","MG":"AF","AF":"AS","CG":"AF","KY":"NA","BO":"SA","LY":"AF","LA":"AS","SB":"OC","GA":"AF","MK":"EU","HT":"NA","HN":"NA","UY":"SA","BB":"NA","MQ":"NA","BN":"AS","SL":"AF","XK":"EU","TG":"AF","RE":"AF","DJ":"AF","SK":"EU","NA":"AF","LC":"NA","GN":"AF","PY":"SA","CV":"AF","NE":"AF","MZ":"AF","LR":"AF","BA":"EU","ME":"EU","YT":"AF","BM":"NA","TM":"AS","NI":"NA","GD":"NA","GQ":"AF","BI":"AF","CK":"OC","SC":"AF","GM":"AF","NC":"OC","MW":"AF","SO":"AF","SS":"AF","VG":"NA","MR":"AF","IM":"EU","KN":"NA","KM":"AF","SR":"SA","TD":"AF","PW":"OC","GL":"NA","BW":"AF","BQ":"NA","GY":"SA","GW":"AF","GF":"SA","GI":"EU","WS":"OC","TO":"OC","BT":"AS","KP":"AS","VC":"NA","FO":"EU","EH":"AF","MH":"OC","KI":"OC","TL":"AS","ST":"AF","CF":"AF","WF":"OC","MP":"OC","FM":"OC","LS":"AF","AS":"OC","KH":"AS","CC":"AS","SZ":"AF","SN":"AF","MD":"EU","SY":"AS","MS":"NA","MN":"AS","JE":"EU","GG":"EU","DM":"NA","BL":"NA","ER":"AF","AI":"NA","MF":"NA","NR":"OC","PM":"NA","NF":"OC","CX":"AS","FK":"SA","TV":"OC","NU":"OC","SH":"AF","UM":"OC"};
+  const CONTINENTES = {"europa":["EU"],"asia":["AS"],"africa":["AF"],"oceania":["OC"],
+    "sudamerica":["SA"],"suramerica":["SA"],"america del sur":["SA"],
+    "norteamerica":["NA"],"america del norte":["NA"],"centroamerica":["NA"],"america central":["NA"],"caribe":["NA"],
+    "america":["NA","SA"],"latinoamerica":["NA","SA"]};
+  const continentesDe = paises=> new Set([...paises].map(cc=> CONTINENTE_DE_PAIS[cc]).filter(Boolean));
   function info(x){
     const t = String(x == null ? "" : x).trim();
-    if(PackingEngine.esCodigoIATA(t)) return porCod.get(t.toUpperCase()) || null;
     const k = n(t);
-    if(porPais.has(k)) return {ciudades:new Set(), paises:new Set([porPais.get(k)]), esPais:true};
-    if(porCiudad.has(k)) return {ciudades:new Set([k]), paises:porCiudad.get(k)};
+    /* Continentes y países ANTES que códigos: «USA» tiene tres letras y es el
+       código de un aeropuerto de Carolina del Norte; leído como código, un
+       viaje a «USA» con un vuelo a JFK daba "lugares distintos". */
+    if(CONTINENTES[k]) return {ciudades:new Set(), paises:new Set(), continentes:new Set(CONTINENTES[k]), esContinente:true};
+    if(porPais.has(k)){ const ps = new Set([porPais.get(k)]); return {ciudades:new Set(), paises:ps, continentes:continentesDe(ps), esPais:true}; }
+    if(PackingEngine.esCodigoIATA(t)){
+      const a = porCod.get(t.toUpperCase());
+      return a ? Object.assign({}, a, {continentes:continentesDe(a.paises)}) : null;
+    }
+    if(porCiudad.has(k)){ const ps = porCiudad.get(k); return {ciudades:new Set([k]), paises:ps, continentes:continentesDe(ps)}; }
     return null;
   }
   const cruzan = (a, b)=> [...a].some(x=> b.has(x));
   function coinciden(a, b){
     const A = info(a), B = info(b);
     if(!A || !B) return null;
+    if(A.esContinente || B.esContinente) return cruzan(A.continentes, B.continentes);
     if(A.esPais || B.esPais) return cruzan(A.paises, B.paises);
     return cruzan(A.ciudades, B.ciudades);
   }
@@ -10613,8 +10646,8 @@ function dvRespuesta(v){
 }
 /** ¿Este vuelo va a otro lado que el destino escrito? Devuelve
     {escrito, ciudad, codigo} o null. Las condiciones son las del brief:
-    hay destino escrito; el vuelo va a un código del dato; no coinciden
-    (`true` no pregunta; `false` y `null` sí); y no es la vuelta a casa. */
+    hay destino escrito; el vuelo va a un código del dato; se puede afirmar
+    que son lugares distintos (sólo `false` pregunta); y no es la vuelta a casa. */
 function dvEvaluar(trip, vuelo, items){
   const escrito = String((trip && trip.destination) || "").trim();
   if(!escrito || !vuelo) return null;
@@ -10622,7 +10655,11 @@ function dvEvaluar(trip, vuelo, items){
   if(!PackingEngine.esCodigoIATA(to)) return null;
   const aero = Aeropuertos.porCodigo(to);
   if(!aero) return null;
-  if(PackingEngine.coincidenLugares(escrito, to) === true) return null;
+  /* VAL-79, ronda 2 (PM, 09/10): sólo cuando se puede AFIRMAR que son lugares
+     distintos (`false`). La primera versión preguntaba también cuando no se
+     sabía (`null`: «Patagonia» con BRC), y el PM lo marcó como fricción. Sin
+     saber, la valija sugiere para los dos, que es lo que pasa sin respuesta. */
+  if(PackingEngine.coincidenLugares(escrito, to) !== false) return null;
   /* Casa es de donde sale el primer vuelo, por fecha. Sin fechas no hay
      "primero": se pregunta de más, que es el lado seguro. */
   const vuelos = (items || []).filter(f=> f && f.type === "flight" && f.id !== vuelo.id).concat([vuelo])
@@ -10728,8 +10765,6 @@ function sheetItem(trip, item, prefill){
            letras. Se pinta al abrir (una reserva vieja puede traer el dato
            malo ya guardado) y al salir de cada campo. Ver avisoRutaHtml(). -->
       <div id="i_ruta_aviso">${avisoRutaHtml(it.from, it.to)}</div>
-      <!-- VAL-79: la pregunta cuando el vuelo va a otro lado. Ver pintarDv(). -->
-      <div id="i_dv"></div>
       <div class="f2">
         <div class="f req"><label for="i_start">Sale</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
         <div class="f"><label for="i_end">Llega</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
@@ -10822,32 +10857,17 @@ function sheetItem(trip, item, prefill){
      dejaba el campo sin aviso.
      VAL-87 · lee lo que el campo GUARDA (el código), no lo que muestra (la
      ciudad), y no cuenta el campo que se está escribiendo. */
-  /* VAL-79 · la respuesta vive acá hasta Guardar: tocar una opción no
-     escribe nada. Si se cierra sin guardar, no pasó nada. */
-  let dv = dvRespuesta(it), dvPara = dv ? it.to : "";
-  const pintarDv = ()=>{
-    const caja = document.getElementById("i_dv");
-    if(!caja) return;                       // el tipo actual no es un vuelo
-    const g = id => apValorParaAviso(document.getElementById(id));
-    const to = g("i_to");
-    if(dv && Aeropuertos.norm(dvPara) !== Aeropuertos.norm(to)) dv = "";
-    const vuelo = Object.assign({}, it, {type:"flight", from:g("i_from"), to,
-      start:(document.getElementById("i_start") || {}).value || it.start || ""});
-    const p = dvEvaluar(trip, vuelo, Store.itemsOf(trip.id));
-    caja.innerHTML = !p ? "" : (dv ? dvListoHtml(dv, p, !!Store.packingOf(trip.id), true) : dvPreguntaHtml(p, false));
-    caja.onclick = e=>{
-      const b = e.target.closest("[data-dvop]");
-      if(!b) return;
-      dv = b.dataset.dvop; dvPara = dv ? to : "";
-      pintarDv();
-    };
-  };
+  /* VAL-79, ronda 2 (PM, 09/10): la pregunta de "este vuelo va a otro lado"
+     NO va acá. Textual: "solamente quiero que esto se pregunte y se actualice
+     en la valija ... es muy molesto cargar o importar vuelos y que surja esa
+     pregunta de manera recurrente". Una respuesta ya guardada en el vuelo
+     viaja con `it` y se conserva al editarlo; si cambia el destino del vuelo,
+     deja de valer (dvRespuesta) y la valija vuelve a preguntar. */
   const pintarAvisoRuta = ()=>{
     const caja = document.getElementById("i_ruta_aviso");
     if(!caja) return;                       // el tipo actual no tiene ruta de vuelo
     const g = id => apValorParaAviso(document.getElementById(id));
     caja.innerHTML = avisoRutaHtml(g("i_from"), g("i_to"));
-    pintarDv();
   };
   const bind = ()=>{
     document.querySelectorAll("#tp button").forEach(b=>{
@@ -10862,7 +10882,6 @@ function sheetItem(trip, item, prefill){
     // VAL-87 · sólo el vuelo tiene el campo de ciudad o aeropuerto; el
     // traslado sigue con "Desde" y "Hasta" en texto libre.
     document.querySelectorAll("#fields [data-ap]").forEach(w=> apEnganchar(w, pintarAvisoRuta));
-    pintarDv();
   };
   const collect = ()=>{
     const g = id => document.getElementById(id)?.value?.trim();
@@ -10962,13 +10981,6 @@ function sheetItem(trip, item, prefill){
   document.getElementById("save").onclick = async ()=>{
     collect();
     if(!it.title){ toast("Poné un título", true); return; }
-    /* VAL-79 · la respuesta va en el vuelo sólo si es para el destino que
-       queda guardado. Una respuesta vieja para otro destino se borra. */
-    let dvCambia = null;
-    if(it.type === "flight" && dv && Aeropuertos.norm(dvPara) === Aeropuertos.norm(it.to)){
-      if(dv === DV.CAMBIA) dvCambia = dvEvaluar(trip, it, Store.itemsOf(trip.id));
-      it.destinoDecision = dv; it.destinoDecisionPara = it.to;
-    }else{ delete it.destinoDecision; delete it.destinoDecisionPara; }
     if(it.start && it.end && it.end < it.start){ toast("La fecha de fin es anterior a la de inicio", true); return; }
     if(DOC.preparando){ toast("Esperá a que termine de prepararse el documento", true); return; }
     try{
@@ -10983,10 +10995,6 @@ function sheetItem(trip, item, prefill){
       }
       it.docs = DOC.lista.filter(e=> !fallados.some(f=>f.e===e)).map(e=>e.doc);
       await Store.saveItem(trip.id, it);
-      if(dvCambia){
-        await Store.saveTrip(Object.assign({}, Store.trips.get(trip.id) || trip, {destination:dvCambia.ciudad}));
-        trip.destination = dvCambia.ciudad;
-      }
       DOC.quitados.forEach(id=> Store.delDocBody(trip.id, id));
       DOC.quitados = [];
       closeSheet();
@@ -11529,7 +11537,6 @@ function cardFieldsHtml(r, chip){
            formulario manual: acá el campo nunca truncó, pero un destino con el
            nombre de la ciudad rompe igual. Mismo aviso, mismo texto. -->
       <div data-rutaaviso="1">${avisoRutaHtml(r.from, r.to)}</div>
-      <div data-dvslot="1"></div>
       <div class="f2">
         <div class="f"><label>Sale</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
         <div class="f"><label>Llega</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
@@ -12738,7 +12745,6 @@ async function sheetImport(trip){
              grupos porque origen y destino pueden caer en grupos distintos
              (uno leído de la tarjeta, el otro vacío). -->
         <div data-rutaaviso="1">${avisoRutaHtml(r.from, r.to)}</div>
-        <div data-dvslot="1"></div>
         ${tiraAdjuntoHtml(card.meta, "Queda adjunta a este vuelo")}
       </div>
     </div>`;
@@ -12834,51 +12840,15 @@ async function sheetImport(trip){
        tarjeta y no por delegación en el documento, porque la hoja se vuelve a
        dibujar entera en cada descarte y un listener colgado del contenedor
        viejo se quedaría escuchando a un nodo que ya no está. */
-    /* VAL-79 · los otros vuelos del lote, leídos de sus tarjetas. */
-    const dvPintores = [];
-    const dvInicio = (el, r)=>{ const i = el.querySelector('[data-f="start"]'); return (i && i.value.trim()) || r.start || ""; };
-    const dvVuelosDelLote = yo => [...document.querySelectorAll("[data-card]")]
-      .filter(x=> x !== yo && x.querySelector("[data-rutaaviso]"))
-      .map(x=>{
-        const g = f => apValorParaAviso(x.querySelector(`[data-f="${f}"]`));
-        const c = st.reviewList.find(k=> String(k.id) === x.dataset.card);
-        return {id:"__lote" + x.dataset.card, type:"flight", from:g("from"), to:g("to"),
-                start:dvInicio(x, (c && c.reserva) || {})};
-      });
     document.querySelectorAll("[data-card]").forEach(el=>{
       const caja = el.querySelector("[data-rutaaviso]");
       if(!caja) return;                    // no es un vuelo, o es una coincidencia sin inputs
       const leer = f => apValorParaAviso(el.querySelector(`[data-f="${f}"]`));
-      /* VAL-79 · la respuesta vive en la tarjeta (`reserva`) hasta Guardar.
-         Cada tarjeta cuenta los OTROS vuelos del lote, como están escritos
-         ahora: importar la ida y la vuelta juntas hacía que la vuelta,
-         evaluada sola, dejara de ser casa y preguntara "este vuelo va a
-         Buenos Aires". Lo encontró la auditoría. */
-      const slot = el.querySelector("[data-dvslot]");
-      const card = st.reviewList.find(c=> String(c.id) === el.dataset.card);
-      const pintarDv = ()=>{
-        if(!slot || !card) return;
-        const r = card.reserva, to = leer("to");
-        if(r.destinoDecision && Aeropuertos.norm(r.destinoDecisionPara) !== Aeropuertos.norm(to)){
-          delete r.destinoDecision; delete r.destinoDecisionPara;
-        }
-        const p = dvEvaluar(trip, {id:"__importando", type:"flight", from:leer("from"), to, start:dvInicio(el, r)},
-                            Store.itemsOf(trip.id).concat(dvVuelosDelLote(el)));
-        slot.innerHTML = !p ? "" : (r.destinoDecision ? dvListoHtml(r.destinoDecision, p, !!Store.packingOf(trip.id), true) : dvPreguntaHtml(p, false));
-      };
-      dvPintores.push(pintarDv);
-      if(slot) slot.onclick = e=>{
-        const b = e.target.closest("[data-dvop]");
-        if(!b || !card) return;
-        if(b.dataset.dvop){ card.reserva.destinoDecision = b.dataset.dvop; card.reserva.destinoDecisionPara = leer("to"); }
-        else { delete card.reserva.destinoDecision; delete card.reserva.destinoDecisionPara; }
-        pintarDv();
-      };
-      // Un cambio en una tarjeta puede cambiar la pregunta de las otras.
-      const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); dvPintores.forEach(f=> f()); };
+      /* VAL-79, ronda 2: la pregunta del destino del vuelo no va al importar;
+         va sólo en la valija (decisión del PM, 09/10). */
+      const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); };
       el.querySelectorAll("[data-ap]").forEach(w=> apEnganchar(w, pintar));
     });
-    dvPintores.forEach(f=> f());
     if(total) document.getElementById("im-save").onclick = doSaveReview;
   }
   /** Vuelve a plantear la pregunta de VAL-59 con los vuelos que quedan. El
@@ -12961,21 +12931,9 @@ async function sheetImport(trip){
         if(t) t.referenciado = true;
         if(doc) st.adjuntos.push({doc, destino: ex.title || "el vuelo"});
       }
-      let dvCambia = null;
       for(const c of nuevas){
         const r = c.reserva, t = trabajoDe(c), doc = t ? t.r.doc : null;
         const type = TYPES[r.type] ? r.type : "note";
-        /* VAL-79 · la respuesta va sólo si es para el destino que se guarda. */
-        const toGuardado = type==="flight" ? apResolver(r.to).guarda : "";
-        const dvOk = type==="flight" && r.destinoDecision &&
-          Aeropuertos.norm(r.destinoDecisionPara) === Aeropuertos.norm(toGuardado);
-        if(dvOk && r.destinoDecision === DV.CAMBIA && !dvCambia){
-          const lote = nuevas.filter(x=> x !== c && x.reserva && x.reserva.type === "flight")
-            .map(x=> ({id:"__lote" + x.id, type:"flight", from:apResolver(x.reserva.from).guarda,
-                       to:apResolver(x.reserva.to).guarda, start:x.reserva.start || ""}));
-          dvCambia = dvEvaluar(trip, {id:c.destinoId, type:"flight", from:apResolver(r.from).guarda, to:toGuardado, start:r.start || ""},
-                               Store.itemsOf(trip.id).concat(lote));
-        }
         await Store.saveItem(trip.id, {
           id: c.destinoId, type,
           title:r.title||"", start:r.start||"", end:r.end||"",
@@ -12990,15 +12948,10 @@ async function sheetImport(trip){
           boardingTime:r.boardingTime||"",
           address:r.address||"", phone:r.phone||"", cost:r.cost||"",
           currency:(r.currency||"").toUpperCase(), notes:r.notes||"", source:"import",
-          docs: doc?[doc]:[],
-          ...(dvOk ? {destinoDecision:r.destinoDecision, destinoDecisionPara:toGuardado} : {})
+          docs: doc?[doc]:[]
         });
         if(t) t.referenciado = true;
         if(doc) st.adjuntos.push({doc, destino: r.title || (TYPES[type]||TYPES.note).label});
-      }
-      if(dvCambia){
-        await Store.saveTrip(Object.assign({}, Store.trips.get(trip.id) || trip, {destination:dvCambia.ciudad}));
-        trip.destination = dvCambia.ciudad;
       }
       /* D14 · un archivo que trajo varias reservas deja su documento en UNA
          sola, a propósito (un archivo, un documento). Las otras se guardan sin

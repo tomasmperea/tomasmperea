@@ -328,3 +328,14 @@ después de recargar el almacenamiento vuelve al estado inicial de la siembra, s
 dice, cuando pasa, si la siembra volvió a escribir y qué había guardado. Es VAL-86.
 
 Contra el build de antes del arreglo de la auditoría (`5a4e882`) fallan 8, exactamente las aserciones nuevas.
+
+**Ronda 2 de VAL-79 (09/10), 81 aserciones.** La pregunta salió del formulario y de la importación (decisión
+del PM): los bloques que exigían que apareciera ahí ahora exigen que NO aparezca, y que una respuesta guardada
+se conserve al editar el vuelo. Se suman los ejemplos del PM en la valija (EEUU con MCO/MIA/JFK no pregunta;
+Australia con EDI sí) y su tabla en el comparador. El control negativo cambió con la regla: sin comparador,
+el caso del PM ya no pregunta (antes: no sacaba la campera). Sabotajes del 09/10:
+
+| Copia | Resultado |
+|---|---|
+| volver a preguntar cuando «no se sabe» (`=== true` en vez de `!== false`) | 2 FALLA: Patagonia pregunta, y el control |
+| sin los nombres de uso de países (`PAIS_ALIAS`) | 6 FALLA: EEUU, USA y Escocia en el comparador, y «USA» en la valija |

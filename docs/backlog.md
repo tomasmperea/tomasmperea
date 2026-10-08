@@ -1601,7 +1601,11 @@ Como viajero quiero saber si mi vuelo se retrasó o cambió de puerta.
 - Se consulta el estado del vuelo por número y fecha.
 - Los cambios de horario y puerta actualizan la reserva y disparan aviso.
 
-### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P0 · subida por el PM el 07/10
+### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P0 · v40 probada por el PM; ronda 2 en la v41
+
+**RONDA 2, decisiones del PM del 09/10** (`docs/qa/v40-resultado.md`): la pregunta va **sólo en la valija**, no
+al cargar ni al importar; y sólo cuando son lugares distintos de verdad (EEUU con Orlando, Miami y NY no
+pregunta; Australia con Escocia sí). Detalle en la ronda 2 del brief `docs/briefs/destino-del-vuelo.md`.
 
 **Reporte del PM (07/10), en la ronda de la v39, con captura.** Viaje con destino escrito **Bariloche**. Cargó
 un vuelo AEP → MAD eligiendo de la lista nueva (VAL-87). La valija sumó ítems «por MAD», pero **dejó los «por
@@ -1943,8 +1947,8 @@ Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena
 3. **«lobos» + salir del campo termina en FSD** (Sioux Falls, Estados Unidos): tiene una sola opción por una
    palabra del nombre del aeropuerto, y VAL-92 la toma. Es el costo de «una sola opción la toma» que no se le
    mostró al PM antes de decidir.
-4. **Un destino escrito «USA» pregunta de más** con un vuelo a JFK: el dato tiene los países en español
-   («Estados Unidos») y no reconoce la sigla. Pregunta de más es el lado seguro, pero molesta.
+4. ~~Un destino escrito «USA» pregunta de más con un vuelo a JFK.~~ **Resuelto en la ronda 2 de VAL-79 (v41):**
+   el comparador reconoce siglas, nombres en inglés y continentes.
 5. **Arneses inestables, sin causa determinada.** `val79-destino-del-vuelo.js` cae a veces al recargar la
    página con la valija sembrada. Esperar la escritura en localStorage **no lo arregló** (la auditoría la vio caer
    2 de 4 después), y sembrar con `Store.savePacking` tampoco (2 de 3). Ver VAL-86.
