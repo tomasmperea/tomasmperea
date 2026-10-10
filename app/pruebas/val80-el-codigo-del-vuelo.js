@@ -354,8 +354,24 @@ async function armarLaValija(page, tripId) {
       const linea = await armarLaValija(page, "tv");
       info(linea.slice(0, 160));
       ok(/ARN/.test(linea), "ARN llega al modelo");
-      ok(/que son lo que manda/.test(linea), "y sigue siendo destino en firme: manda sobre el escrito");
-      ok(/NUNCA por encima/.test(linea), "«Noruega» queda como contexto, que es lo que cerró VAL-72");
+      /* v42, decisión del PM del 10/10 (VAL-79 ronda 3): Noruega y Estocolmo son
+         lugares distintos, así que la valija pregunta, y mientras no se conteste
+         el vuelo no manda. Lo que cerró VAL-72 —el vuelo manda sobre lo escrito—
+         se prueba DESPUÉS de contestar, tocando la respuesta. */
+      ok(/todavía no dijo si ARN es un destino o una escala/.test(linea), "sin contestar, la línea dice que falta la respuesta sobre ARN");
+      const cambia = page.locator('.dv-preg [data-dvop="cambia"]');
+      ok(await cambia.count() === 1, "la valija pregunta, con «El viaje ahora es a…»");
+      if (await cambia.count()) {
+        const n = await page.evaluate(() => (window.__PROMPTS__ || []).length);
+        await cambia.click();
+        await page.waitForFunction(k => (window.__PROMPTS__ || []).length > k, n, { timeout:10000 }).catch(() => {});
+        await page.waitForTimeout(800);
+        const l2 = await page.evaluate(() => { const ps = (window.__PROMPTS__ || []).filter(p => /valija|equipaje|empacar/i.test(p));
+          return ((ps[ps.length - 1] || "").split("\n").find(l => /^- Destino/.test(l)) || ""); });
+        info("después de contestar: " + l2.slice(0, 200));
+        ok(/que son lo que manda: ARN/.test(l2), "contestado, ARN es destino en firme: manda sobre el escrito");
+        ok(/NUNCA por encima/.test(l2), "y lo escrito queda como contexto, que es lo que cerró VAL-72");
+      }
       await page.close();
     });
 
