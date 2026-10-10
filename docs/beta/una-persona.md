@@ -38,6 +38,16 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
    quienes lo abren; que me llegue a mí para resumirlo **no está comprobado**. Si no llega, los leés vos
    abriendo la beta, o me los pegás.
 
+## Dónde está
+
+**Link de «Valija beta»:** https://claude.ai/artifact/MqXA3sUNzcfqSRy8wQ6iXh — publicada el 10/10 como v44
+(versión 2 del Artifact), fijada al mismo contrato de la plataforma que la app del PM (0.2.41). **Hoy es
+privada:** sólo la abrís vos hasta que la compartas.
+
+Cómo se publica cada versión nueva (lo hace el PO): copiar `app/valija.html` cambiando sólo el `<title>` a
+«Valija beta», publicarla sobre ese link con `sample`, `downloads` y `comments` en forma `composer_only`, **sin
+`db`**, y hacer los cuatro `grep` sobre lo servido, igual que con la app del PM.
+
 ## Cómo la compartís
 
 La copia la publico yo, con lo que le toca pedirle a la plataforma; vos sólo la compartís.

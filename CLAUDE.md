@@ -4,6 +4,10 @@ App de planificación de viajes. Consolida en un solo lugar toda la información
 repartida entre las distintas plataformas de servicios donde se contrató cada cosa.
 
 **App publicada:** https://claude.ai/code/artifact/136a6d7e-9952-4edb-b6d3-11f6e69c8cb4
+**Beta para testers:** https://claude.ai/artifact/MqXA3sUNzcfqSRy8wQ6iXh — «Valija beta», el mismo `app/valija.html`
+con `<title>Valija beta</title>`, publicado SIN base de datos (`sample`, `downloads`, `comments` composer_only) y
+fijado al contrato 0.2.41. Cada publicación sale a las dos copias, con la misma versión, y los cuatro `grep` se
+hacen sobre las dos. Ver `docs/beta/una-persona.md`.
 **Rama de trabajo:** `claude/travel-planning-app-mvp-jag9be`
 
 ## Estructura
