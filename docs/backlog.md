@@ -2003,6 +2003,9 @@ en `parseDT`: una fecha sin hora es del día local. De paso, «hoy» (para separ
 para el pedido de importar texto) también era el de Greenwich: después de las 21 en Argentina, un viaje que
 terminaba ese día pasaba a «pasados». Probado tocando el formulario en tres husos
 (`app/pruebas/val96-fechas-del-viaje.js`), con control negativo contra la v41.
+**Lo que queda, anotado por la auditoría:** el motor de importar todavía le dice al modelo «Hoy es» con la fecha
+de Greenwich (mismo defecto, otro lugar; vive en las dos copias del motor de importar y se arregla junto). Y la
+frase sobre «pasados» después de las 21 es cierta leyendo el código; no se reprodujo con un reloj falso.
 
 ### VAL-97 · El modelo vuelve a proponer lo mismo con otras palabras — P3
 

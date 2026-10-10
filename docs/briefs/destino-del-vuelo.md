@@ -214,6 +214,9 @@ Textual en `docs/qa/v41-resultado.md`. Sale como **v42**.
    anterior a la ida) y puede haber otro. Al pie del panel «Saco…» va una línea con lo que miró el motor:
    para dónde va la valija, los vuelos en orden de fecha y la versión. No se publica un arreglo que dependa de
    acertar la causa.
+   - **Consecuencia que conviene saber:** un viaje a «Noruega» con un vuelo a ARN (Estocolmo) es el mismo caso
+     que Australia con Edimburgo: pregunta, y el vuelo no manda hasta que se conteste. Antes de la v42 ARN
+     mandaba de entrada. Contestado, manda como siempre (VAL-72). La prueba `val80` se ajustó a esto.
 3. **Lo repetido con las palabras en otro orden no entra** (`palabrasDeClave`). Sólo igualdad del conjunto de
    palabras; lo parecido queda en VAL-97.
 

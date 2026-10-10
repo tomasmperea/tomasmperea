@@ -339,7 +339,7 @@ async function armarLaValija(page, tripId) {
     });
 
     /* ═════════ GESTO 2 · ARN: el caso de éxito de VAL-72 ═════════ */
-    await bloque("GESTO 2 · escribir ARN y guardar: no dice nada, y sigue mandando", async () => {
+    await bloque("GESTO 2 · escribir ARN y guardar: no dice nada, y manda en cuanto se contesta la pregunta", async () => {
       const page = await nuevaPagina(browser, SEMILLA);
       await ir(page, "#/trip/tv");
       await cargarVueloAMano(page, { title:"Vuelo a Estocolmo", from:"EZE", to:"ARN",
