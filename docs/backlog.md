@@ -1980,7 +1980,24 @@ Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena
    `val77b-lo-aprendido-no-es-un-cambio.js` dio un timeout en su control negativo y pasó al repetir.
    `valija-bloque-b.js` dio un timeout una vez y 111/111 en dos corridas. Las tres son el síntoma de VAL-86.
 
-### VAL-95 · Las fechas y horas de las reservas son incómodas y no se limitan entre sí — P1 · diseño para el PM
+### VAL-95 · Las fechas y horas de las reservas son incómodas y no se limitan entre sí — P1 · opción B elegida el 10/10; hecha en la v43
+
+**Decisión del PM (10/10):** *"opción B para la fecha y hora de las reservas"*. Hecho en la v43, en las tres
+pantallas (formulario, revisar lo importado y el vuelo nuevo desde una tarjeta de embarque):
+
+- Cada fecha son dos campos: el **día** (calendario) y la **hora** (reloj). Por dentro se guarda igual que antes.
+- El fin (Llega, Check-out, Devolución, Termina) no deja elegir un día anterior al inicio, y si el inicio pasa
+  por encima, lo sigue. En un vuelo, la llegada arranca en el día de la salida.
+- Un día sin hora no se guarda en silencio: Guardar dice *«Falta la hora de «Sale»»* y lleva el foco ahí. La
+  llegada que completó la app sola no cuenta como a medias (la prueba encontró que si no, bloqueaba Guardar).
+- Abrir una reserva vieja y guardar sin tocar la deja idéntica, aunque tenga una fecha sin hora.
+- Probado tocando cada campo en `app/pruebas/val95-dia-y-hora.js`, con control negativo contra la v42.
+
+**Anotado:** un vuelo que cruza la línea de cambio de fecha hacia el este (Auckland → Honolulu) llega un día
+*antes* del que salió, y el límite no lo deja cargar así. Ya lo bloqueaba la validación anterior de Guardar
+(«La fecha de fin es anterior a la de inicio»); no es nuevo. El viaje (Salida / Regreso) ya tenía su límite.
+
+**El diseño original, para la historia:**
 
 **Reporte del PM (10/10, v41):** *"el formato de día/hora de los vuelos es incómodo y no restringe la vuelta si
 ya elegí una fecha de ida"*.

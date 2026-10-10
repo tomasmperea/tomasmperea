@@ -2,6 +2,7 @@
    Pasos textuales del reporte: Ciudad -> auto -> cambiar a Playa -> aplicar el plan viejo.
    Todo por gesto (click sobre el control real). */
 const { chromium } = require('playwright');
+const { llenarFechaHora } = require('./fecha-y-hora');
 const path = require('path');
 const APP = 'file://' + path.resolve(__dirname, '..', 'valija.html');
 const TRIP = { id:'t1', name:'Vacaciones', destination:'Madrid', startDate:'2026-10-05', endDate:'2026-10-15', hue:214 };
@@ -40,8 +41,8 @@ const L=[]; const log=m=>{L.push(m);console.log(m);};
   await page.locator('#additem').click(); await page.waitForTimeout(200);
   await page.locator('#tp button[data-t="car"]').click();
   await page.fill('#i_title','Auto en Madrid');
-  await page.fill('#i_start','2026-10-07T10:00');
-  await page.fill('#i_end','2026-10-12T10:00');
+  await llenarFechaHora(page, 'i_start', '2026-10-07T10:00');
+  await llenarFechaHora(page, 'i_end', '2026-10-12T10:00');
   await page.fill('#i_provider','Europcar');
   await page.locator('#save').click(); await page.waitForTimeout(1400);
 

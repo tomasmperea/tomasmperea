@@ -1,6 +1,7 @@
 /* Arnés de pruebas de la valija — toca los botones, no dispara los eventos.
    Usa Playwright sobre el archivo real app/valija.html. */
 const { chromium } = require('playwright');
+const { llenarFechaHora } = require('./fecha-y-hora');
 const path = require('path');
 
 const APP = 'file://' + path.resolve(__dirname, '..', 'valija.html');
@@ -188,8 +189,8 @@ async function armarLista(page){
     await page.locator('#tp button[data-t="car"]').click();
     await page.fill('#i_title', 'Auto en Madrid');
     await page.fill('#i_provider', 'Europcar');
-    await page.fill('#i_start', '2026-10-07T10:00');
-    await page.fill('#i_end', '2026-10-12T10:00');
+    await llenarFechaHora(page, 'i_start', '2026-10-07T10:00');
+    await llenarFechaHora(page, 'i_end', '2026-10-12T10:00');
     await page.locator('#save').click();
     await page.waitForTimeout(600);
 

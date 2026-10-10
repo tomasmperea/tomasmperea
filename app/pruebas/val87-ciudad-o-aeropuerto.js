@@ -44,6 +44,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { llenarFechaHora, llenarCampo } = require("./fecha-y-hora");
 const fs = require("fs");
 const path = require("path");
 
@@ -256,8 +257,8 @@ const AVISO_VIEJO = /no s[eé] traducir/i;
       ok(e.sello === "BRC", "con el sello BRC");
       ok(e.lista === 0, "y la lista se cerró");
       ok((await MANUAL.aviso(page)).trim() === "", "sin aviso: no hay nada que avisar");
-      await page.locator("#i_start").fill("2027-07-14T08:40");
-      await page.locator("#i_end").fill("2027-07-14T11:05");
+      await llenarFechaHora(page, "i_start", "2027-07-14T08:40");
+      await llenarFechaHora(page, "i_end", "2027-07-14T11:05");
       const v = await MANUAL.guardar(page);
       ok(v && v.to === "BRC", `se guardó to: ${JSON.stringify(v && v.to)}`);
       ok(v && v.from === "AEP", `y from: ${JSON.stringify(v && v.from)}`);

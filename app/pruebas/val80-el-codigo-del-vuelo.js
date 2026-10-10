@@ -54,6 +54,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { llenarFechaHora, llenarCampo } = require("./fecha-y-hora");
 const path = require("path");
 
 const HTML = process.argv[2] ? path.resolve(process.argv[2])
@@ -193,8 +194,8 @@ async function cargarVueloAMano(page, campos) {
   await page.locator("#i_title").fill(campos.title || "Vuelo");
   await page.locator("#i_from").fill(campos.from || "EZE");
   await page.locator("#i_to").fill(campos.to || "");
-  await page.locator("#i_start").fill(campos.start || "2027-03-01T22:10");
-  if (campos.end !== undefined) await page.locator("#i_end").fill(campos.end);
+  await llenarFechaHora(page, "i_start", campos.start || "2027-03-01T22:10");
+  if (campos.end !== undefined) await llenarFechaHora(page, "i_end", campos.end);
   await page.locator("#i_provider").fill(campos.provider || "SAS");
   await page.waitForTimeout(120);
 }

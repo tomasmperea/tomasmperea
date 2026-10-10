@@ -1,6 +1,7 @@
 /* Los dos hallazgos de docs/qa/valija-bloque-b.md, reproducidos con los mismos
    gestos que usó QA: se toca el control, nunca se dispara el evento interno. */
 const { chromium } = require('playwright');
+const { llenarFechaHora } = require('./fecha-y-hora');
 const path = require('path');
 const fs = require('fs');
 const APP = 'file://' + path.resolve(__dirname, '..', 'valija.html');
@@ -54,8 +55,8 @@ async function cargarAuto(page, proveedor){
   await page.waitForTimeout(150);
   await page.locator('#tp button[data-t="car"]').click();
   await page.fill('#i_title', 'Auto en Madrid');
-  await page.fill('#i_start', '2026-10-07T10:00');
-  await page.fill('#i_end', '2026-10-12T10:00');
+  await llenarFechaHora(page, 'i_start', '2026-10-07T10:00');
+  await llenarFechaHora(page, 'i_end', '2026-10-12T10:00');
   await page.fill('#i_provider', proveedor || 'Europcar');
   await page.locator('#save').click();
   await page.waitForTimeout(1200);

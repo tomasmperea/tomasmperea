@@ -380,6 +380,12 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .f input.mono,.f textarea.mono{font-family:var(--f-mono);font-size:14px}
 .req label::after{content:" ·";color:var(--crit)}
+/* VAL-95 · día y hora por separado */
+.fh-row{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:8px}
+.fh-row input{font-family:var(--f-mono);font-size:14px;min-width:0}
+.fh-msg{font-size:11.5px;color:var(--crit);line-height:1.4}
+.fh-msg:empty{display:none}
+.fh-par{display:flex;flex-direction:column;gap:11px}
 
 /* type picker */
 .tp{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:7px}
@@ -1139,7 +1145,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    buscando la línea por su texto, y después se lee del archivo SERVIDO, no del
    repo: los cuatro grep de CLAUDE.md incluyen éste y fue el único que lo vio.
    ============================================================ */
-const VALIJA_VERSION = "42";
+const VALIJA_VERSION = "43";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -10557,6 +10563,102 @@ function apResolver(texto){
     lo guardado (el código solo, o el texto como se escribió). */
 const apVisible = r => r.aero ? r.aero.ciudad : r.guarda;
 /** El sello del código y, si el dato no lo tiene, la línea que lo dice. */
+/* ============================================================
+   VAL-95 · DÍA Y HORA POR SEPARADO (opción B, elegida por el PM el 10/10).
+
+   Cada campo de fecha y hora de una reserva se dibuja como dos: el día, con el
+   calendario del teléfono, y la hora, con su reloj. Por dentro sigue habiendo
+   UN campo oculto con el mismo `id` (formulario) o `data-f` (revisión de lo
+   importado) que antes, con el valor de siempre ("2026-10-24T10:00"). Así
+   `collect`, `syncReviewInputsToState` y todo lo guardado no cambian.
+
+   El oculto se escribe sólo cuando la persona toca algo: abrir una reserva
+   vieja con una fecha sin hora no la reescribe.
+
+   El fin (Llega, Check-out, Devolución, Termina) no deja elegir un día
+   anterior al del inicio, y si el inicio pasa por encima, el fin lo sigue. En
+   un vuelo, además, la llegada arranca en el día de la salida.
+   ============================================================ */
+function fhPartes(v){
+  const m = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?/.exec(String(v || "").trim());
+  return m ? { dia:m[1], hora:m[2] || "" } : { dia:"", hora:"" };
+}
+/** `opts`: {id} o {f}, `req`, `rol` ("start" | "end"), `arrastra` (el fin
+    arranca en el día del inicio). */
+function fhHtml(rotulo, valor, opts){
+  const p = fhPartes(valor);
+  const ident = opts.id ? `id="${esc(opts.id)}"` : `data-f="${esc(opts.f)}"`;
+  const base = opts.id ? opts.id : "";
+  return `<div class="f fh${opts.req ? " req" : ""}" data-fh="${esc(opts.rol || "start")}"${opts.arrastra ? ` data-fh-arrastra="1"` : ""}>` +
+    `<label${base ? ` for="${esc(base)}_dia"` : ""}>${esc(rotulo)}</label>` +
+    `<div class="fh-row">` +
+      `<input class="fh-d" type="date"${base ? ` id="${esc(base)}_dia"` : ""} value="${esc(p.dia)}" aria-label="${esc(rotulo)}: día">` +
+      `<input class="fh-t" type="time" value="${esc(p.hora)}" aria-label="${esc(rotulo)}: hora">` +
+    `</div>` +
+    `<input type="hidden" ${ident} value="${esc(valor || "")}">` +
+    `<span class="fh-msg" role="status"></span></div>`;
+}
+/** El estado de un campo: lo que va al oculto, o qué le falta. */
+function fhLeer(w){
+  const d = w.querySelector(".fh-d").value, t = w.querySelector(".fh-t").value;
+  if(d && t) return { valor:`${d}T${t}`, falta:"" };
+  if(!d && !t) return { valor:"", falta:"" };
+  /* Un día que puso la app (la llegada que arranca en el día de la salida) y
+     la persona no tocó no es un dato a medias: «Llega» es opcional, y pedirle
+     la hora bloqueaba Guardar por algo que ella no escribió. */
+  if(d && !t && w.dataset.fhAuto) return { valor:"", falta:"" };
+  return { valor:"", falta: d ? "hora" : "día" };
+}
+function fhEscribir(w){
+  const r = fhLeer(w);
+  w.querySelector("input[type=hidden]").value = r.valor;
+  const msg = w.querySelector(".fh-msg");
+  msg.textContent = r.falta ? `Falta ${r.falta === "hora" ? "la hora" : "el día"}.` : "";
+  return r;
+}
+/** Engancha los campos de `raiz`. El par inicio/fin se busca en el contenedor
+    más chico que tiene a los dos, así vale igual en el formulario y en cada
+    tarjeta de la revisión. */
+function fhEnganchar(raiz){
+  (raiz || document).querySelectorAll("[data-fh]").forEach(w=>{
+    if(w.dataset.fhListo) return;
+    w.dataset.fhListo = "1";
+    const alTocar = ()=>{
+      delete w.dataset.fhAuto;          // lo tocó la persona: ya es su dato
+      fhEscribir(w);
+      if(w.dataset.fh !== "start") return;
+      let c = w.parentElement;
+      while(c && !c.querySelector('[data-fh="end"]')) c = c.parentElement;
+      const fin = c && c.querySelector('[data-fh="end"]');
+      if(!fin) return;
+      const d = w.querySelector(".fh-d").value, fd = fin.querySelector(".fh-d");
+      if(!d){ fd.removeAttribute("min"); return; }
+      fd.min = d;
+      const antes = fd.value;
+      if(!fd.value && fin.dataset.fhArrastra){ fd.value = d; fin.dataset.fhAuto = "1"; }
+      else if(fd.value && fd.value < d) fd.value = d;
+      if(fd.value !== antes) fhEscribir(fin);
+    };
+    w.querySelectorAll(".fh-d, .fh-t").forEach(i=>{ i.addEventListener("input", alTocar); i.addEventListener("change", alTocar); });
+    // Al abrir: el fin ya no deja elegir un día anterior al inicio guardado.
+    if(w.dataset.fh === "end"){
+      let c = w.parentElement;
+      while(c && !c.querySelector('[data-fh="start"]')) c = c.parentElement;
+      const ini = c && c.querySelector('[data-fh="start"] .fh-d');
+      if(ini && ini.value) w.querySelector(".fh-d").min = ini.value;
+    }
+  });
+}
+/** El primer campo a medio completar de `raiz`, para no guardar en silencio
+    un día sin hora (se perdería el día). */
+function fhIncompleto(raiz){
+  for(const w of (raiz || document).querySelectorAll("[data-fh]")){
+    const r = fhEscribir(w);
+    if(r.falta) return { w, rotulo:w.querySelector("label").textContent, falta:r.falta };
+  }
+  return null;
+}
+
 function apMarcaHtml(r){
   if(!r.codigo) return "";
   return `<span class="ap-sello">${esc(r.guarda)}</span>` + (r.aero ? "" :
@@ -10847,9 +10949,9 @@ function sheetItem(trip, item, prefill){
            letras. Se pinta al abrir (una reserva vieja puede traer el dato
            malo ya guardado) y al salir de cada campo. Ver avisoRutaHtml(). -->
       <div id="i_ruta_aviso">${avisoRutaHtml(it.from, it.to)}</div>
-      <div class="f2">
-        <div class="f req"><label for="i_start">Sale</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
-        <div class="f"><label for="i_end">Llega</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      <div class="fh-par">
+        ${fhHtml("Sale", it.start, {id:"i_start", req:true, rol:"start"})}
+        ${fhHtml("Llega", it.end, {id:"i_end", req:false, rol:"end", arrastra:true})}
       </div>
       <div class="f2">
         <div class="f req"><label for="i_provider">Aerolínea</label><input id="i_provider" value="${esc(it.provider||"")}" placeholder="JetSmart" autocomplete="off"></div>
@@ -10867,9 +10969,9 @@ function sheetItem(trip, item, prefill){
       ${money}${notes}`;
 
     if(type==="stay") return common + `
-      <div class="f2">
-        <div class="f req"><label for="i_start">Check-in</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
-        <div class="f req"><label for="i_end">Check-out</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      <div class="fh-par">
+        ${fhHtml("Check-in", it.start, {id:"i_start", req:true, rol:"start"})}
+        ${fhHtml("Check-out", it.end, {id:"i_end", req:true, rol:"end"})}
       </div>
       <div class="f req"><label for="i_provider">Alojamiento / plataforma</label><input id="i_provider" value="${esc(it.provider||"")}" placeholder="Booking · Hotel Atocha" autocomplete="off"></div>
       <div class="f req"><label for="i_address">Dirección</label><input id="i_address" value="${esc(it.address||"")}" placeholder="Calle Atocha 123, Madrid" autocomplete="off"></div>
@@ -10878,9 +10980,9 @@ function sheetItem(trip, item, prefill){
       ${money}${notes}`;
 
     if(type==="car") return common + `
-      <div class="f2">
-        <div class="f req"><label for="i_start">Retiro</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
-        <div class="f req"><label for="i_end">Devolución</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      <div class="fh-par">
+        ${fhHtml("Retiro", it.start, {id:"i_start", req:true, rol:"start"})}
+        ${fhHtml("Devolución", it.end, {id:"i_end", req:true, rol:"end"})}
       </div>
       <div class="f req"><label for="i_provider">Rentadora</label><input id="i_provider" value="${esc(it.provider||"")}" placeholder="Hertz" autocomplete="off"></div>
       <div class="f req"><label for="i_address">Lugar de retiro</label><input id="i_address" value="${esc(it.address||"")}" placeholder="Aeropuerto de Madrid T4" autocomplete="off"></div>
@@ -10892,22 +10994,22 @@ function sheetItem(trip, item, prefill){
         <div class="f req"><label for="i_from">Desde</label><input id="i_from" value="${esc(it.from||"")}" autocomplete="off"></div>
         <div class="f req"><label for="i_to">Hasta</label><input id="i_to" value="${esc(it.to||"")}" autocomplete="off"></div>
       </div>
-      <div class="f req"><label for="i_start">Fecha y hora</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+      ${fhHtml("Fecha y hora", it.start, {id:"i_start", req:true, rol:"start"})}
       <div class="f"><label for="i_provider">Proveedor</label><input id="i_provider" value="${esc(it.provider||"")}" autocomplete="off"></div>
       <div class="f"><label for="i_conf">Código de reserva</label><input id="i_conf" class="mono" value="${esc(it.confirmation||"")}" autocomplete="off"></div>
       ${money}${notes}`;
 
     if(type==="act") return common + `
-      <div class="f2">
-        <div class="f req"><label for="i_start">Cuándo</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
-        <div class="f"><label for="i_end">Termina</label><input id="i_end" type="datetime-local" value="${esc(it.end||"")}"></div>
+      <div class="fh-par">
+        ${fhHtml("Cuándo", it.start, {id:"i_start", req:true, rol:"start"})}
+        ${fhHtml("Termina", it.end, {id:"i_end", req:false, rol:"end"})}
       </div>
       <div class="f"><label for="i_address">Dónde</label><input id="i_address" value="${esc(it.address||"")}" autocomplete="off"></div>
       <div class="f"><label for="i_conf">Entrada / reserva</label><input id="i_conf" class="mono" value="${esc(it.confirmation||"")}" autocomplete="off"></div>
       ${money}${notes}`;
 
     return common + `
-      <div class="f"><label for="i_start">Fecha (opcional)</label><input id="i_start" type="datetime-local" value="${esc(it.start||"")}"></div>
+      ${fhHtml("Fecha (opcional)", it.start, {id:"i_start", req:false, rol:"start"})}
       ${notes}`;
   };
 
@@ -10964,6 +11066,7 @@ function sheetItem(trip, item, prefill){
     // VAL-87 · sólo el vuelo tiene el campo de ciudad o aeropuerto; el
     // traslado sigue con "Desde" y "Hasta" en texto libre.
     document.querySelectorAll("#fields [data-ap]").forEach(w=> apEnganchar(w, pintarAvisoRuta));
+    fhEnganchar(document.getElementById("fields"));   // VAL-95
   };
   const collect = ()=>{
     const g = id => document.getElementById(id)?.value?.trim();
@@ -11061,6 +11164,11 @@ function sheetItem(trip, item, prefill){
 
   document.getElementById("cancel").onclick = closeSheet;
   document.getElementById("save").onclick = async ()=>{
+    /* VAL-95 · un día sin hora no se guarda en silencio: el oculto queda vacío
+       y el día se perdería. Se dice qué falta y se lleva el foco ahí. */
+    const inc = fhIncompleto(document.getElementById("fields"));
+    if(inc){ toast(`Falta ${inc.falta === "hora" ? "la hora" : "el día"} de «${inc.rotulo}»`, true);
+      inc.w.querySelector(inc.falta === "hora" ? ".fh-t" : ".fh-d").focus(); return; }
     collect();
     if(!it.title){ toast("Poné un título", true); return; }
     /* VAL-79 ronda 2 · si se cambió el destino del vuelo, la respuesta que se
@@ -11625,9 +11733,9 @@ function cardFieldsHtml(r, chip){
            formulario manual: acá el campo nunca truncó, pero un destino con el
            nombre de la ciudad rompe igual. Mismo aviso, mismo texto. -->
       <div data-rutaaviso="1">${avisoRutaHtml(r.from, r.to)}</div>
-      <div class="f2">
-        <div class="f"><label>Sale</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
-        <div class="f"><label>Llega</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      <div class="fh-par">
+        ${fhHtml("Sale", r.start, {f:"start", rol:"start"})}
+        ${fhHtml("Llega", r.end, {f:"end", rol:"end", arrastra:true})}
       </div>
       ${showBoarding ? `
       <div class="f2">
@@ -11644,17 +11752,17 @@ function cardFieldsHtml(r, chip){
   if(r.type==="stay") return `
       <div class="f"><label>Alojamiento</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
       <div class="f"><label>Dirección</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
-      <div class="f2">
-        <div class="f"><label>Check-in</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
-        <div class="f"><label>Check-out</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      <div class="fh-par">
+        ${fhHtml("Check-in", r.start, {f:"start", rol:"start"})}
+        ${fhHtml("Check-out", r.end, {f:"end", rol:"end"})}
       </div>
       <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
   if(r.type==="car") return `
       <div class="f"><label>Rentadora</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
       <div class="f"><label>Lugar de retiro</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
-      <div class="f2">
-        <div class="f"><label>Retiro</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
-        <div class="f"><label>Devolución</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      <div class="fh-par">
+        ${fhHtml("Retiro", r.start, {f:"start", rol:"start"})}
+        ${fhHtml("Devolución", r.end, {f:"end", rol:"end"})}
       </div>
       <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
   if(r.type==="transfer") return `
@@ -11663,14 +11771,14 @@ function cardFieldsHtml(r, chip){
         <div class="f"><label>Desde</label><input data-f="from" value="${v(r.from)}" placeholder="No lo encontré"></div>
         <div class="f"><label>Hasta</label><input data-f="to" value="${v(r.to)}" placeholder="No lo encontré"></div>
       </div>
-      <div class="f"><label>Fecha y hora</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
+      ${fhHtml("Fecha y hora", r.start, {f:"start", rol:"start"})}
       <div class="f"><label>Código de reserva</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
   // act / note: sin ejemplo en el muestrario, campos mínimos razonables.
   return `
       <div class="f"><label>Proveedor</label><input data-f="provider" value="${v(r.provider)}" placeholder="No lo encontré"></div>
-      <div class="f2">
-        <div class="f"><label>Cuándo</label><input data-f="start" type="datetime-local" value="${v(r.start)}"></div>
-        <div class="f"><label>Termina</label><input data-f="end" type="datetime-local" value="${v(r.end)}"></div>
+      <div class="fh-par">
+        ${fhHtml("Cuándo", r.start, {f:"start", rol:"start"})}
+        ${fhHtml("Termina", r.end, {f:"end", rol:"end"})}
       </div>
       <div class="f"><label>Dónde</label><input data-f="address" value="${v(r.address)}" placeholder="No lo encontré"></div>
       <div class="f"><label>Código / entrada</label><input data-f="confirmation" class="mono" value="${v(r.confirmation)}" placeholder="No lo encontré" style="text-transform:uppercase"></div>`;
@@ -12807,10 +12915,10 @@ async function sheetImport(trip){
     const campoHtml = (f, vacio) => {
       // VAL-87 · origen y destino son el mismo campo que en todas partes.
       if(f==="from" || f==="to") return apCampoHtml(CAMPO_ES[f], r[f], {f});
-      const tipo = (f==="start"||f==="end") ? `type="datetime-local"` : "";
-      const mono = (f==="start"||f==="end") ? "" : `class="mono"`;
+      // VAL-95 · día y hora por separado, como en todas partes.
+      if(f==="start" || f==="end") return fhHtml(CAMPO_ES[f] || f, r[f], {f, rol:f, arrastra:f==="end"});
       return `<div class="f"><label>${esc(CAMPO_ES[f]||f)}</label>
-        <input data-f="${f}" ${tipo} ${mono} value="${esc(r[f]||"")}" ${vacio?`placeholder="No lo encontré"`:""}></div>`;
+        <input data-f="${f}" class="mono" value="${esc(r[f]||"")}" ${vacio?`placeholder="No lo encontré"`:""}></div>`;
     };
     return `<div class="imp-card" data-card="${card.id}">
       <div class="imp-card-hd">
@@ -12937,6 +13045,7 @@ async function sheetImport(trip){
       const pintar = ()=>{ caja.innerHTML = avisoRutaHtml(leer("from"), leer("to")); };
       el.querySelectorAll("[data-ap]").forEach(w=> apEnganchar(w, pintar));
     });
+    fhEnganchar(document);   // VAL-95
     if(total) document.getElementById("im-save").onclick = doSaveReview;
   }
   /** Vuelve a plantear la pregunta de VAL-59 con los vuelos que quedan. El
@@ -12956,6 +13065,9 @@ async function sheetImport(trip){
 
   async function doSaveReview(){
     if(!alive()) return;
+    const inc = fhIncompleto(document);   // VAL-95, mismo motivo que en el formulario
+    if(inc){ toast(`Falta ${inc.falta === "hora" ? "la hora" : "el día"} de «${inc.rotulo}»`, true);
+      inc.w.querySelector(inc.falta === "hora" ? ".fh-t" : ".fh-d").focus(); return; }
     syncReviewInputsToState();
     const cards = st.reviewList.slice();
     if(!cards.length) return;

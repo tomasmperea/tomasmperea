@@ -53,6 +53,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { llenarFechaHora, llenarCampo } = require("./fecha-y-hora");
 const fs = require("fs"), path = require("path"), os = require("os"), cp = require("child_process");
 
 const RAIZ = path.resolve(__dirname, "..", "..");
@@ -149,7 +150,7 @@ async function cargarReserva(page, viaje, tipo, campos) {
   await page.waitForSelector("#i_title", { timeout:10000 });
   await page.locator(`#tp button[data-t="${tipo}"]`).click();
   await page.waitForTimeout(150);
-  for (const [id, v] of Object.entries(campos)) await page.locator("#" + id).fill(v);
+  for (const [id, v] of Object.entries(campos)) await llenarCampo(page, id, v);
   await page.locator("#save").click();
   await page.waitForFunction(() => !document.querySelector("#i_title"), null, { timeout:8000 }).catch(() => {});
   await page.waitForTimeout(600);
