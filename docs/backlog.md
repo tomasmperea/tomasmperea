@@ -2065,7 +2065,8 @@ En «Valija beta» cada tester guarda en su teléfono. La pantalla de inicio lo 
 guardan en este teléfono…», con «Entendido»), «Compartir el viaje» deja de ofrecer un link que no lleva el
 viaje, y «Acerca de» deja de decir «Compartir ver / editar». En la app del PM (con base) no cambia nada y el
 aviso no aparece ni un instante al arrancar: había un instante en que sí, lo encontró el control `control-6`
-y lo cierra `Store.soloEnEsteDispositivo()`.
+y lo cierra `Store.soloEnEsteDispositivo()`. «Acerca de» y el panel de pendientes decían que los datos «viajan con el link»: lo encontró
+la auditoría de la v44 y se barrió el archivo entero buscando esa promesa.
 
 ### VAL-96 · El viaje del 10 al 19 se mostraba del 9 al 18 — P0 · hecho en la v42
 

@@ -13,17 +13,17 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
 | Quién ve qué | Quien abre el link ve todo | Cada uno, lo suyo |
 | Inteligencia artificial | Sí | Sí, con la cuenta del tester |
 | «Contanos» | No aparece | Abre el comentario de claude.ai |
-| Mismo código | — | Sí: se publica el mismo `app/valija.html`, sólo cambia el título |
+| Mismo código | — | Sí: el mismo `app/valija.html`. Cambian el título de la pestaña («Valija beta») y lo que se le pide a la plataforma al publicar: IA, descargas y comentarios, **sin base de datos** |
 
 ## Lo que cambió en la app para esto (v44)
 
-- **«Contanos»** (VAL-99): un botón en la pantalla de inicio que abre el comentario de claude.ai sobre esa
-  pantalla. La app no escribe nada: lo escribe el tester en la caja de comentarios de Claude. Si la vista no
+- **«Contanos»** (VAL-99): un botón en la pantalla de inicio (sólo ahí, no adentro de un viaje) que abre el
+  comentario de claude.ai sobre esa pantalla. La app no escribe nada: lo escribe el tester en la caja de comentarios de Claude. Si la vista no
   admite comentarios, el botón lo dice y se va.
 - **«Tus viajes se guardan en este teléfono»** (VAL-101): un aviso una sola vez, sólo sin base compartida. En la
   app del PM no aparece nunca.
 - **«Compartir el viaje»** sin base ya no ofrece un link que no lleva el viaje: ofrece el resumen para pegar en
-  un chat. «Acerca de» deja de decir «Compartir ver / editar».
+  un chat. «Acerca de» y el panel de pendientes dejan de decir que los datos viajan con el link.
 
 ## Lo que todavía no se sabe, y la primera persona contesta
 
@@ -34,8 +34,13 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
 3. **¿Sus viajes siguen ahí al día siguiente?** El visor de claude.ai guarda los datos del navegador por
    página; si los borrara entre visitas, la beta no sirve así y hay que adelantar VAL-98.
 4. **¿Le aparece «Contanos»?** Depende de que la plataforma le permita comentar a alguien de afuera.
+5. **¿Me llegan sus comentarios?** La plataforma promete que el comentario queda en el Artifact y que lo ven
+   quienes lo abren; que me llegue a mí para resumirlo **no está comprobado**. Si no llega, los leés vos
+   abriendo la beta, o me los pegás.
 
 ## Cómo la compartís
+
+La copia la publico yo, con lo que le toca pedirle a la plataforma; vos sólo la compartís.
 
 1. Abrí el link de «Valija beta» que te paso (es otro distinto del tuyo).
 2. Tocá **Compartir** de Claude, arriba a la derecha, y elegí que la pueda ver **cualquiera con el link**.
@@ -54,8 +59,8 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
 > 3. Entrá a **Valija** y armá la lista de equipaje.
 > 4. Volvé a abrirla mañana y fijate si tu viaje sigue ahí.
 >
-> Para contarme qué te pareció, tocá el globito de arriba (**Contanos**) y escribí ahí. Si no te aparece,
-> mandame capturas por acá.
+> Para contarme qué te pareció, volvé a la pantalla de inicio y tocá el globito de arriba (**Contanos**), y
+> escribí ahí. Si no te aparece, mandame capturas por acá.
 >
 > Algunas cosas para que sepas:
 > - Tus viajes se guardan **sólo en tu teléfono**: no los veo yo ni nadie. Si borrás los datos del navegador
@@ -73,14 +78,14 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
 - Si pudo comentar con «Contanos» o te mandó capturas.
 - Si al día siguiente sus viajes seguían ahí.
 
-Los comentarios los leo yo desde acá y te los resumo en `docs/beta/feedback.md`.
+Si los comentarios me llegan desde acá (pregunta 5), los resumo en `docs/beta/feedback.md`; si no, pasámelos.
 
 ## Para pasar de una persona a cinco
 
 Se extiende **sin cambiar nada** si las cuatro preguntas de arriba dan bien: el mismo link, y cada uno guarda lo
 suyo. Lo que cambia con cinco:
 
-- **Los comentarios se ven entre ellos.** Si eso molesta, «Contanos» pasa a guardar el comentario en privado,
+- **Los comentarios se ven entre ellos** (lo dice el contrato de la plataforma). Si eso molesta, «Contanos» pasa a guardar el comentario en privado,
   y para eso sí hace falta base de datos (vuelve VAL-98, en otra forma).
 - **Cada publicación sale a las dos copias.** Desde la v44, publicar es: la app del PM y «Valija beta», con la
   misma versión, y los cuatro `grep` sobre las dos.

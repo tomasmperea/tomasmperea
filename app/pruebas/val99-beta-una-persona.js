@@ -184,6 +184,12 @@ const ultimoToast = p => p.locator(".toast").last().innerText().catch(() => "");
     await p.goto("file://" + HTML + "#/trip/t1"); await p.waitForFunction(() => typeof Store !== "undefined" && Store.ready);
     await p.waitForSelector("#sharetrip", { timeout:10000 }).catch(() => {});
     if (!(await p.locator("#sharetrip").count())) { ok(false, `${base ? "con" : "sin"} base: está el botón Compartir`, "8"); await p.close(); continue; }
+    // El panel de pendientes (pestaña «Pendientes»): misma promesa que «Compartir».
+    await p.locator('[data-tab="todo"]').click(); await p.waitForTimeout(300);
+    const todo = (await p.locator("#main").innerText()).replace(/\s+/g, " ");
+    const promete = /viaja con el link compartido/.test(todo);
+    ok(base ? promete : (!promete && /guardado en este teléfono/.test(todo)),
+       `pendientes ${base ? "sigue diciendo que viaja con el link" : "dice que está en este teléfono, no que viaja con el link"}`, "8");
     await p.locator("#sharetrip").click(); await p.waitForTimeout(300);
     const local = await p.locator("#sh_local").count(), link = await p.locator("#sh_url").count(), resumen = await p.locator("#sh_txt").count();
     await p.locator("#cancel").click().catch(() => {}); await p.waitForTimeout(200);
@@ -191,6 +197,11 @@ const ultimoToast = p => p.locator(".toast").last().innerText().catch(() => "");
     await p.locator("#about").click(); await p.waitForTimeout(300);
     const chip = /Compartir ver \/ editar/.test(await p.locator(".sheet").last().innerText().catch(() => ""));
     ok(base ? chip : !chip, `«Acerca de» ${base ? "sigue diciendo" : "no dice"} «Compartir ver / editar»`, "8");
+    /* B1 de la auditoría de la v44: la misma hoja decía «viajan con el link que
+       compartís» en modo local, y esta prueba sólo miraba el chip. */
+    const datos = await p.locator("#about-datos").innerText().catch(() => "");
+    ok(base ? /viajan con el link que compartís/.test(datos) : (/se guardan en este teléfono/.test(datos) && !/viajan con el link que/.test(datos)),
+       `«Acerca de» dice dónde están los datos: «${datos}»`, "8");
     if (!base) {
       ok(local === 1 && link === 0, "sin base: dice que el link no lleva el viaje y no ofrece el link", "8");
       ok(resumen === 1, "sin base: el resumen para pegar en un chat sigue", "8");

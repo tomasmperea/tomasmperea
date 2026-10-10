@@ -8988,7 +8988,7 @@ function viewTodo(trip, alerts){
 
   return groups + `
     <div class="notice" style="margin-top:4px">${svg(I.bell)}
-      <div>Los avisos por correo llegan en la próxima iteración. Por ahora este panel es tu checklist y viaja con el link compartido.</div>
+      <div>Los avisos por correo llegan en la próxima iteración. Por ahora este panel es tu checklist${Store.soloEnEsteDispositivo() ? ", guardado en este teléfono" : " y viaja con el link compartido"}.</div>
     </div>`;
 }
 
@@ -13436,7 +13436,9 @@ function sheetAbout(){
       </div>
     </div>
     <hr class="hr">
-    <p class="tiny muted" style="margin:0;line-height:1.5">Los datos se guardan en esta valija y viajan con el link que compartís. Quien tenga permiso de ver no puede modificar nada.</p>
+    <p class="tiny muted" id="about-datos" style="margin:0;line-height:1.5">${Store.soloEnEsteDispositivo()
+      ? "Tus viajes se guardan en este teléfono, en este navegador. No los ve nadie más y no viajan con el link."
+      : "Los datos se guardan en esta valija y viajan con el link que compartís. Quien tenga permiso de ver no puede modificar nada."}</p>
     <p class="tiny muted" style="margin:0;line-height:1.5">Datos de aeropuertos: OurAirports y OpenFlights (ODbL).</p>
   `, `<button class="btn block" id="cancel">Cerrar</button>`);
   document.getElementById("cancel").onclick = closeSheet;
