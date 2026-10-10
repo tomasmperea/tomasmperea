@@ -431,6 +431,17 @@ function decisionDelVuelo(f) {
   if (!f || !f.destinoDecision || !f.destinoDecisionPara) return "";
   return norm(f.destinoDecisionPara) === norm(f.to) ? f.destinoDecision : "";
 }
+/* Un vuelo EN DUDA es el que la valija le pregunta a la persona: sin
+   respuesta vigente, con un destino escrito en el viaje, con código, y que el
+   comparador dice que NO coincide (null no alcanza: "no sé" no pregunta). Es
+   la misma condición que usa la app para mostrar la pregunta, y vive acá para
+   que la pregunta y la lista no puedan decir cosas distintas. */
+function vueloEnDuda(trip, f) {
+  if (!f || f.type !== "flight" || !f.to || decisionDelVuelo(f)) return false;
+  var escrito = String((trip && trip.destination) == null ? "" : trip.destination).trim();
+  if (!escrito || !esCodigoIATA(f.to)) return false;
+  return coincidenLugares(escrito, f.to) === false;
+}
 function coincidenLugares(a, b) {
   var na = norm(a), nb = norm(b);
   if (!na || !nb) return null;
@@ -1952,12 +1963,13 @@ function hoursBetween(a, b) {
    nada, queda vacío y el chip cae al texto genérico. */
 function destinoQueRazono(list) {
   var d = (list && list.base && list.base.destinos) || null;
+  var enDuda = (d && Array.isArray(d.enDuda)) ? d.enDuda.slice() : [];
   if (d && d.deReservas && d.lugares && d.lugares.length) {
     return { texto:d.lugares.map(function (l) { return l.lugar; }).join(" · "), fuente:"reservas",
-             escrito:String((list && list.base && list.base.destino) || "").trim() };
+             escrito:String((list && list.base && list.base.destino) || "").trim(), enDuda:enDuda };
   }
   var escrito = String((list && list.base && list.base.destino) || "").trim();
-  return { texto:escrito, fuente:"escrito", escrito:escrito };
+  return { texto:escrito, fuente:"escrito", escrito:escrito, enDuda:enDuda };
 }
 
 function destinosDelViaje(trip, items) {
@@ -2046,6 +2058,7 @@ function destinosDelViaje(trip, items) {
   // Lo que sí cambia es qué pasa cuando NO hay identidad: antes el `to` de la
   // vuelta entraba en firme igual; ahora, si no es código, entra como pista.
   var casa = ordenConfiable ? norm(vuelos[0].from) : "";
+  var enDuda = [];
   vuelos.forEach(function (f, k) {
     if (k === vuelos.length - 1 && casa && norm(f.to) === casa) return;
     /* LA GUARDA DE VAL-80. Un `to` que no es un código de aeropuerto no puede
@@ -2062,6 +2075,12 @@ function destinosDelViaje(trip, items) {
     // VAL-79: la persona dijo que este vuelo es una escala. No cuenta como
     // destino ni como pista: "no cuenta para la valija" es lo que leyó.
     if (decisionDelVuelo(f) === "escala") return;
+    /* v41, PASO B DEL PM: "armo la valija y aparece la pregunta pero ya me
+       sugirió qué agregar antes de responder". Un vuelo EN DUDA —la persona
+       todavía no contestó y el lugar no coincide con lo que escribió— no es
+       un destino hasta que conteste: puede ser una escala. Mientras tanto la
+       valija sigue con lo escrito. Sin comparador (Node) nunca hay duda. */
+    if (vueloEnDuda(trip, f)) { enDuda.push(String(f.to).trim().toUpperCase()); return; }
     var codigo = esCodigoIATA(f.to);
     sumar(codigo ? String(f.to).trim().toUpperCase() : String(f.to).trim(), "vuelo", f, codigo);
   });
@@ -2143,8 +2162,28 @@ function destinosDelViaje(trip, items) {
     // VAL-79: la persona marcó algún vuelo como escala. La línea del prompt lo
     // necesita para no decir que los vuelos "no traen código" cuando lo traen.
     hayEscalas:vuelos.some(function (f) { return decisionDelVuelo(f) === "escala"; }),
+    // v41, paso B: los lugares de vuelos que la persona todavía no contestó.
+    // No suman (arriba) y tampoco hacen sacar: ver `destinoVencido`.
+    enDuda:enDuda,
     deReservas:deReservas
   };
+}
+
+/* Por qué ningún vuelo manda sobre el destino, dicho con lo que es cierto.
+   VAL-79 encontró que "ningún vuelo trae código" era falso con un vuelo
+   marcado escala; v41 encontró lo mismo con un vuelo EN DUDA (Australia con
+   un vuelo a EDI: EDI es un código). Cada razón sale de su dato, y si hay
+   escalas y dudas a la vez se dicen las dos. */
+function porQueLosVuelosNoMandan(d) {
+  d = d || {};
+  var duda = d.enDuda || [];
+  var r = [];
+  if (d.hayEscalas) r.push(duda.length ? "la persona marcó como escala parte de los vuelos"
+                                       : "la persona marcó como escala los vuelos que llegan a otro lado");
+  if (duda.length) r.push("la persona todavía no dijo si " + duda.join(", ") + (duda.length === 1 ? " es" : " son") +
+                          " un destino o una escala");
+  if (r.length) return r.join(" y ");
+  return d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino" : "no hay vuelos cargados";
 }
 
 function summarizeReservationsForAI(trip, items) {
@@ -2169,6 +2208,7 @@ function summarizeReservationsForAI(trip, items) {
     });
     // VAL-79: el vuelo sigue yendo crudo, pero con lo que dijo la persona.
     if (decisionDelVuelo(f) === "escala") out[out.length - 1].escala = "la persona marcó este vuelo como escala: no es un destino";
+    else if (vueloEnDuda(trip, f)) out[out.length - 1].enDuda = "la persona todavía no dijo si este lugar es un destino o una escala: no sugieras nada para este lugar";
   });
 
   /* EL TIEMPO ENTRE DOS VUELOS, sin llamarlo escala.
@@ -2381,11 +2421,7 @@ function lineaDestinos(b) {
     /* VAL-79: con un vuelo marcado como escala, "no trae código" es falso: lo
        trae, y la persona dijo que es de paso. Si no queda ningún destino en
        firme, todo vuelo con código es una escala. Lo encontró la auditoría. */
-    porQue.push(d && d.hayEscalas
-      ? "la persona marcó como escala los vuelos que llegan a otro lado"
-      : d && d.hayVuelos
-      ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino"
-      : "no hay vuelos cargados");
+    porQue.push(porQueLosVuelosNoMandan(d));
     return "- Destino: " + porQue.join(" y ") + "." + lineaPistas;
   }
 
@@ -2401,7 +2437,7 @@ function lineaDestinos(b) {
            /* VAL-80, mismo motivo que la rama de arriba: un vuelo con
               `to` = "SUECIA" sí dice adónde llega. Lo que no trae es el
               código, y eso es lo que lo dejó sin confirmar nada. */
-           (d.hayEscalas ? "la persona marcó como escala los vuelos que llegan a otro lado, así que no lo cambian."
+           (d.hayEscalas || (d.enDuda || []).length ? porQueLosVuelosNoMandan(d) + ", así que no lo cambian."
             : d.hayVuelos ? "ninguno de los vuelos cargados trae un código de aeropuerto en el destino, así que nada lo confirma."
                           : "no hay ningún vuelo cargado que lo confirme.") +
            lineaPistas;
@@ -2515,6 +2551,21 @@ function destinationPrompt(list) {
  * @param {Object} list lista base, para no duplicar ni resucitar lo suprimido
  * @returns {{items:Array, quitar:Array, clima:string}}
  */
+/* Las palabras con contenido de una clave, sin orden: "piloto-o-poncho-de-
+   lluvia-liviano" y "poncho-o-piloto-de-lluvia-liviano" dan lo mismo. Con
+   menos de dos palabras no devuelve nada: una sola palabra ya la cubre la
+   clave literal, y comparar conjuntos de una sola es comparar claves. */
+var PALABRAS_VACIAS = { o:1, y:1, e:1, u:1, de:1, del:1, la:1, el:1, lo:1, los:1, las:1, un:1, una:1,
+                        para:1, por:1, con:1, sin:1, en:1, a:1, al:1 };
+function palabrasDeClave(clave) {
+  var vistas = {};
+  var ws = String(clave || "").split("-").filter(function (w) {
+    if (!w || PALABRAS_VACIAS[w] || vistas[w]) return false;
+    vistas[w] = true; return true;
+  });
+  return ws.length >= 2 ? ws.sort().join(" ") : "";
+}
+
 function parseDestinationItems(raw, list) {
   var data = raw;
   if (typeof data === "string") { try { data = JSON.parse(data); } catch (e) { data = null; } }
@@ -2539,6 +2590,13 @@ function parseDestinationItems(raw, list) {
   // pasada, para que dos ítems de la misma respuesta tampoco se dupliquen entre sí
   var have = Object.assign({}, haveOriginal);
   var haveCanon = Object.assign({}, haveCanonOriginal);
+  /* v41, PASO A DEL PM: el modelo vuelve a proponer lo mismo con las palabras
+     en otro orden —"Piloto o poncho de lluvia liviano" ya estaba y llega
+     "Poncho o piloto de lluvia liviano"—, y `canonicalKey` no lo ve porque
+     compara la clave entera. Mismas palabras, mismo ítem. Sólo igualdad del
+     conjunto: "Mochila chica o riñonera" NO es "Mochila chica para el día". */
+  var havePalabras = {};
+  Object.keys(haveOriginal).forEach(function (k) { var w = palabrasDeClave(k); if (w) havePalabras[w] = true; });
 
   var items = [];
   if (Array.isArray(data.items)) {
@@ -2556,6 +2614,8 @@ function parseDestinationItems(raw, list) {
       if (!clave || suprimidos[clave]) return;
       var canon = canonicalKey(clave);
       if (have[clave] || haveCanon[canon]) return;     // VAL-45: ya está, literal o por sinónimo
+      var palabras = palabrasDeClave(clave);
+      if (palabras && havePalabras[palabras]) return;  // v41: ya está, con las palabras en otro orden
       var categoria = CATEGORY_ORDER[x.categoria] !== undefined ? x.categoria : "destino";
       /* La cantidad se acota a dos dígitos. No es por el tamaño —la medición
          ya lo cubre— sino porque "99999999999999999999 medias" no es un dato:
@@ -2577,6 +2637,7 @@ function parseDestinationItems(raw, list) {
       if (peso > libres) return;
       libres -= peso;
       have[clave] = true; haveCanon[canon] = clave;
+      if (palabras) havePalabras[palabras] = true;
       /* Se empuja EL MISMO objeto que se midió. `enrichWithDestination` se lo
          da a `makeItem` tal cual, sin rearmar un literal aparte.
 
@@ -3047,9 +3108,9 @@ function destinoVencido(item, actual, siNoDice) {
 
      A un ítem razonado con el destino ESCRITO, los lugares de ahora le suman
      el escrito actual. Eso protege el caso por el que existía la guarda
-     (Noruega + vuelo a OSL: el ítem de Noruega se queda) y hace cierto el
-     aviso de la valija mientras nadie conteste ("sugiero para los dos
-     lugares"). Cuando la persona contesta "el viaje ahora es a Madrid", el
+     (Noruega + vuelo a OSL: el ítem de Noruega se queda) y sostiene el
+     aviso de la valija mientras nadie conteste ("la valija sigue con lo
+     que escribiste"). Cuando la persona contesta "el viaje ahora es a Madrid", el
      escrito pasa a Madrid y lo de Bariloche deja de tener dónde agarrarse.
 
      A un ítem razonado con los VUELOS, no. La primera versión se lo sumaba a
@@ -3062,6 +3123,12 @@ function destinoVencido(item, actual, siNoDice) {
   var ahora = partes(actual.texto);
   var escrito = String(actual.escrito == null ? "" : actual.escrito).trim();
   if (escrito && fuente !== "reservas" && ahora.every(function (a) { return norm(a) !== norm(escrito); })) ahora.push(escrito);
+  /* v41, PASO A Y B DEL PM. Un vuelo sin contestar no suma nada a la valija,
+     y por lo mismo tampoco puede hacer sacar: si estaba en la lista con lo
+     de un lugar y ahora está en duda, lo de ese lugar se queda hasta que la
+     persona conteste. Sin esto, preguntar "¿es una escala?" y proponer sacar
+     lo de ese lugar llegaban juntos, que es contestar antes de preguntar. */
+  (actual.enDuda || []).forEach(function (l) { if (String(l || "").trim()) ahora.push(String(l).trim()); });
   var antes = fuente === "reservas" ? partes(razonado) : [razonado];
   /* VAL-94 · DECISIÓN DEL PM (08/10). Un ítem razonado para VARIOS lugares
      («MAD · FCO») queda vencido en cuanto CUALQUIERA de ellos ya no está: si se
@@ -3420,7 +3487,7 @@ return {
   // VAL-80: la interfaz pregunta lo mismo que el motor, con la misma función.
   esCodigoIATA:esCodigoIATA,
   // VAL-79: ¿son el mismo lugar? La app le pasa el dato de aeropuertos.
-  setComparadorDeLugares:setComparadorDeLugares, coincidenLugares:coincidenLugares, decisionDelVuelo:decisionDelVuelo,
+  setComparadorDeLugares:setComparadorDeLugares, coincidenLugares:coincidenLugares, decisionDelVuelo:decisionDelVuelo, vueloEnDuda:vueloEnDuda,
 
   // capa de IA, expuesta para poder probarla suelta (VAL-33, VAL-44, VAL-43)
   destinationPrompt:destinationPrompt,

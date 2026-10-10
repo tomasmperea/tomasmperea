@@ -1601,7 +1601,24 @@ Como viajero quiero saber si mi vuelo se retrasó o cambió de puerta.
 - Se consulta el estado del vuelo por número y fecha.
 - Los cambios de horario y puerta actualizan la reserva y disparan aviso.
 
-### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P0 · v40 probada por el PM; ronda 2 en la v41
+### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P0 · v40 probada por el PM; ronda 2 en la v41; ronda 3 en la v42
+
+**RONDA 3, reporte del PM del 10/10 sobre la v41** (`docs/qa/v41-resultado.md`). Dos cosas:
+
+- **Paso B — la valija contestaba antes de preguntar.** Con un vuelo sin contestar (Australia + EDI), la valija
+  ya sugería para Edimburgo mientras mostraba la pregunta. **Hecho en la v42:** un vuelo sin contestar no es
+  destino hasta que se conteste (`vueloEnDuda`, en el motor, la misma condición que muestra la pregunta). Al
+  modelo le llega crudo con la marca «todavía no dijo si es un destino o una escala». Y tampoco hace sacar lo
+  que se había pensado para ese lugar: se decide al contestar. La pregunta dice ahora *«Mientras no me digas,
+  la valija sigue con Australia»*.
+- **Paso A — sumar Orlando → Miami propuso sacar lo de Orlando. Causa SIN DETERMINAR.** Se encontró un camino
+  que lo produce: el vuelo nuevo con fecha **anterior** a la ida. El motor ordena por fecha, toma el primer
+  vuelo como punto de partida, y Orlando deja de ser destino. Pero no se sabe si fue eso. **No se publicó un
+  arreglo que apueste a esa causa.** Se publicó una línea al pie del panel «Saco…» con lo que miró el motor
+  (para dónde va, los vuelos en orden de fecha, la versión). La próxima captura lo resuelve.
+  De paso: el modelo volvía a proponer lo mismo con las palabras en otro orden («Poncho o piloto…» con «Piloto
+  o poncho…» ya en la lista). Ya no entra. Lo parecido con otras palabras sigue entrando: ver VAL-97.
+
 
 **RONDA 2, decisiones del PM del 09/10** (`docs/qa/v40-resultado.md`): la pregunta va **sólo en la valija**, no
 al cargar ni al importar; y sólo cuando son lugares distintos de verdad (EEUU con Orlando, Miami y NY no
@@ -1962,6 +1979,37 @@ Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena
    2 de 4 después), y sembrar con `Store.savePacking` tampoco (2 de 3). Ver VAL-86.
    `val77b-lo-aprendido-no-es-un-cambio.js` dio un timeout en su control negativo y pasó al repetir.
    `valija-bloque-b.js` dio un timeout una vez y 111/111 en dos corridas. Las tres son el síntoma de VAL-86.
+
+### VAL-95 · Las fechas y horas de las reservas son incómodas y no se limitan entre sí — P1 · diseño para el PM
+
+**Reporte del PM (10/10, v41):** *"el formato de día/hora de los vuelos es incómodo y no restringe la vuelta si
+ya elegí una fecha de ida"*.
+
+Medido acá: en el formulario del vuelo, «Sale» y «Llega» van uno al lado del otro en un campo de fecha y hora
+cada uno, y a 390 px de ancho **«Llega» se sale de la pantalla** (queda cortado a la derecha). Ninguno limita
+al otro: se puede guardar una llegada anterior a la salida. Son 18 campos iguales en los cinco tipos de
+reserva, en el formulario y en «revisar lo importado».
+
+Tres opciones dibujadas en `docs/design/fechas-de-reservas-opciones-{claro,oscuro}.png`: A (uno debajo del
+otro, con límite), B (día y hora por separado, la llegada arranca en el día de salida), C (días del viaje como
+botones). **No se construye hasta que el PM elija.** Relación con VAL-79: una fecha mal elegida es uno de los
+caminos que producen el paso A.
+
+### VAL-96 · El viaje del 10 al 19 se mostraba del 9 al 18 — P0 · hecho en la v42
+
+**Reporte del PM (10/10, v41).** Causa leída y reproducida: la app leía una fecha sin hora («2026-10-10») como
+medianoche de Greenwich, que en Argentina es el 9 a las 21. Se guardaba bien y se **mostraba** mal. Arreglado
+en `parseDT`: una fecha sin hora es del día local. De paso, «hoy» (para separar viajes próximos de pasados, y
+para el pedido de importar texto) también era el de Greenwich: después de las 21 en Argentina, un viaje que
+terminaba ese día pasaba a «pasados». Probado tocando el formulario en tres husos
+(`app/pruebas/val96-fechas-del-viaje.js`), con control negativo contra la v41.
+
+### VAL-97 · El modelo vuelve a proponer lo mismo con otras palabras — P3
+
+Desde la v42, lo que repite **con las mismas palabras en otro orden** no entra. Lo parecido con otras palabras
+(«Mochila de día» con «Mochila chica para el día» ya en la lista) sí entra. Igualar por parecido es arriesgado:
+«Mochila chica o riñonera» dice otra cosa y tiene que entrar. Si molesta en el uso, se mira con casos reales
+del PM, no con una regla inventada acá.
 
 ### VAL-78 · Avisar que algo que YA empacaste probablemente no sirva para el viaje nuevo — P1
 

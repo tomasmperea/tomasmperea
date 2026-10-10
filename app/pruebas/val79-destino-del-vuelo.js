@@ -280,7 +280,7 @@ async function contestarEnValija(p, k) {
       const p = await pagina(browser, HTML, viaje("Bariloche", [VUELO]));
       await valijaComoLaDelPM(p);
       const tx = (await p.locator(".dv-preg").innerText().catch(() => "")).replace(/\s+/g, " ");
-      ok(/Tenés un vuelo a Madrid y el viaje dice Bariloche\. Mientras no me digas, sugiero para los dos lugares/.test(tx),
+      ok(/Tenés un vuelo a Madrid y el viaje dice Bariloche\. Mientras no me digas, la valija sigue con Bariloche/.test(tx),
          `«${k}»: la pregunta de la valija dice lo del diseño`);
       const r = await contestarEnValija(p, k);
       if (!r) { await p.close(); continue; }

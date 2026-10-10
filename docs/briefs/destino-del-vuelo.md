@@ -194,3 +194,28 @@ Textual en `docs/qa/v40-resultado.md`. Sale como **v41**.
 
 Lo que la ronda 1 decía sobre preguntar en el formulario y al importar (puntos 5.1, 5.2 y criterios 1 y 2)
 queda reemplazado por esto.
+
+## Ronda 3 — reporte del PM del 10/10, después de probar la v41
+
+Textual en `docs/qa/v41-resultado.md`. Sale como **v42**.
+
+1. **Mientras la pregunta no tenga respuesta, el vuelo no cuenta para la valija** (paso B del PM). Un vuelo
+   está «en duda» cuando no tiene respuesta vigente, el viaje tiene destino escrito, el vuelo trae código y el
+   comparador dice que **no** coinciden. Es la misma condición que muestra la pregunta y vive en el motor
+   (`vueloEnDuda`), para que la pregunta y la lista no puedan decir cosas distintas.
+   - No suma: no es destino ni pista. Al modelo le llega el vuelo crudo con la marca «todavía no dijo si es
+     un destino o una escala: no sugieras nada para este lugar».
+   - No saca: lo que ya se había pensado para ese lugar (una lista armada con la v41) se queda hasta que se
+     conteste. Preguntar «¿es una escala?» y proponer sacar lo de ese lugar a la vez sería contestar antes de
+     preguntar.
+   - La pregunta dice *«Mientras no me digas, la valija sigue con {lo escrito}»*. Antes decía «sugiero para los
+     dos lugares», que dejó de ser cierto.
+2. **Paso A: causa sin determinar, se instrumenta.** Hay un camino reproducido (el vuelo nuevo con fecha
+   anterior a la ida) y puede haber otro. Al pie del panel «Saco…» va una línea con lo que miró el motor:
+   para dónde va la valija, los vuelos en orden de fecha y la versión. No se publica un arreglo que dependa de
+   acertar la causa.
+3. **Lo repetido con las palabras en otro orden no entra** (`palabrasDeClave`). Sólo igualdad del conjunto de
+   palabras; lo parecido queda en VAL-97.
+
+**Fuera de esta ronda:** el formato de las fechas de las reservas (VAL-95) espera que el PM elija una opción.
+El arreglo de fechas que se mostraban un día antes es VAL-96 y sale en la misma v42.
