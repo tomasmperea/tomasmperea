@@ -3,6 +3,8 @@
 **Qué probar:** todo lo del reporte del 10/10 sobre la v41, más la opción B de fechas que elegiste. Cuatro
 pasos, unos diez minutos. La v42 no llegó a probarse; esto la cubre.
 
+**Auditoría:** 78/100, candidato, sin bloqueantes (`docs/auditoria/2026-10-10-v43-val95.md`).
+
 **Dónde:** el Artifact publicado, **desde el teléfono**. Arriba, en la pantalla de inicio, tiene que decir **v43**.
 
 ---
@@ -15,7 +17,9 @@ pasos, unos diez minutos. La v42 no llegó a probarse; esto la cubre.
    sin nada cortado a la derecha. **Captura.**
 3. Elegí el día y la hora de salida. El día de «Llega» se completa solo con el mismo día, y el calendario de
    «Llega» no deja tocar días anteriores. Poné la hora de llegada y guardá.
-4. Probá guardar con un día y sin hora: tiene que decir *«Falta la hora de «Sale»»*.
+4. Otro vuelo: elegí día y hora de salida, y **sin tocar «Llega»** cambiá el día de salida a uno posterior.
+   La llegada sugerida lo sigue. Tocá **Guardar**: tiene que guardar sin pedirte la hora de llegada.
+5. Probá guardar con un día y sin hora en «Sale»: tiene que decir *«Falta la hora de «Sale»»*.
 
 ## 2 · La valija espera tu respuesta (paso B)
 
