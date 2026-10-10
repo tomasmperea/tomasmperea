@@ -10,6 +10,9 @@
 async function llenarFechaHora(page, id, valor) {
   const [dia, hora] = String(valor).split("T");
   const d = page.locator(`#${id}_dia`);
+  // Los controles negativos corren builds anteriores a la v43, donde la fecha
+  // era UN campo visible: ahí se escribe en ese campo, como lo haría la persona.
+  if (!(await d.count())) return page.locator("#" + id).fill(String(valor));
   await d.fill(dia);
   await d.locator("xpath=..").locator(".fh-t").fill(hora || "");
 }

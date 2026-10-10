@@ -311,7 +311,12 @@ const itemsDe = page => page.evaluate(() => Store.itemsOf("t1"));
     assert(/8 campos · de la tarjeta/.test(cuerpo), "el vuelo precargado dice qué vino de la tarjeta: " + JSON.stringify(cuerpo.slice(0, 80)));
     assert(/3 campos · vacíos/.test(cuerpo), "y qué quedó vacío");
     assert(/Queda adjunta a este vuelo/.test(cuerpo), "y que la tarjeta queda adjunta ahí");
-    const vacios = await page.evaluate(() => [...document.querySelectorAll('.imp-card-bd input[placeholder="No lo encontré"]')].map(i => i.value));
+    /* VAL-95: una fecha son dos campos (día y hora) y no admite texto adentro;
+       su «No lo encontré» va debajo (.fh-vacio) y el valor vive en el oculto. */
+    const vacios = await page.evaluate(() => [
+      ...[...document.querySelectorAll('.imp-card-bd input[placeholder="No lo encontré"]')].map(i => i.value),
+      ...[...document.querySelectorAll('.imp-card-bd [data-fh]')].filter(w => w.querySelector(".fh-vacio"))
+        .map(w => w.querySelector(".fh-d").value + w.querySelector(".fh-t").value + w.querySelector("input[type=hidden]").value)]);
     assert(vacios.length === 3 && vacios.every(v => v === ""), "los tres campos vacíos están vacíos y a la vista, no rellenados");
 
     await page.locator("#im-save").click();

@@ -10596,6 +10596,9 @@ function fhHtml(rotulo, valor, opts){
       `<input class="fh-t" type="time" value="${esc(p.hora)}" aria-label="${esc(rotulo)}: hora">` +
     `</div>` +
     `<input type="hidden" ${ident} value="${esc(valor || "")}">` +
+    /* Un campo de fecha no muestra texto de ayuda adentro: el «No lo
+       encontré» de la tarjeta de embarque va debajo. */
+    (opts.vacio ? `<span class="hint fh-vacio">No lo encontré</span>` : "") +
     `<span class="fh-msg" role="status"></span></div>`;
 }
 /** El estado de un campo: lo que va al oculto, o qué le falta. */
@@ -12916,7 +12919,7 @@ async function sheetImport(trip){
       // VAL-87 · origen y destino son el mismo campo que en todas partes.
       if(f==="from" || f==="to") return apCampoHtml(CAMPO_ES[f], r[f], {f});
       // VAL-95 · día y hora por separado, como en todas partes.
-      if(f==="start" || f==="end") return fhHtml(CAMPO_ES[f] || f, r[f], {f, rol:f, arrastra:f==="end"});
+      if(f==="start" || f==="end") return fhHtml(CAMPO_ES[f] || f, r[f], {f, rol:f, arrastra:f==="end", vacio});
       return `<div class="f"><label>${esc(CAMPO_ES[f]||f)}</label>
         <input data-f="${f}" class="mono" value="${esc(r[f]||"")}" ${vacio?`placeholder="No lo encontré"`:""}></div>`;
     };
