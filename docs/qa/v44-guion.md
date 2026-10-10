@@ -1,7 +1,7 @@
 # v44 — el guion del PM (la beta con una persona)
 
 **Qué probar:** que «Valija beta» esté lista para mandársela a la primera persona, y que tu app no cambió.
-Cinco minutos. Las dos tienen que decir **v44** arriba.
+Cinco minutos. **Auditoría:** 82/100, candidato (`docs/auditoria/2026-10-10-v44-beta.md`). Las dos tienen que decir **v44** arriba.
 
 ## 1 · «Valija beta» (el link nuevo)
 
@@ -12,6 +12,8 @@ Cinco minutos. Las dos tienen que decir **v44** arriba.
    «prueba» y mandalo. Si en cambio sale un cartel que dice que no se pueden dejar comentarios, **captura**.
 4. Creá un viaje, entrá y tocá **Compartir**: tiene que decir que un link no lleva el viaje y ofrecer sólo el
    resumen.
+5. En ese viaje tocá la pestaña **Pendientes**, y en la pantalla de inicio **Acerca de** (la «i»): los dos
+   tienen que decir que los datos están **en este teléfono**, no que viajan con el link.
 
 ## 2 · Tu app (el link de siempre)
 

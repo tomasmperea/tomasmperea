@@ -82,7 +82,7 @@ Si los comentarios me llegan desde acá (pregunta 5), los resumo en `docs/beta/f
 
 ## Para pasar de una persona a cinco
 
-Se extiende **sin cambiar nada** si las cuatro preguntas de arriba dan bien: el mismo link, y cada uno guarda lo
+Se extiende **sin cambiar nada** si las cinco preguntas de arriba dan bien: el mismo link, y cada uno guarda lo
 suyo. Lo que cambia con cinco:
 
 - **Los comentarios se ven entre ellos** (lo dice el contrato de la plataforma). Si eso molesta, «Contanos» pasa a guardar el comentario en privado,
@@ -90,7 +90,7 @@ suyo. Lo que cambia con cinco:
 - **Cada publicación sale a las dos copias.** Desde la v44, publicar es: la app del PM y «Valija beta», con la
   misma versión, y los cuatro `grep` sobre las dos.
 
-Si alguna de las cuatro preguntas da mal:
+Si alguna de las cinco preguntas da mal:
 
 | Si… | Entonces |
 |---|---|
