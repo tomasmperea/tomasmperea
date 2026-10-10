@@ -2,7 +2,7 @@
 
 **Qué probar:** lo que reportaste el 10/10 sobre la v41. Tres pasos, unos cinco minutos.
 
-**Dónde:** el Artifact publicado, **desde el teléfono**. Abajo de todo tiene que decir **v42**.
+**Dónde:** el Artifact publicado, **desde el teléfono**. Arriba tiene que decir **v42**, igual que decía v41.
 
 **Auditoría:** 80/100, candidato, sin bloqueantes (`docs/auditoria/2026-10-10-v42-ronda3.md`).
 
