@@ -166,6 +166,46 @@ const existe = async (p, sel) => (await p.locator(sel).count()) > 0;
     await p.close();
   }
 
+  titulo("3c · la llegada que sugirió la app sigue siendo sugerencia aunque se mueva la salida");
+  {
+    /* B2 de la auditoría de la v43: sugerida 24, salida movida a 27, Guardar
+       pedía la hora de «Llega». Es el caso que protegía `fhAuto`. */
+    const p = await pagina(browser);
+    await nuevaReserva(p, "flight");
+    if (await existe(p, dia("i_start"))) {
+      await p.locator("#i_title").fill("Sugerida y movida"); await p.locator("#i_provider").fill("Iberia");
+      await p.locator(dia("i_start")).fill("2026-10-24"); await hora(p, "i_start").fill("10:00");
+      await p.locator(dia("i_start")).fill("2026-10-27");
+      ok(await p.locator(dia("i_end")).inputValue() === "2026-10-27", "la llegada sugerida sigue a la salida", "3");
+      await p.locator("#save").click(); await p.waitForTimeout(600);
+      const cerro = (await p.locator("#i_title").count()) === 0;
+      const toast = cerro ? "" : await p.locator(".toast").last().innerText().catch(() => "");
+      ok(cerro, `Guardar cierra la hoja${cerro ? "" : " (dice «" + toast + "»)"}`, "3");
+      const v = (await guardadas(p)).find(i => i.title === "Sugerida y movida");
+      ok(v && v.start === "2026-10-27T10:00" && !v.end, `se guarda la salida y la llegada no se inventa: ${v && v.start} → ${v && v.end}`, "3");
+    } else ok(false, "hay día y hora separados", "3");
+    await p.close();
+  }
+
+  titulo("3d · una llegada guardada con hora se corre entera al mover la salida después");
+  {
+    const p = await pagina(browser);
+    await p.locator('[data-item="v1"]').click();
+    await p.waitForSelector("#i_title", { timeout:8000 });
+    if (await existe(p, dia("i_start"))) {
+      await p.locator(dia("i_start")).fill("2026-10-23");
+      await p.locator("#save").click(); await p.waitForTimeout(600);
+      const cerro = (await p.locator("#i_title").count()) === 0;
+      ok(cerro, "Guardar cierra la hoja", "3");
+      /* Se lee lo GUARDADO, no la memoria: un Guardar rechazado igual escribe
+         en memoria (defecto anterior, VAL-100) y esta aserción pasó en falso. */
+      const g = await p.evaluate(() => JSON.parse(localStorage.getItem("valija.v1")).items.t1.find(i => i.id === "v1"));
+      ok(g && g.start === "2026-10-23T22:10" && g.end === "2026-10-24T14:35",
+         `la llegada se corre los mismos días que la salida, con su hora: ${g && g.start} → ${g && g.end}`, "3");
+    } else ok(false, "hay día y hora separados", "3");
+    await p.close();
+  }
+
   titulo("4 · alojamiento: el check-out no se completa solo, pero tiene límite");
   {
     const p = await pagina(browser);

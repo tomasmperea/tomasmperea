@@ -10636,6 +10636,10 @@ function fhEnganchar(raiz){
       w.dataset.fhTocado = "1";         // lo tocó la persona: ya es su dato
       fhEscribir(w);
       if(w.dataset.fh !== "start") return;
+      // El día de antes del cambio, para correr la llegada sin perder la distancia.
+      const previoDeEsteCambio = w.dataset.fhDiaActual || "";
+      w.dataset.fhDiaPrevio = previoDeEsteCambio;
+      w.dataset.fhDiaActual = w.querySelector(".fh-d").value;
       let c = w.parentElement;
       while(c && !c.querySelector('[data-fh="end"]')) c = c.parentElement;
       const fin = c && c.querySelector('[data-fh="end"]');
@@ -10648,9 +10652,28 @@ function fhEnganchar(raiz){
          tocado, así que sin hora no exige nada ni guarda nada. Correr una
          llegada que quedó antes de la salida SÍ cambia el dato, y se escribe. */
       if(!fd.value && fin.dataset.fhArrastra) fd.value = d;
-      else if(fd.value && fd.value < d){ fd.value = d; fin.dataset.fhTocado = "1"; }
+      else if(fd.value && fd.value < d){
+        fd.value = d;
+        /* Tres casos, y la primera versión de este arreglo trató los tres igual:
+           marcaba "tocada" también la llegada que había SUGERIDO la app, y mover
+           la salida después bloqueaba Guardar pidiendo una hora que nadie
+           escribió (lo encontró la auditoría, al sacar `fhAuto`). */
+        const oculto = fin.querySelector("input[type=hidden]");
+        if(fin.dataset.fhTocado || fin.querySelector(".fh-t").value){
+          /* Un dato con hora se corre ENTERO: conserva los días que había entre
+             la salida y la llegada. Correrlo al mismo día dejaba una llegada a
+             las 14:35 para una salida a las 22:10, y Guardar la rechazaba. */
+          const previo = w.dataset.fhDiaPrevio;
+          const gap = previo ? Math.max(0, nightsBetween(previo, antes)) : 0;
+          fd.value = addDays(d, gap);
+          fin.dataset.fhTocado = "1";
+        }
+        else if(oculto.value) oculto.value = d;   // un dato viejo sin hora: se corre el día
+        // si no, era una sugerencia de la app y sigue siéndolo
+      }
       if(fd.value !== antes) fhEscribir(fin);
     };
+    w.dataset.fhDiaActual = w.querySelector(".fh-d").value;
     w.querySelectorAll(".fh-d, .fh-t").forEach(i=>{ i.addEventListener("input", alTocar); i.addEventListener("change", alTocar); });
     // Al abrir: el fin ya no deja elegir un día anterior al inicio guardado.
     if(w.dataset.fh === "end"){

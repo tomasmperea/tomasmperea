@@ -1986,11 +1986,15 @@ Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena
 pantallas (formulario, revisar lo importado y el vuelo nuevo desde una tarjeta de embarque):
 
 - Cada fecha son dos campos: el **día** (calendario) y la **hora** (reloj). Por dentro se guarda igual que antes.
-- El fin (Llega, Check-out, Devolución, Termina) no deja elegir un día anterior al inicio, y si el inicio pasa
-  por encima, lo sigue. En un vuelo, la llegada arranca en el día de la salida.
+- El fin (Llega, Check-out, Devolución, Termina) no deja elegir un día anterior al inicio. En un vuelo, la
+  llegada arranca **sugerida** en el día de la salida. Si la salida pasa por encima del fin: una llegada
+  sugerida la sigue y sigue siendo sugerencia; una llegada guardada con hora se corre los mismos días que se
+  corrió la salida (salida del 20 al 23 y llegada del 21 → llegada del 24).
 - Un día sin hora **que la persona escribió** no se guarda en silencio: Guardar dice *«Falta la hora de
-  «Sale»»* y lleva el foco ahí. Lo que la persona no tocó no se le exige: la llegada que completó la app sola
-  no frena Guardar, y una reserva vieja con fecha sin hora se vuelve a guardar sin pedir nada.
+  «Sale»»* y lleva el foco ahí. Lo que la persona no tocó no se le exige: la llegada que sugirió la app no
+  frena Guardar —tampoco si después se mueve la salida—, y una reserva vieja con fecha sin hora se vuelve a
+  guardar sin pedir nada. (La segunda versión de la v43 bloqueaba la llegada sugerida al mover la salida; lo
+  encontró la confirmación de la auditoría.)
 - Abrir una reserva vieja y guardar sin tocar la deja idéntica, aunque tenga una fecha sin hora. **La primera
   versión de la v43 no lo cumplía** (pedía la hora y no cerraba) y este backlog decía que sí: lo encontró la
   auditoría (`docs/auditoria/2026-10-10-v43-val95.md`), con una prueba que pasaba en falso porque no miraba
@@ -2017,6 +2021,15 @@ Tres opciones dibujadas en `docs/design/fechas-de-reservas-opciones-{claro,oscur
 otro, con límite), B (día y hora por separado, la llegada arranca en el día de salida), C (días del viaje como
 botones). **No se construye hasta que el PM elija.** Relación con VAL-79: una fecha mal elegida es uno de los
 caminos que producen el paso A.
+
+### VAL-100 · Un Guardar rechazado igual cambia la reserva en memoria — P1 · encontrado de paso en la v43
+
+Preexistente (también en la v42). El formulario de la reserva copia los campos sobre el MISMO objeto que tiene
+`Store` antes de validar (`collect()`), así que cuando Guardar rechaza («Poné un título», «La fecha de fin es
+anterior a la de inicio»), la reserva en pantalla ya quedó cambiada aunque no se guardó. Reproducción: abrir un
+vuelo, poner la salida después de la llegada a mano, tocar Guardar (rechaza), cancelar: la tarjeta muestra la
+fecha nueva hasta recargar. Y como `saveLocal` escribe la memoria entera, **un guardado posterior de otra cosa
+podría persistirlo** — no comprobado. Una prueba de la v43 pasó en falso por esto (leía la memoria).
 
 ### VAL-98 · Cada persona ve sólo sus viajes — P0 para la beta cerrada · propuesta, sin decidir
 
