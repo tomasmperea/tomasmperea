@@ -1864,6 +1864,12 @@ la causa sigue sin determinar, y la auditoría de VAL-85 lo señaló. En esa aud
 `valija.v1` en 2 de 3 corridas con sabotaje, siempre en el bloque «E · entrando»; en las corridas limpias,
 nunca.
 
+**Dato nuevo (10/10, regresiones de la v44):** en una corrida completa de a una cayeron `val79` («la siembra:
+sembró · guardado: {"packing":[],"trips":1}») y **también `tier-del-modelo`** («y sigue ahí después de
+recargar — encontré 0 entradas»). Es el mismo síntoma —después de recargar, lo escrito no está— en un arnés que
+no siembra la valija. Repetidas dos veces cada una contra la v44 y contra la v43: 8 de 8 en verde. No depende de
+la versión; la causa sigue sin determinar.
+
 ### VAL-88 · Cinco textos de la valija que quedaron de antes, vistos durante VAL-85 — P2
 
 Los encontró el agente de VAL-85 mientras trabajaba. **Ninguno lo trajo esa entrega**: todos se ven igual en
