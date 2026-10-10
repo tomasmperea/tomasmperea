@@ -2031,19 +2031,35 @@ vuelo, poner la salida después de la llegada a mano, tocar Guardar (rechaza), c
 fecha nueva hasta recargar. Y como `saveLocal` escribe la memoria entera, **un guardado posterior de otra cosa
 podría persistirlo** — no comprobado. Una prueba de la v43 pasó en falso por esto (leía la memoria).
 
-### VAL-98 · Cada persona ve sólo sus viajes — P0 para la beta cerrada · propuesta, sin decidir
+### VAL-98 · Cada persona ve sólo sus viajes en la nube — P1 · en espera de lo que conteste la beta con una persona
 
 Hoy la base del Artifact es una sola y los viajes viven en la raíz (`trips/…`): quien abre el link ve los
 viajes de todos, y quien puede editar puede borrar los de otros. Bloquea compartir la app (ver
 `docs/beta-cerrada.md`). La plataforma ofrece una carpeta privada por persona (`data/users/<id>/`) según su
 contrato; **no está probado acá**. Incluye pasar los viajes actuales del PM a su carpeta sin perder nada, y
 deja de funcionar compartir un viaje entre compañeros (vuelve como historia propia si la beta lo pide).
-Antes de diseñarla: el experimento del punto 2 de `docs/beta-cerrada.md` (quién puede abrir el link).
+**Ya no bloquea la beta (10/10):** los testers usan «Valija beta», sin base, y cada uno guarda en su
+teléfono (`docs/beta/una-persona.md`). Vuelve si los datos no sobreviven entre visitas, si hace falta usarla
+en dos dispositivos, o si «Contanos» tiene que ser privado.
 
-### VAL-99 · «Contanos»: feedback desde la app — P1 para la beta cerrada · propuesta, sin decidir
+### VAL-99 · «Contanos»: feedback desde la app — P1 para la beta cerrada · hecho en la v44, versión mínima
 
-Un botón que guarda un comentario con la pantalla y la versión, en una colección que lee el PM (y Claude, para
-resumirlo). Ver `docs/beta-cerrada.md`.
+**Hecho en la v44:** un botón en la pantalla de inicio que abre el comentario de claude.ai anclado a esa
+pantalla (`comments`, forma `composer_only`: la página no escribe nada ni pide permiso, y el link puede seguir
+siendo público). Sin la capacidad, no aparece; si la vista no admite comentarios, lo dice y se va. Sólo se
+declara en «Valija beta» (`docs/beta/una-persona.md`). Probado en `app/pruebas/val99-beta-una-persona.js`
+contra un simulador escrito leyendo `comments.d.ts`; **no probado con la plataforma real**.
+
+**Límite conocido:** los comentarios los ve todo el que abre el Artifact. Con cinco testers se ven entre ellos.
+Si eso molesta, la versión siguiente guarda el comentario en privado, y eso necesita base de datos.
+
+### VAL-101 · Sin base compartida, decir dónde quedan los datos — hecho en la v44
+
+En «Valija beta» cada tester guarda en su teléfono. La pantalla de inicio lo dice una vez («Tus viajes se
+guardan en este teléfono…», con «Entendido»), «Compartir el viaje» deja de ofrecer un link que no lleva el
+viaje, y «Acerca de» deja de decir «Compartir ver / editar». En la app del PM (con base) no cambia nada y el
+aviso no aparece ni un instante al arrancar: había un instante en que sí, lo encontró el control `control-6`
+y lo cierra `Store.soloEnEsteDispositivo()`.
 
 ### VAL-96 · El viaje del 10 al 19 se mostraba del 9 al 18 — P0 · hecho en la v42
 

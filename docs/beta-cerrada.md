@@ -3,7 +3,9 @@
 **Pedido del PM (10/10):** *"si todas estas pruebas salen bien, me gustaría publicar la app y compartirla con
 un grupo reducido de usuarios para testearla y empezar a mapear feedback"*.
 
-**Estado:** propuesta del PO para decidir. Nada de esto está construido.
+**Estado (10/10):** el PM decidió testers **externos**, unas **5**, empezando por **una**. El camino elegido
+no necesita VAL-98 para empezar: una copia aparte sin base compartida. El kit está en
+`docs/beta/una-persona.md`. Lo de abajo es el análisis que llevó a eso.
 
 ---
 
