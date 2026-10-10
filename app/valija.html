@@ -10601,15 +10601,18 @@ function fhHtml(rotulo, valor, opts){
     (opts.vacio ? `<span class="hint fh-vacio">No lo encontré</span>` : "") +
     `<span class="fh-msg" role="status"></span></div>`;
 }
-/** El estado de un campo: lo que va al oculto, o qué le falta. */
+/** El estado de un campo: lo que va al oculto, o qué le falta.
+    Un campo que la persona NO tocó se queda con lo guardado y no exige nada.
+    Lo encontró la auditoría: una reserva vieja con fecha sin hora no se podía
+    volver a guardar sin tocarla («Falta la hora»), y una llegada que puso la
+    app sola bloqueaba Guardar. En los dos casos se le pedía a la persona algo
+    que ella no escribió. */
 function fhLeer(w){
+  const oculto = w.querySelector("input[type=hidden]");
+  if(!w.dataset.fhTocado) return { valor:oculto.value, falta:"" };
   const d = w.querySelector(".fh-d").value, t = w.querySelector(".fh-t").value;
   if(d && t) return { valor:`${d}T${t}`, falta:"" };
   if(!d && !t) return { valor:"", falta:"" };
-  /* Un día que puso la app (la llegada que arranca en el día de la salida) y
-     la persona no tocó no es un dato a medias: «Llega» es opcional, y pedirle
-     la hora bloqueaba Guardar por algo que ella no escribió. */
-  if(d && !t && w.dataset.fhAuto) return { valor:"", falta:"" };
   return { valor:"", falta: d ? "hora" : "día" };
 }
 function fhEscribir(w){
@@ -10617,6 +10620,9 @@ function fhEscribir(w){
   w.querySelector("input[type=hidden]").value = r.valor;
   const msg = w.querySelector(".fh-msg");
   msg.textContent = r.falta ? `Falta ${r.falta === "hora" ? "la hora" : "el día"}.` : "";
+  // «No lo encontré» (tarjeta de embarque) se va en cuanto el campo tiene algo.
+  const vacio = w.querySelector(".fh-vacio");
+  if(vacio) vacio.hidden = !!(w.querySelector(".fh-d").value || w.querySelector(".fh-t").value);
   return r;
 }
 /** Engancha los campos de `raiz`. El par inicio/fin se busca en el contenedor
@@ -10627,7 +10633,7 @@ function fhEnganchar(raiz){
     if(w.dataset.fhListo) return;
     w.dataset.fhListo = "1";
     const alTocar = ()=>{
-      delete w.dataset.fhAuto;          // lo tocó la persona: ya es su dato
+      w.dataset.fhTocado = "1";         // lo tocó la persona: ya es su dato
       fhEscribir(w);
       if(w.dataset.fh !== "start") return;
       let c = w.parentElement;
@@ -10638,8 +10644,11 @@ function fhEnganchar(raiz){
       if(!d){ fd.removeAttribute("min"); return; }
       fd.min = d;
       const antes = fd.value;
-      if(!fd.value && fin.dataset.fhArrastra){ fd.value = d; fin.dataset.fhAuto = "1"; }
-      else if(fd.value && fd.value < d) fd.value = d;
+      /* Completar una llegada vacía es una sugerencia: no marca el campo como
+         tocado, así que sin hora no exige nada ni guarda nada. Correr una
+         llegada que quedó antes de la salida SÍ cambia el dato, y se escribe. */
+      if(!fd.value && fin.dataset.fhArrastra) fd.value = d;
+      else if(fd.value && fd.value < d){ fd.value = d; fin.dataset.fhTocado = "1"; }
       if(fd.value !== antes) fhEscribir(fin);
     };
     w.querySelectorAll(".fh-d, .fh-t").forEach(i=>{ i.addEventListener("input", alTocar); i.addEventListener("change", alTocar); });

@@ -40,7 +40,7 @@ const info = m => console.log("  info  " + m);
 const titulo = t => console.log("\n· " + t);
 
 const VIEJO = { id:"v1", type:"flight", title:"Vuelo viejo", from:"EZE", to:"MAD", start:"2026-10-20T22:10", end:"2026-10-21T14:35", provider:"Iberia", confirmation:"IB1" };
-const SIN_HORA = { id:"v2", type:"activity", title:"Excursión", start:"2026-10-22", end:"", provider:"", confirmation:"" };
+const SIN_HORA = { id:"v2", type:"act", title:"Excursión", start:"2026-10-22", end:"", provider:"", confirmation:"" };
 const SEMILLA = { trips:[{ id:"t1", name:"Prueba", destination:"Madrid", startDate:"2026-10-20", endDate:"2026-10-30", hue:200 }],
   items:{ t1:[VIEJO, SIN_HORA] }, packing:{} };
 
@@ -190,9 +190,28 @@ const existe = async (p, sel) => (await p.locator(sel).count()) > 0;
         ok(d === item.start.slice(0, 10), `«${item.title}» se abre con su día`, "5");
       }
       await p.locator("#save").click(); await p.waitForTimeout(600);
+      /* La auditoría encontró que esto pasaba en falso: un Guardar BLOQUEADO
+         deja el dato intacto. Se exige que la hoja se haya cerrado. */
+      const cerro = (await p.locator("#i_title").count()) === 0;
+      const cartel = cerro ? "" : await p.locator(".toast").last().innerText().catch(() => "");
+      ok(cerro, `«${item.title}»: Guardar sin tocar cierra la hoja${cerro ? "" : " (dice «" + cartel + "»)"}`, "5");
+      if (!cerro) { await p.keyboard.press("Escape"); await p.locator("#cancel, .sheet-ft .btn.ghost").first().click().catch(() => {}); await p.waitForTimeout(300); }
       const g = (await guardadas(p)).find(i => i.id === id);
       ok(g && g.start === item.start && (g.end || "") === (item.end || ""), `«${item.title}» queda idéntica: ${g && g.start} → ${g && g.end}`, "5");
     }
+    await p.close();
+  }
+
+  titulo("5b · la reserva vieja sin hora: cambiar de tipo y volver no pierde el día");
+  {
+    const p = await pagina(browser);
+    await p.locator('[data-item="v2"]').click();
+    await p.waitForSelector("#i_title", { timeout:8000 });
+    await p.locator('#tp button[data-t="note"]').click(); await p.waitForTimeout(150);
+    await p.locator('#tp button[data-t="act"]').click(); await p.waitForTimeout(150);
+    await p.locator("#save").click(); await p.waitForTimeout(600);
+    const g = (await guardadas(p)).find(i => i.id === "v2");
+    ok(g && g.start === "2026-10-22", `el día sigue: ${g && g.start}`, "5");
     await p.close();
   }
 

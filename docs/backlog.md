@@ -1988,9 +1988,15 @@ pantallas (formulario, revisar lo importado y el vuelo nuevo desde una tarjeta d
 - Cada fecha son dos campos: el **día** (calendario) y la **hora** (reloj). Por dentro se guarda igual que antes.
 - El fin (Llega, Check-out, Devolución, Termina) no deja elegir un día anterior al inicio, y si el inicio pasa
   por encima, lo sigue. En un vuelo, la llegada arranca en el día de la salida.
-- Un día sin hora no se guarda en silencio: Guardar dice *«Falta la hora de «Sale»»* y lleva el foco ahí. La
-  llegada que completó la app sola no cuenta como a medias (la prueba encontró que si no, bloqueaba Guardar).
-- Abrir una reserva vieja y guardar sin tocar la deja idéntica, aunque tenga una fecha sin hora.
+- Un día sin hora **que la persona escribió** no se guarda en silencio: Guardar dice *«Falta la hora de
+  «Sale»»* y lleva el foco ahí. Lo que la persona no tocó no se le exige: la llegada que completó la app sola
+  no frena Guardar, y una reserva vieja con fecha sin hora se vuelve a guardar sin pedir nada.
+- Abrir una reserva vieja y guardar sin tocar la deja idéntica, aunque tenga una fecha sin hora. **La primera
+  versión de la v43 no lo cumplía** (pedía la hora y no cerraba) y este backlog decía que sí: lo encontró la
+  auditoría (`docs/auditoria/2026-10-10-v43-val95.md`), con una prueba que pasaba en falso porque no miraba
+  si la hoja se cerraba. Ahora lo mira, y contra esa versión falla.
+- Cambio de flujo a saber: en «revisar lo importado», una fecha que la lectura trajo sin hora y que la persona
+  completa a medias pide la hora. La v42 la vaciaba sin decir nada.
 - Probado tocando cada campo en `app/pruebas/val95-dia-y-hora.js`, con control negativo contra la v42.
 
 **Anotado:** un vuelo que cruza la línea de cambio de fecha hacia el este (Auckland → Honolulu) llega un día
@@ -2011,6 +2017,20 @@ Tres opciones dibujadas en `docs/design/fechas-de-reservas-opciones-{claro,oscur
 otro, con límite), B (día y hora por separado, la llegada arranca en el día de salida), C (días del viaje como
 botones). **No se construye hasta que el PM elija.** Relación con VAL-79: una fecha mal elegida es uno de los
 caminos que producen el paso A.
+
+### VAL-98 · Cada persona ve sólo sus viajes — P0 para la beta cerrada · propuesta, sin decidir
+
+Hoy la base del Artifact es una sola y los viajes viven en la raíz (`trips/…`): quien abre el link ve los
+viajes de todos, y quien puede editar puede borrar los de otros. Bloquea compartir la app (ver
+`docs/beta-cerrada.md`). La plataforma ofrece una carpeta privada por persona (`data/users/<id>/`) según su
+contrato; **no está probado acá**. Incluye pasar los viajes actuales del PM a su carpeta sin perder nada, y
+deja de funcionar compartir un viaje entre compañeros (vuelve como historia propia si la beta lo pide).
+Antes de diseñarla: el experimento del punto 2 de `docs/beta-cerrada.md` (quién puede abrir el link).
+
+### VAL-99 · «Contanos»: feedback desde la app — P1 para la beta cerrada · propuesta, sin decidir
+
+Un botón que guarda un comentario con la pantalla y la versión, en una colección que lee el PM (y Claude, para
+resumirlo). Ver `docs/beta-cerrada.md`.
 
 ### VAL-96 · El viaje del 10 al 19 se mostraba del 9 al 18 — P0 · hecho en la v42
 

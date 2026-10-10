@@ -20,7 +20,7 @@ códigos de reserva, notas y documentos adjuntos. Si le das permiso de edición 
 también **editar y borrar los tuyos**, y todos ven los de todos.
 
 La plataforma tiene la pieza para resolverlo: una carpeta privada por persona (`data/users/<id>/`), que ni
-el dueño del Artifact puede leer. Mover los viajes ahí es una historia propia (**VAL-98**, abajo).
+el dueño del Artifact puede leer. Mover los viajes ahí es una historia propia (**VAL-98**, en `docs/backlog.md`).
 
 ### 2. No sabemos todavía QUIÉN puede abrir el link — se averigua con una prueba de 5 minutos
 
