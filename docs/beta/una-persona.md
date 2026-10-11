@@ -34,9 +34,11 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
 3. **¿Sus viajes siguen ahí al día siguiente?** El visor de claude.ai guarda los datos del navegador por
    página; si los borrara entre visitas, la beta no sirve así y hay que adelantar VAL-98.
 4. **¿Le aparece «Contanos»?** Depende de que la plataforma le permita comentar a alguien de afuera.
-5. **¿Me llegan sus comentarios?** La plataforma promete que el comentario queda en el Artifact y que lo ven
-   quienes lo abren; que me llegue a mí para resumirlo **no está comprobado**. Si no llega, los leés vos
-   abriendo la beta, o me los pegás.
+5. **¿Me llegan sus comentarios?** Comprobado a medias el 11/10 con el comentario «prueba» del PM: «Contanos»
+   abrió el comentario desde su teléfono, anclado a la pantalla de inicio, y yo lo pude leer y contestar. Pero
+   ese me **avisó** porque el PM, como dueño, lo mandó a Claude; un tester no puede hacer eso. Lo que dice la
+   herramienta: los comentarios comunes **no me avisan solos, pero los puedo leer cuando me lo pidas**. O sea:
+   decime «leé los comentarios de la beta» y los resumo. Falta ver uno escrito por alguien de afuera.
 
 ## Dónde está
 
