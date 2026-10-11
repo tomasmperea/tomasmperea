@@ -22,6 +22,9 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
   admite comentarios, el botón lo dice y se va.
 - **«Tus viajes se guardan en este teléfono»** (VAL-101): un aviso una sola vez, sólo sin base compartida. En la
   app del PM no aparece nunca.
+- **Sin promesas de funciones futuras** (v45, decisión del PM del 11/10): «Acerca de» ya no muestra «Próxima
+  iteración» ni el panel de pendientes anuncia avisos por correo. Se sacó **de las dos copias**, la tuya
+  también: es un solo archivo.
 - **«Compartir el viaje»** sin base ya no ofrece un link que no lleva el viaje: ofrece el resumen para pegar en
   un chat. «Acerca de» y el panel de pendientes dejan de decir que los datos viajan con el link.
 

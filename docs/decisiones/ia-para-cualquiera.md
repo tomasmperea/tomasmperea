@@ -30,6 +30,7 @@ Lo que **no** dice el contrato, y no está comprobado: si una cuenta **gratuita*
 | Armar la valija | **Funciona** (medido): 28 ítems con las reglas propias de la app. Avisa: *«No pude ajustarla a Madrid, así que puede faltarte algo del lugar»* |
 | Que la valija se actualice al cargar un vuelo | Por lo que dice el código, sigue con reglas y sin el ajuste por destino. **No medido hoy** |
 | **Importar** (pegar un mail, subir un PDF o una foto) | **No funciona** (medido): *«La lectura automática no está disponible en esta vista. Cargá la reserva a mano desde Agregar»* |
+| Importar, si el tester **tiene** cuenta pero **rechaza** el permiso | Tampoco funciona: deja pegar el texto y recién al interpretarlo dice *«La lectura automática no está habilitada en esta vista»* (medido por la auditoría con un simulador, no con la plataforma real) |
 
 O sea: **sin cuenta, Valija pierde la función que más la diferencia** —leer las confirmaciones— y la valija
 queda genérica. El resto anda.
@@ -46,9 +47,10 @@ Hay que sacar a Valija de adentro de Claude. Es un cambio de producto, no un arr
 | Qué hace falta construir | Nada | Un servidor chico que guarde la clave de la API (nunca puede ir en la página) y haga los pedidos al modelo; límites de uso por persona para que nadie lo vacíe; política de privacidad, porque los mails de las reservas pasan por nuestro servidor |
 | Datos | Base compartida o el teléfono | El teléfono (como la beta) o una base propia con cuentas de usuario |
 
-La app en sí se mueve casi entera: es un solo archivo sin dependencias de Claude salvo `claude.use()`, que ya
-está aislado y ya maneja la ausencia. Lo que se construye es lo de alrededor: el servidor de IA, el hosting y,
-si se quieren datos en la nube, cuentas.
+La app es un solo archivo, y todo lo que usa de Claude pasa por `claude.use()`, que ya maneja la ausencia. Pero
+lo usa en **seis** lugares, no en uno: la IA (tres), la base de datos, las descargas y «Contanos». Mudarla es
+reemplazar esas piezas —el servidor de IA, el guardado, la descarga del PDF y la forma de juntar comentarios—
+además del hosting y, si se quieren datos en la nube, cuentas. No es «copiar el archivo a otro lado».
 
 **Lo que no sé y no voy a inventar:** cuánto costaría por usuario. Depende de cuántas reservas importa cada
 persona y de qué modelo se use, y se calcula con los precios vigentes, no de memoria. El analista lo puede

@@ -2046,6 +2046,12 @@ sacarla de Claude: hosting propio y un servidor chico que llame a la API con nue
 política de privacidad. Análisis completo en `docs/decisiones/ia-para-cualquiera.md`. **Primer paso si se
 decide:** dimensionar el costo por usuario con el analista, con supuestos explícitos y precios vigentes.
 
+### VAL-103 · «Acerca de» dice «Funciona hoy» de funciones que sin IA no funcionan — P2 · preexistente
+
+Lo anotó la auditoría de la v45. «Acerca de» marca «Lectura de confirmaciones» y «Foto de tarjeta de embarque»
+como «Funciona hoy». Para un tester sin cuenta de Claude, o que rechazó el permiso, es falso: Importar no anda
+(ver `docs/decisiones/ia-para-cualquiera.md`). Hay que decidir cómo se dice, no sólo esconderlo.
+
 ### VAL-98 · Cada persona ve sólo sus viajes en la nube — P1 · en espera de lo que conteste la beta con una persona
 
 Hoy la base del Artifact es una sola y los viajes viven en la raíz (`trips/…`): quien abre el link ve los
