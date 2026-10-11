@@ -2037,6 +2037,15 @@ vuelo, poner la salida después de la llegada a mano, tocar Guardar (rechaza), c
 fecha nueva hasta recargar. Y como `saveLocal` escribe la memoria entera, **un guardado posterior de otra cosa
 podría persistirlo** — no comprobado. Una prueba de la v43 pasó en falso por esto (leía la memoria).
 
+### VAL-102 · Valija para cualquiera, sin cuenta de Claude — estratégica · para decidir con datos de la beta
+
+**Pedido del PM (11/10):** *"la idea es que la app le funcione a cualquier usuario independiente de cualquier
+uso de agentes o cuentas pagas"*. Hoy la IA corre con la cuenta de Claude de quien mira la página, por contrato
+de la plataforma: sin cuenta, Importar no funciona y la valija queda con reglas. Hacerla para cualquiera es
+sacarla de Claude: hosting propio y un servidor chico que llame a la API con nuestra clave, con límites de uso y
+política de privacidad. Análisis completo en `docs/decisiones/ia-para-cualquiera.md`. **Primer paso si se
+decide:** dimensionar el costo por usuario con el analista, con supuestos explícitos y precios vigentes.
+
 ### VAL-98 · Cada persona ve sólo sus viajes en la nube — P1 · en espera de lo que conteste la beta con una persona
 
 Hoy la base del Artifact es una sola y los viajes viven en la raíz (`trips/…`): quien abre el link ve los

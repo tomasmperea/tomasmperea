@@ -30,7 +30,9 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
 1. **¿Puede abrir el link alguien de afuera de tu cuenta?** La beta no declara base de datos, que era lo que
    el contrato marcaba como «interno de la organización», así que debería poder. No está comprobado.
 2. **¿Le anda la inteligencia artificial?** Usa la cuenta de Claude del tester: la primera vez le pide permiso.
-   Sin cuenta o si dice que no, la app funciona igual pero sin armar la valija con IA ni leer mails.
+   Sin IA, Importar no funciona (pide cargar a mano) y la valija se arma con reglas, sin el ajuste por destino
+   (medido el 11/10). Si alcanza con una cuenta gratuita no está comprobado. Es la pregunta que más pesa: ver
+   `docs/decisiones/ia-para-cualquiera.md`.
 3. **¿Sus viajes siguen ahí al día siguiente?** El visor de claude.ai guarda los datos del navegador por
    página; si los borrara entre visitas, la beta no sirve así y hay que adelantar VAL-98.
 4. **¿Le aparece «Contanos»?** Depende de que la plataforma le permita comentar a alguien de afuera.
@@ -68,6 +70,7 @@ La copia la publico yo, con lo que le toca pedirle a la plataforma; vos sólo la
 >
 > 1. Creá un viaje: uno que tengas pronto, o uno inventado.
 > 2. Cargá una reserva. Si tenés el mail de confirmación de algo, probá **Importar** y pegá el texto.
+>    Contame si te anduvo: es la parte que necesita tu cuenta de Claude.
 > 3. Entrá a **Valija** y armá la lista de equipaje.
 > 4. Volvé a abrirla mañana y fijate si tu viaje sigue ahí.
 >

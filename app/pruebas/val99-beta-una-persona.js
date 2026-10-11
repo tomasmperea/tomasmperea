@@ -199,6 +199,10 @@ const ultimoToast = p => p.locator(".toast").last().innerText().catch(() => "");
     ok(base ? chip : !chip, `«Acerca de» ${base ? "sigue diciendo" : "no dice"} «Compartir ver / editar»`, "8");
     /* B1 de la auditoría de la v44: la misma hoja decía «viajan con el link que
        compartís» en modo local, y esta prueba sólo miraba el chip. */
+    // Decisión del PM (11/10): nada de funciones prometidas, para no sesgar al tester.
+    const hoja = await p.locator(".sheet").last().innerText().catch(() => "");
+    ok(!/Próxima iteración|Booking, Hertz|Avisos por correo/i.test(hoja), "«Acerca de» no promete funciones futuras", "8");
+    ok(!/próxima iteración/i.test(todo), "pendientes no promete funciones futuras", "8");
     const datos = await p.locator("#about-datos").innerText().catch(() => "");
     ok(base ? /viajan con el link que compartís/.test(datos) : (/se guardan en este teléfono/.test(datos) && !/viajan con el link que/.test(datos)),
        `«Acerca de» dice dónde están los datos: «${datos}»`, "8");

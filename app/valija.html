@@ -1147,7 +1147,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    buscando la línea por su texto, y después se lee del archivo SERVIDO, no del
    repo: los cuatro grep de CLAUDE.md incluyen éste y fue el único que lo vio.
    ============================================================ */
-const VALIJA_VERSION = "44";
+const VALIJA_VERSION = "45";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -8988,7 +8988,7 @@ function viewTodo(trip, alerts){
 
   return groups + `
     <div class="notice" style="margin-top:4px">${svg(I.bell)}
-      <div>Los avisos por correo llegan en la próxima iteración. Por ahora este panel es tu checklist${Store.soloEnEsteDispositivo() ? ", guardado en este teléfono" : " y viaja con el link compartido"}.</div>
+      <div>Este panel es tu checklist${Store.soloEnEsteDispositivo() ? ", guardado en este teléfono" : " y viaja con el link compartido"}.</div>
     </div>`;
 }
 
@@ -13426,15 +13426,8 @@ function sheetAbout(){
         <span class="chip ok">Resumen en PDF</span>
       </div>
     </div>
-    <div class="stack">
-      <div class="sec-head"><span class="eyebrow">Próxima iteración</span></div>
-      <div class="chips">
-        <span class="chip accent">Avisos por correo</span>
-        <span class="chip accent">Booking, Hertz, aerolíneas</span>
-        <span class="chip accent">Mapas y sincronía con el calendario</span>
-        <span class="chip accent">Buzón de reenvío de mails</span>
-      </div>
-    </div>
+    <!-- «Próxima iteración» se sacó el 11/10 por decisión del PM: a un tester le prometía funciones y
+         sesgaba lo que contaba de la app. El roadmap vive en docs/roadmap.md. -->
     <hr class="hr">
     <p class="tiny muted" id="about-datos" style="margin:0;line-height:1.5">${Store.soloEnEsteDispositivo()
       ? "Tus viajes se guardan en este teléfono, en este navegador. No los ve nadie más y no viajan con el link."
