@@ -2052,6 +2052,14 @@ Lo anotó la auditoría de la v45. «Acerca de» marca «Lectura de confirmacion
 como «Funciona hoy». Para un tester sin cuenta de Claude, o que rechazó el permiso, es falso: Importar no anda
 (ver `docs/decisiones/ia-para-cualquiera.md`). Hay que decidir cómo se dice, no sólo esconderlo.
 
+### VAL-104 · La valija le pide algo a la IA cada vez que se guarda una reserva — P2 · para VAL-102
+
+Lo encontró el analista al dimensionar el costo (`docs/decisiones/costo-ia-por-usuario.md`): con la valija ya
+armada, guardar, editar o borrar una reserva a mano dispara un pedido al modelo, y tocar «Actualizar» recalcula
+otra vez antes de aplicar. No hay tope ni espera. Hoy lo paga quien mira la página (y puede toparse con su límite
+de uso); si la IA la pagamos nosotros, es lo primero que se mira. **No verificado con una medición**: sale de
+leer el código.
+
 ### VAL-98 · Cada persona ve sólo sus viajes en la nube — P1 · en espera de lo que conteste la beta con una persona
 
 Hoy la base del Artifact es una sola y los viajes viven en la raíz (`trips/…`): quien abre el link ve los
