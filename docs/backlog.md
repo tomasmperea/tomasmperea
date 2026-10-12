@@ -2063,7 +2063,7 @@ deja de funcionar compartir un viaje entre compañeros (vuelve como historia pro
 teléfono (`docs/beta/una-persona.md`). Vuelve si los datos no sobreviven entre visitas, si hace falta usarla
 en dos dispositivos, o si «Contanos» tiene que ser privado.
 
-### VAL-99 · «Contanos»: feedback desde la app — P1 para la beta cerrada · hecho en la v44, versión mínima
+### VAL-99 · «Contanos»: feedback desde la app — P1 para la beta cerrada · verificado en el teléfono del PM (v45)
 
 **Hecho en la v44:** un botón en la pantalla de inicio que abre el comentario de claude.ai anclado a esa
 pantalla (`comments`, forma `composer_only`: la página no escribe nada ni pide permiso, y el link puede seguir
@@ -2074,7 +2074,7 @@ contra un simulador escrito leyendo `comments.d.ts`; **no probado con la platafo
 **Límite conocido:** los comentarios los ve todo el que abre el Artifact. Con cinco testers se ven entre ellos.
 Si eso molesta, la versión siguiente guarda el comentario en privado, y eso necesita base de datos.
 
-### VAL-101 · Sin base compartida, decir dónde quedan los datos — hecho en la v44
+### VAL-101 · Sin base compartida, decir dónde quedan los datos — verificado en el teléfono del PM (v45)
 
 En «Valija beta» cada tester guarda en su teléfono. La pantalla de inicio lo dice una vez («Tus viajes se
 guardan en este teléfono…», con «Entendido»), «Compartir el viaje» deja de ofrecer un link que no lleva el
