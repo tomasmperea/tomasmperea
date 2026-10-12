@@ -8572,7 +8572,22 @@ async function iaPreparar(){
   let s = null;
   try{ s = await claude.use("sample"); }catch(e){ s = null; }
   IA.estado = (s && typeof s.json === "function") ? "si" : "no";
-  if(IA.estado === "no") render();
+  if(IA.estado === "no") iaFaltaPintar();
+}
+/* Se actualiza SÓLO lo que cambia, en el lugar. La primera versión llamaba a
+   render() y redibujaba la pantalla entera cuando la plataforma contestaba: un
+   toque que caía justo en ese momento se perdía (lo destapó val77b en la corrida
+   completa). Lo demás —«Acerca de», la hoja de Importar— se arma al abrirse. */
+function iaFaltaPintar(){
+  const im = document.getElementById("imp");
+  if(im && !im.classList.contains("imp-sin-ia")){
+    im.classList.add("imp-sin-ia");
+    im.setAttribute("aria-label", "Importar: necesita una cuenta de Claude");
+    im.innerHTML = `${svg(I.spark)} <span class="imp-lbl">Importar<span class="imp-sub">con cuenta de Claude</span></span>`;
+    // el onclick ya pregunta por iaFalta() al tocar: no hace falta reengancharlo
+  }
+  // Un aviso de «no pude ajustarla» ya en pantalla ofrecería «Probar de nuevo»: ése sí se redibuja.
+  if(App.view === "packing" && document.getElementById("pk-retry")) render();
 }
 /** Importar sin IA: dice qué falta y ofrece el camino que sí anda. */
 function sheetImportSinIA(trip){

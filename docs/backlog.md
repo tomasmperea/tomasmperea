@@ -1870,6 +1870,10 @@ guardado: {"packing":[],"trips":1}»). Los dos dicen lo mismo: después de recar
 Repetidas dos veces cada una contra la v44 y contra la v43: 8 de 8 en verde. No depende de la versión; la causa
 sigue sin determinar.
 
+**Otro dato (12/10, regresiones de la v46):** cayó `v42-la-valija-espera` una vez («está el botón para ver el
+plan», 23 de 24) y dio 28 de 28 dos veces seguidas. Ese arnés corre CON IA simulada, así que no es el redibujado
+de VAL-105 (que sólo pasa sin IA y se corrigió en la misma entrega). Sin causa determinada.
+
 ### VAL-88 · Cinco textos de la valija que quedaron de antes, vistos durante VAL-85 — P2
 
 Los encontró el agente de VAL-85 mientras trabajaba. **Ninguno lo trajo esa entrega**: todos se ven igual en

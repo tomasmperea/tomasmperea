@@ -568,7 +568,10 @@ async function armarLista(page){
     // el aviso 1 gana sobre todo lo demás
     await irAValija(page);
     assert(await page.locator(sel.notice).count() === 1, '25 · un solo aviso también acá');
-    assert(/No pude ajustarla/.test(await page.locator(sel.notice).innerText()), '08 · sin plan pendiente, el degradado es el que se muestra');
+    /* VAL-105 (decisión del PM, 12/10): sin IA en la vista, el degradado dice el
+       motivo —«necesita una cuenta de Claude»— y no ofrece «Probar de nuevo», que
+       no puede andar. Lo que se protege acá sigue igual: que sea ÉSTE el aviso. */
+    assert(/necesita una cuenta de Claude/.test(await page.locator(sel.notice).innerText()), '08 · sin plan pendiente, el degradado es el que se muestra');
 
     await page.evaluate(async (auto) => {
       await Store.saveItem('t1', auto);
@@ -593,9 +596,9 @@ async function armarLista(page){
     await page.locator('[data-pk="ahorano"]').first().click();
     await page.waitForTimeout(250);
     await salirDeValija(page); await irAValija(page);
-    assert(/No pude ajustarla/.test(await page.locator(sel.notice).innerText()),
+    assert(/necesita una cuenta de Claude/.test(await page.locator(sel.notice).innerText()),
       '25 · aplazado el plan, vuelve el degradado');
-    assert(await page.locator('#pk-retry').count() === 1, '25 · con su "Probar de nuevo"');
+    assert(await page.locator('#pk-retry').count() === 0, '25 · sin IA, sin «Probar de nuevo» (VAL-105)');
     await page.close();
   });
 
