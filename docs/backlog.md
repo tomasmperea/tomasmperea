@@ -2050,7 +2050,7 @@ sacarla de Claude: hosting propio y un servidor chico que llame a la API con nue
 política de privacidad. Análisis completo en `docs/decisiones/ia-para-cualquiera.md`. **Primer paso si se
 decide:** dimensionar el costo por usuario con el analista, con supuestos explícitos y precios vigentes.
 
-### VAL-105 · Sin IA, la app lo dice de entrada — camino B, opción 1 del PM (12/10) · hecho en la v46
+### VAL-105 · Sin IA, la app lo dice de entrada — camino B, opción 1 del PM (12/10) · verificada por el PM en incógnito (v46)
 
 El PM abrió la beta en incógnito: sin sesión en Claude, Importar fallaba recién al tocarlo y la valija ofrecía
 «Probar de nuevo» sin que sirviera. **Decisión (12/10): opción 1** de `docs/design/sin-ia-importar-opciones.png`.
