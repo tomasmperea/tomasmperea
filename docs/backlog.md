@@ -2046,7 +2046,19 @@ sacarla de Claude: hosting propio y un servidor chico que llame a la API con nue
 política de privacidad. Análisis completo en `docs/decisiones/ia-para-cualquiera.md`. **Primer paso si se
 decide:** dimensionar el costo por usuario con el analista, con supuestos explícitos y precios vigentes.
 
-### VAL-103 · «Acerca de» dice «Funciona hoy» de funciones que sin IA no funcionan — P2 · preexistente
+### VAL-105 · Sin IA, la app lo dice de entrada — camino B, opción 1 del PM (12/10) · hecho en la v46
+
+El PM abrió la beta en incógnito: sin sesión en Claude, Importar fallaba recién al tocarlo y la valija ofrecía
+«Probar de nuevo» sin que sirviera. **Decisión (12/10): opción 1** de `docs/design/sin-ia-importar-opciones.png`.
+Hecho en la v46: sin IA en la vista, el botón dice «Importar · con cuenta de Claude» y al tocarlo explica por qué
+y ofrece «Cargarla a mano»; la valija dice «Ajustarla a {destino} necesita una cuenta de Claude» sin «Probar de
+nuevo»; «Acerca de» aclara qué funciones necesitan cuenta (cierra VAL-103). Con IA no cambia nada, ni un instante
+al arrancar (control `control-5`). Prueba: `app/pruebas/val105-sin-ia.js`.
+
+**No cubre**, y se sabe: quien TIENE cuenta pero rechaza el permiso. Eso recién se sabe al usar la IA, y queda
+como estaba.
+
+### VAL-103 · «Acerca de» dice «Funciona hoy» de funciones que sin IA no funcionan — cerrada en la v46 (ver VAL-105)
 
 Lo anotó la auditoría de la v45. «Acerca de» marca «Lectura de confirmaciones» y «Foto de tarjeta de embarque»
 como «Funciona hoy». Para un tester sin cuenta de Claude, o que rechazó el permiso, es falso: Importar no anda

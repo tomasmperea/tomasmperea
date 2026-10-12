@@ -387,6 +387,10 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .fh-msg{font-size:11.5px;color:var(--crit);line-height:1.4}
 .fh-msg:empty{display:none}
 .fh-par{display:flex;flex-direction:column;gap:11px}
+/* VAL-105 · Importar sin IA: se ve que existe y que le falta algo */
+.imp-sin-ia{opacity:.72}
+.imp-lbl{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;text-align:left}
+.imp-sub{font-family:var(--f-mono);font-size:10px;font-weight:500;letter-spacing:.02em;opacity:.8;margin-top:2px}
 
 /* type picker */
 .tp{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:7px}
@@ -1147,7 +1151,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    buscando la línea por su texto, y después se lee del archivo SERVIDO, no del
    repo: los cuatro grep de CLAUDE.md incluyen éste y fue el único que lo vio.
    ============================================================ */
-const VALIJA_VERSION = "45";
+const VALIJA_VERSION = "46";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -8556,6 +8560,32 @@ async function contanosAbrir(el){
     if(App.view !== "trip" && App.view !== "packing") renderHome();
   }
 }
+/* VAL-105 (camino B, opción 1 del PM, 12/10) · ¿hay IA en esta vista? Sin
+   sesión en Claude, `claude.use("sample")` devuelve null y Importar no puede
+   leer nada: el PM lo comprobó en incógnito. Mientras la plataforma no contesta,
+   el estado es "?" y todo se dibuja como siempre (en la app del PM no tiene que
+   aparecer nada distinto ni un instante). Si el viewer TIENE la capacidad pero
+   rechaza el permiso, eso recién se sabe al usarla: queda como estaba. */
+const IA = { estado:"?" };
+function iaFalta(){ return IA.estado === "no"; }
+async function iaPreparar(){
+  let s = null;
+  try{ s = await claude.use("sample"); }catch(e){ s = null; }
+  IA.estado = (s && typeof s.json === "function") ? "si" : "no";
+  if(IA.estado === "no") render();
+}
+/** Importar sin IA: dice qué falta y ofrece el camino que sí anda. */
+function sheetImportSinIA(trip){
+  openSheet("Importar reservas", `
+    <div class="notice" id="imp-sin-ia">${svg(I.info)}<span class="bd"><b>Leer tus mails de reserva necesita una cuenta de Claude.</b>
+      Valija usa la inteligencia artificial de Claude para leerlos, y en esta vista no está disponible.
+      Si tenés cuenta, abrí este mismo link con tu sesión iniciada.</span></div>
+    <p class="tiny muted" style="margin:0">Mientras tanto, la podés cargar a mano.</p>`,
+    `<button class="btn ghost" id="cancel">Cerrar</button><button class="btn primary" id="imp-a-mano">${svg(I.plus)} Cargarla a mano</button>`);
+  document.getElementById("cancel").onclick = closeSheet;
+  document.getElementById("imp-a-mano").onclick = ()=>{ closeSheet(); sheetItem(trip, null); };
+}
+
 /* VAL-101 · Sin base compartida, los viajes viven en este navegador. Se dice
    una vez, con lo que importa: que no los ve nadie y que se pueden perder. */
 const AVISO_LOCAL_KEY = "valija.aviso.local";
@@ -8831,12 +8861,14 @@ function renderTrip(trip){
 
   $fab.innerHTML = `<div class="fab">
     <button class="btn primary" id="additem" style="flex:2">${svg(I.plus)} Agregar</button>
-    <button class="btn" id="imp" style="flex:1.2">${svg(I.spark)} Importar</button>
+    ${iaFalta()
+      ? `<button class="btn imp-sin-ia" id="imp" style="flex:1.2" aria-label="Importar: necesita una cuenta de Claude">${svg(I.spark)} <span class="imp-lbl">Importar<span class="imp-sub">con cuenta de Claude</span></span></button>`
+      : `<button class="btn" id="imp" style="flex:1.2">${svg(I.spark)} Importar</button>`}
     <button class="btn" id="pdf" aria-label="Exportar PDF" style="flex:0 0 46px;padding:11px 0">${svg(I.pdf)}</button>
   </div>`;
   const ai = document.getElementById("additem"), im = document.getElementById("imp");
   if(!Store.canWrite){ ai.disabled=true; im.disabled=true; }
-  else { ai.onclick = ()=> sheetItem(trip,null); im.onclick = ()=> sheetImport(trip); }
+  else { ai.onclick = ()=> sheetItem(trip,null); im.onclick = ()=> (iaFalta() ? sheetImportSinIA(trip) : sheetImport(trip)); }
   document.getElementById("pdf").onclick = ()=> exportPDF(trip);
 }
 
@@ -10190,6 +10222,10 @@ function packingNotice(trip, list, plan){
   }
 
   // 2 · sin ajuste por destino
+  if(cap.estado==="no-disponible" && iaFalta()){
+    // VAL-105: sin IA en esta vista, «Probar de nuevo» no sirve; se dice por qué.
+    return `<div class="notice warn" id="pk-sin-ia">${svg(I.info)}<span class="bd">Armé la lista con las reglas de siempre. <b>Ajustarla a ${esc(destino)} necesita una cuenta de Claude</b>, así que puede faltarte algo del lugar.</span></div>`;
+  }
   if(cap.estado==="no-disponible" || cap.estado==="error"){
     return `<div class="notice warn">${svg(I.info)}<span class="bd">Armé la lista con las reglas de siempre. No pude ajustarla a ${esc(destino)}, así que puede faltarte algo del lugar.
       ${canWrite?`<button class="act" id="pk-retry">Probar de nuevo</button>`:""}</span></div>`;
@@ -13419,8 +13455,8 @@ function sheetAbout(){
       <div class="chips">
         <span class="chip ok">Viajes en paralelo</span>
         <span class="chip ok">Carga manual</span>
-        <span class="chip ok">Lectura de confirmaciones</span>
-        <span class="chip ok">Foto de tarjeta de embarque</span>
+        <span class="chip ok">Lectura de confirmaciones${iaFalta() ? " · con cuenta de Claude" : ""}</span>
+        <span class="chip ok">Foto de tarjeta de embarque${iaFalta() ? " · con cuenta de Claude" : ""}</span>
         <span class="chip ok">Pendientes y vencimientos</span>
         ${Store.soloEnEsteDispositivo() ? "" : `<span class="chip ok">Compartir ver / editar</span>`}
         <span class="chip ok">Resumen en PDF</span>
@@ -14247,4 +14283,5 @@ Store.on(render);
 render();
 Store.init().then(()=>{ Store.watch(App.tripId); Store.watchPacking(App.tripId); render(); });
 contanosPreparar();   // VAL-99: sin esperar a nada; el botón aparece cuando la plataforma contesta
+iaPreparar();         // VAL-105: igual que «Contanos»
 </script>
