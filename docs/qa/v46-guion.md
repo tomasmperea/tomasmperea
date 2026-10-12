@@ -1,11 +1,13 @@
 # v46 — el guion del PM (camino B, opción 1)
 
 **Qué probar:** que alguien sin cuenta de Claude vea, de entrada, qué le falta. Tres minutos, en **Chrome de
-incógnito** como hiciste el 12/10. Arriba tiene que decir **v46**.
+incógnito** como hiciste el 12/10. Arriba tiene que decir **v46**. **Auditoría:** candidato, sin bloqueantes (`docs/auditoria/2026-10-12-v46.md`).
 
 ## En «Valija beta», en incógnito
 
 1. Entrá a un viaje. El botón **Importar** dice abajo **«con cuenta de Claude»** y se ve apagado. **Captura.**
+   **Si en cambio se ve normal**, decímelo con la captura: quiere decir que en incógnito la plataforma no se
+   comporta como supuse a partir de tu prueba del 12/10, y el resto de este guion no aplica.
 2. Tocalo: explica que leer mails necesita una cuenta de Claude. Tocá **Cargarla a mano**: se abre el formulario.
 3. Entrá a **Valija** y armá la lista: el aviso dice *«Ajustarla a … necesita una cuenta de Claude»*, sin
    «Probar de nuevo».
