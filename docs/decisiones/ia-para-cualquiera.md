@@ -18,8 +18,10 @@ el contrato de la plataforma (`sample.d.ts`, la pieza con la que la app le pregu
   `window.claude`»;
 - si la cuenta o la organización no tiene Claude disponible, el pedido se rechaza (`sampling_disabled`).
 
-Lo que **no** dice el contrato, y no está comprobado: si una cuenta **gratuita** de Claude alcanza, y si alguien
-**sin cuenta** puede siquiera abrir el link. La primera persona de la beta lo contesta.
+**Comprobado por el PM el 12/10, abriendo la beta en Chrome de incógnito (sin sesión en Claude):** el link
+abre, pero **la IA no**: Importar pide cargar a mano y la valija se arma sin ajuste por destino. O sea que
+una persona sin cuenta **puede usar Valija, pero sin lo que la diferencia**. Lo que sigue sin comprobarse es si
+alcanza con una cuenta **gratuita** de Claude.
 
 ## Qué funciona sin IA — con la IA apagada, el 11/10
 
