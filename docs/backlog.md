@@ -1881,6 +1881,10 @@ sigue sin determinar.
 plan», 23 de 24) y dio 28 de 28 dos veces seguidas. Ese arnés corre CON IA simulada, así que no es el redibujado
 de VAL-105 (que sólo pasa sin IA y se corrigió en la misma entrega). Sin causa determinada.
 
+**Otro dato (14/10, regresiones de la v47):** volvió a caer `v42-la-valija-espera` en el mismo punto («está el
+botón para ver el plan»), y `valija-bloque-b` con un `waitForFunction` vencido. Repetidas de a una: 28/28 y
+111/111. Es la segunda vez del mismo punto de v42: si aparece una tercera, se instrumenta ese paso.
+
 ### VAL-88 · Cinco textos de la valija que quedaron de antes, vistos durante VAL-85 — P2
 
 Los encontró el agente de VAL-85 mientras trabajaba. **Ninguno lo trajo esa entrega**: todos se ven igual en

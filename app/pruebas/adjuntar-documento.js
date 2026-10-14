@@ -464,11 +464,15 @@ const itemsDe = page => page.evaluate(() => Store.itemsOf("t1"));
 
     await page.locator("#doc-close").click();
     await page.waitForTimeout(200);
-    await abrirParaEditar(page, page.locator(".pass-main").first());
-    await page.waitForSelector("#doc-block", { timeout: 10000 });
+    /* VAL-70 (decisión del PM, 14/10): en sólo lectura, tocar la reserva abre la
+       VISTA sin «Editar», así que el formulario ya no se alcanza. Lo que esto
+       protegía sigue: no se ofrece adjuntar, y el documento se sigue viendo. */
+    await page.locator(".pass-main").first().click();
+    await page.waitForSelector("#vr", { timeout: 10000 });
+    assert(await page.locator("#vr-editar").count() === 0, "en sólo lectura la reserva se ve sin «Editar»");
     assert(await page.locator('[data-pick="doc_file"]').count() === 0,
       "en la hoja de la reserva tampoco se ofrece adjuntar");
-    assert(await page.locator("#doc-block .imp-file").count() === 1,
+    assert(await page.locator("#vr [data-vrdoc]").count() === 1,
       "pero el documento que ya está se sigue viendo");
     await page.close();
   });
