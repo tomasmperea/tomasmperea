@@ -26,6 +26,7 @@
    Uso: NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/val95-dia-y-hora.js [ruta.html | control]
    ============================================================ */
 const { chromium } = require("playwright");
+const { abrirParaEditar } = require("./abrir-reserva");
 const fs = require("fs"), path = require("path"), os = require("os"), { execSync } = require("child_process");
 
 const CONTROL = process.argv[2] === "control";
@@ -190,7 +191,7 @@ const existe = async (p, sel) => (await p.locator(sel).count()) > 0;
   titulo("3d · una llegada guardada con hora se corre entera al mover la salida después");
   {
     const p = await pagina(browser);
-    await p.locator('[data-item="v1"]').click();
+    await abrirParaEditar(p, p.locator('[data-item="v1"]'));
     await p.waitForSelector("#i_title", { timeout:8000 });
     if (await existe(p, dia("i_start"))) {
       await p.locator(dia("i_start")).fill("2026-10-23");
@@ -222,7 +223,7 @@ const existe = async (p, sel) => (await p.locator(sel).count()) > 0;
   {
     const p = await pagina(browser);
     for (const [id, item] of [["v1", VIEJO], ["v2", SIN_HORA]]) {
-      await p.locator(`[data-item="${id}"]`).click();
+      await abrirParaEditar(p, p.locator(`[data-item="${id}"]`));
       await p.waitForSelector("#i_title", { timeout:8000 });
       if (await existe(p, dia("i_start"))) {
         const d = await p.locator(dia("i_start")).inputValue(), h = await hora(p, "i_start").inputValue();
@@ -245,7 +246,7 @@ const existe = async (p, sel) => (await p.locator(sel).count()) > 0;
   titulo("5b · la reserva vieja sin hora: cambiar de tipo y volver no pierde el día");
   {
     const p = await pagina(browser);
-    await p.locator('[data-item="v2"]').click();
+    await abrirParaEditar(p, p.locator('[data-item="v2"]'));
     await p.waitForSelector("#i_title", { timeout:8000 });
     await p.locator('#tp button[data-t="note"]').click(); await p.waitForTimeout(150);
     await p.locator('#tp button[data-t="act"]').click(); await p.waitForTimeout(150);

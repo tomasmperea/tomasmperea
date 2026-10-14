@@ -54,6 +54,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { abrirParaEditar } = require("./abrir-reserva");
 const { llenarFechaHora, llenarCampo } = require("./fecha-y-hora");
 const path = require("path");
 
@@ -329,7 +330,7 @@ async function armarLaValija(page, tripId) {
 
       // Abrir una reserva ya guardada con el dato malo adentro.
       await ir(page, "#/trip/ts");
-      await page.locator(".pass").first().click();
+      await abrirParaEditar(page, page.locator(".pass-main").first());
       await page.waitForSelector("#i_to", { timeout:10000 });
       const abierto = await page.locator("#i_to").inputValue();
       info("la reserva guardada trae: " + JSON.stringify(abierto));

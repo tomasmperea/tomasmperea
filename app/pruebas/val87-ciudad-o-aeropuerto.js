@@ -44,6 +44,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { abrirParaEditar } = require("./abrir-reserva");
 const { llenarFechaHora, llenarCampo } = require("./fecha-y-hora");
 const fs = require("fs");
 const path = require("path");
@@ -400,7 +401,7 @@ const AVISO_VIEJO = /no s[eé] traducir/i;
       const page = await nuevaPagina(browser);
       const abrir = async (viaje, id) => {
         await ir(page, "#/trip/" + viaje);
-        await page.locator(`[data-item="${id}"]`).click();
+        await abrirParaEditar(page, page.locator(`[data-item="${id}"]`));
         await page.waitForSelector("#i_to", { timeout:10000 });
         await page.waitForTimeout(150);
         return { campo: await estadoDelCampo(MANUAL.destino(page)), aviso: await MANUAL.aviso(page) };
@@ -541,7 +542,7 @@ const AVISO_VIEJO = /no s[eé] traducir/i;
          para explicar por qué cambió, y eso no lo lee nadie más que nosotros. */
       const page = await nuevaPagina(browser, { vuelos:[vueloImportado("SUECIA")] });
       await ir(page, "#/trip/tsue");
-      await page.locator('[data-item="f-sue"]').click();
+      await abrirParaEditar(page, page.locator('[data-item="f-sue"]'));
       await page.waitForSelector("#i_to", { timeout:10000 });
       const manual = await MANUAL.aviso(page);
       ok(/SUECIA/.test(manual), "formulario manual: el aviso está");

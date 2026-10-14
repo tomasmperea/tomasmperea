@@ -53,6 +53,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { abrirParaEditar } = require("./abrir-reserva");
 const { llenarFechaHora, llenarCampo } = require("./fecha-y-hora");
 const fs = require("fs"), path = require("path"), os = require("os"), cp = require("child_process");
 
@@ -162,7 +163,7 @@ async function borrarElVuelo(page, viaje) {
   await ir(page, "#/trip/" + viaje);
   const id = await page.evaluate(v => (Store.itemsOf(v).find(i => i.type === "flight") || {}).id, viaje);
   if (!id) throw new Error("no hay vuelo para borrar en " + viaje);
-  await page.locator(`[data-item="${id}"]`).click();
+  await abrirParaEditar(page, page.locator(`[data-item="${id}"]`));
   await page.waitForSelector("#delitem", { timeout:8000 });
   await page.locator("#delitem").click();
   await page.waitForFunction(v => !Store.itemsOf(v).some(i => i.type === "flight"), viaje, { timeout:8000 });

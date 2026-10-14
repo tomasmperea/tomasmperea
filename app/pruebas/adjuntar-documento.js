@@ -47,6 +47,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { abrirParaEditar } = require("./abrir-reserva");
 const path = require("path");
 
 const APP = "file://" + (process.argv[2] || path.resolve(__dirname, "..", "valija.html"));
@@ -463,7 +464,7 @@ const itemsDe = page => page.evaluate(() => Store.itemsOf("t1"));
 
     await page.locator("#doc-close").click();
     await page.waitForTimeout(200);
-    await page.locator(".pass-main").first().click();
+    await abrirParaEditar(page, page.locator(".pass-main").first());
     await page.waitForSelector("#doc-block", { timeout: 10000 });
     assert(await page.locator('[data-pick="doc_file"]').count() === 0,
       "en la hoja de la reserva tampoco se ofrece adjuntar");

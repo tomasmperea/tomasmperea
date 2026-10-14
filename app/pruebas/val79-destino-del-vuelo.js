@@ -18,6 +18,7 @@
    Uso: NODE_PATH=/opt/node22/lib/node_modules node app/pruebas/val79-destino-del-vuelo.js [ruta.html]
    ============================================================ */
 const { chromium } = require("playwright");
+const { abrirParaEditar } = require("./abrir-reserva");
 const fs = require("fs"), path = require("path"), os = require("os");
 
 const HTML = path.resolve(process.argv[2] || "app/valija.html");
@@ -180,7 +181,7 @@ async function contestarEnValija(p, k) {
       const conRespuesta = Object.assign({}, VUELO, { destinoDecision:"suma", destinoDecisionPara:"MAD" });
       const p = await pagina(browser, HTML, viaje("Bariloche", [conRespuesta]));
       await ir(p, "#/trip/t1");
-      await p.locator('[data-item="f1"]').first().click(); await p.waitForSelector("#i_to");
+      await abrirParaEditar(p, p.locator('[data-item="f1"]').first()); await p.waitForSelector("#i_to");
       await escribir(p, "#i_title", "Ida editada");
       await p.locator("#save").click(); await p.waitForTimeout(500);
       const f = await p.evaluate(() => Store.itemsOf("t1").find(i => i.id === "f1"));
@@ -197,7 +198,7 @@ async function contestarEnValija(p, k) {
       await ir(p, "#/trip/t1");
       const antes = await p.evaluate(() => PackingEngine.destinosDelViaje(Store.trips.get("t1"), Store.itemsOf("t1")).lugares.map(l => l.lugar));
       ok(antes.indexOf("MAD") < 0, `antes de editar, MAD es escala y no es destino (${JSON.stringify(antes)})`);
-      await p.locator('[data-item="f1"]').first().click(); await p.waitForSelector("#i_to");
+      await abrirParaEditar(p, p.locator('[data-item="f1"]').first()); await p.waitForSelector("#i_to");
       await escribir(p, "#i_to", "roma"); await p.locator('#fields .ap-op[data-cod="FCO"]').click();
       await p.locator("#save").click(); await p.waitForTimeout(500);
       const r = await p.evaluate(() => { const f = Store.itemsOf("t1").find(i => i.id === "f1");
