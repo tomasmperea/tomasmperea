@@ -387,6 +387,24 @@ main{flex:1; padding:16px 16px 108px; display:flex; flex-direction:column; gap:1
 .fh-msg{font-size:11.5px;color:var(--crit);line-height:1.4}
 .fh-msg:empty{display:none}
 .fh-par{display:flex;flex-direction:column;gap:11px}
+/* VAL-70 · ver una reserva */
+.vr{display:flex;flex-direction:column;gap:12px}
+.vr-tit{display:flex;gap:10px;align-items:center}
+.vr-tit .t{font-weight:600;color:var(--ink)} .vr-tit .s{font-size:12.5px;color:var(--ink-2)}
+.vr-ruta{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.vr-ruta .cod{font-family:var(--f-mono);font-size:28px;font-weight:600;color:var(--ink);letter-spacing:.02em}
+.vr-ruta .cdad{font-size:12px;color:var(--ink-2)}
+.vr-ruta .av{color:var(--ink-3)} .vr-ruta .av svg{width:18px;height:18px}
+.vr-ruta .der,.vr-cuando .der{text-align:right}
+.vr-cuando{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vr-cuando .k{font-family:var(--f-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.vr-cuando .v{font-family:var(--f-mono);font-size:15px;color:var(--ink)}
+.vr-cuando .v.miss{color:var(--crit);font-style:italic}
+.vr-cuando .d{font-size:12px;color:var(--ink-2)}
+.vr-pass{box-shadow:none}
+.vr-extra{display:flex;flex-direction:column;gap:8px}
+.vr-extra .row{display:flex;justify-content:space-between;gap:12px;font-size:14px;border-bottom:1px dashed var(--line);padding-bottom:7px}
+.vr-extra .row .k{color:var(--ink-2);flex:none} .vr-extra .row .v{color:var(--ink);text-align:right;overflow-wrap:anywhere}
 /* VAL-105 · Importar sin IA: se ve que existe y que le falta algo */
 .imp-sin-ia{opacity:.72}
 .imp-lbl{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;text-align:left}
@@ -1151,7 +1169,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    buscando la línea por su texto, y después se lee del archivo SERVIDO, no del
    repo: los cuatro grep de CLAUDE.md incluyen éste y fue el único que lo vio.
    ============================================================ */
-const VALIJA_VERSION = "46";
+const VALIJA_VERSION = "47";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -8855,7 +8873,7 @@ function renderTrip(trip){
   $main.querySelectorAll("[data-item]").forEach(b=>{
     b.onclick = ()=>{
       const it = Store.itemsOf(trip.id).find(x=>x.id===b.dataset.item);
-      if(it) sheetItem(trip, it);
+      if(it) sheetVerReserva(trip, it);   // VAL-70: ver primero; editar es aparte
     };
   });
   $main.querySelectorAll("[data-goto]").forEach(b=>{
@@ -8929,13 +8947,12 @@ function viewPlan(trip, items){
   return html;
 }
 
-function cardItem(it){
-  const T = TYPES[it.type] || TYPES.note;
-  const miss = missingFields(it);
+/** El talón de una reserva: [rótulo, valor, obligatorio]. UNA sola lista para
+    la tarjeta del itinerario y la vista de VAL-70, para que las dos no puedan
+    decir cosas distintas sobre la misma reserva. Obligatorio = se muestra
+    «pendiente» aunque esté vacío. */
+function talonDe(it){
   const t1 = fmtTime(it.start), t2 = fmtTime(it.end);
-
-  // El talón muestra los datos propios del tipo de reserva.
-  // Tercer valor: true = campo obligatorio, se muestra aunque esté vacío.
   let stub = [];
   if(it.type==="flight"){
     stub = [
@@ -8971,7 +8988,16 @@ function cardItem(it){
       ["Proveedor", it.provider, false]
     ];
   }
-  stub = stub.filter(([,v,req]) => v || req);
+  return stub;
+}
+
+function cardItem(it){
+  const T = TYPES[it.type] || TYPES.note;
+  const miss = missingFields(it);
+  const t1 = fmtTime(it.start), t2 = fmtTime(it.end);
+
+  // El talón muestra los datos propios del tipo de reserva (ver talonDe).
+  let stub = talonDe(it).filter(([,v,req]) => v || req);
 
   const cost = it.cost ? `<span class="chip">${esc(it.currency||"")} ${esc(it.cost)}</span>` : "";
   const missChip = miss.length ? `<span class="chip alert">falta ${miss.length}</span>` : "";
@@ -11064,8 +11090,88 @@ async function dvContestarEnValija(trip, vueloId, k){
 }
 
 /* ---------- reserva ---------- */
+/* ============================================================
+   VAL-70 · Ver una reserva sin entrar a editarla (diseño aprobado por el PM
+   el 14/10: docs/design/val70-ver-reserva.png). Tocar la tarjeta abre ESTO;
+   «Editar» abre el formulario de siempre, donde sigue estando «Eliminar».
+   Quien sólo puede mirar ve únicamente «Cerrar».
+   Reusa el talón de la tarjeta (`talonDe`) y la tira de documentos.
+   ============================================================ */
+const VR_CUANDO = {
+  flight:["Sale","Llega"], stay:["Check-in","Check-out"], car:["Retiro","Devolución"],
+  transfer:["Fecha y hora",""], act:["Cuándo","Termina"], note:["Fecha",""]
+};
+function vrCuandoCelda(rotulo, iso, req, der){
+  if(!rotulo) return "";
+  if(!iso) return req ? `<div class="${der?"der":""}"><div class="k">${esc(rotulo)}</div><div class="v miss">pendiente</div></div>` : "";
+  const hora = fmtTime(iso);
+  return `<div class="${der?"der":""}"><div class="k">${esc(rotulo)}</div>` +
+    (hora ? `<div class="v">${esc(hora)}</div><div class="d">${esc(fmtDateLong(iso))}</div>`
+          : `<div class="v">${esc(fmtDateLong(iso))}</div>`) + `</div>`;
+}
+function vrCiudad(cod){
+  try{ const a = PackingEngine.esCodigoIATA(cod) ? Aeropuertos.porCodigo(cod) : null; return a ? a.ciudad : ""; }catch(e){ return ""; }
+}
+function sheetVerReserva(trip, item){
+  const it = item;
+  const T = TYPES[it.type] || TYPES.note;
+  const req = it.type==="flight" || it.type==="stay" || it.type==="car";
+  const [r1, r2] = VR_CUANDO[it.type] || VR_CUANDO.note;
+
+  // Cabecera: qué es y quién lo da.
+  const sub = it.type==="flight" ? (it.flightNumber || "")
+            : it.type==="stay" ? (nightsBetween(it.start, it.end) ? `${nightsBetween(it.start, it.end)} noches` : "")
+            : "";
+  const cab = `<div class="vr-tit"><span class="pass-icon ${T.cls}">${svg(T.icon)}</span><span>` +
+    `<span class="t">${esc(T.label)}${it.provider ? ` · ${esc(it.provider)}` : ""}</span>` +
+    (sub ? `<br><span class="s">${esc(sub)}</span>` : "") + `</span></div>`;
+
+  // El vuelo muestra la ruta en grande; lo que ya está ahí sale del talón.
+  const ruta = it.type==="flight" ? `<div class="vr-ruta">
+      <div><div class="cod">${esc(String(it.from||"—").toUpperCase())}</div><div class="cdad">${esc(vrCiudad(it.from))}</div></div>
+      <div class="av">${svg(I.flight)}</div>
+      <div class="der"><div class="cod">${esc(String(it.to||"—").toUpperCase())}</div><div class="cdad">${esc(vrCiudad(it.to))}</div></div></div>` : "";
+  const cuando = `<div class="vr-cuando">${vrCuandoCelda(r1, it.start, req, false)}${vrCuandoCelda(r2, it.end, req && it.type!=="flight", true)}</div>`;
+
+  // Lo que la cabecera, la ruta o «cuándo» ya dicen no se repite en el talón.
+  const yaDicho = { Vuelo:1, Ruta:1, Alojamiento:1, Rentadora:1, Proveedor:1, Noches:1,
+                    "Check-in":1, "Check-out":1, Retiro:1, "Devolución":1 };
+  const talon = talonDe(it).filter(([k,v,r])=> !yaDicho[k] && (v || r));
+  const talonHtml = talon.length ? `<div class="pass vr-pass"><div class="pass-stub">${talon.map(([k,v])=>`
+      <div class="field"><span class="k">${esc(k)}</span><span class="v ${v?"":"miss"}">${v?esc(v):"pendiente"}</span></div>`).join("")}</div></div>` : "";
+
+  const extra = [
+    it.cost ? ["Costo", `${it.currency||""} ${it.cost}`.trim(), true] : null,
+    it.phone ? ["Teléfono", it.phone, true] : null,
+    it.notes ? ["Notas", it.notes, false] : null
+  ].filter(Boolean);
+  const extraHtml = extra.length ? `<div class="vr-extra">${extra.map(([k,v,dato])=>
+      `<div class="row"><span class="k">${esc(k)}</span><span class="v${dato?" dato":""}">${esc(v)}</span></div>`).join("")}</div>` : "";
+
+  const docs = Array.isArray(it.docs) ? it.docs.filter(Boolean) : [];
+  const docsHtml = docs.length ? `<div class="pass-docs vr-docs">${docs.map(d=>`
+      <button class="pass-doc" data-vrdoc="${esc(d.id)}">${svg(I.clip)}
+        <span class="nm">${esc(d.nombreCorto || d.nombre || "Documento")}</span>
+        <span class="sz">${esc(AdjuntosEngine.textoTira(d))}</span></button>`).join("")}</div>` : "";
+
+  openSheet(it.title || T.label, `<div class="vr" id="vr">${cab}${ruta}${cuando}${talonHtml}${extraHtml}${docsHtml}</div>`,
+    `<button class="btn ghost" id="cancel">Cerrar</button>` +
+    (Store.canWrite ? `<button class="btn primary" id="vr-editar">${svg(I.edit)} Editar</button>` : ""));
+  document.getElementById("cancel").onclick = closeSheet;
+  const ed = document.getElementById("vr-editar");
+  if(ed) ed.onclick = ()=>{ closeSheet(); sheetItem(trip, it); };
+  document.querySelectorAll("[data-vrdoc]").forEach(b=>{
+    b.onclick = ()=>{ closeSheet(); sheetDoc(trip, it, b.dataset.vrdoc); };
+  });
+}
+
 function sheetItem(trip, item, prefill){
-  const it = item || Object.assign({id:uid(), type:"flight"}, prefill||{});
+  /* VAL-100 · el formulario trabaja sobre una COPIA. Antes `collect()`
+     escribía sobre el mismo objeto que tiene `Store`, así que un Guardar
+     rechazado («Poné un título», «La fecha de fin es anterior…») dejaba la
+     reserva cambiada en pantalla sin haberla guardado. Ahora lo de `Store`
+     cambia sólo cuando `saveItem` guarda. */
+  const it = item ? JSON.parse(JSON.stringify(item)) : Object.assign({id:uid(), type:"flight"}, prefill||{});
   const T = k => TYPES[k];
 
   const fieldsFor = type => {

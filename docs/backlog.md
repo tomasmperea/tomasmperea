@@ -1419,7 +1419,14 @@ comparten viajes, reservas, listas de equipaje y adjuntos.
   reserva, el de 5.000 pasa a ser el único que protege y tiene que avisar antes de que falle un guardado.
 - El texto de la interfaz ("Documentos · 1 de 3") sale del tope y hay que rehacerlo: sin tope no hay "de N".
 
-### VAL-70 · Entrar a una reserva sin entrar a editarla — P1
+### VAL-70 · Entrar a una reserva sin entrar a editarla — P1 · hecha en la v47
+
+**Diseño aprobado por el PM (14/10):** `docs/design/val70-ver-reserva.png`, con tres decisiones: «Eliminar»
+queda adentro de Editar; «abrir» en un pendiente va directo a editar; quien sólo mira ve únicamente «Cerrar».
+Hecho en la v47: tocar una reserva abre una vista para leer (ruta y ciudades del vuelo, horas y días, talón,
+costo, teléfono, notas y documentos), con «Editar» aparte. La tarjeta y la vista sacan el talón de una sola
+función (`talonDe`). Prueba: `app/pruebas/val70-ver-reserva.js`, los seis tipos de reserva.
+
 
 Como viajero quiero abrir una reserva y VERLA, y editarla sólo si lo pido.
 
@@ -1922,6 +1929,9 @@ corra y otras no, no se determinó. Lo encontró el agente de VAL-87 y lo midió
 
 ### VAL-90 · En sólo lectura se puede abrir una reserva con «Guardar» y «Eliminar» habilitados — P1
 
+**Desde la v47, a medias:** tocar la tarjeta abre la vista, que en sólo lectura no ofrece «Editar». Pero «abrir»
+en un pendiente sigue yendo directo al formulario, también en sólo lectura. Queda eso.
+
 **Anterior a VAL-87.** El toque sobre una reserva (`[data-item]`) llama a `sheetItem` sin mirar
 `Store.canWrite`, así que quien tiene permiso de ver ve los botones de guardar y eliminar como si pudiera usarlos.
 Falta comprobar qué pasa al tocarlos: si la base rechaza la escritura, el defecto es de pantalla; si no, es de
@@ -2032,7 +2042,7 @@ otro, con límite), B (día y hora por separado, la llegada arranca en el día d
 botones). **No se construye hasta que el PM elija.** Relación con VAL-79: una fecha mal elegida es uno de los
 caminos que producen el paso A.
 
-### VAL-100 · Un Guardar rechazado igual cambia la reserva en memoria — P1 · encontrado de paso en la v43
+### VAL-100 · Un Guardar rechazado igual cambia la reserva en memoria — P1 · arreglado en la v47 (el formulario trabaja sobre una copia)
 
 Preexistente (también en la v42). El formulario de la reserva copia los campos sobre el MISMO objeto que tiene
 `Store` antes de validar (`collect()`), así que cuando Guardar rechaza («Poné un título», «La fecha de fin es
