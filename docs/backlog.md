@@ -1601,7 +1601,7 @@ Como viajero quiero saber si mi vuelo se retrasó o cambió de puerta.
 - Se consulta el estado del vuelo por número y fecha.
 - Los cambios de horario y puerta actualizan la reserva y disparan aviso.
 
-### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P0 · v40 probada por el PM; ronda 2 en la v41; ronda 3 en la v42
+### VAL-79 · Cuando el vuelo contradice el destino escrito, la app no sabe si son el mismo lugar — P0 · ronda 3 verificada en el teléfono del PM (v43)
 
 **RONDA 3, reporte del PM del 10/10 sobre la v41** (`docs/qa/v41-resultado.md`). Dos cosas:
 
@@ -1805,7 +1805,7 @@ montaña+ciudad—, así que este vaivén va a pasar más seguido que antes.
   mano sigue siendo "suyo" aunque la app ya lo sugiera?** Si sí, la precedencia de origen está al revés para
   este caso, y el cambio toca la regla que VAL-45 fijó para no duplicar.
 
-### VAL-85 · Lo que se aprendió a sacar también dice que "el viaje cambió" — P1 · construida el 02/10 (`a9e67f8`), en auditoría
+### VAL-85 · Lo que se aprendió a sacar también dice que "el viaje cambió" — P1 · publicada en la v38 (auditoría 85)
 
 **Preexistente, reproducido el 26/09 contra el motor de antes y el de después de VAL-77b: sale idéntico.**
 Es la misma forma que VAL-77b arregló para lo que se aprende a **sumar**, del otro lado: cuando lo aprendido
@@ -1895,7 +1895,7 @@ el texto de ningún plan que no fuera "sólo aprendido".
    saco 1 que ya no corresponde»*, aunque lo que se saca vino de lo aprendido. Distinguirlo exige un texto
    que nombre las dos causas a la vez.
 
-### VAL-87 · Escribís la ciudad, la app pone el código — P0 · auditoría 83, candidato, sale en la v39
+### VAL-87 · Escribís la ciudad, la app pone el código — P0 · publicada en la v39 y probada por el PM (`docs/qa/v39-resultado.md`)
 
 **Pedido textual del PM (02/10):** *"que la UI no pida código IATA sino que como cualquier buscador de vuelos
 que existe hoy en el mercado, cuando vos empezás a escribir la ciudad, el motor de búsqueda te sugiere los
@@ -1933,7 +1933,7 @@ visor real.
 **Anterior a VAL-87.** Una dirección como «Hotel Llao Llao» se guarda como «HOTEL LLAO LLAO». VAL-87 sacó las
 mayúsculas forzadas del vuelo y no tocó el traslado porque su brief lo excluía.
 
-### VAL-92 · Enter en el campo de aeropuerto no elige la opción que se ve marcada — P1 · decidido el 07/10
+### VAL-92 · Enter en el campo de aeropuerto no elige la opción que se ve marcada — P1 · publicada en la v40
 
 **DECISIÓN DEL PM (07/10):** Enter elige la opción marcada. Y **salir del campo con UNA sola opción en la lista
 la toma**: el PM escribió «aeroparqu», tocó afuera y quedó lo escrito con Aeroparque solo en la lista. Con
@@ -1990,7 +1990,7 @@ Medido por la auditoría del 07/10 contra la v39 (`a365427`). Nada de esto frena
    `val77b-lo-aprendido-no-es-un-cambio.js` dio un timeout en su control negativo y pasó al repetir.
    `valija-bloque-b.js` dio un timeout una vez y 111/111 en dos corridas. Las tres son el síntoma de VAL-86.
 
-### VAL-95 · Las fechas y horas de las reservas son incómodas y no se limitan entre sí — P1 · opción B elegida el 10/10; hecha en la v43
+### VAL-95 · Las fechas y horas de las reservas son incómodas y no se limitan entre sí — P1 · verificada en el teléfono del PM (v43)
 
 **Decisión del PM (10/10):** *"opción B para la fecha y hora de las reservas"*. Hecho en la v43, en las tres
 pantallas (formulario, revisar lo importado y el vuelo nuevo desde una tarjeta de embarque):
@@ -2107,7 +2107,7 @@ aviso no aparece ni un instante al arrancar: había un instante en que sí, lo e
 y lo cierra `Store.soloEnEsteDispositivo()`. «Acerca de» y el panel de pendientes decían que los datos «viajan con el link»: lo encontró
 la auditoría de la v44 y se barrió el archivo entero buscando esa promesa.
 
-### VAL-96 · El viaje del 10 al 19 se mostraba del 9 al 18 — P0 · hecho en la v42
+### VAL-96 · El viaje del 10 al 19 se mostraba del 9 al 18 — P0 · verificada en el teléfono del PM (v43)
 
 **Reporte del PM (10/10, v41).** Causa leída y reproducida: la app leía una fecha sin hora («2026-10-10») como
 medianoche de Greenwich, que en Argentina es el 9 a las 21. Se guardaba bien y se **mostraba** mal. Arreglado
