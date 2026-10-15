@@ -118,6 +118,18 @@ async function cerrar(p) { const c = p.locator("#cancel"); if (await c.count()) 
     await p.close();
   }
 
+  titulo("5b · un vuelo sin número ni aerolínea dice «Vuelo pendiente», como la tarjeta");
+  {
+    const p = await pagina(browser);
+    await p.evaluate(async () => { await Store.saveItem("t1", { id:"f9", type:"flight", title:"Sin datos", from:"AEP", to:"BRC", start:"2026-11-10T08:00", end:"", provider:"", flightNumber:"", confirmation:"" }); });
+    await p.waitForTimeout(300);
+    await p.locator('[data-item="f9"]').click(); await p.waitForTimeout(300);
+    ok(/Vuelo pendiente/i.test(await texto(p)), "la vista dice «Vuelo pendiente»", "5");
+    const svg = await p.evaluate(() => { const e = document.querySelector("#vr .vr-ruta .av svg"); return e ? getComputedStyle(e).fill : "?"; });
+    ok(svg === "none", `el avión del medio es de trazo, no macizo (fill: ${svg})`, "11");
+    await p.close();
+  }
+
   titulo("7 · «abrir» en un pendiente va directo a editar");
   {
     const p = await pagina(browser);

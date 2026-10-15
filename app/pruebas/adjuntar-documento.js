@@ -47,7 +47,6 @@
 "use strict";
 
 const { chromium } = require("playwright");
-const { abrirParaEditar } = require("./abrir-reserva");
 const path = require("path");
 
 const APP = "file://" + (process.argv[2] || path.resolve(__dirname, "..", "valija.html"));

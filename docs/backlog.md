@@ -1419,7 +1419,7 @@ comparten viajes, reservas, listas de equipaje y adjuntos.
   reserva, el de 5.000 pasa a ser el único que protege y tiene que avisar antes de que falle un guardado.
 - El texto de la interfaz ("Documentos · 1 de 3") sale del tope y hay que rehacerlo: sin tope no hay "de N".
 
-### VAL-70 · Entrar a una reserva sin entrar a editarla — P1 · hecha en la v47
+### VAL-70 · Entrar a una reserva sin entrar a editarla — P1 · candidato en la v47, falta tu prueba en el teléfono
 
 **Diseño aprobado por el PM (14/10):** `docs/design/val70-ver-reserva.png`, con tres decisiones: «Eliminar»
 queda adentro de Editar; «abrir» en un pendiente va directo a editar; quien sólo mira ve únicamente «Cerrar».
@@ -1883,7 +1883,9 @@ de VAL-105 (que sólo pasa sin IA y se corrigió en la misma entrega). Sin causa
 
 **Otro dato (14/10, regresiones de la v47):** volvió a caer `v42-la-valija-espera` en el mismo punto («está el
 botón para ver el plan»), y `valija-bloque-b` con un `waitForFunction` vencido. Repetidas de a una: 28/28 y
-111/111. Es la segunda vez del mismo punto de v42: si aparece una tercera, se instrumenta ese paso.
+111/111. Es la segunda vez del mismo punto de v42: si aparece una tercera, se instrumenta ese paso. La auditoría de la v47 vio
+además caer `val79` 2 de 12 veces en «la siembra llegó: -1 de 3» (en la v46, 5 de 5 verde): muestra chica, sin
+causa determinada.
 
 ### VAL-88 · Cinco textos de la valija que quedaron de antes, vistos durante VAL-85 — P2
 
@@ -2046,7 +2048,7 @@ otro, con límite), B (día y hora por separado, la llegada arranca en el día d
 botones). **No se construye hasta que el PM elija.** Relación con VAL-79: una fecha mal elegida es uno de los
 caminos que producen el paso A.
 
-### VAL-100 · Un Guardar rechazado igual cambia la reserva en memoria — P1 · arreglado en la v47 (el formulario trabaja sobre una copia)
+### VAL-100 · Un Guardar rechazado igual cambia la reserva en memoria — P1 · candidato en la v47 (el formulario trabaja sobre una copia), falta tu prueba
 
 Preexistente (también en la v42). El formulario de la reserva copia los campos sobre el MISMO objeto que tiene
 `Store` antes de validar (`collect()`), así que cuando Guardar rechaza («Poné un título», «La fecha de fin es
