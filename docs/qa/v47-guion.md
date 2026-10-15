@@ -1,5 +1,7 @@
 # v47 — el guion del PM (VAL-70 y VAL-100)
 
+**Auditoría:** 84/100, candidato, sin bloqueantes (`docs/auditoria/2026-10-14-v47.md`).
+
 **Qué probar:** que tocar una reserva la muestre en vez de abrir el formulario. Tres minutos, en tu app. Arriba
 tiene que decir **v47**.
 
