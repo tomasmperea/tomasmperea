@@ -1456,7 +1456,25 @@ Tres salidas posibles, y conviene elegir UNA con él antes de construir:
 VAL-66, porque es del mismo tema. La interfaz tiene que decir para qué sirve escribir ahí — cambia qué
 significa el campo, y un campo que ahora alimenta las sugerencias no puede parecer el mismo cajón de antes.
 
-### VAL-67 · Las categorías de la valija arrancan colapsadas — P2
+### VAL-67 · Las categorías de la valija arrancan colapsadas — P2 · candidato en la v49 (opción B del PM, 27/10)
+
+**Lo que se hizo (v49).** Al entrar a la valija todas las categorías están cerradas, con su nombre y su cuenta.
+Se abre sola sólo la que recibió algo de la IA para el destino y lo tiene pendiente: es lo que anuncia el aviso
+«Ajustada al destino», y cerrada quedaba tapado. Diseño: `docs/design/val67-categorias-cerradas.png`.
+
+Tres casos vecinos que el cambio de defecto rompía, resueltos en la misma entrega:
+- **Marcar, descartar o deslizar un ítem** borraba la elección de abierta/cerrada y volvía al defecto. Con el
+  defecto en cerrado, la categoría se cerraba después de cada marca. Ahora queda abierta mientras tenga
+  pendientes y se pliega sola con «listo» al completarse, como antes.
+- **«Agregar ítem» (el botón de abajo)** sobre una categoría cerrada dejaba el ítem nuevo tapado: ahora la abre.
+- **Empacar desde el detalle** lo que agregó la IA cerraba la categoría aunque le quedaran pendientes.
+
+**Cambia respecto de antes:** una categoría que recibe ítems nuevos por una reserva (el plan) ya no se abre
+sola; avisa desde afuera con «N nuevos», que ya existía.
+
+Probado tocando la pantalla (`app/pruebas/val67-categorias-cerradas.js`), con dos controles: contra la v48, y
+contra la v49 sin el arreglo de los gestos.
+
 
 **Reporte textual:** *"por defecto, cada categoría de la valija ejemplo: documentación, necesito que este
 colapsado para mayor orden visual"*.

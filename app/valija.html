@@ -1169,7 +1169,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    buscando la línea por su texto, y después se lee del archivo SERVIDO, no del
    repo: los cuatro grep de CLAUDE.md incluyen éste y fue el único que lo vio.
    ============================================================ */
-const VALIJA_VERSION = "48";
+const VALIJA_VERSION = "49";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -9701,7 +9701,23 @@ function pkCategoryHtml(cat, trip, canWrite, list){
   // y su marca no se limpiaría jamás— lo cierra el chip: si el "N nuevos" del
   // encabezado estuvo a la vista, los ítems de adentro cuentan como vistos
   // (§ 4.3, ver pkObserveNew).
-  const open = PK.openCats[cat.key] !== undefined ? PK.openCats[cat.key] : (nuevos>0 || !full || dropped>0);
+  //
+  // VAL-67 (opción B del PM, 27/10): al entrar, todo arranca cerrado. Se abre
+  // sola sólo la categoría donde la IA agregó algo para el destino y sigue
+  // pendiente: es lo que anuncia el aviso «Ajustada al destino», y cerrada
+  // quedaba tapado. Lo que la persona abre o cierra a mano manda.
+  //
+  // "hasta-listo" lo pone el gesto sobre un ítem (marcar, descartar, deslizar):
+  // la categoría donde estás trabajando sigue abierta, y cuando se completa se
+  // pliega sola con «listo», que es la regla de siempre. Antes esos gestos
+  // borraban la elección y volvían al valor por defecto; con el defecto en
+  // cerrado, eso cerraba la categoría después de cada marca.
+  const auto = nuevos>0 || !full || dropped>0;
+  const elegido = PK.openCats[cat.key];
+  const open = PK.adding===cat.key ? true
+    : elegido === "hasta-listo" ? auto
+    : elegido !== undefined ? elegido
+    : cat.items.some(i=>i.origen==="destino" && i.estado==="pendiente");
   const icon = CAT_ICON[cat.key] || "doc";
   // El chip es el localizador grueso: sin él, tres filas ámbar en cuarenta
   // ítems se encuentran scrolleando a ciegas. Se ve también plegada.
@@ -9808,14 +9824,14 @@ function bindPackingRows(main, trip, list, canWrite){
 
   main.querySelectorAll("[data-mark]").forEach(b=> b.onclick = ()=>{
     const clave = b.dataset.mark, it = list.items[clave]; if(!it) return;
-    delete PK.openCats[it.categoria];
+    PK.openCats[it.categoria] = "hasta-listo";
     pkMarcarVisto(clave);   // actuar sobre un ítem es la prueba más fuerte de haberlo mirado
     const next = it.estado === "pendiente" ? "empacado" : "pendiente";
     applyItemState(trip, list, clave, next);
   });
   main.querySelectorAll("[data-dropbtn]").forEach(b=> b.onclick = ()=>{
     const clave = b.dataset.dropbtn, it = list.items[clave]; if(!it) return;
-    delete PK.openCats[it.categoria];
+    PK.openCats[it.categoria] = "hasta-listo";
     pkMarcarVisto(clave);
     // El círculo teñido ES la aceptación de la propuesta: descartar y borrar la
     // sugerencia van en la MISMA escritura (§ 4.4).
@@ -9823,6 +9839,10 @@ function bindPackingRows(main, trip, list, canWrite){
     else applyItemState(trip, list, clave, "descartado");
   });
   main.querySelectorAll("[data-detail]").forEach(b=> b.onclick = ()=>{
+    // VAL-67: si estaba abierta por el destino, que lo que cambies en la hoja
+    // no la cierre detrás tuyo mientras le queden pendientes.
+    const it = list.items[b.dataset.detail];
+    if(it && PK.openCats[it.categoria] === undefined) PK.openCats[it.categoria] = "hasta-listo";
     sheetPackingItem(trip, list, b.dataset.detail);
   });
   main.querySelectorAll("[data-pkadd]").forEach(b=> b.onclick = ()=>{
@@ -9871,13 +9891,13 @@ function bindPackingRows(main, trip, list, canWrite){
       const localDx = dx; x0 = null; dx = 0;
       if(!it) return;
       if(localDx < -70){
-        delete PK.openCats[it.categoria]; pkMarcarVisto(clave);
+        PK.openCats[it.categoria] = "hasta-listo"; pkMarcarVisto(clave);
         // deslizar a la izquierda es el mismo descarte que el círculo: si hay
         // propuesta, también la resuelve en la misma escritura (§ 4.4)
         if(it.sugerenciaQuitar) aceptarQuitar(trip, clave);
         else applyItemState(trip, list, clave, "descartado");
       }
-      else if(localDx > 70){ delete PK.openCats[it.categoria]; pkMarcarVisto(clave); applyItemState(trip, list, clave, it.estado==="empacado" ? "pendiente" : "empacado"); }
+      else if(localDx > 70){ PK.openCats[it.categoria] = "hasta-listo"; pkMarcarVisto(clave); applyItemState(trip, list, clave, it.estado==="empacado" ? "pendiente" : "empacado"); }
     };
     row.addEventListener("pointerup", end);
     row.addEventListener("pointercancel", end);
@@ -13636,6 +13656,9 @@ function sheetAddPackingItem(trip, list){
     if(!nombre){ toast("Poné qué te falta", true); return; }
     const categoria = document.getElementById("pk_new_cat").value;
     const updated = PackingEngine.addManualItem(list, {nombre, categoria, paraTipos:pkParaAlGuardar(list, para)});
+    // VAL-67: con las categorías cerradas, lo que acabás de agregar quedaría
+    // tapado; se abre la categoría donde fue.
+    PK.openCats[categoria] = "hasta-listo";
     try{ await Store.savePacking(trip.id, updated); closeSheet(); toast("Ítem agregado"); }
     catch(e){ toast(writeErr(e), true); }
   };

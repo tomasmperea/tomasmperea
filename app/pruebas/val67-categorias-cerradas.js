@@ -5,13 +5,15 @@
    categoría donde la IA agregó algo para el destino.
 
    Por gesto, sobre un viaje a Lisboa con un vuelo:
-     1  Armar la lista tocando «Ciudad» y «Armar»: todas cerradas menos la del
-        destino, que se abre con «Paraguas compacto» a la vista.
-     2  Tocar «Ropa» la abre; marcar un ítem NO la cierra (antes del arreglo,
+     1  Armar la lista tocando «Ciudad» y «Armar»: todas cerradas menos las que
+        recibieron algo de la IA para el destino («Paraguas compacto» en
+        Específicos del destino, «Campera impermeable» en Ropa), que se ven.
+     2  Tocar «Higiene» la abre; marcar un ítem NO la cierra (antes del arreglo,
         cada marca volvía al valor por defecto, que ahora es cerrado).
-     3  Marcar todo lo de «Ropa»: se pliega sola con «listo».
-     4  Empacar desde el detalle uno de los dos ítems del destino: la categoría
-        sigue abierta, porque le queda el otro.
+     3  Marcar todo lo de «Higiene»: se pliega sola con «listo».
+     4  Empacar desde el detalle la campera que agregó la IA: «Ropa» sigue
+        abierta, porque le quedan pendientes (sin el arreglo, ya no le queda
+        nada del destino y volvía a cerrada).
      5  «Agregar ítem» (el botón de abajo) en «Calzado», que está cerrada: se
         abre y el ítem nuevo se ve.
      6  Cargar un auto con el formulario y aplicar el plan: las categorías que
@@ -59,7 +61,7 @@ function conIA() {
     json: async pr => {
       if (/equipaje/i.test(String(pr)) && primera) { primera = false;
         return { items:[{ nombre:"Paraguas compacto", categoria:"destino", cantidad:1, motivo:"llueve seguido" },
-                         { nombre:"Tarjeta del tranvía", categoria:"destino", cantidad:1, motivo:"el 28 se paga con la Viva Viagem" }], quitar:[] }; }
+                         { nombre:"Campera impermeable", categoria:"ropa", cantidad:1, motivo:"llueve seguido" }], quitar:[] }; }
       return { items:[], quitar:[] };
     }
   };
@@ -96,7 +98,7 @@ const estados = p => p.$$eval(".pk-cat", cs => cs.map(c => c.querySelector(".pk-
 (async () => {
   const browser = await chromium.launch({ executablePath:"/opt/pw-browsers/chromium" });
 
-  titulo("1 a 6 · con IA");
+  titulo("1, 2, 3, 5 y 6 · con IA");
   {
     const p = await pagina(browser, true);
     let caso = "1";
@@ -104,27 +106,29 @@ const estados = p => p.$$eval(".pk-cat", cs => cs.map(c => c.querySelector(".pk-
     await armar(p);
     info(await estados(p));
     const keys = await p.$$eval(".pk-cat-hd", hs => hs.map(h => h.dataset.cat));
-    const otras = keys.filter(k => k !== "destino");
+    const otras = keys.filter(k => k !== "destino" && k !== "ropa");
     let cerradas = 0; for (const k of otras) if (!(await abierta(p, k))) cerradas++;
-    ok(otras.length >= 5 && cerradas === otras.length, `al entrar, las ${otras.length} categorías sin nada del destino están cerradas`, "1");
+    ok(otras.length >= 4 && cerradas === otras.length, `al entrar, las ${otras.length} categorías sin nada del destino están cerradas`, "1");
     ok(await abierta(p, "destino") && await cat(p, "destino").getByText("Paraguas compacto").isVisible(),
-      "la del destino arranca abierta y «Paraguas compacto» se ve", "1");
+      "«Específicos del destino» arranca abierta y «Paraguas compacto» se ve", "1");
+    ok(await abierta(p, "ropa") && await cat(p, "ropa").getByText("Campera impermeable").isVisible(),
+      "«Ropa» también, porque la IA le agregó «Campera impermeable»", "1");
 
-    // 2 · abrir Ropa y marcar
+    // 2 · abrir Higiene y marcar
     caso = "2";
-    await p.locator('.pk-cat-hd[data-cat="ropa"]').click(); await p.waitForTimeout(300);
-    ok(await abierta(p, "ropa"), "tocar «Ropa» la abre", "2");
-    await cat(p, "ropa").locator("[data-mark]").first().click(); await p.waitForTimeout(700);
-    ok(await abierta(p, "ropa"), "marcar un ítem no la cierra", "2");
-    ok(/^1 de /.test((await cat(p, "ropa").locator(".cnt").innerText()).trim()), "y la cuenta dice «1 de …»", "2");
+    await p.locator('.pk-cat-hd[data-cat="higiene"]').click(); await p.waitForTimeout(300);
+    ok(await abierta(p, "higiene"), "tocar «Higiene» la abre", "2");
+    await cat(p, "higiene").locator("[data-mark]").first().click(); await p.waitForTimeout(700);
+    ok(await abierta(p, "higiene"), "marcar un ítem no la cierra", "2");
+    ok(/^1 de /.test((await cat(p, "higiene").locator(".cnt").innerText()).trim()), "y la cuenta dice «1 de …»", "2");
 
     // 3 · marcar todo lo que queda
     caso = "3";
     for (let i = 0; i < 20; i++) {
-      const pend = cat(p, "ropa").locator('.pk-row[data-row] [data-mark]:not(.on)');
-      const resto = await p.evaluate(() => Object.values(Store.packingOf("t1").items).filter(i => i.categoria === "ropa" && i.estado === "pendiente").length);
+      const pend = cat(p, "higiene").locator('.pk-row[data-row] [data-mark]:not(.on)');
+      const resto = await p.evaluate(() => Object.values(Store.packingOf("t1").items).filter(i => i.categoria === "higiene" && i.estado === "pendiente").length);
       if (!resto) break;
-      const rows = cat(p, "ropa").locator(".pk-row[data-row]");
+      const rows = cat(p, "higiene").locator(".pk-row[data-row]");
       const n = await rows.count(); let hecho = false;
       for (let j = 0; j < n && !hecho; j++) {
         const clave = await rows.nth(j).getAttribute("data-row");
@@ -133,18 +137,8 @@ const estados = p => p.$$eval(".pk-cat", cs => cs.map(c => c.querySelector(".pk-
       }
       if (!hecho) break;
     }
-    ok(!(await abierta(p, "ropa")) && /listo/.test(await cat(p, "ropa").locator(".cnt").innerText()),
-      "con todo marcado, «Ropa» se pliega sola con «listo»", "3");
-
-    caso = "4";
-    // 4 · empacar desde el detalle uno de los dos ítems del destino
-    await cat(p, "destino").locator("[data-detail]").first().click(); await p.waitForTimeout(400);
-    ok(await p.locator(".sheet").isVisible(), "tocar el ítem abre su detalle", "4");
-    await p.locator('.pk-states [data-s="empacado"]').click();
-    await p.locator("#save").click(); await p.waitForTimeout(800);
-    const quedan = await p.evaluate(() => Object.values(Store.packingOf("t1").items).filter(i => i.categoria === "destino" && i.estado === "pendiente").length);
-    info("pendientes en la del destino: " + quedan);
-    ok(quedan === 1 && await abierta(p, "destino"), "empacado uno desde el detalle, la del destino sigue abierta con el otro", "4");
+    ok(!(await abierta(p, "higiene")) && /listo/.test(await cat(p, "higiene").locator(".cnt").innerText()),
+      "con todo marcado, «Higiene» se pliega sola con «listo»", "3");
 
     // 5 · Agregar ítem en Calzado, que está cerrada
     caso = "5";
@@ -184,6 +178,23 @@ const estados = p => p.$$eval(".pk-cat", cs => cs.map(c => c.querySelector(".pk-
     }
     ok(bien, "toda categoría cerrada con ítems nuevos lo dice desde afuera («N nuevos»)", "6");
     } catch (e) { ok(false, `se cortó en el caso ${caso}: ${String(e.message).split("\n")[0]}`, caso); }
+    await p.close();
+  }
+
+  titulo("4 · empacar desde el detalle lo que agregó la IA en «Ropa»");
+  {
+    const p = await pagina(browser, true);
+    try {
+    await armar(p);
+    const fila = cat(p, "ropa").locator(".pk-row[data-row]", { hasText:"Campera impermeable" });
+    await fila.locator("[data-detail]").click(); await p.waitForTimeout(400);
+    ok(await p.locator(".sheet").isVisible(), "tocar «Campera impermeable» abre su detalle", "4");
+    await p.locator('.pk-states [data-s="empacado"]').click();
+    await p.locator("#save").click(); await p.waitForTimeout(800);
+    const quedan = await p.evaluate(() => Object.values(Store.packingOf("t1").items).filter(i => i.categoria === "ropa" && i.estado === "pendiente").length);
+    info("pendientes en «Ropa»: " + quedan);
+    ok(quedan > 0 && await abierta(p, "ropa"), "empacada desde el detalle, «Ropa» sigue abierta con lo que le falta", "4");
+    } catch (e) { ok(false, `se cortó en el caso 4: ${String(e.message).split("\n")[0]}`, "4"); }
     await p.close();
   }
 
