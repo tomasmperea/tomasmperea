@@ -1419,7 +1419,7 @@ comparten viajes, reservas, listas de equipaje y adjuntos.
   reserva, el de 5.000 pasa a ser el único que protege y tiene que avisar antes de que falle un guardado.
 - El texto de la interfaz ("Documentos · 1 de 3") sale del tope y hay que rehacerlo: sin tope no hay "de N".
 
-### VAL-70 · Entrar a una reserva sin entrar a editarla — P1 · candidato en la v47, falta tu prueba en el teléfono
+### VAL-70 · Entrar a una reserva sin entrar a editarla — P1 · verificada en el teléfono del PM (v47)
 
 **Diseño aprobado por el PM (14/10):** `docs/design/val70-ver-reserva.png`, con tres decisiones: «Eliminar»
 queda adentro de Editar; «abrir» en un pendiente va directo a editar; quien sólo mira ve únicamente «Cerrar».
@@ -2048,7 +2048,7 @@ otro, con límite), B (día y hora por separado, la llegada arranca en el día d
 botones). **No se construye hasta que el PM elija.** Relación con VAL-79: una fecha mal elegida es uno de los
 caminos que producen el paso A.
 
-### VAL-100 · Un Guardar rechazado igual cambia la reserva en memoria — P1 · candidato en la v47 (el formulario trabaja sobre una copia), falta tu prueba
+### VAL-100 · Un Guardar rechazado igual cambia la reserva en memoria — P1 · verificada en el teléfono del PM (v47)
 
 Preexistente (también en la v42). El formulario de la reserva copia los campos sobre el MISMO objeto que tiene
 `Store` antes de validar (`collect()`), así que cuando Guardar rechaza («Poné un título», «La fecha de fin es
