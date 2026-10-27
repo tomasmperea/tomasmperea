@@ -1169,7 +1169,7 @@ const svg = (p, cls) => `<svg viewBox="0 0 24 24" ${cls?`class="${cls}"`:""}>${p
    buscando la línea por su texto, y después se lee del archivo SERVIDO, no del
    repo: los cuatro grep de CLAUDE.md incluyen éste y fue el único que lo vio.
    ============================================================ */
-const VALIJA_VERSION = "47";
+const VALIJA_VERSION = "48";
 
 const TYPES = {
   flight:  {label:"Vuelo",     icon:I.flight,   cls:"",      band:"flight"},
@@ -1765,7 +1765,12 @@ function completeness(trip, items){
     total += req.length; done += req.length - missingFields(it).length;
   });
   total += 2; done += (trip.startDate?1:0) + (trip.endDate?1:0);
-  if(items.length===0) return items.length ? 0 : Math.round(done/total*100);
+  /* VAL-64 · un viaje sin reservas no tiene un porcentaje que dar: con las dos
+     fechas cargadas daba 100, y «100» quiere decir «no falta nada». Antes acá
+     había un ternario que intentaba devolver 0 y nunca lo hacía (su condición
+     era siempre falsa adentro de este mismo if). Devuelve null y la tarjeta lo
+     dice con palabras (opción B, decisión del PM). */
+  if(items.length===0) return null;
   return Math.max(0, Math.min(100, Math.round(done/total*100)));
 }
 
@@ -8711,7 +8716,7 @@ function cardTrip(t){
   const crit = alerts.filter(a=>a.sev==="crit").length;
   const soon = alerts.filter(a=>a.sev==="soon").length;
   const dd = daysUntil(t.startDate);
-  const ringCls = pct>=85?"":(pct>=50?"warn":"low");
+  const ringCls = pct===null ? "" : pct>=85?"":(pct>=50?"warn":"low");
   const C = 2*Math.PI*14.5;
 
   const chips = [];
@@ -8720,6 +8725,7 @@ function cardTrip(t){
   if(!crit && soon) chips.push(`<span class="chip soon">${soon} por hacer</span>`);
   if(!crit && !soon && items.length) chips.push(`<span class="chip ok">listo</span>`);
   if(items.length) chips.push(`<span class="chip">${items.length} ${items.length===1?"reserva":"reservas"}</span>`);
+  else chips.push(`<span class="chip sin-reservas">sin reservas</span>`);   // VAL-64
   if(t.sample) chips.push(`<span class="chip accent">ejemplo</span>`);
 
   return `
@@ -8740,14 +8746,14 @@ function cardTrip(t){
           <span class="dates">${esc(fmtRange(t.startDate,t.endDate))}</span>
           <div class="chips">${chips.join("")}</div>
         </div>
-        <div class="ring ${ringCls}" title="${pct}% completo">
+        ${pct===null ? "" : `<div class="ring ${ringCls}" title="${pct}% completo">
           <svg viewBox="0 0 34 34">
             <circle class="bg" cx="17" cy="17" r="14.5"></circle>
             <circle class="fg" cx="17" cy="17" r="14.5"
               stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-pct/100)).toFixed(1)}"></circle>
           </svg>
           <b>${pct}</b>
-        </div>
+        </div>`}
       </div>
     </div>
   </button>`;

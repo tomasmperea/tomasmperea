@@ -1477,7 +1477,13 @@ definen horarios de retiro/devolución pero el resto es innecesario"*.
 - El resto muestra la hora sólo cuando la hay y cuando significa algo. Un vuelo sin hora no inventa 00:00.
 - Un solo lugar decide el formato por tipo, no cada pantalla por su cuenta.
 
-### VAL-64 · Un viaje vacío no puede estar 100% completo — P3
+### VAL-64 · Un viaje vacío no puede estar 100% completo — P3 · candidato en la v48 (opción B del PM, 27/10)
+
+**Lo que se hizo (v48).** Sin reservas, `completeness()` devuelve `null` en vez de un porcentaje, y la tarjeta
+no dibuja el anillo: muestra el chip «sin reservas». Con la primera reserva vuelve el anillo con su número; si se
+borra la última, vuelve «sin reservas». Diseño: `docs/design/val64-viaje-vacio.png`. Probado tocando el formulario
+(`app/pruebas/val64-viaje-vacio.js`), con control negativo contra la v47. `completeness()` tiene un solo uso en
+el archivo (la tarjeta), así que no hay otra pantalla que mostrara el 100.
 
 **Reporte textual:** *"las tarjetas creadas por cada viaje vienen con el indicador de completitud en 100 por
 defecto y eso está mal; 100 es que no tengo pendientes y un viaje vacío no puede tener 100"*.
@@ -2158,3 +2164,15 @@ y hace bien en no sacarlo — pero podría **avisarlo**.
   una línea que diga "tres de las que empacaste eran para Noruega" probablemente no.
 - **No entra en un arreglo de otra historia.** Se separó justamente por eso: en VAL-72 una sub-función que
   nadie pidió se llevó tres rondas de auditoría y terminó sacándose.
+
+### VAL-106 · El anillo dice 100 mientras la tarjeta dice «1 por hacer» — P3
+
+Visto armando VAL-64, no se tocó en esa entrega (no entra un arreglo de polizonte). El anillo mide **campos
+cargados** de las reservas; los chips «por hacer» salen de los **avisos** (`alerts`), que miran otras cosas
+(un check-in que se acerca, un traslado que falta). Las dos cuentas no se hablan, así que un viaje con todos
+los campos completos y un aviso pendiente muestra «100» al lado de «1 por hacer». Para el PM, «100» quiere decir
+«no falta nada» (lo dijo en el reporte de VAL-64), así que se contradicen.
+
+- Qué mide el anillo lo decide el diseño: puede contar los avisos, o dejar de ser un porcentaje.
+- Antes de diseñar: un viaje real del PM donde se vea, con captura.
+
