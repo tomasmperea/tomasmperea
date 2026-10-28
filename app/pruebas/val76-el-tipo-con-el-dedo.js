@@ -36,6 +36,7 @@
    ============================================================ */
 "use strict";
 const { chromium } = require("playwright");
+const { abrirCategorias } = require("./abrir-categorias");
 const path = require("path");
 const APP = "file://" + (process.argv[2] || path.resolve(__dirname, "..", "valija.html"));
 
@@ -239,6 +240,7 @@ const clavesDe = (page, id) => page.evaluate(i => Object.keys((Store.packingOf(i
      agregado por la persona. Es lo que VAL-75 protege y lo que VAL-76 no puede
      romper. */
   const empacar = combo.find(k => k === "dni");
+  await abrirCategorias(page);   // VAL-67: desde la v49 arrancan cerradas
   await page.locator(`.pk-row[data-row="${empacar}"] .pk-mark`).click();
   await page.waitForTimeout(400);
   const descartar = combo.find(k => k === "bota-o-zapatilla-de-trekking");

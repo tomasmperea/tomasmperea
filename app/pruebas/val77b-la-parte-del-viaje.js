@@ -82,6 +82,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { abrirCategorias } = require("./abrir-categorias");
 const fs = require("fs"), path = require("path"), os = require("os"), cp = require("child_process");
 
 const RAIZ = path.resolve(__dirname, "..", "..");
@@ -132,7 +133,7 @@ async function nuevaPagina(browser, semilla, modo) {
   return page;
 }
 
-const ir = async (page, hash) => { await page.goto(APP + hash); await page.waitForTimeout(450); };
+const ir = async (page, hash) => { await page.goto(APP + hash); await page.waitForTimeout(450); if (/\/valija$/.test(hash)) await abrirCategorias(page); };
 const clave = (page, nombre) => page.evaluate(n => PackingEngine.slug(n), nombre);
 const itemDe = (page, id, nombre) => page.evaluate(([i, n]) => {
   const l = Store.packingOf(i); return l && l.items ? (l.items[PackingEngine.slug(n)] || null) : null;
@@ -178,6 +179,7 @@ async function armar(page, id, tipos) {
   await page.locator("#pk-build").click();
   await esperarLista(page, id);
   await page.waitForTimeout(350);
+  await abrirCategorias(page);   // VAL-67
   return m;
 }
 
@@ -554,6 +556,7 @@ async function medirFormulario(browser, archivo, tipos) {
   await page.locator("#pk-build").click();
   await page.waitForFunction(() => { const l = Store.packingOf("h1"); return l && Object.keys(l.items || {}).length && !PK.generating; });
   await page.waitForTimeout(300);
+  await abrirCategorias(page);   // VAL-67
   await page.locator('[data-pkadd="ropa"]').click();
   await page.waitForSelector("#pk-add-ropa");
   const m = await page.evaluate(() => {

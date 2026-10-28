@@ -53,6 +53,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { abrirCategorias } = require("./abrir-categorias");
 const { abrirParaEditar } = require("./abrir-reserva");
 const { llenarFechaHora, llenarCampo } = require("./fecha-y-hora");
 const fs = require("fs"), path = require("path"), os = require("os"), cp = require("child_process");
@@ -112,7 +113,7 @@ async function nuevaPagina(browser, archivo, ia) {
   await page.waitForFunction(() => typeof Store !== "undefined" && Store.ready, null, { timeout:15000 });
   return page;
 }
-const ir = async (page, hash) => { await page.goto(page.__app + hash); await page.waitForTimeout(500); };
+const ir = async (page, hash) => { await page.goto(page.__app + hash); await page.waitForTimeout(500); if (/\/valija$/.test(hash)) await abrirCategorias(page); };
 
 async function marcarTipos(page, tipos) {
   const marcadas = () => page.$$eval('#pk-tp [data-t][aria-pressed="true"]', els => els.map(e => e.dataset.t));
@@ -126,6 +127,7 @@ async function armar(page, id, tipos) {
   await page.locator("#pk-build").click();
   await page.waitForFunction(i => { const l = Store.packingOf(i); return !!(l && l.items && Object.keys(l.items).length) && !PK.generating; }, id, { timeout:15000 });
   await page.waitForTimeout(300);
+  await abrirCategorias(page);   // VAL-67
 }
 /** Toca el botón de descartar del ítem cuya clave empieza con `prefijo`. */
 async function descartar(page, id, prefijo) {

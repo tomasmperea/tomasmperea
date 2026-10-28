@@ -2,6 +2,7 @@
    gestos que usó QA: se toca el control, nunca se dispara el evento interno. */
 const { chromium } = require('playwright');
 const { llenarFechaHora } = require('./fecha-y-hora');
+const { abrirCategorias } = require('./abrir-categorias');
 const path = require('path');
 const fs = require('fs');
 const APP = 'file://' + path.resolve(__dirname, '..', 'valija.html');
@@ -47,6 +48,7 @@ async function armar(page, tipo){
   if(tipo) await page.locator(`#pk-tp [data-t="${tipo}"]`).click();
   await page.locator('#pk-build').click();
   await page.waitForTimeout(1100);
+  await abrirCategorias(page);   // VAL-67: desde la v49 arrancan cerradas; la persona las abre
 }
 /** Carga el auto llenando el formulario real de reserva. */
 async function cargarAuto(page, proveedor){

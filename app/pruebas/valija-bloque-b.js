@@ -1,6 +1,7 @@
 /* Arnés de pruebas de la valija — toca los botones, no dispara los eventos.
    Usa Playwright sobre el archivo real app/valija.html. */
 const { chromium } = require('playwright');
+const { abrirCategorias } = require('./abrir-categorias');
 const { llenarFechaHora } = require('./fecha-y-hora');
 const path = require('path');
 
@@ -93,6 +94,7 @@ async function irAValija(page){
   // Si ya estamos ahí, no recargamos: `App.plan` es memoria y una recarga la borra.
   if(!page.url().endsWith('#/trip/t1/valija')) await page.goto(APP + '#/trip/t1/valija');
   await page.waitForTimeout(150);
+  await abrirCategorias(page);   // VAL-67: desde la v49 arrancan cerradas
 }
 async function salirDeValija(page){
   await page.goto(APP + '#/trip/t1');
@@ -104,6 +106,7 @@ async function armarLista(page){
   await irAValija(page);
   const build = page.locator('#pk-build');
   if(await build.count()){ await build.click(); await page.waitForTimeout(400); }
+  await abrirCategorias(page);
 }
 
 (async () => {
@@ -252,13 +255,15 @@ async function armarLista(page){
     assert(/Sumé/.test(av), '18 · el aviso de confirmación — ' + JSON.stringify(av));
     assert(await page.locator(sel.notice).count() === 1, '25 · sigue habiendo un solo aviso');
 
-    // la categoría con nuevos está abierta sola (§ 4.3)
+    // la categoría con nuevos se ve: abierta, o con «N nuevos» en el encabezado.
+    // Hasta la v48 se abría sola (§ 4.3); desde VAL-67 (decisión del PM, 27/10)
+    // arranca cerrada y avisa desde afuera.
     const catNueva = await page.evaluate(() => {
-      const abiertas = [...document.querySelectorAll('.pk-cat')]
+      const conNuevos = [...document.querySelectorAll('.pk-cat')]
         .filter(c => c.querySelector('.pk-row.is-new'));
-      return abiertas.length && abiertas.every(c => c.dataset.open === 'true');
+      return conNuevos.length && conNuevos.every(c => c.dataset.open === 'true' || /nuevo/.test(c.querySelector('.pk-cat-hd .cnt').textContent));
     });
-    assert(catNueva, '§4.3 · las categorías con ítems nuevos se abren solas');
+    assert(catNueva, '§4.3 · las categorías con ítems nuevos se ven desde afuera');
 
     // GESTO: tocar "Listo, ya las vi"
     await page.locator('[data-pk="vistas"]').first().click();
