@@ -47,8 +47,8 @@ empezar: la app ya funcionaba entera sin base, y es el camino que más cubren la
 
 ## Dónde está
 
-**Link de «Valija beta»:** https://claude.ai/artifact/MqXA3sUNzcfqSRy8wQ6iXh — hoy en la **v47** (versión 5
-del Artifact, 15/10), fijada al mismo contrato de la plataforma que la app del PM (0.2.41). **Ya está
+**Link de «Valija beta»:** https://claude.ai/artifact/MqXA3sUNzcfqSRy8wQ6iXh — hoy en la **v49** (versión 6
+del Artifact, 28/10), fijada al mismo contrato de la plataforma que la app del PM (0.2.41). **Ya está
 compartida** como «cualquiera con el link» (lo informa la plataforma al publicar la v45).
 
 Cómo se publica cada versión nueva (lo hace el PO): copiar `app/valija.html` cambiando sólo el `<title>` a
