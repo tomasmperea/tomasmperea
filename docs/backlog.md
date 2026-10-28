@@ -1473,7 +1473,9 @@ Tres casos vecinos que el cambio de defecto rompía, resueltos en la misma entre
 sola; avisa desde afuera con «N nuevos», que ya existía.
 
 Probado tocando la pantalla (`app/pruebas/val67-categorias-cerradas.js`), con dos controles: contra la v48, y
-contra la v49 sin el arreglo de los gestos.
+contra la v49 sin el arreglo de los gestos. **De los gestos sobre un ítem, la prueba toca sólo marcar**; descartar
+con el círculo y deslizar llevan el mismo cambio en el código pero no tienen prueba propia (auditoría v49, A1):
+van en el guion del PM.
 
 
 **Reporte textual:** *"por defecto, cada categoría de la valija ejemplo: documentación, necesito que este

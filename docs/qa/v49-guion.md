@@ -1,6 +1,6 @@
 # v49 — el guion del PM (VAL-64 y VAL-67)
 
-**Auditoría:** pendiente.
+**Auditoría:** 80/100, candidato, sin bloqueantes (`docs/auditoria/2026-10-28-v49.md`).
 
 **Qué probar:** dos cambios chicos juntos, unos cuatro minutos, en tu app. Arriba tiene que decir **v49**.
 
@@ -19,9 +19,10 @@
    abiertas. **Captura.**
    - Si la lista ya estaba armada de antes, puede que ninguna se abra sola: se abre la que tiene algo
      **pendiente** agregado para el destino.
-5. Abrí **Ropa** y marcá un par de cosas: la categoría **no se cierra** mientras marcás.
+5. Abrí **Ropa** y marcá un par de cosas: la categoría **no se cierra** mientras marcás. Después, en la misma
+   categoría, **descartá** uno con el circulito tachado y **deslizá** otro hacia un costado: tampoco se cierra.
 6. Tocá **Agregar ítem** (abajo), escribí algo, elegí una categoría que esté cerrada y tocá **Agregar**:
    la categoría se abre y lo que agregaste se ve.
 7. Pasá a tema oscuro y mirá la valija. **Captura.**
 
-**Qué me mandás:** las tres capturas, y si algo de los pasos 5 o 6 no hizo lo que dice.
+**Qué me mandás:** las tres capturas, y si algo de los pasos 5 o 6 no hizo lo que dice (sobre todo descartar y deslizar, que no tienen prueba automática).
